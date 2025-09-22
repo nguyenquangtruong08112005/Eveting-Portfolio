@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "712937912925",
-    "project_id": "eventing-a7ecf",
-    "storage_bucket": "eventing-a7ecf.firebasestorage.app"
+    "project_number": "679345929738",
+    "project_id": "e-venting-691fd",
+    "storage_bucket": "e-venting-691fd.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:712937912925:android:8b38d92bdfd3c9883b2bb4",
+        "mobilesdk_app_id": "1:679345929738:android:8f9e1f160ed266915e69f3",
         "android_client_info": {
           "package_name": "com.tdtuer.eventing"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA7M560uvfRZ79bvqxe7IjhL9twQEKPApg"
+          "current_key": "AIzaSyDf0FxK0tuhdQ2MN_nlyPEw0xLg3mnvaQw"
         }
       ],
       "services": {
