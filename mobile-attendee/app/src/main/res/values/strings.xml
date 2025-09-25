@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">Eventing</string>
+    <string name="title_activity_my_profile">MyProfile</string>
+    <string name="title_activity_organizer">Organizer</string>
+    <string name="title_activity_notification_empty">NotificationEmpty</string>
+    <string name="title_activity_notification">Notification</string>
+    <string name="title_activity_invite_friend">Invite_Friend</string>
+    <string name="title_activity_share">Share</string>
+    <string name="title_activity_splash_screen">SplashScreen</string>
+    <string name="title_activity_on_boarding">OnBoarding</string>
+    <string name="title_activity_sign_in">Sign_in</string>
+    <string name="title_activity_sign_up">SignUp</string>
+    <string name="title_activity_common_auth_components">CommonAuthComponents</string>
 </resources>

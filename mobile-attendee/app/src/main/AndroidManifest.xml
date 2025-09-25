@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
-<!--    Xin quyền truy cập internet-->
+    <!-- Xin quyền truy cập internet -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -16,6 +15,61 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Eventing">
+        <activity
+            android:name=".ui.screens.CommonAuthComponents"
+            android:exported="false"
+            android:label="@string/title_activity_common_auth_components"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.SignUp"
+            android:exported="false"
+            android:label="@string/title_activity_sign_up"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Sign_in"
+            android:exported="false"
+            android:label="@string/title_activity_sign_in"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.OnBoarding"
+            android:exported="false"
+            android:label="@string/title_activity_on_boarding"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.SplashScreen"
+            android:exported="false"
+            android:label="@string/title_activity_splash_screen"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Share"
+            android:exported="false"
+            android:label="@string/title_activity_share"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Invite_Friend"
+            android:exported="false"
+            android:label="@string/title_activity_invite_friend"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Notification"
+            android:exported="false"
+            android:label="@string/title_activity_notification"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.NotificationEmpty"
+            android:exported="false"
+            android:label="@string/title_activity_notification_empty"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Organizer"
+            android:exported="false"
+            android:label="@string/title_activity_organizer"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.MyProfile"
+            android:exported="false"
+            android:label="@string/title_activity_my_profile"
+            android:theme="@style/Theme.Eventing" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
