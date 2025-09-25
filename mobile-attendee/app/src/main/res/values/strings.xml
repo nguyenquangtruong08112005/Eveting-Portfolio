@@ -11,4 +11,12 @@
     <string name="title_activity_sign_in">Sign_in</string>
     <string name="title_activity_sign_up">SignUp</string>
     <string name="title_activity_common_auth_components">CommonAuthComponents</string>
+    <string name="title_activity_verification">Verification</string>
+    <string name="title_activity_reset_password">ResetPassword</string>
+    <string name="title_activity_home_page">HomePage</string>
+    <string name="title_activity_menu">Menu</string>
+    <string name="title_activity_event_details">EventDetails</string>
+    <string name="title_activity_search">Search</string>
+    <string name="title_activity_empty_event">EmptyEvent</string>
+    <string name="title_activity_all_event">AllEvent</string>
 </resources>

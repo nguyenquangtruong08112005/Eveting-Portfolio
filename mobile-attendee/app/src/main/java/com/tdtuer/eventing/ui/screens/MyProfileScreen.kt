@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tdtuer.eventing.R // Quan trọng: Thay R.drawable.profile_placeholder bằng ảnh của bạn
+import com.tdtuer.eventing.R
 import com.tdtuer.eventing.ui.screens.ui.theme.EventingTheme
 
 class MyProfile : ComponentActivity() {
@@ -65,14 +65,14 @@ fun MyProfileScreen() {
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Cho phép cuộn nếu nội dung dài
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
             // Phần ảnh đại diện và tên
-//            ProfileHeader()
+            ProfileHeader() // <-- ĐÃ SỬA
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -106,23 +106,26 @@ fun MyProfileScreen() {
     }
 }
 
-//@Composable
-//fun ProfileHeader() {
-//    Image(
-////        painter = painterResource(id = R.drawable.profile_placeholder),
-//        contentDescription = "Profile Picture",
-//        modifier = Modifier
-//            .size(100.dp)
-//            .clip(CircleShape),
-//        contentScale = ContentScale.Crop
-//    )
-//    Spacer(modifier = Modifier.height(16.dp))
-//    Text(
-//        text = "Ashfak Sayem",
-//        fontSize = 24.sp,
-//        fontWeight = FontWeight.Bold
-//    )
-//}
+@Composable
+fun ProfileHeader() {
+    // CẢI TIẾN: Bọc trong Column để là một component thống nhất
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painter = painterResource(id = R.drawable.default_pfp),
+            contentDescription = "Profile Picture",
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Ashfak Sayem",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
 
 @Composable
 fun StatsSection(following: Int, followers: Int) {
@@ -169,12 +172,8 @@ fun AboutMeSection() {
 fun InterestSection() {
     val interests = listOf("Games Online", "Concert", "Music", "Art", "Movie", "Others")
     val colors = listOf(
-        Color(0xFF6A5AE0), // Games Online
-        Color(0xFFF0635A), // Concert
-        Color(0xFFF59762), // Music
-        Color(0xFF8436E0), // Art
-        Color(0xFF29D697), // Movie
-        Color(0xFF46CDFB)  // Others
+        Color(0xFF6A5AE0), Color(0xFFF0635A), Color(0xFFF59762),
+        Color(0xFF8436E0), Color(0xFF29D697), Color(0xFF46CDFB)
     )
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -198,11 +197,11 @@ fun InterestSection() {
             interests.forEachIndexed { index, interest ->
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = colors[index % colors.size].copy(alpha = 0.1f) // Màu nền nhạt
+                    color = colors[index % colors.size].copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = interest,
-                        color = colors[index % colors.size], // Màu chữ đậm
+                        color = colors[index % colors.size],
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         fontWeight = FontWeight.Medium
                     )

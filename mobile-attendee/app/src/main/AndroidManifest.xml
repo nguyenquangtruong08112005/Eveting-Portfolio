@@ -16,6 +16,46 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Eventing">
         <activity
+            android:name=".ui.screens.AllEvent"
+            android:exported="false"
+            android:label="@string/title_activity_all_event"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.EmptyEvent"
+            android:exported="false"
+            android:label="@string/title_activity_empty_event"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Search"
+            android:exported="false"
+            android:label="@string/title_activity_search"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.EventDetails"
+            android:exported="false"
+            android:label="@string/title_activity_event_details"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Menu"
+            android:exported="false"
+            android:label="@string/title_activity_menu"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.HomePage"
+            android:exported="false"
+            android:label="@string/title_activity_home_page"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.ResetPassword"
+            android:exported="false"
+            android:label="@string/title_activity_reset_password"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.Verification"
+            android:exported="false"
+            android:label="@string/title_activity_verification"
+            android:theme="@style/Theme.Eventing" />
+        <activity
             android:name=".ui.screens.CommonAuthComponents"
             android:exported="false"
             android:label="@string/title_activity_common_auth_components"

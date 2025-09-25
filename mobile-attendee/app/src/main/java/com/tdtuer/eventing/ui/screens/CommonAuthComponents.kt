@@ -18,6 +18,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 
 // Composable chung cho các nút có nền Gradient
 @Composable
@@ -84,5 +88,44 @@ fun SocialLoginButton(iconRes: Int, text: String, onClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(text, fontWeight = FontWeight.Medium, color = Color.Black)
+    }
+}
+
+@Composable
+fun EventDetailRow(icon: ImageVector, title: String, subtitle: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFE0E0F8)), // Màu nền icon
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = Color(0xFF5669FF), modifier = Modifier.size(24.dp))
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text(subtitle, fontSize = 14.sp, color = Color.Gray)
+        }
+    }
+}
+
+// Composable chung cho hiệu ứng các avatar xếp chồng
+@Composable
+fun FacePile(avatars: List<Int>) {
+    Box(modifier = Modifier.height(30.dp)) {
+        avatars.forEachIndexed { index, avatarRes ->
+            Image(
+                painter = painterResource(id = avatarRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.White, CircleShape)
+                    .align(Alignment.CenterStart)
+                    .offset(x = (index * 20).dp) // Hiệu ứng xếp chồng
+            )
+        }
     }
 }
