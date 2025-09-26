@@ -26,7 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tdtuer.eventing.R
-import com.tdtuer.eventing.ui.screens.ui.theme.EventingTheme
+import com.tdtuer.eventing.ui.theme.EventingTheme
 import androidx.compose.foundation.clickable
 
 // --- Data Model cho một kết quả tìm kiếm ---

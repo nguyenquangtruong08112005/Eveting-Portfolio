@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import com.tdtuer.eventing.R // Quan trọng: Thay bằng R của project bạn
-import com.tdtuer.eventing.ui.screens.ui.theme.EventingTheme
+import com.tdtuer.eventing.ui.theme.EventingTheme
 
 
 // --- Data Model cho bạn bè ---

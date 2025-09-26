@@ -68,7 +68,9 @@ dependencies {
     implementation(platform(libs.firebase.bom)) // Đồng ộ version các thư viện fbase
     implementation(libs.firebase.firestore) // Thao tác với dữ liệu đám mây Firestore
     implementation("com.google.firebase:firebase-analytics")
-
+    implementation("com.google.firebase:firebase-auth") // Đã sửa
+    
+    
     // Hilt
     implementation(libs.hilt.core) // core hilt
     kapt(libs.hilt.compiler) // Annotation processor cho Hilt

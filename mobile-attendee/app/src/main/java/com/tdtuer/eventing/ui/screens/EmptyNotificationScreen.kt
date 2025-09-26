@@ -24,7 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tdtuer.eventing.R // Quan trọng: Thay bằng R của project bạn
-import com.tdtuer.eventing.ui.screens.ui.theme.EventingTheme
+import com.tdtuer.eventing.ui.theme.EventingTheme
 
 class EmptyNotificationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
