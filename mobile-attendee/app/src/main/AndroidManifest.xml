@@ -106,7 +106,7 @@
             android:label="@string/title_activity_organizer"
             android:theme="@style/Theme.Eventing" />
         <activity
-            android:name=".ui.screens.MyProfile"
+            android:name=".ui.screens.profile.MyProfile"
             android:exported="false"
             android:label="@string/title_activity_my_profile"
             android:theme="@style/Theme.Eventing" />
