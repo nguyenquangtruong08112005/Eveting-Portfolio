@@ -61,10 +61,15 @@
             android:label="@string/title_activity_common_auth_components"
             android:theme="@style/Theme.Eventing" />
         <activity
-            android:name=".ui.screens.SignUp"
-            android:exported="false"
+            android:name=".ui.screens.auth.signup.SignUpActivity"
+            android:exported="true"
             android:label="@string/title_activity_sign_up"
-            android:theme="@style/Theme.Eventing" />
+            android:theme="@style/Theme.Eventing">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".ui.screens.Sign_in"
             android:exported="false"
@@ -112,14 +117,9 @@
             android:theme="@style/Theme.Eventing" />
         <activity
             android:name=".MainActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/app_name"
             android:theme="@style/Theme.Eventing">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
     </application>
 

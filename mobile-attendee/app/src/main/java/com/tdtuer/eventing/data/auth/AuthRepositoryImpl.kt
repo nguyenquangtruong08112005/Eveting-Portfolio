@@ -17,7 +17,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun signUp(email: String, password: String, role: String): Result<User> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
-            val uid = result.user?.uid ?: return Result.failure(Exception("Sign uo failed"))
+            val uid = result.user?.uid ?: return Result.failure(Exception("Sign up failed"))
             val user = User(id = uid, email = email, role = role)
             db.collection("Users").document(uid).set(user).await()
             Result.success(user)

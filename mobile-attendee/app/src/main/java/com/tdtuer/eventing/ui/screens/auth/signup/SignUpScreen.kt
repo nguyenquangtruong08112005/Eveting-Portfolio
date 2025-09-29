@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.auth.signup
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,12 +29,18 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+// Xóa import com.google.firebase.crashlytics.buildtools.reloc.org.apache.http.auth.AuthState
 import com.tdtuer.eventing.R
+import com.tdtuer.eventing.domain.model.User
+import com.tdtuer.eventing.domain.usecase.SignUpUseCase
 import com.tdtuer.eventing.ui.screens.auth.GradientButton
 import com.tdtuer.eventing.ui.screens.auth.OrDivider
 import com.tdtuer.eventing.ui.screens.auth.SocialLoginButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class SignUpActivity : ComponentActivity() {
     private val viewModel: SignUpViewModel by viewModels()
 
@@ -42,20 +49,15 @@ class SignUpActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             EventingTheme {
-                SignUpScreen(viewModel = viewModel)
+                SignUpScreen(viewModel = viewModel, navController = null)
             }
         }
     }
 }
 
 @Composable
-fun SignUpScreen(viewModel: SignUpViewModel) {
-    val fullName = viewModel.fullName
-    val email = viewModel.email
-    val password = viewModel.password
-    val confirmPassword = viewModel.confirmPassword
-    val passwordVisibility = viewModel.passwordVisibility
-    val confirmPasswordVisibility = viewModel.confirmPasswordVisibility
+fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
+    val authState by viewModel.authState.collectAsState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -67,14 +69,12 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Nút Back
             IconButton(onClick = { viewModel.onBackNavigationClick() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Tiêu đề Sign up
             Text(
                 text = "Sign up",
                 fontSize = 28.sp,
@@ -83,9 +83,8 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Trường nhập Full name
             OutlinedTextField(
-                value = fullName,
+                value = viewModel.fullName,
                 onValueChange = { viewModel.onFullNameChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Full name") },
@@ -96,9 +95,8 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Trường nhập Email
             OutlinedTextField(
-                value = email,
+                value = viewModel.email,
                 onValueChange = { viewModel.onEmailChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Email") },
@@ -110,21 +108,20 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Trường nhập Password
             OutlinedTextField(
-                value = password,
+                value = viewModel.password,
                 onValueChange = { viewModel.onPasswordChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Password") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
                 trailingIcon = {
                     val icon =
-                        if (passwordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        if (viewModel.passwordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { viewModel.onPasswordVisibilityToggle() }) {
                         Icon(icon, contentDescription = "Toggle password visibility")
                     }
                 },
-                visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (viewModel.passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
@@ -132,21 +129,20 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Trường nhập Confirm Password
             OutlinedTextField(
-                value = confirmPassword,
+                value = viewModel.confirmPassword,
                 onValueChange = { viewModel.onConfirmPasswordChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Confirm password") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
                 trailingIcon = {
                     val icon =
-                        if (confirmPasswordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        if (viewModel.confirmPasswordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { viewModel.onConfirmPasswordVisibilityToggle() }) {
                         Icon(icon, contentDescription = "Toggle confirm password visibility")
                     }
                 },
-                visualTransformation = if (confirmPasswordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (viewModel.confirmPasswordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
@@ -159,13 +155,13 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
             OrDivider()
             Spacer(modifier = Modifier.height(24.dp))
             SocialLoginButton(
-                iconRes = R.drawable.default_pfp, // SỬA LẠI: Dùng logo Google
+                iconRes = R.drawable.default_pfp, // SỬA LẠI: Dùng logo Google thực tế
                 text = "Login with Google",
                 onClick = { viewModel.onGoogleLoginClick() }
             )
             Spacer(modifier = Modifier.height(16.dp))
             SocialLoginButton(
-                iconRes = R.drawable.default_pfp, // SỬA LẠI: Dùng logo Facebook
+                iconRes = R.drawable.default_pfp, // SỬA LẠI: Dùng logo Facebook thực tế
                 text = "Login with Facebook",
                 onClick = { viewModel.onFacebookLoginClick() }
             )
@@ -182,14 +178,37 @@ fun SignUpScreen(viewModel: SignUpViewModel) {
                     Text("Signin", fontWeight = FontWeight.Bold)
                 }
             }
+
+            when (authState) {
+                is AuthState.Success -> {
+                    Text("Sign up successful!")
+                }
+                is AuthState.Error -> {
+                    Text("Error: ${(authState as AuthState.Error).message}")
+                }
+                AuthState.Loading -> {
+                    CircularProgressIndicator()
+                }
+                AuthState.Idle -> {
+                    // Trạng thái ban đầu
+                }
+                // Các nhánh TODO với đường dẫn đầy đủ đã được xóa,
+                // vì AuthState giờ sẽ được resolve đúng trong cùng package.
+            }
         }
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun SignUpScreenPreview() {
     EventingTheme {
-        SignUpScreen(viewModel = SignUpViewModel())
+        // val fakeSignUpUseCase = FakeSignUpUseCase() // Removed
+        // val previewViewModel = SignUpViewModel(fakeSignUpUseCase) // Removed - This will likely cause a compile error
+        // SignUpScreen(viewModel = previewViewModel, navController = null) // Removed - This will likely cause a compile error
+        // TODO: You'll need to provide a valid SignUpViewModel instance here for the preview to work.
+        // For example, by creating a mock/fake SignUpUseCase and any other dependencies for SignUpViewModel.
+        Text("Preview currently disabled pending ViewModel setup.") // Placeholder
     }
 }
