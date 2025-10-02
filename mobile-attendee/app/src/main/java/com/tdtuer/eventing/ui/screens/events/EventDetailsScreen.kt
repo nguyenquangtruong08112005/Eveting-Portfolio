@@ -31,9 +31,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 // R class import is crucial, ensure it's correct and project is synced
-import com.tdtuer.eventing.ui.screens.auth.EventDetailRow
-import com.tdtuer.eventing.ui.screens.auth.FacePile
-import com.tdtuer.eventing.ui.screens.auth.GradientButton
+import com.tdtuer.eventing.ui.components.EventDetailRow
+import com.tdtuer.eventing.ui.components.FacePile
+import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 class EventDetailsActivity : ComponentActivity() {

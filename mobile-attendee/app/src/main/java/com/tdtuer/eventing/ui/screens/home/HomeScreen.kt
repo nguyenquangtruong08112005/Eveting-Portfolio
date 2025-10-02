@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items // Keep this import
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tdtuer.eventing.R // Ensure R class is available
-import com.tdtuer.eventing.ui.screens.auth.FacePile
+import com.tdtuer.eventing.ui.components.FacePile
 import com.tdtuer.eventing.ui.theme.EventingTheme
 // Event and Category data classes are now in HomeViewModel.kt
 
@@ -185,7 +186,7 @@ fun EventSection(title: String, events: List<Event>, viewModel: HomeViewModel) {
             Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             TextButton(onClick = { viewModel.onSeeAllClick(title) }) {
                 Text("See All")
-                Icon(Icons.Default.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(14.dp))
             }
         }
         Spacer(modifier = Modifier.height(16.dp))

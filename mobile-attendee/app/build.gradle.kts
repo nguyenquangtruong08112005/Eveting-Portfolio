@@ -70,7 +70,12 @@ dependencies {
     implementation(libs.firebase.firestore) // Thao tác với dữ liệu đám mây Firestore
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth") // Đã sửa
-    
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.playservices)
+    implementation(libs.googleid)
+    //Facebook
+    implementation(libs.facebook.login)
+
     // Hilt
     implementation(libs.hilt.core) // core hilt
     kapt(libs.hilt.compiler) // Annotation processor cho Hilt

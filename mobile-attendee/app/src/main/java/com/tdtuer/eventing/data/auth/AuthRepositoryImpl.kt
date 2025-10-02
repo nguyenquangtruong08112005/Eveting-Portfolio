@@ -1,7 +1,10 @@
 package com.tdtuer.eventing.data.auth
 
+import com.facebook.AccessToken
+import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tdtuer.eventing.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
@@ -14,11 +17,16 @@ class AuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore
 ) : AuthRepository {
-    override suspend fun signUp(email: String, password: String, role: String): Result<User> {
+    override suspend fun signUp(
+        name: String,
+        email: String,
+        password: String,
+        role: String
+    ): Result<User> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: return Result.failure(Exception("Sign up failed"))
-            val user = User(id = uid, email = email, role = role)
+            val user = User(id = uid, name = name, email = email, role = role)
             db.collection("Users").document(uid).set(user).await()
             Result.success(user)
         } catch (e: Exception) {
@@ -36,25 +44,81 @@ class AuthRepositoryImpl @Inject constructor(
             val user = db.collection("Users").document(uid).get().await().toObject(User::class.java)
                 ?: return Result.failure(Exception("User not found"))
             Result.success(user)
-        }
-        catch (e: FirebaseAuthInvalidUserException){
+        } catch (e: FirebaseAuthInvalidUserException) {
             Result.failure(e)
         }
     }
 
-    override fun getCurrentUser(): Flow<User?> = callbackFlow{
-        val listener = auth.addAuthStateListener { auth ->
-            val uid = auth.currentUser?.uid
-            if (uid != null){
-                db.collection("Users").document(uid).get().addOnSuccessListener { doc ->
-                    trySend(doc.toObject(User::class.java))
-                }
+    override suspend fun signInWithGoogle(idToken: String): Result<User> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            val firebaseUser = result.user ?: return Result.failure(Exception("Google sign-in failed"))
+
+            val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
+            if (userDoc.exists()) {
+                Result.success(userDoc.toObject(User::class.java)!!)
+            } else {
+                val newUser = User(
+                    id = firebaseUser.uid,
+                    name = firebaseUser.displayName ?: "Unknown",
+                    email = firebaseUser.email ?: "Unknown",
+                    profilePicUrl = firebaseUser.photoUrl?.toString() ?: ""
+                )
+                db.collection("Users").document(firebaseUser.uid).set(newUser).await()
+                Result.success(newUser)
             }
-            else {
+        }
+        catch (e: Exception){
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun signInWithFacebook(token: AccessToken): Result<User> {
+        return try {
+            val credential = FacebookAuthProvider.getCredential(token.token)
+            val result = auth.signInWithCredential(credential).await()
+            val firebaseUser =
+                result.user ?: return Result.failure(Exception("Facebook sign-in failed"))
+
+            // Logic kiểm tra và tạo user mới
+            val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
+            if (userDoc.exists()) {
+                Result.success(userDoc.toObject(User::class.java)!!)
+            } else {
+                val newUser = User(
+                    id = firebaseUser.uid,
+                    name = firebaseUser.displayName ?: "Unknown",
+                    email = firebaseUser.email ?: "Unknown",
+                    profilePicUrl = firebaseUser.photoUrl?.toString() ?: ""
+                )
+                db.collection("Users").document(firebaseUser.uid).set(newUser).await()
+                Result.success(newUser)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun getCurrentUser(): Flow<User?> = callbackFlow {
+        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+            val uid = auth.currentUser?.uid
+            if (uid != null) {
+                db.collection("Users").document(uid).get()
+                    .addOnSuccessListener { doc ->
+                        trySend(doc.toObject(User::class.java))
+                    }
+                    .addOnFailureListener {
+                        trySend(null)
+                    }
+            } else {
                 trySend(null)
             }
         }
-        awaitClose { auth.removeAuthStateListener { listener } }
+        auth.addAuthStateListener(authStateListener)
+        awaitClose {
+            auth.removeAuthStateListener(authStateListener)
+        }
     }
 
     override suspend fun signOut() {

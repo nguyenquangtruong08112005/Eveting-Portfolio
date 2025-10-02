@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Xin quyền truy cập internet -->
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -15,112 +15,54 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Eventing">
+
+        <!-- Facebook Activities -->
+        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token"/>
+        <activity android:name="com.facebook.FacebookActivity"
+            android:configChanges=
+                "keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:label="@string/app_name" />
         <activity
-            android:name=".ui.screens.AllEvent"
-            android:exported="false"
-            android:label="@string/title_activity_all_event"
-            android:theme="@style/Theme.Eventing" />
+            android:name="com.facebook.CustomTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/fb_login_protocol_scheme" />
+            </intent-filter>
+        </activity>
+
+        <!-- Launcher Activity -->
         <activity
-            android:name=".ui.screens.EmptyEvent"
-            android:exported="false"
-            android:label="@string/title_activity_empty_event"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Search"
-            android:exported="false"
-            android:label="@string/title_activity_search"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.EventDetails"
-            android:exported="false"
-            android:label="@string/title_activity_event_details"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Menu"
-            android:exported="false"
-            android:label="@string/title_activity_menu"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.HomePage"
-            android:exported="false"
-            android:label="@string/title_activity_home_page"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.ResetPassword"
-            android:exported="false"
-            android:label="@string/title_activity_reset_password"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Verification"
-            android:exported="false"
-            android:label="@string/title_activity_verification"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.CommonAuthComponents"
-            android:exported="false"
-            android:label="@string/title_activity_common_auth_components"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.auth.signup.SignUpActivity"
+            android:name=".ui.screens.onboarding.OnboardingActivity"
             android:exported="true"
-            android:label="@string/title_activity_sign_up"
+            android:label="@string/title_activity_on_boarding"
             android:theme="@style/Theme.Eventing">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Main App Activities -->
         <activity
-            android:name=".ui.screens.Sign_in"
+            android:name=".ui.screens.auth.signup.SignUpActivity"
+            android:exported="false"
+            android:label="@string/title_activity_sign_up"
+            android:theme="@style/Theme.Eventing" />
+        <activity
+            android:name=".ui.screens.auth.signin.SignInActivity"
             android:exported="false"
             android:label="@string/title_activity_sign_in"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.OnBoarding"
-            android:exported="false"
-            android:label="@string/title_activity_on_boarding"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.SplashScreen"
-            android:exported="false"
-            android:label="@string/title_activity_splash_screen"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Share"
-            android:exported="false"
-            android:label="@string/title_activity_share"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Invite_Friend"
-            android:exported="false"
-            android:label="@string/title_activity_invite_friend"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Notification"
-            android:exported="false"
-            android:label="@string/title_activity_notification"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.NotificationEmpty"
-            android:exported="false"
-            android:label="@string/title_activity_notification_empty"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.Organizer"
-            android:exported="false"
-            android:label="@string/title_activity_organizer"
-            android:theme="@style/Theme.Eventing" />
-        <activity
-            android:name=".ui.screens.profile.MyProfile"
-            android:exported="false"
-            android:label="@string/title_activity_my_profile"
             android:theme="@style/Theme.Eventing" />
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Eventing">
-        </activity>
+            android:theme="@style/Theme.Eventing" />
+
     </application>
 
 </manifest>

@@ -6,10 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.domain.model.User
-import com.tdtuer.eventing.domain.usecase.SignUpUseCase
+import com.tdtuer.eventing.domain.usecase.Authentication.SignUpUseCase
+import com.tdtuer.eventing.ui.screens.auth.AuthState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -17,6 +18,8 @@ import javax.inject.Inject
 class SignUpViewModel @Inject constructor(
     private val signUpUseCase: SignUpUseCase
 ) : ViewModel() {
+
+    // Trạng thái cho các trường nhập liệu
     var fullName by mutableStateOf("")
         private set
     var email by mutableStateOf("")
@@ -25,28 +28,31 @@ class SignUpViewModel @Inject constructor(
         private set
     var confirmPassword by mutableStateOf("")
         private set
+
     var passwordVisibility by mutableStateOf(false)
         private set
     var confirmPasswordVisibility by mutableStateOf(false)
         private set
 
+    // Trạng thái xác thực (public để UI có thể lắng nghe)
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
-    val authState = _authState.asStateFlow()
+    val authState: StateFlow<AuthState> = _authState
 
-    fun onFullNameChange(newName: String) {
-        fullName = newName
+    // --- Xử lý sự kiện thay đổi giá trị ---
+    fun onFullNameChange(value: String) {
+        fullName = value
     }
 
-    fun onEmailChange(newEmail: String) {
-        email = newEmail
+    fun onEmailChange(value: String) {
+        email = value
     }
 
-    fun onPasswordChange(newPassword: String) {
-        password = newPassword
+    fun onPasswordChange(value: String) {
+        password = value
     }
 
-    fun onConfirmPasswordChange(newConfirmPassword: String) {
-        confirmPassword = newConfirmPassword
+    fun onConfirmPasswordChange(value: String) {
+        confirmPassword = value
     }
 
     fun onPasswordVisibilityToggle() {
@@ -57,46 +63,36 @@ class SignUpViewModel @Inject constructor(
         confirmPasswordVisibility = !confirmPasswordVisibility
     }
 
+    // --- Xử lý sự kiện click ---
     fun onSignUpClick() {
         if (password != confirmPassword) {
-            _authState.value = AuthState.Error("Passwords do not match")
+            _authState.value = AuthState.Error("Mật khẩu không khớp.")
             return
         }
+
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result =
-                signUpUseCase(email, password, "attendee")  // Role mặc định, sửa nếu có UI cho role
-            _authState.value =
-                if (result.isSuccess) AuthState.Success(result.getOrNull()!!) else AuthState.Error(
-                    result.exceptionOrNull()?.message ?: "Sign up failed"
-                )
+            val result = signUpUseCase(fullName, email, password, "attendee")
+            _authState.value = when {
+                result.isSuccess -> AuthState.Success(result.getOrNull()!!)
+                else -> AuthState.Error(result.exceptionOrNull()?.message ?: "Lỗi không xác định")
+            }
         }
     }
 
     fun onGoogleLoginClick() {
-        // TODO: Google login
-        println("Google Login Clicked")
+        // TODO: Implement Google login logic
     }
 
     fun onFacebookLoginClick() {
-        // TODO: Facebook login
-        println("Facebook Login Clicked")
+        // TODO: Implement Facebook login logic
     }
 
     fun onSignInLinkClick() {
-        // TODO: Navigate to Sign In
-        println("Navigate to Sign In screen")
+        // TODO: Navigate to Sign In screen
     }
 
     fun onBackNavigationClick() {
-        // TODO: Back navigation
-        println("Back navigation Clicked")
+        // TODO: Handle back navigation
     }
-}
-
-sealed class AuthState {
-    object Idle : AuthState()
-    object Loading : AuthState()
-    data class Success(val user: User) : AuthState()
-    data class Error(val message: String) : AuthState()
 }

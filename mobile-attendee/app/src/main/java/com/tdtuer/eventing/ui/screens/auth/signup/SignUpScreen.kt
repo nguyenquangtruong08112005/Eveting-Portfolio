@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,13 +31,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-// Xóa import com.google.firebase.crashlytics.buildtools.reloc.org.apache.http.auth.AuthState
+import com.tdtuer.eventing.ui.screens.auth.AuthState
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.domain.model.User
-import com.tdtuer.eventing.domain.usecase.SignUpUseCase
-import com.tdtuer.eventing.ui.screens.auth.GradientButton
-import com.tdtuer.eventing.ui.screens.auth.OrDivider
-import com.tdtuer.eventing.ui.screens.auth.SocialLoginButton
+import com.tdtuer.eventing.ui.components.GradientButton
+import com.tdtuer.eventing.ui.components.OrDivider
+import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -66,20 +66,26 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding() // Thêm khoảng đệm cho thanh điều hướng
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            IconButton(onClick = { viewModel.onBackNavigationClick() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+//                IconButton(onClick = { viewModel.onBackNavigationClick() }) {
+//                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+//                }
+
+                Text(
+                    text = "Sign up",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Sign up",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -155,13 +161,13 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
             OrDivider()
             Spacer(modifier = Modifier.height(24.dp))
             SocialLoginButton(
-                iconRes = R.drawable.default_pfp, // SỬA LẠI: Dùng logo Google thực tế
+                iconRes = R.drawable.google, // SỬA LẠI: Dùng logo Google thực tế
                 text = "Login with Google",
                 onClick = { viewModel.onGoogleLoginClick() }
             )
             Spacer(modifier = Modifier.height(16.dp))
             SocialLoginButton(
-                iconRes = R.drawable.default_pfp, // SỬA LẠI: Dùng logo Facebook thực tế
+                iconRes = R.drawable.facebook, // SỬA LẠI: Dùng logo Facebook thực tế
                 text = "Login with Facebook",
                 onClick = { viewModel.onFacebookLoginClick() }
             )
@@ -175,7 +181,7 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
             ) {
                 Text("Already have an account?")
                 TextButton(onClick = { viewModel.onSignInLinkClick() }) {
-                    Text("Signin", fontWeight = FontWeight.Bold)
+                    Text("Sign In", fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -192,23 +198,7 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
                 AuthState.Idle -> {
                     // Trạng thái ban đầu
                 }
-                // Các nhánh TODO với đường dẫn đầy đủ đã được xóa,
-                // vì AuthState giờ sẽ được resolve đúng trong cùng package.
             }
         }
-    }
-}
-
-@SuppressLint("ViewModelConstructorInComposable")
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun SignUpScreenPreview() {
-    EventingTheme {
-        // val fakeSignUpUseCase = FakeSignUpUseCase() // Removed
-        // val previewViewModel = SignUpViewModel(fakeSignUpUseCase) // Removed - This will likely cause a compile error
-        // SignUpScreen(viewModel = previewViewModel, navController = null) // Removed - This will likely cause a compile error
-        // TODO: You'll need to provide a valid SignUpViewModel instance here for the preview to work.
-        // For example, by creating a mock/fake SignUpUseCase and any other dependencies for SignUpViewModel.
-        Text("Preview currently disabled pending ViewModel setup.") // Placeholder
     }
 }

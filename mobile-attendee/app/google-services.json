@@ -12,7 +12,20 @@
           "package_name": "com.tdtuer.eventing"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "265550348267-8rhlnu91oburg1oqhcpccdi65udk5bhm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tdtuer.eventing",
+            "certificate_hash": "391d30e59e73ffe217d2f94ad58ef811cdef6b6e"
+          }
+        },
+        {
+          "client_id": "265550348267-6e8qduj10l3kcet7ntcn7gs54pn0o4ba.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDHOYTDkhYq8rBfLKmd5aG83GZuz5_0-GU"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "265550348267-6e8qduj10l3kcet7ntcn7gs54pn0o4ba.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

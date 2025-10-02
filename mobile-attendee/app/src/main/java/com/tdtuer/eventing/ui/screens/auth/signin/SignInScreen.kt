@@ -25,9 +25,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tdtuer.eventing.R
-import com.tdtuer.eventing.ui.screens.auth.GradientButton
-import com.tdtuer.eventing.ui.screens.auth.OrDivider
-import com.tdtuer.eventing.ui.screens.auth.SocialLoginButton
+import com.tdtuer.eventing.ui.components.GradientButton
+import com.tdtuer.eventing.ui.components.OrDivider
+import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 class SignInActivity : ComponentActivity() {

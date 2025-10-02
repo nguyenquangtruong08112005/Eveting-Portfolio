@@ -1,11 +1,16 @@
 package com.tdtuer.eventing.ui.screens.onboarding
 
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast // Example: For showing onboarding complete message
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels // Added for ViewModel
+import androidx.activity.viewModels
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,56 +25,72 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext // For Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// R class import is still needed for resources used directly in UI, if any
-import com.tdtuer.eventing.R
+import androidx.compose.ui.util.lerp
+import com.tdtuer.eventing.ui.screens.auth.signup.SignUpActivity
+import com.tdtuer.eventing.ui.theme.AppTheme
 import com.tdtuer.eventing.ui.theme.EventingTheme
-// OnboardingPage data class is now in OnboardingViewModel.kt
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
+import com.tdtuer.eventing.R
 
-// --- Activity ---
-@OptIn(ExperimentalFoundationApi::class) // May be needed here if PagerState is used directly
+@ExperimentalFoundationApi
 class OnboardingActivity : ComponentActivity() {
-    private val viewModel: OnboardingViewModel by viewModels() // Use ViewModel delegate
+    private val viewModel: OnboardingViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             EventingTheme {
-                OnboardingScreen(viewModel = viewModel) // Pass ViewModel
+                OnboardingScreen(viewModel = viewModel)
             }
         }
     }
 }
 
-// --- Composable cho toàn bộ màn hình Onboarding ---
-@OptIn(ExperimentalFoundationApi::class)
+
+@SuppressLint("ContextCastToActivity")
+@ExperimentalFoundationApi
 @Composable
-fun OnboardingScreen(viewModel: OnboardingViewModel) { // Accept ViewModel
+fun OnboardingScreen(viewModel: OnboardingViewModel) {
     val pages = viewModel.pages
     val pagerState = rememberPagerState(pageCount = { pages.size })
-    val context = LocalContext.current // For Toast example
+    val context = LocalContext.current as Activity
 
-    // Listen for onboarding completion
-    LaunchedEffect(key1 = Unit) {
-        viewModel.onboardingComplete.collect {
-            // Navigate to your main app screen or login screen
-            Toast.makeText(context, "Onboarding Complete! Navigating to Home...", Toast.LENGTH_LONG).show()
-            // Example: navController.navigate("home_screen_route") { popUpTo("onboarding_route") { inclusive = true } }
-            // Or finish() the activity if it's standalone
+    // --- CÁC THAY ĐỔI BẮT ĐẦU TỪ ĐÂY ---
+
+    // Lắng nghe các sự kiện từ ViewModel
+    LaunchedEffect(key1 = viewModel) {
+        // 1. Lắng nghe lệnh chuyển trang
+        launch {
+            viewModel.navigateToPage.collectLatest { page ->
+                // Thực hiện cuộn trang mượt mà
+                pagerState.animateScrollToPage(page)
+            }
+        }
+
+        // 2. Lắng nghe lệnh hoàn tất Onboarding
+        launch {
+            viewModel.onboardingComplete.collect {
+                val intent = Intent(context, SignUpActivity::class.java)
+                context.startActivity(intent)
+                context.finish()
+            }
         }
     }
 
     Scaffold(
-        containerColor = Color.White
+        containerColor = AppTheme.colorScheme.background
     ) { innerPadding ->
         HorizontalPager(
             state = pagerState,
@@ -80,55 +101,83 @@ fun OnboardingScreen(viewModel: OnboardingViewModel) { // Accept ViewModel
             OnboardingPageItem(
                 page = pages[pageIndex],
                 pagerState = pagerState,
-                onNextClicked = { viewModel.onNextClicked(pagerState) }, // Delegate to ViewModel
-                onSkipClicked = { viewModel.onSkipClicked() } // Delegate to ViewModel
+                pageIndex = pageIndex,
+                onNextClicked = { viewModel.onNextClicked(pagerState.currentPage) },
+                onSkipClicked = { viewModel.onSkipClicked() }
             )
         }
     }
 }
 
-// --- Composable cho giao diện một trang Onboarding ---
-@OptIn(ExperimentalFoundationApi::class)
+// Các Composable còn lại (OnboardingPageItem, BottomControlRow, PageIndicator, pagerAnimation)
+@ExperimentalFoundationApi
 @Composable
 fun OnboardingPageItem(
     page: OnboardingPage,
-    pagerState: PagerState, // Still needed for BottomControlRow unless that also takes ViewModel
+    pagerState: PagerState,
+    pageIndex: Int,
     onNextClicked: () -> Unit,
     onSkipClicked: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        Image(
-            painter = painterResource(id = page.imageRes),
-            contentDescription = page.title,
+        Column (
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
-            contentScale = ContentScale.Crop
-        )
+                .weight(1f)
+                .background(AppTheme.colorScheme.background)
+                .pagerAnimation(pagerState, pageIndex) { pageOffset ->
+                    translationX = size.width * pageOffset * 0.5f
+                },
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(64.dp))
+            Image(
+                painter = painterResource(id = R.drawable.event_illustration),
+                contentDescription = "Header",
+//                modifier = Modifier.fillMaxSize(),
+//                contentScale = ContentScale.FillWidth
+            )
+            Image(
+                painter = painterResource(id = page.imageRes),
+                contentDescription = page.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillWidth
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Color(0xFF5669FF))
+                .background(AppTheme.colorScheme.primary)
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = page.title,
-                color = Color.White,
+                color = AppTheme.colorScheme.onPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                lineHeight = 30.sp
+                lineHeight = 30.sp,
+                modifier = Modifier.pagerAnimation(pagerState, pageIndex) { pageOffset ->
+                    alpha = lerp(1f, 0f, pageOffset.absoluteValue.coerceIn(0f, 1f))
+                    scaleX = 1f - pageOffset.absoluteValue.coerceIn(0f, 0.2f)
+                    scaleY = 1f - pageOffset.absoluteValue.coerceIn(0f, 0.2f)
+                }
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = page.description,
-                color = Color.White.copy(alpha = 0.8f),
+                color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center,
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier.pagerAnimation(pagerState, pageIndex) { pageOffset ->
+                    alpha = lerp(1f, 0f, pageOffset.absoluteValue.coerceIn(0f, 1f))
+                    translationY = size.height * pageOffset.absoluteValue * 0.2f
+                }
             )
             Spacer(modifier = Modifier.height(32.dp))
             BottomControlRow(
@@ -140,8 +189,7 @@ fun OnboardingPageItem(
     }
 }
 
-// --- Composable cho hàng điều khiển (Skip, dots, Next) ---
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun BottomControlRow(
     pagerState: PagerState,
@@ -154,23 +202,30 @@ fun BottomControlRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         TextButton(onClick = onSkipClicked) {
-            Text("Skip", color = Color.White.copy(alpha = 0.8f))
+            Text("Skip", color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
         }
         PageIndicator(pageCount = pagerState.pageCount, currentPage = pagerState.currentPage)
         Button(
             onClick = onNextClicked,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color(0xFF5669FF)
+                containerColor = AppTheme.colorScheme.onPrimary,
+                contentColor = AppTheme.colorScheme.primary
             )
         ) {
-            val buttonText = if (pagerState.currentPage == pagerState.pageCount - 1) "Get Started" else "Next"
-            Text(buttonText)
+            val buttonText = if (pagerState.currentPage == pagerState.pageCount - 1) "Okay" else "Next"
+            AnimatedContent(
+                targetState = buttonText,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(220, delayMillis = 90)) togetherWith
+                            fadeOut(animationSpec = tween(90))
+                }, label = "buttonTextAnimation"
+            ) { text ->
+                Text(text)
+            }
         }
     }
 }
 
-// --- Composable cho các dấu chấm chỉ báo trang ---
 @Composable
 fun PageIndicator(pageCount: Int, currentPage: Int) {
     Row(
@@ -178,10 +233,18 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(pageCount) { iteration ->
-            val color = if (currentPage == iteration) Color.White else Color.White.copy(alpha = 0.5f)
+            val isSelected = currentPage == iteration
+            val color by animateColorAsState(
+                targetValue = if (isSelected) AppTheme.colorScheme.onPrimary else AppTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+                label = "colorAnimation"
+            )
+            val size by animateDpAsState(
+                targetValue = if (isSelected) 10.dp else 8.dp,
+                label = "sizeAnimation"
+            )
             Box(
                 modifier = Modifier
-                    .size(if (currentPage == iteration) 10.dp else 8.dp)
+                    .size(size)
                     .clip(CircleShape)
                     .background(color)
             )
@@ -189,12 +252,16 @@ fun PageIndicator(pageCount: Int, currentPage: Int) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class) // Might be needed if preview uses PagerState indirectly
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun OnboardingScreenPreview() {
-    EventingTheme {
-        // For preview, create a new instance of the ViewModel
-        OnboardingScreen(viewModel = OnboardingViewModel())
-    }
+@OptIn(ExperimentalFoundationApi::class)
+fun Modifier.pagerAnimation(
+    pagerState: PagerState,
+    pageIndex: Int,
+    transform: GraphicsLayerScope.(pageOffset: Float) -> Unit
+) = graphicsLayer {
+    val pageOffset = (
+            (pagerState.currentPage - pageIndex) + pagerState
+                .currentPageOffsetFraction
+            ).absoluteValue
+
+    transform(this, pageOffset)
 }

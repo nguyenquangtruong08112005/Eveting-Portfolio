@@ -17,6 +17,9 @@ foundation = "1.9.1" # Thư viện vẽ biểu đồ
 room = "2.6.1"
 datastore = "1.1.1"
 firebaseCrashlyticsBuildtools = "3.0.6"
+credentials = "1.3.0"
+googleid = "1.1.1"
+facebookLogin = "latest.release"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,6 +58,14 @@ room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+
+# Thư viện cho Credential Manager và Google Sign In
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+androidx-credentials-playservices = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+
+# Thư viện Facebook Login
+facebook-login = { group = "com.facebook.android", name = "facebook-login", version.ref = "facebookLogin" }
 
 
 [plugins]

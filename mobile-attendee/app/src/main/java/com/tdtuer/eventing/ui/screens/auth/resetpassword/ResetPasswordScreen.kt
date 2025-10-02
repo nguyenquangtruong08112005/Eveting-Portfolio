@@ -23,7 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tdtuer.eventing.ui.screens.auth.GradientButton
+import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 class ResetPasswordActivity : ComponentActivity() {
@@ -100,7 +100,7 @@ fun ResetPasswordScreen(viewModel: ResetPasswordViewModel) {
 
             // Nút SEND (Sử dụng component chung)
             GradientButton(
-                text = "SEND", 
+                text = "SEND",
                 onClick = { viewModel.onSendClick() } // Delegate click to ViewModel
             )
         }
