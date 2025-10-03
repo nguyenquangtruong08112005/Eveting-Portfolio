@@ -1,11 +1,10 @@
 package com.tdtuer.eventing.ui.screens.auth.signup
 
 
-import android.content.ContentValues.TAG
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -32,12 +31,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
 import androidx.navigation.NavController
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import com.facebook.AccessToken
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
+import com.google.firebase.auth.FirebaseAuth
 import com.tdtuer.eventing.ui.screens.auth.AuthState
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.ui.components.GradientButton
@@ -45,9 +46,6 @@ import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
-import java.security.MessageDigest
-import java.util.UUID
 
 @AndroidEntryPoint
 class SignUpActivity : ComponentActivity() {
@@ -67,6 +65,7 @@ class SignUpActivity : ComponentActivity() {
 @Composable
 fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
     val authState by viewModel.authState.collectAsState()
+    val context = LocalContext.current
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -172,16 +171,16 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
             SocialLoginButton(
                 iconRes = R.drawable.google, // SỬA LẠI: Dùng logo Google thực tế
                 text = "Login with Google",
-                onClick = { viewModel.onGoogleLoginClick("") }
+                onClick = { viewModel.onGoogleLoginClick(context) }
             )
             Spacer(modifier = Modifier.height(16.dp))
-            SocialLoginButton(
-                iconRes = R.drawable.facebook, // SỬA LẠI: Dùng logo Facebook thực tế
-                text = "Login with Facebook",
-                onClick = {
-                    viewModel.onFacebookLoginClick(
-                        token = TODO()
-                    )
+
+            FacebookLoginButton(
+                onAuthSuccess = { accessToken ->
+                    viewModel.onFacebookLoginClick(accessToken)
+                },
+                onAuthError = {
+                    Toast.makeText(context, "Facebook Sign-In failed", Toast.LENGTH_SHORT).show()
                 }
             )
 
@@ -197,18 +196,17 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
                     Text("Sign In", fontWeight = FontWeight.Bold)
                 }
             }
-            GoogleSignInButton()
             when (authState) {
                 is AuthState.Success -> {
-                    Text("Sign up successful!")
+                    Toast.makeText(context, "Sign up successful!", Toast.LENGTH_SHORT).show()
                 }
 
                 is AuthState.Error -> {
-                    Text("Error: ${(authState as AuthState.Error).message}")
+                    Toast.makeText(context, "${(authState as AuthState.Error).message}", Toast.LENGTH_SHORT).show()
                 }
 
                 AuthState.Loading -> {
-                    CircularProgressIndicator()
+//                    CircularProgressIndicator()
                 }
 
                 AuthState.Idle -> {
@@ -218,60 +216,50 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
         }
     }
 }
-
 @Composable
-fun GoogleSignInButton() {
+fun FacebookLoginButton(
+    onAuthSuccess: (AccessToken) -> Unit,
+    onAuthError: (String?) -> Unit
+) {
     val context = LocalContext.current
+    val loginManager = LoginManager.getInstance()
+    val callbackManager = remember { CallbackManager.Factory.create() }
 
-    val coroutineScope = rememberCoroutineScope()
+    // Sử dụng rememberLauncherForActivityResult để thay thế onActivityResult
+    val launcher = rememberLauncherForActivityResult(
+        contract = loginManager.createLogInActivityResultContract(callbackManager),
+        onResult = { /* Kết quả đã được xử lý trong callback bên dưới */ }
+    )
 
-    val onClick: () -> Unit = {
-        val credentialManager = CredentialManager.create(context)
-
-        val rawNonce = UUID.randomUUID().toString()
-        val bytes = rawNonce.toByteArray()
-        val md = MessageDigest.getInstance("SHA-256")
-        val digest = md.digest(bytes)
-        val hashedNonce = digest.fold("") { str, it -> str + "%02x".format(it) }
-
-        val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
-            .setFilterByAuthorizedAccounts(false)
-            .setServerClientId("265550348267-a28baingtr8kdclrf4g0bivdrg3gaee5.apps.googleusercontent.com")
-            .setNonce(hashedNonce)
-            .build()
-
-        val request: GetCredentialRequest = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
-
-        coroutineScope.launch {
-            try {
-
-            val result = credentialManager.getCredential(
-                request = request,
-                context = context,
-            )
-            val credential = result.credential
-
-            val googleIdTokenCredential = GoogleIdTokenCredential
-                .createFrom(credential.data)
-
-            val googleIdToken = googleIdTokenCredential.idToken
-
-            Log.i(TAG, googleIdToken)
-
-            Toast.makeText(context, "Sign in successful!", Toast.LENGTH_SHORT).show()
+    // Đăng ký callback để lắng nghe kết quả đăng nhập
+    DisposableEffect(Unit) {
+        loginManager.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
+            override fun onSuccess(result: LoginResult) {
+                onAuthSuccess(result.accessToken)
             }
-            catch (e: androidx.credentials.exceptions.GetCredentialException) {
-                Toast.makeText(context, "Sign in failed!aaa", Toast.LENGTH_SHORT).show()
+
+            override fun onCancel() {
+                // Người dùng đã hủy đăng nhập
             }
-            catch (e: GoogleIdTokenParsingException) {
-                Toast.makeText(context, "Sign in failed!add", Toast.LENGTH_SHORT).show()
+
+            override fun onError(error: FacebookException) {
+                onAuthError(error.message)
             }
+        })
+
+        onDispose {
+            // Hủy đăng ký callback khi Composable bị hủy
+            loginManager.unregisterCallback(callbackManager)
         }
     }
 
-    Button(onClick = onClick) {
-        Text("Sign in with Google")
-    }
+    // Đây là nút UI của bạn
+    SocialLoginButton(
+        iconRes = R.drawable.facebook, // SỬA LẠI: Dùng logo Facebook thực tế
+        text = "Login with Facebook",
+        onClick = {
+            // Lấy quyền đọc email và thông tin công khai
+            launcher.launch(listOf("email", "public_profile"))
+        }
+    )
 }
