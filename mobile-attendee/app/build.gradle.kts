@@ -23,6 +23,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags.add("-Wl,-z,max-page-size=16384")
+            }
+        }
     }
 
     buildTypes {
@@ -43,6 +49,11 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }
 
@@ -70,9 +81,10 @@ dependencies {
     implementation(libs.firebase.firestore) // Thao tác với dữ liệu đám mây Firestore
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth") // Đã sửa
-    implementation(libs.androidx.credentials)
-    implementation(libs.androidx.credentials.playservices)
-    implementation(libs.googleid)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("androidx.credentials:credentials:1.6.0-alpha05")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0-alpha05")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     //Facebook
     implementation(libs.facebook.login)
 

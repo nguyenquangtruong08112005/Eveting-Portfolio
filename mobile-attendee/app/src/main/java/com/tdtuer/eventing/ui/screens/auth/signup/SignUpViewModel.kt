@@ -5,7 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tdtuer.eventing.domain.model.User
+import com.facebook.AccessToken
+import com.tdtuer.eventing.domain.usecase.Authentication.SignInWithFacebookUseCase
+import com.tdtuer.eventing.domain.usecase.Authentication.SignInWithGoogleUseCase
 import com.tdtuer.eventing.domain.usecase.Authentication.SignUpUseCase
 import com.tdtuer.eventing.ui.screens.auth.AuthState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +18,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SignUpViewModel @Inject constructor(
-    private val signUpUseCase: SignUpUseCase
+    private val signUpUseCase: SignUpUseCase,
+    private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
+    private val signInWithFacebookUseCase: SignInWithFacebookUseCase
 ) : ViewModel() {
 
     // Trạng thái cho các trường nhập liệu
@@ -80,12 +84,29 @@ class SignUpViewModel @Inject constructor(
         }
     }
 
-    fun onGoogleLoginClick() {
-        // TODO: Implement Google login logic
+    fun onGoogleLoginClick(idToken: String?) {
+        if (idToken == null){
+            _authState.value = AuthState.Error("Google sign in failed: No ID token")
+            return
+        }
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = signInWithGoogleUseCase(idToken)
+
+            _authState.value = if (result.isSuccess) AuthState.Success(result.getOrNull()!!) else AuthState.Error(
+                result.exceptionOrNull()?.message ?: "Google Sign-In failed"
+            )
+        }
     }
 
-    fun onFacebookLoginClick() {
-        // TODO: Implement Facebook login logic
+    fun onFacebookLoginClick(token: AccessToken) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = signInWithFacebookUseCase(token)
+            _authState.value = if (result.isSuccess) AuthState.Success(result.getOrNull()!!) else AuthState.Error(
+                result.exceptionOrNull()?.message ?: "Facebook Sign-In failed"
+            )
+        }
     }
 
     fun onSignInLinkClick() {

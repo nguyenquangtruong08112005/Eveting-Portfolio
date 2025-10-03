@@ -1,5 +1,4 @@
-// com.tdtuer.eventing.domain.usecase.SignInWithFacebookUseCase.kt
-package com.tdtuer.eventing.domain.usecase
+package com.tdtuer.eventing.domain.usecase.Authentication
 
 import com.facebook.AccessToken
 import com.tdtuer.eventing.data.auth.AuthRepository

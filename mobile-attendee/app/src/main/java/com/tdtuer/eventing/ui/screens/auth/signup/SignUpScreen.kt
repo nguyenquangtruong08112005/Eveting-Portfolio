@@ -1,7 +1,10 @@
 package com.tdtuer.eventing.ui.screens.auth.signup
 
-import android.annotation.SuppressLint
+
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -23,22 +25,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import androidx.navigation.NavController
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.tdtuer.eventing.ui.screens.auth.AuthState
 import com.tdtuer.eventing.R
-import com.tdtuer.eventing.domain.model.User
 import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import java.security.MessageDigest
+import java.util.UUID
 
 @AndroidEntryPoint
 class SignUpActivity : ComponentActivity() {
@@ -163,13 +172,17 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
             SocialLoginButton(
                 iconRes = R.drawable.google, // SỬA LẠI: Dùng logo Google thực tế
                 text = "Login with Google",
-                onClick = { viewModel.onGoogleLoginClick() }
+                onClick = { viewModel.onGoogleLoginClick("") }
             )
             Spacer(modifier = Modifier.height(16.dp))
             SocialLoginButton(
                 iconRes = R.drawable.facebook, // SỬA LẠI: Dùng logo Facebook thực tế
                 text = "Login with Facebook",
-                onClick = { viewModel.onFacebookLoginClick() }
+                onClick = {
+                    viewModel.onFacebookLoginClick(
+                        token = TODO()
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -184,21 +197,81 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
                     Text("Sign In", fontWeight = FontWeight.Bold)
                 }
             }
-
+            GoogleSignInButton()
             when (authState) {
                 is AuthState.Success -> {
                     Text("Sign up successful!")
                 }
+
                 is AuthState.Error -> {
                     Text("Error: ${(authState as AuthState.Error).message}")
                 }
+
                 AuthState.Loading -> {
                     CircularProgressIndicator()
                 }
+
                 AuthState.Idle -> {
                     // Trạng thái ban đầu
                 }
             }
         }
+    }
+}
+
+@Composable
+fun GoogleSignInButton() {
+    val context = LocalContext.current
+
+    val coroutineScope = rememberCoroutineScope()
+
+    val onClick: () -> Unit = {
+        val credentialManager = CredentialManager.create(context)
+
+        val rawNonce = UUID.randomUUID().toString()
+        val bytes = rawNonce.toByteArray()
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(bytes)
+        val hashedNonce = digest.fold("") { str, it -> str + "%02x".format(it) }
+
+        val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId("265550348267-a28baingtr8kdclrf4g0bivdrg3gaee5.apps.googleusercontent.com")
+            .setNonce(hashedNonce)
+            .build()
+
+        val request: GetCredentialRequest = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        coroutineScope.launch {
+            try {
+
+            val result = credentialManager.getCredential(
+                request = request,
+                context = context,
+            )
+            val credential = result.credential
+
+            val googleIdTokenCredential = GoogleIdTokenCredential
+                .createFrom(credential.data)
+
+            val googleIdToken = googleIdTokenCredential.idToken
+
+            Log.i(TAG, googleIdToken)
+
+            Toast.makeText(context, "Sign in successful!", Toast.LENGTH_SHORT).show()
+            }
+            catch (e: androidx.credentials.exceptions.GetCredentialException) {
+                Toast.makeText(context, "Sign in failed!aaa", Toast.LENGTH_SHORT).show()
+            }
+            catch (e: GoogleIdTokenParsingException) {
+                Toast.makeText(context, "Sign in failed!add", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    Button(onClick = onClick) {
+        Text("Sign in with Google")
     }
 }
