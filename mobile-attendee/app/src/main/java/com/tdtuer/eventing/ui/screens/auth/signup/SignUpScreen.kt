@@ -4,7 +4,6 @@ package com.tdtuer.eventing.ui.screens.auth.signup
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -32,18 +31,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.facebook.AccessToken
-import com.facebook.CallbackManager
-import com.facebook.FacebookCallback
-import com.facebook.FacebookException
-import com.facebook.login.LoginManager
-import com.facebook.login.LoginResult
-import com.google.firebase.auth.FirebaseAuth
-import com.tdtuer.eventing.ui.screens.auth.AuthState
 import com.tdtuer.eventing.R
+import com.tdtuer.eventing.ui.components.FacebookLoginButton
 import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
+import com.tdtuer.eventing.ui.screens.auth.AuthState
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -169,15 +162,15 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
             OrDivider()
             Spacer(modifier = Modifier.height(24.dp))
             SocialLoginButton(
-                iconRes = R.drawable.google, // SỬA LẠI: Dùng logo Google thực tế
+                iconRes = R.drawable.google,
                 text = "Login with Google",
                 onClick = { viewModel.onGoogleLoginClick(context) }
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             FacebookLoginButton(
-                onAuthSuccess = { accessToken ->
-                    viewModel.onFacebookLoginClick(accessToken)
+                onAuthSuccess = {
+                    viewModel.onFacebookLoginClick(it)
                 },
                 onAuthError = {
                     Toast.makeText(context, "Facebook Sign-In failed", Toast.LENGTH_SHORT).show()
@@ -215,51 +208,4 @@ fun SignUpScreen(viewModel: SignUpViewModel, navController: NavController?) {
             }
         }
     }
-}
-@Composable
-fun FacebookLoginButton(
-    onAuthSuccess: (AccessToken) -> Unit,
-    onAuthError: (String?) -> Unit
-) {
-    val context = LocalContext.current
-    val loginManager = LoginManager.getInstance()
-    val callbackManager = remember { CallbackManager.Factory.create() }
-
-    // Sử dụng rememberLauncherForActivityResult để thay thế onActivityResult
-    val launcher = rememberLauncherForActivityResult(
-        contract = loginManager.createLogInActivityResultContract(callbackManager),
-        onResult = { /* Kết quả đã được xử lý trong callback bên dưới */ }
-    )
-
-    // Đăng ký callback để lắng nghe kết quả đăng nhập
-    DisposableEffect(Unit) {
-        loginManager.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
-            override fun onSuccess(result: LoginResult) {
-                onAuthSuccess(result.accessToken)
-            }
-
-            override fun onCancel() {
-                // Người dùng đã hủy đăng nhập
-            }
-
-            override fun onError(error: FacebookException) {
-                onAuthError(error.message)
-            }
-        })
-
-        onDispose {
-            // Hủy đăng ký callback khi Composable bị hủy
-            loginManager.unregisterCallback(callbackManager)
-        }
-    }
-
-    // Đây là nút UI của bạn
-    SocialLoginButton(
-        iconRes = R.drawable.facebook, // SỬA LẠI: Dùng logo Facebook thực tế
-        text = "Login with Facebook",
-        onClick = {
-            // Lấy quyền đọc email và thông tin công khai
-            launcher.launch(listOf("email", "public_profile"))
-        }
-    )
 }
