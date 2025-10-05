@@ -1,4 +1,4 @@
-package com.tdtuer.eventing.domain.usecase.Authentication
+package com.tdtuer.eventing.domain.usecase.authentication
 
 import android.content.Context
 import androidx.credentials.CredentialManager

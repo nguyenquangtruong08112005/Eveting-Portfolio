@@ -24,28 +24,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
-
-class SignInActivity : ComponentActivity() {
-    private val viewModel: SignInViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                SignInScreen(viewModel = viewModel)
-            }
-        }
-    }
-}
-
 @Composable
-fun SignInScreen(viewModel: SignInViewModel) {
+fun SignInScreen(viewModel: SignInViewModel = viewModel()) {
     val email = viewModel.email
     val password = viewModel.password
     val passwordVisibility = viewModel.passwordVisibility
@@ -161,6 +147,6 @@ fun SignInScreen(viewModel: SignInViewModel) {
 @Composable
 fun SignInScreenPreview() {
     EventingTheme {
-        SignInScreen(viewModel = SignInViewModel())
+        SignInScreen()
     }
 }

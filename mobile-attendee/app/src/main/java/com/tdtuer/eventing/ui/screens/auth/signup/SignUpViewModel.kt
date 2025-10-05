@@ -7,10 +7,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.facebook.AccessToken
-import com.tdtuer.eventing.domain.usecase.Authentication.GetGoogleIdTokenUseCase
-import com.tdtuer.eventing.domain.usecase.Authentication.SignInWithFacebookUseCase
-import com.tdtuer.eventing.domain.usecase.Authentication.SignInWithGoogleUseCase
-import com.tdtuer.eventing.domain.usecase.Authentication.SignUpUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SignInWithFacebookUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SignInWithGoogleUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SignUpUseCase
 import com.tdtuer.eventing.ui.screens.auth.AuthState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,10 +115,9 @@ class SignUpViewModel @Inject constructor(
     }
 
     fun onSignInLinkClick() {
-        // TODO: Navigate to Sign In screen
-    }
 
-    fun onBackNavigationClick() {
-        // TODO: Handle back navigation
     }
+//
+//    fun onBackNavigationClick() {
+//    }
 }

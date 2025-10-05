@@ -1,11 +1,25 @@
 package com.tdtuer.eventing.ui.screens.auth.signin
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing.domain.usecase.authentication.SignInUseCase
+import com.tdtuer.eventing.ui.screens.auth.AuthState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SignInViewModel : ViewModel() {
+@HiltViewModel
+class SignInViewModel @Inject constructor(
+    private val signInUseCase: SignInUseCase
+) : ViewModel() {
+
     var email by mutableStateOf("")
         private set
     var password by mutableStateOf("")
@@ -37,22 +51,22 @@ class SignInViewModel : ViewModel() {
     }
 
     fun onForgotPasswordClick() {
-        // TODO: Implement forgot password navigation/logic
-        println("Forgot Password Clicked")
+        Log.d("SignInViewModel", "Forgot Password clicked")
+        // TODO: Navigate to Forgot Password screen
     }
 
     fun onGoogleLoginClick() {
-        // TODO: Implement Google login logic
-        println("Google Login Clicked")
+        Log.d("SignInViewModel", "Google Login clicked")
+        // TODO: Implement Google Sign-In
     }
 
     fun onFacebookLoginClick() {
-        // TODO: Implement Facebook login logic
-        println("Facebook Login Clicked")
+        Log.d("SignInViewModel", "Facebook Login clicked")
+        // TODO: Implement Facebook Sign-In
     }
 
     fun onSignUpClick() {
-        // TODO: Implement sign-up navigation/logic
-        println("Sign Up Clicked")
+        Log.d("SignInViewModel", "Sign Up clicked")
+        // TODO: Navigate to Sign Up screen
     }
 }
