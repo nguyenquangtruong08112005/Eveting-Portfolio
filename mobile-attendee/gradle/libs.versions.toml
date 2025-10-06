@@ -20,16 +20,12 @@ firebaseCrashlyticsBuildtools = "3.0.6"
 credentials = "1.6.0-alpha05"
 googleid = "1.1.1"
 facebookLogin = "latest.release"
-<<<<<<< HEAD
 foundationVersion = "1.9.2"
-=======
 playServicesAuth = "21.2.0"
 credentialsPlayServicesAuth = "1.6.0-alpha05"
 googleidLibrary = "1.1.1"
 materialIconsExtended = "1.6.8"
 cloudinaryKotlin = "1.7.0"
-
->>>>>>> 7a7f9e6ff2d6c789e688fe1d3d54fe46300593ae
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
