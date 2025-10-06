@@ -1,56 +1,130 @@
 package com.tdtuer.eventing.ui.screens.auth.signin
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
+import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.facebook.AccessToken
 import com.tdtuer.eventing.R
+import com.tdtuer.eventing.ui.components.FacebookLoginButton
 import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
-import com.tdtuer.eventing.ui.theme.EventingTheme
+import com.tdtuer.eventing.ui.screens.auth.AuthState
+import com.tdtuer.eventing.ui.theme.AppTheme
 
-class SignInActivity : ComponentActivity() {
-    private val viewModel: SignInViewModel by viewModels()
+@Composable
+fun SignInScreen(
+    viewModel: SignInViewModel = viewModel(),
+    onSignInSuccess: () -> Unit,
+    onSignUpClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit
+) {
+    val authState by viewModel.authState.collectAsState()
+    val context = LocalContext.current
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                SignInScreen(viewModel = viewModel)
+    LaunchedEffect(authState) {
+        when (val state = authState) {
+            is AuthState.Success -> {
+                Toast.makeText(context, "Sign in successful!", Toast.LENGTH_SHORT).show()
+                onSignInSuccess()
+            }
+
+            is AuthState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+            }
+
+            else -> { /* Idle or Loading */
             }
         }
     }
+
+    SignInContent(
+        authState = authState,
+        email = viewModel.email,
+        onEmailChange = viewModel::onEmailChange,
+        password = viewModel.password,
+        onPasswordChange = viewModel::onPasswordChange,
+        passwordVisibility = viewModel.passwordVisibility,
+        onPasswordVisibilityToggle = viewModel::onPasswordVisibilityToggle,
+        rememberMe = viewModel.rememberMe,
+        onRememberMeChange = viewModel::onRememberMeChange,
+        onSignInClick = viewModel::onSignInClick,
+        onForgotPasswordClick = onForgotPasswordClick,
+        onGoogleLoginClick = { viewModel.onGoogleLoginClick(context) },
+        onFacebookLoginSuccess = viewModel::onFacebookLoginClick,
+        onFacebookLoginError = { error ->
+            val message = error ?: "Facebook Sign-In failed"
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        },
+        onSignUpClick = onSignUpClick
+    )
 }
 
 @Composable
-fun SignInScreen(viewModel: SignInViewModel) {
-    val email = viewModel.email
-    val password = viewModel.password
-    val passwordVisibility = viewModel.passwordVisibility
-    val rememberMe = viewModel.rememberMe
-
+private fun SignInContent(
+    authState: AuthState,
+    email: String,
+    onEmailChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    passwordVisibility: Boolean,
+    onPasswordVisibilityToggle: () -> Unit,
+    rememberMe: Boolean,
+    onRememberMeChange: (Boolean) -> Unit,
+    onSignInClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit,
+    onGoogleLoginClick: () -> Unit,
+    onFacebookLoginSuccess: (AccessToken) -> Unit,
+    onFacebookLoginError: (String?) -> Unit,
+    onSignUpClick: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -58,109 +132,186 @@ fun SignInScreen(viewModel: SignInViewModel) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-
-            Image(
-                painter = painterResource(id = R.drawable.default_pfp), // Ensure this resource exists
-                contentDescription = "App Logo",
-                modifier = Modifier.size(80.dp)
-            )
-            Text(
-                text = "EventHub",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            Text(
-                text = "Sign in",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Start)
-            )
-
+            SignInHeader()
             Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { viewModel.onEmailChange(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Email") },
-                shape = RoundedCornerShape(12.dp)
+            SignInForm(
+                email = email,
+                onEmailChange = onEmailChange,
+                password = password,
+                onPasswordChange = onPasswordChange,
+                passwordVisibility = passwordVisibility,
+                onPasswordVisibilityToggle = onPasswordVisibilityToggle,
+                rememberMe = rememberMe,
+                onRememberMeChange = onRememberMeChange,
+                onSignInClick = onSignInClick,
+                onForgotPasswordClick = onForgotPasswordClick,
+                isLoading = authState is AuthState.Loading
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
-                value = password,
-                onValueChange = { viewModel.onPasswordChange(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Password") },
-                trailingIcon = {
-                    val icon = if (passwordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                    IconButton(onClick = { viewModel.onPasswordVisibilityToggle() }) {
-                        Icon(icon, contentDescription = "Toggle password visibility")
-                    }
-                },
-                visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = rememberMe, onCheckedChange = { viewModel.onRememberMeChange(it) })
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Remember Me", fontSize = 14.sp)
-                }
-                TextButton(onClick = { viewModel.onForgotPasswordClick() }) {
-                    Text("Forgot Password?")
-                }
-            }
-
+            Spacer(modifier = Modifier.height(32.dp))
+            OrDivider("Or continue with")
             Spacer(modifier = Modifier.height(24.dp))
-
-            GradientButton(text = "SIGN IN", onClick = { viewModel.onSignInClick() })
-            Spacer(modifier = Modifier.height(24.dp))
-            OrDivider()
-            Spacer(modifier = Modifier.height(24.dp))
-            SocialLoginButton(
-                iconRes = R.drawable.default_pfp, // Ensure this resource exists
-                text = "Login with Google",
-                onClick = { viewModel.onGoogleLoginClick() }
+            SocialLogins(
+                onGoogleLoginClick = onGoogleLoginClick,
+                onFacebookLoginSuccess = onFacebookLoginSuccess,
+                onFacebookLoginError = onFacebookLoginError
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            SocialLoginButton(
-                iconRes = R.drawable.default_pfp, // Ensure this resource exists
-                text = "Login with Facebook",
-                onClick = { viewModel.onFacebookLoginClick() }
-            )
-
             Spacer(modifier = Modifier.weight(1f))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Don\'t have an account?")
-                TextButton(onClick = { viewModel.onSignUpClick() }) {
-                    Text("Sign up", fontWeight = FontWeight.Bold)
-                }
-            }
+            SignUpRedirect(onSignUpClick = onSignUpClick)
         }
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun SignInScreenPreview() {
-    EventingTheme {
-        SignInScreen(viewModel = SignInViewModel())
+private fun SignInHeader() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 30.dp, end = 0.dp, top = 15.dp, bottom = 5.dp)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "Logo",
+            modifier = Modifier.width(150.dp)
+        )
+        Image(
+            painter = painterResource(id = R.drawable.group_33657),
+            contentDescription = "Banner",
+            modifier = Modifier.width(250.dp)
+        )
+    }
+}
+
+@Composable
+private fun SignInForm(
+    email: String,
+    onEmailChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    passwordVisibility: Boolean,
+    onPasswordVisibilityToggle: () -> Unit,
+    rememberMe: Boolean,
+    onRememberMeChange: (Boolean) -> Unit,
+    onSignInClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit,
+    isLoading: Boolean
+) {
+    Column {
+        Text(
+            text = "Sign in",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = email,
+            onValueChange = onEmailChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Email") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Icon") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = onPasswordChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Password") },
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
+            trailingIcon = {
+                val icon =
+                    if (passwordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                IconButton(onClick = onPasswordVisibilityToggle) {
+                    Icon(icon, contentDescription = "Toggle password visibility")
+                }
+            },
+            visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            TextButton(onClick = onForgotPasswordClick) {
+                Text("Forgot password?", fontSize = MaterialTheme.typography.bodyMedium.fontSize, color = AppTheme.extendedColors.textPrimary)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Remember me", fontSize = MaterialTheme.typography.bodyMedium.fontSize)
+//                Spacer(modifier = Modifier.width(4.dp))
+                Switch(
+                    modifier = Modifier.scale(0.8f),
+                    checked = rememberMe,
+                    onCheckedChange = onRememberMeChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.background,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(32.dp))
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            GradientButton(
+                text = "SIGN IN", onClick = onSignInClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SocialLogins(
+    onGoogleLoginClick: () -> Unit,
+    onFacebookLoginSuccess: (AccessToken) -> Unit,
+    onFacebookLoginError: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        SocialLoginButton(
+            iconRes = R.drawable.google,
+            text = "Google",
+            onClick = onGoogleLoginClick
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        FacebookLoginButton(
+            onAuthSuccess = onFacebookLoginSuccess,
+            onAuthError = onFacebookLoginError
+        )
+    }
+}
+
+@Composable
+private fun SignUpRedirect(onSignUpClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text("Don't have an account?", fontSize = MaterialTheme.typography.bodyMedium.fontSize)
+        TextButton(onClick = onSignUpClick) {
+            Text(
+                "Sign Up",
+                fontWeight = FontWeight.Bold,
+                fontSize = MaterialTheme.typography.bodyLarge.fontSize
+            )
+        }
     }
 }

@@ -1,13 +1,5 @@
 package com.tdtuer.eventing.ui.screens.onboarding
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -28,88 +20,72 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import com.tdtuer.eventing.ui.screens.auth.signup.SignUpActivity
-import com.tdtuer.eventing.ui.theme.AppTheme
-import com.tdtuer.eventing.ui.theme.EventingTheme
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import kotlin.math.absoluteValue
+import androidx.lifecycle.viewmodel.compose.viewModel // Thay thế hiltViewModel
 import com.tdtuer.eventing.R
+import com.tdtuer.eventing.ui.theme.AppTheme
+import kotlin.math.absoluteValue
 
-@ExperimentalFoundationApi
-class OnboardingActivity : ComponentActivity() {
-    private val viewModel: OnboardingViewModel by viewModels()
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun OnboardingScreen(
+    viewModel: OnboardingViewModel = viewModel(), // Sử dụng viewModel() tiêu chuẩn
+    onOnboardingComplete: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val pagerState = rememberPagerState(pageCount = { uiState.pages.size })
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                OnboardingScreen(viewModel = viewModel)
-            }
+    // Lắng nghe trạng thái hoàn tất onboarding
+    LaunchedEffect(uiState.isOnboardingComplete) {
+        if (uiState.isOnboardingComplete) {
+            onOnboardingComplete()
         }
     }
-}
 
-
-@SuppressLint("ContextCastToActivity")
-@ExperimentalFoundationApi
-@Composable
-fun OnboardingScreen(viewModel: OnboardingViewModel) {
-    val pages = viewModel.pages
-    val pagerState = rememberPagerState(pageCount = { pages.size })
-    val context = LocalContext.current as Activity
-
-    // --- CÁC THAY ĐỔI BẮT ĐẦU TỪ ĐÂY ---
-
-    // Lắng nghe các sự kiện từ ViewModel
-    LaunchedEffect(key1 = viewModel) {
-        // 1. Lắng nghe lệnh chuyển trang
-        launch {
-            viewModel.navigateToPage.collectLatest { page ->
-                // Thực hiện cuộn trang mượt mà
-                pagerState.animateScrollToPage(page)
-            }
+    // Tự động cuộn pager khi currentPage trong state thay đổi
+    LaunchedEffect(uiState.currentPage) {
+        if (uiState.currentPage != pagerState.currentPage) {
+            pagerState.animateScrollToPage(uiState.currentPage)
         }
+    }
 
-        // 2. Lắng nghe lệnh hoàn tất Onboarding
-        launch {
-            viewModel.onboardingComplete.collect {
-                val intent = Intent(context, SignUpActivity::class.java)
-                context.startActivity(intent)
-                context.finish()
-            }
+    // Cập nhật lại state trong ViewModel khi người dùng tự cuộn pager
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != uiState.currentPage) {
+            viewModel.onPageChanged(pagerState.currentPage)
         }
     }
 
     Scaffold(
         containerColor = AppTheme.colorScheme.background
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-        ) { pageIndex ->
-            OnboardingPageItem(
-                page = pages[pageIndex],
-                pagerState = pagerState,
-                pageIndex = pageIndex,
-                onNextClicked = { viewModel.onNextClicked(pagerState.currentPage) },
-                onSkipClicked = { viewModel.onSkipClicked() }
-            )
+        if (uiState.pages.isNotEmpty()) { // Đảm bảo pages đã được load
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) { pageIndex ->
+                OnboardingPageItem(
+                    page = uiState.pages[pageIndex],
+                    pagerState = pagerState,
+                    pageIndex = pageIndex,
+                    onNextClicked = viewModel::onNextClicked,
+                    onSkipClicked = viewModel::onSkipClicked
+                )
+            }
         }
     }
 }
 
 // Các Composable còn lại (OnboardingPageItem, BottomControlRow, PageIndicator, pagerAnimation)
+// không có thay đổi và được giữ nguyên như trong file gốc của bạn.
+
 @ExperimentalFoundationApi
 @Composable
 fun OnboardingPageItem(
@@ -134,7 +110,7 @@ fun OnboardingPageItem(
         ) {
             Spacer(modifier = Modifier.height(64.dp))
             Image(
-                painter = painterResource(id = R.drawable.event_illustration),
+                painter = painterResource(id = R.drawable.group_33657),
                 contentDescription = "Header",
 //                modifier = Modifier.fillMaxSize(),
 //                contentScale = ContentScale.FillWidth
@@ -215,7 +191,7 @@ fun BottomControlRow(
             val buttonText = if (pagerState.currentPage == pagerState.pageCount - 1) "Okay" else "Next"
             AnimatedContent(
                 targetState = buttonText,
-                transitionSpec = {
+                transitionSpec = { 
                     fadeIn(animationSpec = tween(220, delayMillis = 90)) togetherWith
                             fadeOut(animationSpec = tween(90))
                 }, label = "buttonTextAnimation"

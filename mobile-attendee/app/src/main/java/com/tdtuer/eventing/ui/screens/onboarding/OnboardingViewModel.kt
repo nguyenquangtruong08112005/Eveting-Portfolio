@@ -1,67 +1,85 @@
 package com.tdtuer.eventing.ui.screens.onboarding
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.pager.PagerState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.R
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import com.tdtuer.eventing.domain.usecase.authentication.SetOnboardingCompletedUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // --- Data Model cho một trang Onboarding ---
 data class OnboardingPage(
     val imageRes: Int, val title: String, val description: String
 )
 
-@OptIn(ExperimentalFoundationApi::class)
-class OnboardingViewModel : ViewModel() {
+// --- State của UI ---
+data class OnboardingUiState(
+    val currentPage: Int = 0,
+    val isOnboardingComplete: Boolean = false,
+    val pages: List<OnboardingPage> = emptyList()
+)
 
-    // Thay thế bằng các ảnh thật của bạn
-    val pages = listOf(
-        OnboardingPage(
-            imageRes = R.drawable.group_34057,
-            title = "Discover Events Near You",
-            description = "Easily find exciting events happening around you. From concerts and workshops to local meetups, everything is just a tap away."
-        ),
-        OnboardingPage(
-            imageRes = R.drawable.image_81_1,
-            title = "Smart & Modern Event Calendar",
-            description = "Stay on top of your plans with our intuitive calendar. Save events, set reminders, and never miss a moment."
-        ),
-        OnboardingPage(
-            imageRes = R.drawable.image_79_1,
-            title = "Explore with Interactive Maps",
-            description = "Use our interactive map to see what's happening in your area. A fun and visual way to discover your next adventure."
+@HiltViewModel
+class OnboardingViewModel @Inject constructor(
+    private val setOnboardingCompletedUseCase: SetOnboardingCompletedUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(OnboardingUiState())
+    val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
+
+    init {
+        loadOnboardingPages()
+    }
+
+    private fun loadOnboardingPages() {
+        val pages = listOf(
+            OnboardingPage(
+                imageRes = R.drawable.group_34057,
+                title = "Discover Events Near You",
+                description = "Easily find exciting events happening around you. From concerts and workshops to local meetups, everything is just a tap away."
+            ),
+            OnboardingPage(
+                imageRes = R.drawable.image_81_1,
+                title = "Smart & Modern Event Calendar",
+                description = "Stay on top of your plans with our intuitive calendar. Save events, set reminders, and never miss a moment."
+            ),
+            OnboardingPage(
+                imageRes = R.drawable.image_79_1,
+                title = "Explore with Interactive Maps",
+                description = "Use our interactive map to see what's happening in your area. A fun and visual way to discover your next adventure."
+            )
         )
-    )
-    // --- CÁC THAY ĐỔI BẮT ĐẦU TỪ ĐÂY ---
+        _uiState.update { it.copy(pages = pages) }
+    }
 
-    // 1. Dùng để yêu cầu UI chuyển trang
-    private val _navigateToPage = MutableSharedFlow<Int>()
-    val navigateToPage = _navigateToPage.asSharedFlow()
+    fun onNextClicked() {
+        val currentPage = _uiState.value.currentPage
+        val totalPages = _uiState.value.pages.size
 
-    // 2. Dùng để thông báo Onboarding hoàn tất
-    private val _onboardingComplete = MutableSharedFlow<Unit>(replay = 1)
-    val onboardingComplete = _onboardingComplete.asSharedFlow()
-
-    // 3. Hàm onNextClicked giờ chỉ nhận trang hiện tại, không nhận cả PagerState
-    fun onNextClicked(currentPage: Int) {
-        viewModelScope.launch {
-            if (currentPage < pages.size - 1) {
-                // Yêu cầu UI cuộn đến trang tiếp theo
-                _navigateToPage.emit(currentPage + 1)
-            } else {
-                // Đã đến trang cuối, yêu cầu hoàn tất
-                _onboardingComplete.emit(Unit)
-            }
+        if (currentPage < totalPages - 1) {
+            _uiState.update { it.copy(currentPage = currentPage + 1) }
+        } else {
+            completeOnboarding()
         }
     }
 
     fun onSkipClicked() {
+        completeOnboarding()
+    }
+
+    fun onPageChanged(page: Int) {
+        _uiState.update { it.copy(currentPage = page) }
+    }
+
+    private fun completeOnboarding() {
         viewModelScope.launch {
-            // Phát sự kiện hoàn thành để chuyển màn hình
-            _onboardingComplete.emit(Unit)
+            setOnboardingCompletedUseCase()
+            _uiState.update { it.copy(isOnboardingComplete = true) }
         }
     }
 }

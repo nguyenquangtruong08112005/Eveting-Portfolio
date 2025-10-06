@@ -3,9 +3,25 @@ package com.tdtuer.eventing.ui.screens.auth.signin
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SignInUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SignInWithFacebookUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SignInWithGoogleUseCase
+import com.tdtuer.eventing.ui.screens.auth.AuthState
+import com.tdtuer.eventing.ui.screens.auth.BaseAuthViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SignInViewModel : ViewModel() {
+@HiltViewModel
+class SignInViewModel @Inject constructor(
+    private val signInUseCase: SignInUseCase,
+    signInWithGoogleUseCase: SignInWithGoogleUseCase,
+    signInWithFacebookUseCase: SignInWithFacebookUseCase,
+    getGoogleIdTokenUseCase: GetGoogleIdTokenUseCase
+) : BaseAuthViewModel(signInWithGoogleUseCase, signInWithFacebookUseCase, getGoogleIdTokenUseCase) {
+
     var email by mutableStateOf("")
         private set
     var password by mutableStateOf("")
@@ -15,44 +31,40 @@ class SignInViewModel : ViewModel() {
     var rememberMe by mutableStateOf(false)
         private set
 
-    fun onEmailChange(newEmail: String) {
-        email = newEmail
+    fun onEmailChange(value: String) {
+        email = value
     }
 
-    fun onPasswordChange(newPassword: String) {
-        password = newPassword
+    fun onPasswordChange(value: String) {
+        password = value
     }
 
     fun onPasswordVisibilityToggle() {
         passwordVisibility = !passwordVisibility
     }
 
-    fun onRememberMeChange(isChecked: Boolean) {
-        rememberMe = isChecked
-    }
-
-    fun onSignInClick() {
-        // TODO: Implement actual sign-in logic
-        println("Sign In Clicked: Email=$email, Password=$password, RememberMe=$rememberMe")
+    fun onRememberMeChange(value: Boolean) {
+        rememberMe = value
     }
 
     fun onForgotPasswordClick() {
-        // TODO: Implement forgot password navigation/logic
-        println("Forgot Password Clicked")
+        // Handle forgot password logic
     }
 
-    fun onGoogleLoginClick() {
-        // TODO: Implement Google login logic
-        println("Google Login Clicked")
-    }
+    fun onSignInClick() {
+        if (email.isBlank() || password.isBlank()) {
+            _authState.value = AuthState.Error("Email và mật khẩu không được để trống.")
+            return
+        }
 
-    fun onFacebookLoginClick() {
-        // TODO: Implement Facebook login logic
-        println("Facebook Login Clicked")
-    }
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = signInUseCase(email, password)
 
-    fun onSignUpClick() {
-        // TODO: Implement sign-up navigation/logic
-        println("Sign Up Clicked")
+            _authState.value = when {
+                result.isSuccess -> AuthState.Success(result.getOrNull()!!)
+                else -> AuthState.Error(result.exceptionOrNull()?.message ?: "Lỗi không xác định")
+            }
+        }
     }
 }

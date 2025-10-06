@@ -1,18 +1,12 @@
 package com.tdtuer.eventing.ui.screens.home
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items // Keep this import
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,47 +22,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import com.tdtuer.eventing.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.tdtuer.eventing.R // Ensure R class is available
 import com.tdtuer.eventing.ui.components.FacePile
+import com.tdtuer.eventing.ui.navigation.Graph
 import com.tdtuer.eventing.ui.theme.EventingTheme
-
-class HomeActivity : ComponentActivity() {
-    private val viewModel: HomeViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                HomeScreen(viewModel = viewModel)
-            }
-        }
-    }
-}
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel) {
+fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavController) {
     val upcomingEvents by viewModel.upcomingEvents
-    val nearbyEvents by viewModel.nearbyEvents
-    val showRatingModal by viewModel.showRatingModal
-    val eventToRate by viewModel.eventToRate
-    val currentRating by viewModel.currentRating
+    val nearbyEvents by viewModel.nearbyEvents // Assuming you have this in ViewModel
 
-    // --- Conditionally display the modal ---
-    if (showRatingModal && eventToRate != null) {
-        AppModal(onDismissRequest = { viewModel.onDismissRatingModal() }) {
-            RatingPromptContent(
-                event = eventToRate!!,
-                rating = currentRating,
-                onRatingChanged = viewModel::onRatingChanged,
-                onDismiss = { viewModel.onDismissRatingModal() },
-                onSubmit = { viewModel.onSubmitRating() }
-            )
+    // Lắng nghe sự kiện điều hướng từ ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.navEvent.collectLatest {
+            when(it) {
+                HomeNavEvent.NavigateToAuth -> {
+                    navController.navigate(Graph.AUTHENTICATION) {
+                        popUpTo(Graph.MAIN_APP) { inclusive = true }
+                    }
+                }
+            }
         }
     }
 
@@ -91,84 +70,6 @@ fun HomeScreen(viewModel: HomeViewModel) {
     }
 }
 
-// --- Generic Modal and Modal Content Composables ---
-
-@Composable
-fun AppModal(
-    onDismissRequest: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-fun RatingPromptContent(
-    event: Event,
-    rating: Int,
-    onRatingChanged: (Int) -> Unit,
-    onDismiss: () -> Unit,
-    onSubmit: () -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Image(
-            painter = painterResource(id = event.imageRes),
-            contentDescription = "Event Image",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp)
-                .clip(MaterialTheme.shapes.large),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(event.title, fontWeight = FontWeight.Bold, fontSize = 20.sp, textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("Your feedback will help us to make improvements", fontSize = 14.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(16.dp))
-        StarRatingBar(rating = rating, onRatingChanged = onRatingChanged)
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedButton(onClick = onDismiss, modifier = Modifier
-                .weight(1f)
-                .height(50.dp)) { Text("NO THANKS") }
-            Button(onClick = onSubmit, modifier = Modifier
-                .weight(1f)
-                .height(50.dp), enabled = rating > 0) { Text("RATE") }
-        }
-    }
-}
-
-@Composable
-private fun StarRatingBar(rating: Int, onRatingChanged: (Int) -> Unit) {
-    Row(horizontalArrangement = Arrangement.Center) {
-        for (i in 1..5) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = "Star $i",
-                modifier = Modifier
-                    .size(36.dp)
-                    .clickable { onRatingChanged(i) },
-                tint = if (i <= rating) Color(0xFFFFC107) else Color.LightGray
-            )
-        }
-    }
-}
-
-
-// --- Home Screen Specific Composables ---
-
 @Composable
 fun HomeHeader(viewModel: HomeViewModel) {
     val categories by viewModel.categories
@@ -190,15 +91,15 @@ fun HomeHeader(viewModel: HomeViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = { viewModel.onHomeHeaderMenuClick() }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+            // NÚT LOGOUT TẠM THỜI
+            TextButton(onClick = { viewModel.onSignOutClick() }) {
+                Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Current Location", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                Text("New York, USA", color = Color.White, fontWeight = FontWeight.Medium)
+                Text("New York, USA", color = Color.White, fontWeight = FontWeight.Medium) // This could come from ViewModel
             }
-            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }){
-                Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
+            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }){                 Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
             }
         }
 
@@ -208,19 +109,16 @@ fun HomeHeader(viewModel: HomeViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(50))
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Search...", color = Color.White.copy(alpha = 0.8f))
+            Text("Search...", color = Color.White.copy(alpha = 0.8f)) // Search text could be ViewModel state
             Spacer(modifier = Modifier.weight(1f))
             Button(
                 onClick = { viewModel.onSearchFilterClick() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D65E9)),
-                shape = CircleShape,
-                modifier = Modifier.size(40.dp),
-                contentPadding = PaddingValues(0.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D65E9))
             ) {
                 Icon(Icons.Default.FilterList, contentDescription = "Filters", tint = Color.White)
             }
@@ -242,6 +140,10 @@ fun HomeHeader(viewModel: HomeViewModel) {
 
 @Composable
 fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
+    val iconColor = if (isSelected && category.name == "Music") Color.Black // Specific case for Music icon being black on white background
+    else if (isSelected) category.selectedTextColor // Use defined selected text color for icon
+    else Color.White.copy(alpha = 0.8f) // Default unselected icon color
+
     val textColor = if (isSelected) category.selectedTextColor else Color.White
     val containerColor = if (isSelected) category.color else Color.Transparent
     val border = if (!isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)) else null
@@ -322,7 +224,7 @@ fun EventCard(event: Event, onBookmarkClick: () -> Unit) {
                         .padding(8.dp)
                 ) {
                     Icon(
-                        Icons.Default.BookmarkBorder,
+                        Icons.Default.BookmarkBorder, // Icon could be dynamic based on bookmarked state from ViewModel
                         contentDescription = "Bookmark",
                         tint = Color.White,
                         modifier = Modifier
@@ -360,7 +262,7 @@ fun InviteBanner(onInviteClick: () -> Unit) {
     ) {
         Box {
             Image(
-                painter = painterResource(id = R.drawable.banner_svgrepo_com),
+                painter = painterResource(id = R.drawable.banner_svgrepo_com), // Ensure this resource exists
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.Crop
@@ -395,9 +297,10 @@ fun AppBottomBar(onItemClick: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
+                // In a real app, selection state would come from ViewModel/Navigation
                 NavigationBarItem(selected = true, onClick = { onItemClick("Explore") }, icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") }, label = { Text("Explore") })
                 NavigationBarItem(selected = false, onClick = { onItemClick("Events") }, icon = { Icon(Icons.Default.CalendarToday, contentDescription = "Events") }, label = { Text("Events") })
-                Spacer(modifier = Modifier.width(40.dp))
+                Spacer(modifier = Modifier.width(40.dp)) // Spacer for FAB
                 NavigationBarItem(selected = false, onClick = { onItemClick("Map") }, icon = { Icon(Icons.Default.Map, contentDescription = "Map") }, label = { Text("Map") })
                 NavigationBarItem(selected = false, onClick = { onItemClick("Profile") }, icon = { Icon(Icons.Default.Person, contentDescription = "Profile") }, label = { Text("Profile") })
             }
@@ -420,6 +323,6 @@ fun AppFab(onClick: () -> Unit) {
 @Composable
 fun HomeScreenPreview() {
     EventingTheme {
-        HomeScreen(viewModel = HomeViewModel())
+        // HomeScreen(viewModel = HomeViewModel()) // Preview needs a NavController now
     }
 }

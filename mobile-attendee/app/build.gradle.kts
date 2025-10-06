@@ -77,29 +77,35 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // DataStore for local storage
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
     // Firebase
     implementation(platform(libs.firebase.bom)) // Đồng ộ version các thư viện fbase
     implementation(libs.firebase.firestore) // Thao tác với dữ liệu đám mây Firestore
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth") // Đã sửa
-    implementation("com.google.android.gms:play-services-auth:21.2.0")
-    implementation("androidx.credentials:credentials:1.6.0-alpha05")
-    implementation("androidx.credentials:credentials-play-services-auth:1.6.0-alpha05")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth) // Đã sửa
+    implementation(libs.play.services.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.playservices)
+    implementation(libs.googleid)
     //Facebook
     implementation(libs.facebook.login)
 
-    // Hilt
-    implementation(libs.hilt.core) // core hilt
-    kapt(libs.hilt.compiler) // Annotation processor cho Hilt
+    // Hilt - SỬ DỤNG ALIAS ĐÚNG
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
 
     // Navigation Compose
     implementation(libs.androidx.navigation.compose) // Điều hướng navigation trong Compose
     implementation(libs.hilt.navigation.compose) // Tích hợp Hilt với Navigation Compose
 
     // Icon mở rộng
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.material.icons.extended)
 
     // Biểu đồ
     implementation(libs.mpandroidchart) // line bar chart các kiểu
+    implementation(libs.cloudinary.kotlin)
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }
