@@ -85,11 +85,22 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
     navigation(
         route = Graph.AUTHENTICATION,
         // Điểm bắt đầu hợp lý là màn hình Đăng nhập
-        startDestination = Screen.SignUp.route
+        startDestination = Screen.SignIn.route
     ) {
         // KHÔNG còn màn hình Onboarding ở đây
         composable(Screen.AuthDecision.route) { /* AuthDecisionScreen(navController) */ }
-        composable(Screen.SignIn.route) { SignInScreen(viewModel = hiltViewModel<SignInViewModel>()) }
+        composable(Screen.SignIn.route) {
+            SignInScreen(
+                viewModel = hiltViewModel<SignInViewModel>(),
+                onSignInSuccess = {},
+                onSignUpClick = {
+                    navController.navigate(Screen.SignUp.route)
+                },
+                onForgotPasswordClick = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                }
+            )
+        }
         composable(Screen.SignUp.route) {
             SignUpScreen(
                 viewModel = hiltViewModel<SignUpViewModel>(),
@@ -121,10 +132,12 @@ fun MainAppNavGraph(navController: NavHostController) {
         startDestination = Screen.Home.route
     ) {
         // 4 màn hình tab chính
-        composable(Screen.Home.route) { HomeScreen(
-            viewModel = hiltViewModel<HomeViewModel>(),
-            navController = navController
-        ) }
+        composable(Screen.Home.route) {
+            HomeScreen(
+                viewModel = hiltViewModel<HomeViewModel>(),
+                navController = navController
+            )
+        }
         composable(Screen.Events.route) { /* EventsScreen(navController) */ }
         composable(Screen.Map.route) { /* MapScreen(navController) */ }
         composable(Screen.Profile.route) { /* MyProfileScreen(navController) */ }

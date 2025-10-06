@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.tdtuer.eventing.ui.theme.AppTheme
 
 @Composable
-fun OrDivider() {
+fun OrDivider(text: String? = null) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -27,7 +27,7 @@ fun OrDivider() {
             color = AppTheme.colorScheme.outlineVariant
         )
         Text(
-            text = "OR",
+            text = text ?: "Or",
             modifier = Modifier.padding(horizontal = 16.dp),
             color = AppTheme.extendedColors.textSecondary,
             fontSize = 14.sp

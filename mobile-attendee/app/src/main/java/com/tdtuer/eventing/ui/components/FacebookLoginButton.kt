@@ -47,7 +47,7 @@ fun FacebookLoginButton(
 
     SocialLoginButton(
         iconRes = R.drawable.facebook,
-        text = "Login with Facebook",
+        text = "Facebook",
         onClick = {
             launcher.launch(listOf("email", "public_profile"))
         }

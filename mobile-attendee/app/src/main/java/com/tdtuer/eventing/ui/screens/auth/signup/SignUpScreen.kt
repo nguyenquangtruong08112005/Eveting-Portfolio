@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -52,6 +53,7 @@ import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.screens.auth.AuthState
+import com.tdtuer.eventing.ui.theme.AppTheme
 
 /**
  * Composable chính, quản lý state và side-effects.
@@ -164,7 +166,7 @@ private fun SignUpContent(
             )
 
             Spacer(modifier = Modifier.height(24.dp))
-            OrDivider()
+            OrDivider("Or continue with")
             Spacer(modifier = Modifier.height(24.dp))
 
             SocialLogins(
@@ -185,7 +187,7 @@ private fun SignUpContent(
  */
 @Composable
 private fun SignUpHeader(onSignInLinkClick: () -> Unit) {
-    Row (
+    Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
         modifier = Modifier
@@ -196,7 +198,7 @@ private fun SignUpHeader(onSignInLinkClick: () -> Unit) {
         IconButton(
             onClick = onSignInLinkClick,
 
-        ) {
+            ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back to Sign In"
@@ -315,15 +317,18 @@ private fun SignUpForm(
 private fun SocialLogins(
     onGoogleLoginClick: () -> Unit,
     onFacebookLoginSuccess: (AccessToken) -> Unit,
-    onFacebookLoginError: (String?) -> Unit // SỬA Ở ĐÂY
+    onFacebookLoginError: (String?) -> Unit
 ) {
-    Column {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
         SocialLoginButton(
             iconRes = R.drawable.google,
-            text = "Login with Google",
+            text = "Google",
             onClick = onGoogleLoginClick
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.width(16.dp))
         FacebookLoginButton(
             onAuthSuccess = onFacebookLoginSuccess,
             onAuthError = onFacebookLoginError
@@ -341,9 +346,13 @@ private fun SignInRedirect(onSignInLinkClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Text("Already have an account?")
+        Text("Already have an account?", fontSize = MaterialTheme.typography.bodyMedium.fontSize)
         TextButton(onClick = onSignInLinkClick) {
-            Text("Sign In", fontWeight = FontWeight.Bold)
+            Text(
+                "Sign In",
+                fontWeight = FontWeight.Bold,
+                fontSize = MaterialTheme.typography.bodyLarge.fontSize
+            )
         }
     }
 }

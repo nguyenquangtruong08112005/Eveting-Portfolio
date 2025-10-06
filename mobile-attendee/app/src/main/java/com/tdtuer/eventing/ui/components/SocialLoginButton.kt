@@ -2,6 +2,7 @@ package com.tdtuer.eventing.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -16,9 +17,9 @@ import com.tdtuer.eventing.ui.theme.AppTheme
 fun SocialLoginButton(iconRes: Int, text: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+//        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        contentPadding = PaddingValues(vertical = 14.dp)
+        contentPadding = PaddingValues(14.dp)
     ) {
         Image(
             painter = painterResource(id = iconRes),
@@ -26,6 +27,6 @@ fun SocialLoginButton(iconRes: Int, text: String, onClick: () -> Unit) {
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text, fontWeight = FontWeight.Medium, color = AppTheme.colorScheme.onSurface)
+        Text(text, fontSize = AppTheme.typography.bodySmall.fontSize, color = AppTheme.colorScheme.onSurface)
     }
 }
