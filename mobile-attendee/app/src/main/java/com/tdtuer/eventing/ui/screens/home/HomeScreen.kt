@@ -1,10 +1,5 @@
 package com.tdtuer.eventing.ui.screens.home
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels // Added for ViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,29 +25,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tdtuer.eventing.R // Ensure R class is available
 import com.tdtuer.eventing.ui.components.FacePile
+import com.tdtuer.eventing.ui.navigation.Graph
 import com.tdtuer.eventing.ui.theme.EventingTheme
-// Event and Category data classes are now in HomeViewModel.kt
+import kotlinx.coroutines.flow.collectLatest
 
-class HomeActivity : ComponentActivity() {
-    private val viewModel: HomeViewModel by viewModels()
+@Composable
+fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavController) {
+    val upcomingEvents by viewModel.upcomingEvents
+    val nearbyEvents by viewModel.nearbyEvents // Assuming you have this in ViewModel
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                HomeScreen(viewModel = viewModel)
+    // Lắng nghe sự kiện điều hướng từ ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.navEvent.collectLatest {
+            when(it) {
+                HomeNavEvent.NavigateToAuth -> {
+                    navController.navigate(Graph.AUTHENTICATION) {
+                        popUpTo(Graph.MAIN_APP) { inclusive = true }
+                    }
+                }
             }
         }
     }
-}
-
-@Composable
-fun HomeScreen(viewModel: HomeViewModel) {
-    val upcomingEvents by viewModel.upcomingEvents
-    val nearbyEvents by viewModel.nearbyEvents // Assuming you have this in ViewModel
 
     Scaffold(
         bottomBar = { AppBottomBar(onItemClick = { itemName -> viewModel.onBottomBarItemClick(itemName) }) },
@@ -94,15 +91,15 @@ fun HomeHeader(viewModel: HomeViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = { viewModel.onHomeHeaderMenuClick() }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+            // NÚT LOGOUT TẠM THỜI
+            TextButton(onClick = { viewModel.onSignOutClick() }) {
+                Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Current Location", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                 Text("New York, USA", color = Color.White, fontWeight = FontWeight.Medium) // This could come from ViewModel
             }
-            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }){
-                 Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
+            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }){                 Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
             }
         }
 
@@ -158,16 +155,7 @@ fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
         border = border,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
     ) {
-        // Invoke the icon factory, which is a @Composable lambda
-        // We need to provide the tint within the Icon composable itself if dynamic
-        // The iconFactory in ViewModel should be: { Icon(vector, tint = determinedColor) }
-        // For simplicity, let's assume iconFactory handles its own tint for selected state, or we adjust icon tint here:
-        // For this example, I'm modifying the iconFactory in ViewModel to be more flexible, or tinting here.
-        // The iconFactory in ViewModel produces an Icon. We might need to adjust its tint based on selection.
-        // A simpler way: The Category data class defines the icon, and we tint it here.
-        // Let's assume iconFactory = { IconToDisplay(tint = if(isSelected)... else ...) }
-        // For now, let's just call the factory. The tinting logic is now more robust in the ViewModel's Category setup.
-        category.iconFactory() 
+        category.iconFactory()
         Spacer(modifier = Modifier.width(8.dp))
         Text(category.name, color = textColor)
     }
@@ -230,7 +218,7 @@ fun EventCard(event: Event, onBookmarkClick: () -> Unit) {
                     }
                 }
                 IconButton(
-                    onClick = onBookmarkClick, 
+                    onClick = onBookmarkClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
@@ -335,6 +323,6 @@ fun AppFab(onClick: () -> Unit) {
 @Composable
 fun HomeScreenPreview() {
     EventingTheme {
-        HomeScreen(viewModel = HomeViewModel()) // Use ViewModel for preview
+        // HomeScreen(viewModel = HomeViewModel()) // Preview needs a NavController now
     }
 }

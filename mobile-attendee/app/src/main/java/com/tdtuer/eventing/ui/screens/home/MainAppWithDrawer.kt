@@ -62,7 +62,7 @@ fun MainAppWithDrawer(viewModel: MainAppWithDrawerViewModel) {
         }
     ) {
         // HomeScreen can remain independent or also take parts of the ViewModel if needed
-        HomeScreen(
+        HomeScreen1(
             onMenuClick = {
                 scope.launch { drawerState.open() }
             }
@@ -152,7 +152,7 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
 
 // Assuming HomeScreen is defined elsewhere or below, and takes onMenuClick
 @Composable
-fun HomeScreen(onMenuClick: () -> Unit = {}) {
+fun HomeScreen1(onMenuClick: () -> Unit = {}) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column {
             Text("Đây là Màn hình Home", fontSize = 22.sp)
