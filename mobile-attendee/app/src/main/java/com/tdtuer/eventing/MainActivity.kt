@@ -15,13 +15,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
         installSplashScreen()
-
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val intent = this.intent
         setContent {
             EventingTheme {
                 val navController = rememberNavController()
-                RootNavigationGraph(navController = navController)
+                RootNavigationGraph(navController = navController, intent = intent)
             }
         }
     }

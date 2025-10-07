@@ -1,129 +1,95 @@
 package com.tdtuer.eventing.ui.screens.auth.verification
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.tdtuer.eventing.ui.components.GradientButton
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
-class VerificationActivity : ComponentActivity() {
-    private val viewModel: VerificationViewModel by viewModels()
+@Composable
+fun VerificationScreen(
+    viewModel: VerificationViewModel = hiltViewModel(),
+    onVerified: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                VerificationScreen(viewModel = viewModel)
+    // Tự động kiểm tra trạng thái mỗi khi người dùng quay lại màn hình (Resume)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.checkVerificationStatus()
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
+
+    // Gửi email xác thực khi màn hình được hiển thị lần đầu tiên
+    LaunchedEffect(Unit) {
+        viewModel.sendVerificationEmail()
+    }
+
+    // Tự động điều hướng khi email đã được xác thực thành công
+    LaunchedEffect(uiState.isVerified) {
+        if (uiState.isVerified) {
+            onVerified()
+        }
+    }
+
+    VerificationContent(
+        uiState = uiState,
+        onResendClick = { viewModel.sendVerificationEmail() }
+    )
 }
 
 @Composable
-fun VerificationScreen(viewModel: VerificationViewModel) {
-    val otpValue = viewModel.otpValue
-    val timerSeconds = viewModel.timerSeconds
-    val isTimerRunning = viewModel.isTimerRunning
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF7F7F7)) // Màu nền xám nhạt
-    ) {
-        // --- Phần nội dung trên cùng ---
-        Column(
+private fun VerificationContent(
+    uiState: VerificationUiState,
+    onResendClick: () -> Unit
+) {
+    Scaffold {
+        Box(
             modifier = Modifier
-                .weight(1f)
-                .padding(24.dp)
+                .fillMaxSize()
+                .padding(it)
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
         ) {
-            IconButton(onClick = { viewModel.onBackNavigationClick() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(text = "Verification", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "We've send you the verification code on +1 2620 0323 7631", // Consider making this dynamic
-                color = Color.Gray,
-                fontSize = 16.sp,
-                lineHeight = 24.sp
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Ô nhập OTP
-            OtpInputFields(otpValue = otpValue)
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Nút Continue
-            GradientButton(text = "CONTINUE", onClick = { viewModel.onContinueClick() })
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Đếm ngược hoặc nút Re-send
-            Text(
-                text = if (isTimerRunning) "Re-send code in 0:${String.format("%02d", timerSeconds)}" else "Re-send code",
-                color = if (isTimerRunning) Color.Gray else MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .clickable(enabled = !isTimerRunning) { viewModel.onResendCodeClick() }
-            )
-        }
-
-        // --- Bàn phím số tùy chỉnh ---
-        NumberKeypad(
-            onNumberClick = { number -> viewModel.onNumberClick(number) },
-            onBackspaceClick = { viewModel.onBackspaceClick() }
-        )
-    }
-}
-
-@Composable
-fun OtpInputFields(otpValue: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        (0 until 4).forEach { index ->
-            val digit = otpValue.getOrNull(index)?.toString()
-            Box(
-                modifier = Modifier
-                    .size(width = 60.dp, height = 60.dp)
-                    .border(
-                        width = 1.dp,
-                        color = if (digit != null) Color(0xFF5669FF) else Color.LightGray,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .background(Color.White, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = digit ?: "-",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (digit != null) Color.Black else Color.LightGray
+                VerificationHeader()
+                Spacer(modifier = Modifier.height(24.dp))
+                VerificationActions(
+                    uiState = uiState,
+                    onResendClick = onResendClick
                 )
             }
         }
@@ -131,93 +97,73 @@ fun OtpInputFields(otpValue: String) {
 }
 
 @Composable
-fun NumberKeypad(onNumberClick: (String) -> Unit, onBackspaceClick: () -> Unit) {
-    val keys = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-        listOf("", "0", "backspace")
+private fun VerificationHeader() {
+    Text(
+        text = "Xác thực Email",
+        style = MaterialTheme.typography.headlineMedium
     )
-    val letters = mapOf(
-        '2' to "ABC", '3' to "DEF", '4' to "GHI", '5' to "JKL",
-        '6' to "MNO", '7' to "PQRS", '8' to "TUV", '9' to "WXYZ"
+    Spacer(modifier = Modifier.height(16.dp))
+    Text(
+        text = "Chúng tôi đã gửi một link xác thực đến email của bạn. Vui lòng kiểm tra hộp thư (bao gồm cả mục Spam/Rác).",
+        textAlign = TextAlign.Center
     )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFE0E0E0)) // Màu nền bàn phím
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        keys.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                row.forEach { key ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        when (key) {
-                            "" -> Spacer(modifier = Modifier.size(60.dp)) // Assuming 60.dp is key height
-                            "backspace" -> BackspaceKey(onClick = onBackspaceClick)
-                            else -> NumberKey(
-                                number = key,
-                                letters = letters[key.first()] ?: "",
-                                onClick = { onNumberClick(key) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
-fun NumberKey(number: String, letters: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
-        color = Color.White,
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = number, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-            if (letters.isNotEmpty()) {
-                Text(text = letters, fontSize = 10.sp, color = Color.Gray)
-            }
-        }
+private fun VerificationActions(
+    uiState: VerificationUiState,
+    onResendClick: () -> Unit
+) {
+
+    // Thay thế nút "Tôi đã xác thực" bằng một chỉ báo tự động
+    if (uiState.isLoading) {
+        CircularProgressIndicator()
+    } else {
+        Text(
+            text = "Đang chờ bạn xác thực...",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    Button(onClick = onResendClick) {
+        Text("Gửi lại email")
+    }
+
+    if (uiState.error != null) {
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = uiState.error,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
-@Composable
-fun BackspaceKey(onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
-        color = Color.Transparent, // Nền trong suốt để hòa vào bàn phím
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = "Backspace", tint = Color.DarkGray)
-        }
-    }
-}
-
-
-@Preview(showBackground = true)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun VerificationScreenPreview() {
     EventingTheme {
-        VerificationScreen(viewModel = VerificationViewModel())
+        VerificationContent(
+            uiState = VerificationUiState(
+                isLoading = false,
+                isVerified = false,
+                error = null
+            ),
+            onResendClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun VerificationScreenLoadingPreview() {
+    EventingTheme {
+        VerificationContent(
+            uiState = VerificationUiState(isLoading = true),
+            onResendClick = {}
+        )
     }
 }

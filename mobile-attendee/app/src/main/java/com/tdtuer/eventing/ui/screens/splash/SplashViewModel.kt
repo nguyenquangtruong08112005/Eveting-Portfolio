@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.domain.usecase.authentication.CheckOnboardingStatusUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.GetCurrentUserUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.GetRememberMeStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,8 @@ sealed class SplashNavDestination {
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val checkOnboardingStatusUseCase: CheckOnboardingStatusUseCase
+    private val checkOnboardingStatusUseCase: CheckOnboardingStatusUseCase,
+    private val getRememberMeStatusUseCase: GetRememberMeStatusUseCase
 ) : ViewModel() {
 
     // _destination là StateFlow riêng tư, chỉ ViewModel có thể thay đổi
@@ -46,13 +48,18 @@ class SplashViewModel @Inject constructor(
             val hasCompletedOnboarding = checkOnboardingStatusUseCase().first()
 
             if (hasCompletedOnboarding) {
-                // Nếu đã xem onboarding, kiểm tra xem user đã đăng nhập chưa
-                val currentUser = getCurrentUserUseCase().first()
-                if (currentUser != null) {
-                    // Đã đăng nhập -> Vào màn hình chính
-                    _destination.value = SplashNavDestination.GoToHome
+                val rememberMe = getRememberMeStatusUseCase().first()
+                if (rememberMe) {
+                    // Nếu đã xem onboarding, kiểm tra xem user đã đăng nhập chưa
+                    val currentUser = getCurrentUserUseCase().first()
+                    if (currentUser != null) {
+                        // Đã đăng nhập -> Vào màn hình chính
+                        _destination.value = SplashNavDestination.GoToHome
+                    } else {
+                        // Chưa đăng nhập -> Vào màn hình đăng nhập/đăng ký
+                        _destination.value = SplashNavDestination.GoToAuth
+                    }
                 } else {
-                    // Chưa đăng nhập -> Vào màn hình đăng nhập/đăng ký
                     _destination.value = SplashNavDestination.GoToAuth
                 }
             } else {

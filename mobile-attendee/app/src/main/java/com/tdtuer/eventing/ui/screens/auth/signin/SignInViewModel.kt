@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
+import com.tdtuer.eventing.domain.usecase.authentication.SaveRememberMeStatusUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInWithFacebookUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInWithGoogleUseCase
@@ -17,6 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SignInViewModel @Inject constructor(
     private val signInUseCase: SignInUseCase,
+    private val saveRememberMeStatusUseCase: SaveRememberMeStatusUseCase,
     signInWithGoogleUseCase: SignInWithGoogleUseCase,
     signInWithFacebookUseCase: SignInWithFacebookUseCase,
     getGoogleIdTokenUseCase: GetGoogleIdTokenUseCase
@@ -28,7 +30,7 @@ class SignInViewModel @Inject constructor(
         private set
     var passwordVisibility by mutableStateOf(false)
         private set
-    var rememberMe by mutableStateOf(false)
+    var rememberMe by mutableStateOf(true)
         private set
 
     fun onEmailChange(value: String) {
@@ -60,6 +62,10 @@ class SignInViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             val result = signInUseCase(email, password)
+
+            if (result.isSuccess) {
+                saveRememberMeStatusUseCase(rememberMe)
+            }
 
             _authState.value = when {
                 result.isSuccess -> AuthState.Success(result.getOrNull()!!)

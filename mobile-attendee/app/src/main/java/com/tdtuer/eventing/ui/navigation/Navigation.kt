@@ -1,7 +1,9 @@
 package com.tdtuer.eventing.ui.navigation
 
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -10,10 +12,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.tdtuer.eventing.ui.screens.auth.resetpassword.ResetPasswordScreen
+import com.tdtuer.eventing.ui.screens.auth.resetpassword.ResetPasswordViewModel
 import com.tdtuer.eventing.ui.screens.auth.signin.SignInScreen
 import com.tdtuer.eventing.ui.screens.auth.signin.SignInViewModel
 import com.tdtuer.eventing.ui.screens.auth.signup.SignUpScreen
 import com.tdtuer.eventing.ui.screens.auth.signup.SignUpViewModel
+import com.tdtuer.eventing.ui.screens.auth.verification.VerificationScreen
 import com.tdtuer.eventing.ui.screens.home.HomeScreen
 import com.tdtuer.eventing.ui.screens.home.HomeViewModel
 import com.tdtuer.eventing.ui.screens.onboarding.OnboardingScreen
@@ -21,9 +26,11 @@ import com.tdtuer.eventing.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
 import com.tdtuer.eventing.ui.screens.onboarding.OnboardingViewModel
 import com.yourpackage.ui.navigation.Screen
+import com.tdtuer.eventing.ui.screens.auth.verification.VerificationViewModel
 
 @Composable
-fun RootNavigationGraph(navController: NavHostController) {
+fun RootNavigationGraph(navController: NavHostController, intent: Intent) {
+
     NavHost(
         navController = navController,
         route = Graph.ROOT,
@@ -94,7 +101,9 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 viewModel = hiltViewModel<SignInViewModel>(),
                 onSignInSuccess = {},
                 onSignUpClick = {
-                    navController.navigate(Screen.SignUp.route)
+                    navController.navigate(Screen.SignUp.route) {
+                        popUpTo(Screen.SignIn.route) { inclusive = true }
+                    }
                 },
                 onForgotPasswordClick = {
                     navController.navigate(Screen.ForgotPassword.route)
@@ -106,7 +115,7 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 viewModel = hiltViewModel<SignUpViewModel>(),
                 onSignUpSuccess = {
                     // Điều hướng sau khi đăng ký thành công
-                    navController.navigate(Graph.MAIN_APP) {
+                    navController.navigate(Screen.Verification.route) {
                         popUpTo(Screen.SignUp.route) { inclusive = true }
                     }
                 },
@@ -115,8 +124,25 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 },
             )
         }
-        composable(Screen.ForgotPassword.route) { /* ForgotPasswordScreen(navController) */ }
-        composable(Screen.OtpVerification.route) { /* OtpVerificationScreen(navController) */ }
+
+        composable(Screen.ForgotPassword.route) {
+            ResetPasswordScreen(
+                viewModel = hiltViewModel<ResetPasswordViewModel>(),
+                onBackClick = {
+                    navController.navigate(Screen.SignIn.route)
+                }
+            )
+        }
+        composable(Screen.Verification.route) {
+            VerificationScreen(
+                viewModel = hiltViewModel<VerificationViewModel>(),
+                onVerified = {
+                    navController.navigate(Graph.MAIN_APP) {
+                        popUpTo(Screen.Verification.route) { inclusive = true }
+                    }
+                }
+            )
+        }
     }
 }
 

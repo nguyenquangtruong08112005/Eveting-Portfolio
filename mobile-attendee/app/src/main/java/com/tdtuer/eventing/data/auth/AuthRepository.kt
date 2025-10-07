@@ -12,5 +12,7 @@ interface AuthRepository {
     suspend fun signInWithFacebook(token: AccessToken): Result<User>
 
     fun getCurrentUser(): Flow<User?>
+    suspend fun sendEmailVerification(): Result<Unit>
+    suspend fun checkEmailVerificationStatus(): Result<Boolean>
     suspend fun signOut()
 }

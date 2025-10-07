@@ -4,19 +4,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class ResetPasswordViewModel : ViewModel() {
+@HiltViewModel
+class ResetPasswordViewModel @Inject constructor(
+    // TODO: Inject use cases for password reset functionality
+) : ViewModel() {
+
     var email by mutableStateOf("")
-        private set // Make the setter private so only ViewModel can update it internally
+        private set
 
     fun onEmailChange(newEmail: String) {
         email = newEmail
     }
 
     fun onSendClick() {
-        // TODO: Implement actual password reset logic here
-        // For now, let's just print the email to logcat or console for demonstration
-        println("Attempting to send password reset link to: $email")
-        // Example: viewModelScope.launch { callResetPasswordApi(email) }
+        // TODO: Implement password reset logic using a use case
+        println("Password reset request for: $email")
     }
 }

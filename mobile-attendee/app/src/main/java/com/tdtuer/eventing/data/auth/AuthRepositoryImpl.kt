@@ -1,6 +1,7 @@
 package com.tdtuer.eventing.data.auth
 
 import com.facebook.AccessToken
+import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -53,7 +54,8 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val result = auth.signInWithCredential(credential).await()
-            val firebaseUser = result.user ?: return Result.failure(Exception("Google sign-in failed"))
+            val firebaseUser =
+                result.user ?: return Result.failure(Exception("Google sign-in failed"))
 
             val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
             if (userDoc.exists()) {
@@ -68,8 +70,7 @@ class AuthRepositoryImpl @Inject constructor(
                 db.collection("Users").document(firebaseUser.uid).set(newUser).await()
                 Result.success(newUser)
             }
-        }
-        catch (e: Exception){
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
@@ -118,6 +119,37 @@ class AuthRepositoryImpl @Inject constructor(
         auth.addAuthStateListener(authStateListener)
         awaitClose {
             auth.removeAuthStateListener(authStateListener)
+        }
+    }
+
+    override suspend fun sendEmailVerification(): Result<Unit> {
+        return try {
+            val user = auth.currentUser
+
+            val actionCodeSettings = ActionCodeSettings.newBuilder()
+                .setUrl("https://eventing-baa25.firebaseapp.com")
+                .setHandleCodeInApp(true)
+                .setAndroidPackageName(
+                    "com.tdtuer.eventing",
+                    true, 
+                    null  
+                )
+                .build()
+
+            user?.sendEmailVerification(actionCodeSettings)?.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun checkEmailVerificationStatus(): Result<Boolean> {
+        return try {
+            auth.currentUser?.reload()?.await()
+            val isVerified = auth.currentUser?.isEmailVerified ?: false
+            Result.success(isVerified)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
