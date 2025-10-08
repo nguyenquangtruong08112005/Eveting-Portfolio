@@ -1,4 +1,4 @@
-package com.tdtuer.eventing.ui.screens.editprofile
+ package com.tdtuer.eventing.ui.screens.editprofile
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border

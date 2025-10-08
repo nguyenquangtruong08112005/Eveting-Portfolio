@@ -2,6 +2,7 @@ package com.tdtuer.eventing.ui.navigation
 
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -12,24 +13,48 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.tdtuer.eventing.ui.screens.auth.forgotpassword.ForgotPasswordScreen
+import com.tdtuer.eventing.ui.screens.auth.forgotpassword.ForgotPasswordViewModel
 import com.tdtuer.eventing.ui.screens.auth.resetpassword.ResetPasswordScreen
-import com.tdtuer.eventing.ui.screens.auth.resetpassword.ResetPasswordViewModel
 import com.tdtuer.eventing.ui.screens.auth.signin.SignInScreen
 import com.tdtuer.eventing.ui.screens.auth.signin.SignInViewModel
 import com.tdtuer.eventing.ui.screens.auth.signup.SignUpScreen
 import com.tdtuer.eventing.ui.screens.auth.signup.SignUpViewModel
 import com.tdtuer.eventing.ui.screens.auth.verification.VerificationScreen
+import com.tdtuer.eventing.ui.screens.auth.verification.VerificationViewModel
 import com.tdtuer.eventing.ui.screens.home.HomeScreen
 import com.tdtuer.eventing.ui.screens.home.HomeViewModel
 import com.tdtuer.eventing.ui.screens.onboarding.OnboardingScreen
+import com.tdtuer.eventing.ui.screens.onboarding.OnboardingViewModel
 import com.tdtuer.eventing.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
-import com.tdtuer.eventing.ui.screens.onboarding.OnboardingViewModel
 import com.yourpackage.ui.navigation.Screen
-import com.tdtuer.eventing.ui.screens.auth.verification.VerificationViewModel
 
 @Composable
-fun RootNavigationGraph(navController: NavHostController, intent: Intent) {
+fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
+
+    // Handle deep links
+    LaunchedEffect(intent) {
+        val link = intent?.data?.toString()
+        if (link != null) {
+            val uri = Uri.parse(link)
+            val mode = uri.getQueryParameter("mode")
+            val oobCode = uri.getQueryParameter("oobCode")
+
+            if (oobCode != null) {
+                when (mode) {
+                    "resetPassword" -> {
+                        navController.navigate(Screen.ResetPassword.createRoute(oobCode))
+                    }
+
+                    "verifyEmail" -> {
+                        // The verification link is handled inside VerificationScreen
+                        navController.navigate(Screen.Verification.route)
+                    }
+                }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -40,40 +65,43 @@ fun RootNavigationGraph(navController: NavHostController, intent: Intent) {
             SplashScreen(
                 viewModel = hiltViewModel<SplashViewModel>(),
                 onNavigateToOnboarding = {
-                    // Điều hướng thẳng đến màn hình Onboarding
                     navController.navigate(Screen.Onboarding.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                        popUpTo(Screen.Splash.route) {
+                            inclusive = true
+                        }
                     }
                 },
                 onNavigateToHome = {
                     navController.navigate(Graph.MAIN_APP) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                        popUpTo(Screen.Splash.route) {
+                            inclusive = true
+                        }
                     }
                 },
                 onNavigateToAuth = {
-                    // Điều hướng đến đồ thị con Xác thực
                     navController.navigate(Graph.AUTHENTICATION) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                        popUpTo(Screen.Splash.route) {
+                            inclusive = true
+                        }
                     }
                 }
             )
         }
 
-        // Onboarding giờ là một màn hình riêng biệt ở cấp cao nhất
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 viewModel = hiltViewModel<OnboardingViewModel>(),
                 onOnboardingComplete = {
-                    // Sau khi onboarding xong, điều hướng đến luồng xác thực
                     navController.navigate(Graph.AUTHENTICATION) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        popUpTo(Screen.Onboarding.route) {
+                            inclusive = true
+                        }
                     }
                 }
             )
         }
 
-        // Đồ thị con cho luồng Xác thực
-        authGraph(navController = navController)
+        authGraph(navController = navController, intent = intent)
 
         composable(route = Graph.MAIN_APP) {
             HomeScreen(
@@ -85,24 +113,26 @@ fun RootNavigationGraph(navController: NavHostController, intent: Intent) {
 }
 
 
-/**
- * Đồ thị con quản lý tất cả các màn hình liên quan đến Đăng nhập, Đăng ký.
- */
-fun NavGraphBuilder.authGraph(navController: NavHostController) {
+fun NavGraphBuilder.authGraph(navController: NavHostController, intent: Intent?) {
     navigation(
         route = Graph.AUTHENTICATION,
-        // Điểm bắt đầu hợp lý là màn hình Đăng nhập
         startDestination = Screen.SignIn.route
     ) {
-        // KHÔNG còn màn hình Onboarding ở đây
-        composable(Screen.AuthDecision.route) { /* AuthDecisionScreen(navController) */ }
+
         composable(Screen.SignIn.route) {
             SignInScreen(
                 viewModel = hiltViewModel<SignInViewModel>(),
-                onSignInSuccess = {},
+                onSignInSuccess = {
+                    navController.navigate(Graph.MAIN_APP) {
+                        popUpTo(Graph.AUTHENTICATION) { inclusive = true }
+                    }
+                },
                 onSignUpClick = {
                     navController.navigate(Screen.SignUp.route) {
-                        popUpTo(Screen.SignIn.route) { inclusive = true }
+                        popUpTo(Screen.SignIn.route) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
                     }
                 },
                 onForgotPasswordClick = {
@@ -114,69 +144,67 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
             SignUpScreen(
                 viewModel = hiltViewModel<SignUpViewModel>(),
                 onSignUpSuccess = {
-                    // Điều hướng sau khi đăng ký thành công
                     navController.navigate(Screen.Verification.route) {
-                        popUpTo(Screen.SignUp.route) { inclusive = true }
+                        popUpTo(Screen.SignUp.route) {
+                            inclusive = true
+                        }
                     }
                 },
                 onSignInClick = {
-                    navController.navigate(Screen.SignIn.route)
+                    navController.navigate(Screen.SignIn.route) {
+                        popUpTo(Screen.SignUp.route) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
                 },
             )
         }
 
         composable(Screen.ForgotPassword.route) {
-            ResetPasswordScreen(
-                viewModel = hiltViewModel<ResetPasswordViewModel>(),
-                onBackClick = {
-                    navController.navigate(Screen.SignIn.route)
-                }
+            ForgotPasswordScreen(
+                viewModel = hiltViewModel<ForgotPasswordViewModel>(),
+                onBackClick = { navController.popBackStack() }
             )
         }
+
         composable(Screen.Verification.route) {
+            val viewModel: VerificationViewModel = hiltViewModel<VerificationViewModel>()
+            val deepLink = intent?.data?.toString()
+
+            // Handle email verification deep link
+            LaunchedEffect(deepLink) {
+                val uri = deepLink?.let { Uri.parse(it) }
+                if (uri?.getQueryParameter("mode") == "verifyEmail") {
+                    viewModel.handleDeepLink(deepLink)
+                }
+            }
+
             VerificationScreen(
-                viewModel = hiltViewModel<VerificationViewModel>(),
+                viewModel = viewModel,
                 onVerified = {
                     navController.navigate(Graph.MAIN_APP) {
-                        popUpTo(Screen.Verification.route) { inclusive = true }
+                        popUpTo(Graph.AUTHENTICATION) {
+                            inclusive = true
+                        }
                     }
                 }
             )
         }
-    }
-}
 
-/**
- * NavHost cho các màn hình chính sau khi đăng nhập
- * Bao gồm các tab của Bottom Bar và các màn hình chi tiết khác.
- */
-
-@Composable
-fun MainAppNavGraph(navController: NavHostController) {
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Home.route
-    ) {
-        // 4 màn hình tab chính
-        composable(Screen.Home.route) {
-            HomeScreen(
-                viewModel = hiltViewModel<HomeViewModel>(),
-                navController = navController
+        // --- NEW SCREEN FOR PASSWORD RESET ---
+        composable(
+            route = Screen.ResetPassword.route,
+            arguments = listOf(navArgument("oobCode") { type = NavType.StringType })
+        ) {
+            ResetPasswordScreen(
+                onResetSuccess = {
+                    navController.navigate(Screen.SignIn.route) {
+                        // Clear the entire auth backstack and go to Sign In
+                        popUpTo(Graph.AUTHENTICATION) { inclusive = true }
+                    }
+                }
             )
         }
-        composable(Screen.Events.route) { /* EventsScreen(navController) */ }
-        composable(Screen.Map.route) { /* MapScreen(navController) */ }
-        composable(Screen.Profile.route) { /* MyProfileScreen(navController) */ }
-
-        // Các màn hình chi tiết được mở từ các tab
-        composable(
-            route = Screen.EventDetails.route,
-            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
-        ) { /* EventDetailsScreen(navController, eventId = ...) */ }
-
-        composable(Screen.Search.route) { /* SearchScreen(navController) */ }
-        composable(Screen.Notifications.route) { /* NotificationsScreen(navController) */ }
-        composable(Screen.MyBookings.route) { /* MyBookingsScreen(navController) */ }
-        // ... và các màn hình khác trong luồng chính
     }
 }

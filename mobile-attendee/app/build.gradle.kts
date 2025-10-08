@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.compose.animation.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -108,4 +109,5 @@ dependencies {
     implementation(libs.mpandroidchart) // line bar chart các kiểu
     implementation(libs.cloudinary.kotlin)
     implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("com.airbnb.android:lottie-compose:6.4.1")
 }

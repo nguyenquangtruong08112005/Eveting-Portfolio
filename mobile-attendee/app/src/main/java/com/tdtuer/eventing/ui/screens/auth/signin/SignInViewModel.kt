@@ -4,6 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SaveRememberMeStatusUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInUseCase
@@ -49,27 +52,33 @@ class SignInViewModel @Inject constructor(
         rememberMe = value
     }
 
-    fun onForgotPasswordClick() {
-        // Handle forgot password logic
+    override suspend fun onSocialLoginSuccess() {
+        saveRememberMeStatusUseCase(rememberMe)
     }
 
     fun onSignInClick() {
         if (email.isBlank() || password.isBlank()) {
-            _authState.value = AuthState.Error("Email và mật khẩu không được để trống.")
+            _authState.value = AuthState.Error("Email and password can't be blank.")
             return
         }
 
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result = signInUseCase(email, password)
+            val processedEmail = if (email.contains("@")) email else "$email@gmail.com"
+            val result = signInUseCase(processedEmail, password)
 
             if (result.isSuccess) {
                 saveRememberMeStatusUseCase(rememberMe)
-            }
-
-            _authState.value = when {
-                result.isSuccess -> AuthState.Success(result.getOrNull()!!)
-                else -> AuthState.Error(result.exceptionOrNull()?.message ?: "Lỗi không xác định")
+                _authState.value = AuthState.Success(result.getOrNull()!!)
+            } else {
+                val exception = result.exceptionOrNull()
+                val errorMessage = when (exception) {
+                    is FirebaseAuthInvalidCredentialsException -> "Incorrect email or password. Please try again."
+                    is FirebaseAuthInvalidUserException -> "No account found with this email address."
+                    is FirebaseNetworkException -> "Please check your internet connection and try again."
+                    else -> exception?.localizedMessage ?: "An unknown error occurred."
+                }
+                _authState.value = AuthState.Error(errorMessage)
             }
         }
     }

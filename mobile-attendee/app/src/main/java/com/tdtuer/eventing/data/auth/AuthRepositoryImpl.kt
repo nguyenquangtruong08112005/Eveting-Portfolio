@@ -45,7 +45,7 @@ class AuthRepositoryImpl @Inject constructor(
             val user = db.collection("Users").document(uid).get().await().toObject(User::class.java)
                 ?: return Result.failure(Exception("User not found"))
             Result.success(user)
-        } catch (e: FirebaseAuthInvalidUserException) {
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
@@ -127,7 +127,7 @@ class AuthRepositoryImpl @Inject constructor(
             val user = auth.currentUser
 
             val actionCodeSettings = ActionCodeSettings.newBuilder()
-                .setUrl("https://eventing-baa25.firebaseapp.com")
+                .setUrl("https://eventing-baa25.firebaseapp.com") 
                 .setHandleCodeInApp(true)
                 .setAndroidPackageName(
                     "com.tdtuer.eventing",
@@ -153,7 +153,44 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun applyVerificationCode(code: String): Result<Unit> {
+        return try {
+            auth.applyActionCode(code).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun signOut() {
         auth.signOut()
+    }
+
+    // --> ADDED FOR PASSWORD RESET
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun verifyPasswordResetCode(code: String): Result<String> {
+        return try {
+            val email = auth.verifyPasswordResetCode(code).await()
+            Result.success(email ?: "")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun confirmPasswordReset(code: String, newPassword: String): Result<Unit> {
+        return try {
+            auth.confirmPasswordReset(code, newPassword).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

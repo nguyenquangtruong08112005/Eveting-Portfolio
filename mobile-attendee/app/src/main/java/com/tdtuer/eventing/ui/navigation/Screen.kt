@@ -11,6 +11,12 @@ sealed class Screen(val route: String) {
     data object SignIn : Screen("sign_in_screen")
     data object SignUp : Screen("sign_up_screen")
     data object ForgotPassword : Screen("forgot_password_screen")
+
+    // --> ADDED FOR PASSWORD RESET
+    data object ResetPassword : Screen("reset_password_screen/{oobCode}") {
+        fun createRoute(oobCode: String) = "reset_password_screen/$oobCode"
+    }
+
     data object OtpVerification : Screen("otp_verification_screen")
 
     data object Verification : Screen("verification_screen")

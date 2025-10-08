@@ -323,6 +323,9 @@ fun AppFab(onClick: () -> Unit) {
 @Composable
 fun HomeScreenPreview() {
     EventingTheme {
-        // HomeScreen(viewModel = HomeViewModel()) // Preview needs a NavController now
+//         HomeScreen(
+//             viewModel = HomeViewModel(),
+//             navController = null
+//         ) // Preview needs a NavController now
     }
 }

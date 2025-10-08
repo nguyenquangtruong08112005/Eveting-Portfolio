@@ -1,133 +1,170 @@
 package com.tdtuer.eventing.ui.screens.auth.resetpassword
 
-import android.annotation.SuppressLint
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tdtuer.eventing.ui.components.GradientButton
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 @Composable
 fun ResetPasswordScreen(
-    viewModel: ResetPasswordViewModel = viewModel(), onBackClick: () -> Unit
+    viewModel: ResetPasswordViewModel = hiltViewModel(),
+    onResetSuccess: () -> Unit
 ) {
+    val uiState = viewModel
+
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            onResetSuccess()
+        }
+    }
+
     ResetPasswordContent(
-        email = viewModel.email,
-        onEmailChange = viewModel::onEmailChange,
-        onSendClick = viewModel::onSendClick,
-        onBackClick = onBackClick
+        newPassword = uiState.newPassword,
+        confirmPassword = uiState.confirmPassword,
+        isLoading = uiState.isLoading,
+        error = uiState.error,
+        onNewPasswordChange = viewModel::onNewPasswordChange,
+        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
+        onPerformReset = viewModel::performPasswordReset
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ResetPasswordContent(
-    email: String, onEmailChange: (String) -> Unit, onSendClick: () -> Unit, onBackClick: () -> Unit
+    newPassword: String,
+    confirmPassword: String,
+    isLoading: Boolean,
+    error: String?,
+    onNewPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
+    onPerformReset: () -> Unit
 ) {
-    Scaffold(
-        topBar = { ResetPasswordTopBar(onBackClick) }) { padding ->
-        Surface(
+    Scaffold {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            color = MaterialTheme.colorScheme.background
+                .padding(it)
+                .padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                ResetPasswordHeader()
-                Spacer(modifier = Modifier.height(32.dp))
-                ResetPasswordForm(
-                    email = email, onEmailChange = onEmailChange, onSendClick = onSendClick
+            Text("Set a New Password", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = newPassword,
+                onValueChange = onNewPasswordChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("New Password") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                isError = error?.contains("Password", ignoreCase = true) == true
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = onConfirmPasswordChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Confirm Password") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                isError = error?.contains("match", ignoreCase = true) == true
+            )
+
+            if (error != null) {
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 16.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onPerformReset,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text("Save New Password")
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ResetPasswordTopBar(onBackClick: () -> Unit) {
-    TopAppBar(title = {
-        Text(
-            text = "Reset Password", fontSize = 28.sp, fontWeight = FontWeight.Bold
-        )
-    }, navigationIcon = {
-        IconButton(onClick = onBackClick) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-        }
-    })
-}
-
-@Composable
-private fun ResetPasswordHeader() {
-    Text(
-        text = "Please enter your email address to request a password reset",
-        color = Color.Gray,
-        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-        lineHeight = 24.sp
-    )
-}
-
-@Composable
-private fun ResetPasswordForm(
-    email: String, onEmailChange: (String) -> Unit, onSendClick: () -> Unit
-) {
-    OutlinedTextField(
-        value = email,
-        onValueChange = onEmailChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Email") },
-        placeholder = { Text("abc@email.com") },
-        leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Icon") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp)
-    )
-    Spacer(modifier = Modifier.height(40.dp))
-    GradientButton(
-        text = "SEND", onClick = onSendClick
-    )
-}
-
-
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true, showSystemUi = true, name = "Default State")
 @Composable
 fun ResetPasswordScreenPreview() {
     EventingTheme {
-        // Since the ViewModel is not available in the preview, we pass empty state and lambdas
-        ResetPasswordContent(email = "", onEmailChange = {}, onSendClick = {}, onBackClick = {})
+        ResetPasswordContent(
+            newPassword = "",
+            confirmPassword = "",
+            isLoading = false,
+            error = null,
+            onNewPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onPerformReset = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "Error State")
+@Composable
+fun ResetPasswordScreenErrorPreview() {
+    EventingTheme {
+        ResetPasswordContent(
+            newPassword = "password123",
+            confirmPassword = "password456",
+            isLoading = false,
+            error = "Passwords do not match.",
+            onNewPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onPerformReset = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "Loading State")
+@Composable
+fun ResetPasswordScreenLoadingPreview() {
+    EventingTheme {
+        ResetPasswordContent(
+            newPassword = "password123",
+            confirmPassword = "password123",
+            isLoading = true,
+            error = null,
+            onNewPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onPerformReset = {}
+        )
     }
 }

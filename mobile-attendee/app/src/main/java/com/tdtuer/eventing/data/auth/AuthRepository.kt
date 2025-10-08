@@ -1,8 +1,8 @@
 package com.tdtuer.eventing.data.auth
 
-import kotlinx.coroutines.flow.Flow
-import com.tdtuer.eventing.domain.model.User
 import com.facebook.AccessToken
+import com.tdtuer.eventing.domain.model.User
+import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository {
     suspend fun signUp(name: String, email: String, password: String, role: String): Result<User>
@@ -14,5 +14,12 @@ interface AuthRepository {
     fun getCurrentUser(): Flow<User?>
     suspend fun sendEmailVerification(): Result<Unit>
     suspend fun checkEmailVerificationStatus(): Result<Boolean>
+    suspend fun applyVerificationCode(code: String): Result<Unit>
     suspend fun signOut()
+
+    // --> ADDED FOR PASSWORD RESET
+    suspend fun verifyPasswordResetCode(code: String): Result<String> // Returns the user's email
+    suspend fun confirmPasswordReset(code: String, newPassword: String): Result<Unit>
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit>
+
 }

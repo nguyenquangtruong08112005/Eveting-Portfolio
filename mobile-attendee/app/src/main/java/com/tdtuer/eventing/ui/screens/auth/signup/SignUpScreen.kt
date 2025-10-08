@@ -2,6 +2,7 @@ package com.tdtuer.eventing.ui.screens.auth.signup
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -36,10 +38,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -53,11 +61,7 @@ import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.screens.auth.AuthState
-import com.tdtuer.eventing.ui.theme.AppTheme
 
-/**
- * Composable chính, quản lý state và side-effects.
- */
 @Composable
 fun SignUpScreen(
     viewModel: SignUpViewModel = viewModel(),
@@ -67,7 +71,6 @@ fun SignUpScreen(
     val authState by viewModel.authState.collectAsState()
     val context = LocalContext.current
 
-    // Xử lý các side-effect (như hiển thị Toast) khi authState thay đổi
     LaunchedEffect(authState) {
         when (val state = authState) {
             is AuthState.Success -> {
@@ -79,7 +82,7 @@ fun SignUpScreen(
                 Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
             }
 
-            else -> { /* Không làm gì với Idle và Loading */
+            else -> { /* No-op for Idle and Loading */
             }
         }
     }
@@ -109,9 +112,6 @@ fun SignUpScreen(
     )
 }
 
-/**
- * Composable chứa toàn bộ giao diện của màn hình.
- */
 @Composable
 private fun SignUpContent(
     authState: AuthState,
@@ -130,11 +130,19 @@ private fun SignUpContent(
     onSignUpClick: () -> Unit,
     onGoogleLoginClick: () -> Unit,
     onFacebookLoginSuccess: (AccessToken) -> Unit,
-    onFacebookLoginError: (String?) -> Unit, // SỬA Ở ĐÂY
+    onFacebookLoginError: (String?) -> Unit,
     onSignInLinkClick: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            },
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
@@ -145,9 +153,7 @@ private fun SignUpContent(
                 .verticalScroll(rememberScrollState())
         ) {
             SignUpHeader(onSignInLinkClick = onSignInLinkClick)
-
             Spacer(modifier = Modifier.height(24.dp))
-
             SignUpForm(
                 fullName = fullName,
                 onFullNameChange = onFullNameChange,
@@ -164,27 +170,20 @@ private fun SignUpContent(
                 onSignUpClick = onSignUpClick,
                 isLoading = authState is AuthState.Loading
             )
-
             Spacer(modifier = Modifier.height(24.dp))
             OrDivider("Or continue with")
             Spacer(modifier = Modifier.height(24.dp))
-
             SocialLogins(
                 onGoogleLoginClick = onGoogleLoginClick,
                 onFacebookLoginSuccess = onFacebookLoginSuccess,
                 onFacebookLoginError = onFacebookLoginError
             )
-
             Spacer(modifier = Modifier.weight(1f))
-
             SignInRedirect(onSignInLinkClick = onSignInLinkClick)
         }
     }
 }
 
-/**
- * Hiển thị tiêu đề màn hình.
- */
 @Composable
 private fun SignUpHeader(onSignInLinkClick: () -> Unit) {
     Row(
@@ -193,12 +192,8 @@ private fun SignUpHeader(onSignInLinkClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 32.dp)
-
     ) {
-        IconButton(
-            onClick = onSignInLinkClick,
-
-            ) {
+        IconButton(onClick = onSignInLinkClick) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back to Sign In"
@@ -212,9 +207,6 @@ private fun SignUpHeader(onSignInLinkClick: () -> Unit) {
     }
 }
 
-/**
- * Chứa các trường nhập liệu và nút đăng ký chính.
- */
 @Composable
 private fun SignUpForm(
     fullName: String,
@@ -232,15 +224,27 @@ private fun SignUpForm(
     onSignUpClick: () -> Unit,
     isLoading: Boolean
 ) {
+    // 1. Create FocusRequesters
+    val (fullNameFR, emailFR, passwordFR, confirmPasswordFR) = remember { FocusRequester.createRefs() }
+
+    // 2. Auto-focus on the first field
+    LaunchedEffect(Unit) {
+        fullNameFR.requestFocus()
+    }
+
     Column {
         OutlinedTextField(
             value = fullName,
             onValueChange = onFullNameChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(fullNameFR),
             label = { Text("Full name") },
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Full name Icon") },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { emailFR.requestFocus() })
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -248,12 +252,18 @@ private fun SignUpForm(
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(emailFR),
             label = { Text("Email") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Icon") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            keyboardActions = KeyboardActions(onNext = { passwordFR.requestFocus() })
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -261,7 +271,9 @@ private fun SignUpForm(
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(passwordFR),
             label = { Text("Password") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
             trailingIcon = {
@@ -272,9 +284,13 @@ private fun SignUpForm(
                 }
             },
             visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            keyboardActions = KeyboardActions(onNext = { confirmPasswordFR.requestFocus() })
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -282,7 +298,9 @@ private fun SignUpForm(
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = onConfirmPasswordChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(confirmPasswordFR),
             label = { Text("Confirm password") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
             trailingIcon = {
@@ -293,9 +311,13 @@ private fun SignUpForm(
                 }
             },
             visualTransformation = if (confirmPasswordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            keyboardActions = KeyboardActions(onDone = { onSignUpClick() })
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -310,9 +332,6 @@ private fun SignUpForm(
     }
 }
 
-/**
- * Chứa các nút đăng nhập mạng xã hội.
- */
 @Composable
 private fun SocialLogins(
     onGoogleLoginClick: () -> Unit,
@@ -336,9 +355,6 @@ private fun SocialLogins(
     }
 }
 
-/**
- * Chứa link điều hướng sang màn hình Đăng nhập.
- */
 @Composable
 private fun SignInRedirect(onSignInLinkClick: () -> Unit) {
     Row(

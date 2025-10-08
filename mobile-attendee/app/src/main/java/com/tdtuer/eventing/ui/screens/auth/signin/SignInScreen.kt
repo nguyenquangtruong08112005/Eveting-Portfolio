@@ -2,6 +2,7 @@ package com.tdtuer.eventing.ui.screens.auth.signin
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -37,16 +38,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,6 +64,7 @@ import com.tdtuer.eventing.ui.components.OrDivider
 import com.tdtuer.eventing.ui.components.SocialLoginButton
 import com.tdtuer.eventing.ui.screens.auth.AuthState
 import com.tdtuer.eventing.ui.theme.AppTheme
+
 
 @Composable
 fun SignInScreen(
@@ -125,6 +132,7 @@ private fun SignInContent(
     onFacebookLoginError: (String?) -> Unit,
     onSignUpClick: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -132,6 +140,11 @@ private fun SignInContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
                 .navigationBarsPadding()
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
@@ -172,7 +185,7 @@ private fun SignInHeader() {
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 30.dp, end = 0.dp, top = 15.dp, bottom = 5.dp)
+            .padding(start = 0.dp, end = 0.dp, top = 15.dp, bottom = 5.dp)
     ) {
         Image(
             painter = painterResource(id = R.drawable.logo),
@@ -201,6 +214,9 @@ private fun SignInForm(
     onForgotPasswordClick: () -> Unit,
     isLoading: Boolean
 ) {
+    val (emailFR, passwordFR) = remember { FocusRequester.createRefs() }
+
+
     Column {
         Text(
             text = "Sign in",
@@ -211,10 +227,16 @@ private fun SignInForm(
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(emailFR),
             label = { Text("Email") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Icon") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(onNext = { passwordFR.requestFocus() }),
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
         )
@@ -222,7 +244,9 @@ private fun SignInForm(
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(passwordFR),
             label = { Text("Password") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
             trailingIcon = {
@@ -233,7 +257,11 @@ private fun SignInForm(
                 }
             },
             visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { onSignInClick() }),
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
         )
@@ -244,7 +272,11 @@ private fun SignInForm(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             TextButton(onClick = onForgotPasswordClick) {
-                Text("Forgot password?", fontSize = MaterialTheme.typography.bodyMedium.fontSize, color = AppTheme.extendedColors.textPrimary)
+                Text(
+                    "Forgot password?",
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    color = AppTheme.extendedColors.textPrimary
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Remember me", fontSize = MaterialTheme.typography.bodyMedium.fontSize)

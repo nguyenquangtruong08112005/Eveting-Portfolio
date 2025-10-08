@@ -26,6 +26,12 @@ abstract class BaseAuthViewModel(
     val authState: StateFlow<AuthState> = _authState
 
     /**
+     * Một phương thức hook có thể được ghi đè bởi các lớp con để thực hiện các hành động
+     * sau khi đăng nhập mạng xã hội thành công.
+     */
+    protected open suspend fun onSocialLoginSuccess() { /* Mặc định không làm gì */ }
+
+    /**
      * Xử lý logic đăng nhập bằng Google.
      */
     fun onGoogleLoginClick(context: Context) {
@@ -34,10 +40,11 @@ abstract class BaseAuthViewModel(
             // Client ID này nên được lưu trữ ở một nơi an toàn hơn, ví dụ: build.gradle
             getGoogleIdTokenUseCase(context, "265550348267-a28baingtr8kdclrf4g0bivdrg3gaee5.apps.googleusercontent.com").onSuccess { idToken ->
                 val signInResult = signInWithGoogleUseCase(idToken)
-                _authState.value = if (signInResult.isSuccess) {
-                    AuthState.Success(signInResult.getOrNull()!!)
+                if (signInResult.isSuccess) {
+                    onSocialLoginSuccess() // Gọi hook sau khi thành công
+                    _authState.value = AuthState.Success(signInResult.getOrNull()!!)
                 } else {
-                    AuthState.Error(signInResult.exceptionOrNull()?.message ?: "Google Sign-In failed")
+                    _authState.value = AuthState.Error(signInResult.exceptionOrNull()?.message ?: "Google Sign-In failed")
                 }
             }.onFailure { exception ->
                 _authState.value = AuthState.Error(exception.message ?: "An unknown error occurred during Google sign-in.")
@@ -52,6 +59,7 @@ abstract class BaseAuthViewModel(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             signInWithFacebookUseCase(token).onSuccess {
+                onSocialLoginSuccess() // Gọi hook sau khi thành công
                 _authState.value = AuthState.Success(it)
             }.onFailure {
                 _authState.value = AuthState.Error(it.message ?: "Facebook Sign-In failed")
