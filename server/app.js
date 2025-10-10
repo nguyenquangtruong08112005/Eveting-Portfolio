@@ -1,0 +1,46 @@
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
+require('dotenv').config();
+
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/users.routes');
+var eventsRouter = require('./routes/events.routes');
+var ticketsRouter = require('./routes/tickets.routes');
+var artistsRouter = require('./routes/artists.routes');
+var reviewsRouter = require('./routes/reviews.routes');
+var promotionsRouter = require('./routes/promotions.routes');
+var notificationsRouter = require('./routes/notifications.routes');
+var analyticsRouter = require('./routes/analytics.routes');
+var organizerRouter = require('./routes/organizer.routes');
+var paymentsRouter = require('./routes/payments.routes');
+
+var app = express();
+
+app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/events', eventsRouter);
+app.use('/tickets', ticketsRouter);
+app.use('/artists', artistsRouter);
+app.use('/reviews', reviewsRouter);
+app.use('/promotions', promotionsRouter);
+app.use('/notifications', notificationsRouter);
+app.use('/analytics', analyticsRouter);
+app.use('/organizer', organizerRouter);
+app.use('/payments', paymentsRouter);
+
+// ======================
+// Tạo server trực tiếp ở đây
+// ======================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+module.exports = app;
