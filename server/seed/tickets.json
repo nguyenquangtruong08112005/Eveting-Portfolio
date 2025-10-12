@@ -1,0 +1,93 @@
+[
+  {
+    "id": "tkt_alice_vdf_1",
+    "eventId": "evt_vdf_hcm_2025",
+    "userId": "user_alice",
+    "organizerId": "org_pro_asia",
+    "type": "Standard",
+    "price": 1000000,
+    "seat": "A2",
+    "qrCode": "EVENTING_TKT_alice_vdf_1",
+    "status": "paid",
+    "purchaseDate": 1759000000000,
+    "groupId": "group_tech_lovers"
+  },
+  {
+    "id": "tkt_bob_vdf_1",
+    "eventId": "evt_vdf_hcm_2025",
+    "userId": "user_bob",
+    "organizerId": "org_pro_asia",
+    "type": "EarlyBird",
+    "price": 700000,
+    "seat": "C10",
+    "qrCode": "EVENTING_TKT_bob_vdf_1",
+    "status": "paid",
+    "purchaseDate": 1758500000000,
+    "groupId": "group_tech_lovers"
+  },
+  {
+    "id": "tkt_diana_rapviet_1",
+    "eventId": "evt_rapviet_allstar_2025",
+    "userId": "user_diana",
+    "organizerId": "org_pro_asia",
+    "type": "VIP",
+    "price": 3000000,
+    "seat": null,
+    "qrCode": "EVENTING_TKT_diana_rapviet_1",
+    "status": "paid",
+    "purchaseDate": 1760000000000,
+    "groupId": null
+  },
+  {
+    "id": "tkt_alice_ravolution_1",
+    "eventId": "evt_ravolution_hanoi_2026",
+    "userId": "user_alice",
+    "organizerId": "org_pro_asia",
+    "type": "GA",
+    "price": 950000,
+    "seat": null,
+    "qrCode": "EVENTING_TKT_alice_ravolution_1",
+    "status": "paid",
+    "purchaseDate": 1761000000000,
+    "groupId": null
+  },
+  {
+    "id": "tkt_bob_tedx_1",
+    "eventId": "evt_tedx_danang_2025",
+    "userId": "user_bob",
+    "organizerId": "org_pro_asia",
+    "type": "Standard",
+    "price": 500000,
+    "seat": "C5",
+    "qrCode": "EVENTING_TKT_bob_tedx_1",
+    "status": "paid",
+    "purchaseDate": 1760500000000,
+    "groupId": null
+  },
+  {
+    "id": "tkt_charlie_ballet_1",
+    "eventId": "evt_ballet_hoabattu_2025",
+    "userId": "user_charlie_artist",
+    "organizerId": "org_pro_asia",
+    "type": "ZoneA",
+    "price": 1500000,
+    "seat": "A10",
+    "qrCode": "EVENTING_TKT_charlie_ballet_1",
+    "status": "pending",
+    "purchaseDate": 1762000000000,
+    "groupId": null
+  },
+  {
+    "id": "tkt_alice_lany_past",
+    "eventId": "evt_lany_concert_2025_past",
+    "userId": "user_alice",
+    "organizerId": "org_pro_asia",
+    "type": "Standard",
+    "price": 1200000,
+    "seat": null,
+    "qrCode": "EVENTING_TKT_alice_lany_past",
+    "status": "checkedIn",
+    "purchaseDate": 1728000000000,
+    "groupId": null
+  }
+]

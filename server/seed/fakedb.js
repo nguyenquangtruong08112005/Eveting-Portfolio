@@ -23,9 +23,9 @@ const createFakeUser = (role, id, name, email, history) => ({
   followedArtistIds: role === 'attendee' ? [ARTIST_ID_ROCK] : [],
   points: role === 'attendee' ? faker.number.int({ min: 50, max: 5000 }) : 0,
   level: role === 'attendee' ? (faker.datatype.boolean() ? 'premium' : 'basic') : 'organizer',
-  matchingPreferences: { 
-    ageRange: '20-30', 
-    interests: role === 'attendee' ? ['music', 'tech'] : ['business', 'marketing'] 
+  matchingPreferences: {
+    ageRange: '20-30',
+    interests: role === 'attendee' ? ['music', 'tech'] : ['business', 'marketing']
   },
   sharedMedia: [],
 });
@@ -82,7 +82,7 @@ const dbSeed = {
     createFakeUser('attendee', ATTENDEE_ID_2, 'Bob The Builder', 'bob@mail.com', [EVENT_ID_2]),
     ...Array.from({ length: 5 }, () => createFakeUser('attendee', faker.database.mongodbObjectId(), null, null, [faker.helpers.arrayElement([EVENT_ID_1, EVENT_ID_2])]))
   ],
-  
+
   Events: [
     createFakeEvent(EVENT_ID_1, "The Future of AI Summit 2025", ORGANIZER_ID, ["conference", "tech"], false, 85, 550000000),
     createFakeEvent(EVENT_ID_2, "Summer Music Festival - Rock Night", ORGANIZER_ID, ["music", "festival", "rock"], true, 95, 1600000000),

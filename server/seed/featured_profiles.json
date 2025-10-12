@@ -1,0 +1,56 @@
+[
+  {
+    "id": "fp_hat",
+    "name": "Hà Anh Tuấn",
+    "profileType": "artist",
+    "bio": "Nổi tiếng với những bản tình ca sâu lắng và các concert mang đậm dấu ấn cá nhân.",
+    "imageUrl": "url_to_ha_anh_tuan_image",
+    "genres": ["v-pop", "ballad"],
+    "followerCount": 1500000
+  },
+  {
+    "id": "fp_tedx_speakers",
+    "name": "Dàn diễn giả TEDx Da Nang",
+    "profileType": "speaker",
+    "bio": "Những cá nhân có câu chuyện truyền cảm hứng và ý tưởng đột phá trong nhiều lĩnh vực.",
+    "imageUrl": "url_to_tedx_logo",
+    "genres": [],
+    "followerCount": 50000
+  },
+  {
+    "id": "fp_ravolution_djs",
+    "name": "Dàn DJ Ravolution",
+    "profileType": "artist",
+    "bio": "Quy tụ những tên tuổi DJ hàng đầu thế giới và Việt Nam, mang đến những set nhạc EDM bùng nổ.",
+    "imageUrl": "url_to_ravolution_poster",
+    "genres": ["edm", "trance", "house"],
+    "followerCount": 250000
+  },
+  {
+    "id": "fp_rapviet_stars",
+    "name": "Rap Việt All-Stars",
+    "profileType": "artist",
+    "bio": "Những gương mặt HLV, giám khảo và thí sinh đình đám nhất từ chương trình Rap Việt.",
+    "imageUrl": "url_to_rapviet_logo",
+    "genres": ["hip-hop", "v-rap"],
+    "followerCount": 800000
+  },
+  {
+    "id": "fp_google_experts",
+    "name": "Chuyên gia Google",
+    "profileType": "speaker",
+    "bio": "Các kỹ sư và chuyên gia hàng đầu từ Google chia sẻ về AI, Cloud và các công nghệ mới nhất.",
+    "imageUrl": "url_to_google_logo",
+    "genres": [],
+    "followerCount": 120000
+  },
+  {
+    "id": "fp_riot_games",
+    "name": "Riot Games",
+    "profileType": "exhibitor",
+    "bio": "Nhà phát hành của các tựa game eSports hàng đầu thế giới như Liên Minh Huyền Thoại và Valorant.",
+    "imageUrl": "url_to_riot_logo",
+    "genres": [],
+    "followerCount": 3000000
+  }
+]

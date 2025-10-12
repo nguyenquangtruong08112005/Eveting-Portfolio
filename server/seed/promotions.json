@@ -1,0 +1,42 @@
+[
+  {
+    "id": "promo_earlybird_vdf",
+    "code": "VDFEARLY20",
+    "eventId": "evt_vdf_hcm_2025",
+    "discountPercent": 0.2,
+    "discountAmount": 0,
+    "validUntil": 1760000000000,
+    "usageLimit": 200,
+    "usedCount": 50
+  },
+  {
+    "id": "promo_member_10",
+    "code": "MEMBER10",
+    "eventId": null,
+    "discountPercent": 0.1,
+    "discountAmount": 0,
+    "validUntil": 1800000000000,
+    "usageLimit": 10000,
+    "usedCount": 120
+  },
+  {
+    "id": "promo_rapviet_combo",
+    "code": "RAPVIETGROUP",
+    "eventId": "evt_rapviet_allstar_2025",
+    "discountPercent": 0.15,
+    "discountAmount": 0,
+    "validUntil": 1767000000000,
+    "usageLimit": 500,
+    "usedCount": 45
+  },
+  {
+    "id": "promo_100k_off",
+    "code": "EVENTING100K",
+    "eventId": null,
+    "discountPercent": 0,
+    "discountAmount": 100000,
+    "validUntil": 1790000000000,
+    "usageLimit": 2000,
+    "usedCount": 350
+  }
+]

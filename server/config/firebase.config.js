@@ -10,6 +10,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const auth = admin.auth();
+const FieldValue = admin.firestore.FieldValue; // <-- Dòng mới
 
-// Export db và auth để các file khác có thể sử dụng
-module.exports = { db, auth };
+// Export db, auth, và FieldValue để các file khác có thể sử dụng
+module.exports = { db, auth, FieldValue };

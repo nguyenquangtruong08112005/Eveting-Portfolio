@@ -1,0 +1,42 @@
+[
+  {
+    "id": "rev_alice_lany_1",
+    "eventId": "evt_lany_concert_2025_past",
+    "userId": "user_alice",
+    "rating": 5,
+    "comment": "Đêm nhạc thật tuyệt vời! Âm thanh, ánh sáng đều hoàn hảo. Mong LANY sớm quay trở lại Việt Nam.",
+    "createdAt": 1728700000000
+  },
+  {
+    "id": "rev_bob_vdf_1",
+    "eventId": "evt_vdf_hcm_2025",
+    "userId": "user_bob",
+    "rating": 4,
+    "comment": "Hội thảo rất bổ ích, nhiều diễn giả chất lượng. Tuy nhiên khu vực networking hơi đông.",
+    "createdAt": 1765600000000
+  },
+  {
+    "id": "rev_diana_rapviet_1",
+    "eventId": "evt_rapviet_allstar_2025",
+    "userId": "user_diana",
+    "rating": 5,
+    "comment": "Cháy hết mình!!! Sân khấu đỉnh của chóp.",
+    "createdAt": 1767200000000
+  },
+  {
+    "id": "rev_alice_foodfest_1",
+    "eventId": "evt_foodfest_saigon_2025",
+    "userId": "user_alice",
+    "rating": 4,
+    "comment": "Nhiều món ăn ngon và đa dạng. Giá hơi cao một chút nhưng chấp nhận được.",
+    "createdAt": 1760000000000
+  },
+  {
+    "id": "rev_charlie_art_1",
+    "eventId": "evt_art_exhibit_hanoi_2026",
+    "userId": "user_charlie_artist",
+    "rating": 5,
+    "comment": "Triển lãm rất ý nghĩa, các tác phẩm mang đậm tính di sản nhưng vẫn rất đương đại.",
+    "createdAt": 1784400000000
+  }
+]

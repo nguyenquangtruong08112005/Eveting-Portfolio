@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken } = require('../middleware/authMiddleware');
+const { verifyAuthToken } = require('../middleware/auth.middleware');
 
 // Middleware để kiểm tra quyền organizer cho các route trong file này
 const isOrganizer = async (req, res, next) => {

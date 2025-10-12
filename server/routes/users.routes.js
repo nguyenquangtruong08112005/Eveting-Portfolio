@@ -1,24 +1,27 @@
+// routes/users.routes.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken } = require('../middleware/authMiddleware');
+const { verifyAuthToken } = require('../middleware/auth.middleware');
+const userController = require('../controllers/user.controller');
+const ticketController = require('../controllers/ticket.controller');
 
-// [POST] /users/register - Tạo thông tin user trong Firestore sau khi đăng ký
-router.post('/register', verifyAuthToken, (req, res) => {
-  // Logic: Lấy uid, email từ req.user (đã được middleware xác thực)
-  // Tạo document mới trong collection 'Users'
-  res.status(201).send(`User ${req.user.uid} profile creation initiated.`);
-});
+// [POST] /users/register - Tạo hồ sơ user trong Firestore sau khi đăng ký Firebase Auth
+// TODO: This route will be depreacated because mobile app already call this after sign up
+router.post('/register', verifyAuthToken, userController.registerUser);
 
 // [GET] /users/me - Lấy thông tin hồ sơ của người dùng đang đăng nhập
-router.get('/me', verifyAuthToken, (req, res) => {
-  // Logic: Dùng req.user.uid để truy vấn collection 'Users'
-  res.send(`GET profile for user ${req.user.uid}`);
-});
+router.get('/me', verifyAuthToken, userController.getCurrentUserProfile);
 
 // [PUT] /users/me - Cập nhật thông tin hồ sơ của người dùng
-router.put('/me', verifyAuthToken, (req, res) => {
-  // Logic: Dùng req.user.uid để cập nhật document tương ứng
-  res.send(`Update profile for user ${req.user.uid}`);
-});
+router.put('/me', verifyAuthToken, userController.updateUserProfile);
+
+// [GET] /users/me/tickets - Lấy danh sách vé của người dùng đang đăng nhập
+router.get('/me/tickets', verifyAuthToken, ticketController.getCurrentUserTickets);
+
+// [POST] /users/me/follow - Theo dõi một hồ sơ nổi bật
+router.post('/me/follow', verifyAuthToken, userController.followProfile);
+
+// [DELETE] /users/me/follow/:profileId - Bỏ theo dõi một hồ sơ nổi bật
+router.delete('/me/follow/:profileId', verifyAuthToken, userController.unfollowProfile);
 
 module.exports = router;

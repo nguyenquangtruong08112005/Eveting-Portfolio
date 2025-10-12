@@ -1,0 +1,220 @@
+## Sơ Đồ ERD - Chi Tiết Entities & Attributes (Phiên bản cuối)
+1. Entity: Users
+(Thực thể trung tâm cho mọi tài khoản: Attendee, Organizer, Collaborator)
+id (String, Primary Key): ID người dùng, lấy từ Firebase Auth (uid).
+email (String): Email đăng nhập.
+
+name (String): Tên hiển thị.
+
+profilePicUrl (String): URL ảnh đại diện.
+
+birthDate (Timestamp): Ngày sinh của người dùng (để tính tuổi).
+
+roles (Array<String>): Quan trọng. Xác định vai trò (["attendee"], ["organizer"]).
+
+createdAt (Timestamp): Ngày tạo tài khoản.
+
+followedProfileIds (Array<String>): Danh sách ID các FeaturedProfiles mà người dùng theo dõi.
+
+historyEventIds (Array<String>): Lịch sử các sự kiện đã tham gia.
+
+points (Number): Điểm tích lũy cho chương trình thành viên.
+
+level (String): Cấp bậc thành viên ('bronze', 'silver', 'gold').
+
+matchingPreferences (Map): Tùy chọn để tìm bạn đi cùng.
+
+interests (Array<String>): Sở thích (["music", "tech"]).
+
+ageRange (String): Khoảng tuổi mong muốn ("20-30").
+
+sharedMedia (Array<Map>): Media người dùng đã chia sẻ sau sự kiện.
+
+eventId (String).
+
+mediaUrl (String).
+
+2. Entity: FeaturedProfiles
+(Hồ sơ công khai cho ca sĩ, diễn giả, doanh nghiệp nổi bật...)
+
+id (String, Primary Key): ID của hồ sơ.
+
+name (String): Tên (ca sĩ, diễn giả, công ty...).
+
+profileType (String): Loại hồ sơ ('artist', 'speaker', 'exhibitor').
+
+bio (String): Tiểu sử/Mô tả.
+
+imageUrl (String): URL hình ảnh đại diện/logo.
+
+genres (Array<String>): (Optional) Thể loại (cho ca sĩ).
+
+followerCount (Number): Số lượng người theo dõi.
+
+3. Entity: Events
+(Thực thể cốt lõi, đã được nâng cấp)
+
+id (String, Primary Key): ID sự kiện.
+
+name (String): Tên sự kiện.
+
+description (String): Mô tả chi tiết.
+
+featuredProfileIds (Array<String>): Danh sách ID các FeaturedProfiles tham gia.
+
+category (Array<String>): Thể loại chính (["music", "conference"]).
+
+tags (Array<String>): Các từ khóa chi tiết để tìm kiếm và gợi ý AI.
+
+date (Timestamp): Thời gian bắt đầu.
+
+endDate (Timestamp): (Optional) Thời gian kết thúc.
+
+location (GeoPoint): Tọa độ địa lý.
+
+geohash (String): Chuỗi geohash để tìm kiếm lân cận.
+
+venueId (String): ID tham chiếu đến collection Venues.
+
+ticketTypes (Map): Quản lý các loại vé.
+
+videoUrl (String): Video giới thiệu.
+
+isOutdoor (Boolean): Sự kiện ngoài trời hay không.
+
+organizerId (String): ID của User có vai trò organizer.
+
+status (String): Trạng thái ('active', 'cancelled', 'finished').
+
+visibility (String): Chế độ hiển thị ('public', 'unlisted').
+
+recurringRule (Map): (Optional) Quy tắc cho sự kiện lặp lại ({ "frequency": "weekly" }).
+
+hotScore (Number): Điểm hot.
+
+viewCount (Number): Lượt xem.
+
+requiredAge (Number): Độ tuổi tối thiểu yêu cầu.
+
+sponsors (Array<Map>): Danh sách nhà tài trợ.
+
+createdAt (Timestamp): Ngày tạo sự kiện.
+
+lastUpdatedAt (Timestamp): Lần cập nhật cuối.
+
+4. Entity: Venues
+(Địa điểm tổ chức có thể tái sử dụng)
+
+id (String, Primary Key): ID địa điểm.
+
+name (String): Tên địa điểm.
+
+address (String): Địa chỉ.
+
+location (GeoPoint): Tọa độ.
+
+nearby (Array<String>): Các địa điểm lân cận.
+
+seatMapTemplate (Map): Sơ đồ ghế mặc định.
+
+5. Entity: Tickets
+(Mỗi vé là một document)
+
+id (String, Primary Key): ID vé.
+
+eventId (String): ID sự kiện.
+
+userId (String): ID người mua vé.
+
+organizerId (String): ID người tổ chức.
+
+type (String): Loại vé ("VIP").
+
+price (Number): Giá vé.
+
+seat (String): (Optional) Vị trí ghế.
+
+qrCode (String): Chuỗi mã hóa cho QR code.
+
+status (String): Trạng thái ('pending', 'paid', 'checkedIn').
+
+purchaseDate (Timestamp): Ngày mua vé.
+
+groupId (String): (Optional) ID của nhóm mua chung.
+
+6. Entity: Reviews
+(Đánh giá của người dùng)
+
+id (String, Primary Key): ID review.
+
+eventId (String): ID sự kiện.
+
+userId (String): ID người viết.
+
+rating (Number): Điểm đánh giá (1-5).
+
+comment (String): Nội dung.
+
+createdAt (Timestamp): Ngày đăng.
+
+7. Entity: Promotions
+(Quản lý khuyến mãi)
+
+id (String, Primary Key): ID khuyến mãi.
+
+code (String): Mã khuyến mãi.
+
+eventId (String): (Optional) Nếu null, áp dụng cho mọi sự kiện.
+
+discountPercent (Number): Phần trăm giảm giá.
+
+discountAmount (Number): Số tiền giảm giá cố định.
+
+validUntil (Timestamp): Ngày hết hạn.
+
+usageLimit (Number): Giới hạn sử dụng.
+
+usedCount (Number): Số lần đã dùng.
+
+8. Entity: Notifications
+(Thông báo cho người dùng)
+
+id (String, Primary Key): ID thông báo.
+
+userId (String): ID người nhận (hoặc "all").
+
+title (String): Tiêu đề.
+
+message (String): Nội dung.
+
+type (String): Loại ('reminder', 'update').
+
+eventId (String): (Optional) ID sự kiện liên quan.
+
+isRead (Boolean): Trạng thái đã đọc.
+
+createdAt (Timestamp): Thời gian gửi.
+
+9. Entity: Analytics
+(Dữ liệu thống kê cho Organizer)
+
+eventId (String, Primary Key): Dùng ID sự kiện làm key.
+
+totalRevenue (Number): Tổng doanh thu.
+
+ticketsSold (Map): Số vé bán theo loại.
+
+checkIns (Number): Số lượng đã check-in.
+
+viewsOverTime (Map): Lượt xem theo ngày.
+
+10. Entity: Collaborators
+(Phân quyền cho nhân viên của Organizer)
+
+id (String, Primary Key): ID bản ghi.
+
+organizerId (String): ID của User là chủ tổ chức.
+
+collaboratorId (String): ID của User được cấp quyền.
+
+permissions (Array<String>): Mảng các quyền được cấp (["checkIn"]).
