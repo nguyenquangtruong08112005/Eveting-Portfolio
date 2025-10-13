@@ -1,22 +1,23 @@
+// routes/organizer.routes.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken } = require('../middleware/auth.middleware');
+const { verifyAuthToken, isOrganizer } = require('../middleware/auth.middleware');
+const organizerController = require('../controllers/organizer.controller');
 
-// Middleware để kiểm tra quyền organizer cho các route trong file này
-const isOrganizer = async (req, res, next) => {
-    // Logic: Dựa vào req.user.uid, truy vấn DB để xác nhận role là 'organizer'
-    console.log(`Checking organizer permissions for user ${req.user.uid}`);
-    next();
-};
+// Tất cả các route trong file này đều yêu cầu đăng nhập và có vai trò organizer
+router.use(verifyAuthToken, isOrganizer);
 
 // [GET] /organizer/events/:eventId/attendees - Lấy danh sách người tham gia
-router.get('/events/:eventId/attendees', verifyAuthToken, isOrganizer, (req, res) => {
-    res.send(`GET attendees for event ${req.params.eventId}`);
-});
+router.get(
+    '/events/:eventId/attendees', 
+    organizerController.verifyEventOwnership, 
+    organizerController.getEventAttendees
+);
 
 // [POST] /organizer/tickets/:ticketId/check-in - Check-in vé
-router.post('/tickets/:ticketId/check-in', verifyAuthToken, isOrganizer, (req, res) => {
-    res.send(`Check-in for ticket ${req.params.ticketId}`);
-});
+router.post(
+    '/tickets/:ticketId/check-in',
+    organizerController.checkInTicket
+);
 
 module.exports = router;
