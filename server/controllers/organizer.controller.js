@@ -33,15 +33,39 @@ const getEventAttendees = async (req, res) => {
 const checkInTicket = async (req, res) => {
     try {
         const { ticketId } = req.params;
+        const requestingOrganizerId = req.user.uid; // ID của organizer đang yêu cầu check-in
 
-        // TODO: Cần thêm một bước kiểm tra xem ticket này có thuộc sự kiện của organizer không
-        // để tăng cường bảo mật.
+        // 1. Lấy thông tin vé
+        const ticketRef = db.collection('Tickets').doc(ticketId);
+        const ticketDoc = await ticketRef.get();
 
+        if (!ticketDoc.exists) {
+            return res.status(404).send({ error: 'Ticket not found.' });
+        }
+        const ticketData = ticketDoc.data();
+
+        // 2. Lấy thông tin sự kiện của vé đó
+        const eventRef = db.collection('Events').doc(ticketData.eventId);
+        const eventDoc = await eventRef.get();
+
+        if (!eventDoc.exists) {
+             // Trường hợp hiếm gặp: vé tồn tại nhưng sự kiện không còn
+            return res.status(404).send({ error: 'Event associated with this ticket not found.' });
+        }
+
+        // 3. So sánh organizerId của sự kiện với người yêu cầu
+        if (eventDoc.data().organizerId !== requestingOrganizerId) {
+            return res.status(403).send({ error: 'Forbidden: You do not have permission to check-in tickets for this event.' });
+        }
+
+        // Nếu quyền hợp lệ, gọi service để check-in
         const updatedTicket = await organizerService.checkInTicket(ticketId);
         res.status(200).json(updatedTicket);
+
     } catch (error) {
         console.error("Error in Organizer Controller - checkInTicket: ", error);
-        res.status(400).send({ error: error.message });
+        // Trả về lỗi cụ thể từ service nếu có (ví dụ: vé đã check-in, vé không phải 'paid')
+        res.status(400).send({ error: error.message || 'Failed to check-in ticket.' });
     }
 };
 

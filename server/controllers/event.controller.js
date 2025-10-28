@@ -4,8 +4,12 @@ const eventService = require('../services/event.service');
 
 const getAllEvents = async (req, res) => {
   try {
-    const events = await eventService.getAllEvents();
-    res.status(200).json(events);
+    // Lấy page và limit từ query params, chuyển sang số và đặt giá trị mặc định
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const result = await eventService.getAllEvents(page, limit);
+    res.status(200).json(result); // Trả về cấu trúc mới bao gồm cả pagination
   } catch (error) {
     console.error("Error in Event Controller - getAllEvents: ", error);
     res.status(500).send({ error: 'Internal Server Error' });

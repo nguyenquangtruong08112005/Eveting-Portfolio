@@ -4,6 +4,7 @@ const router = express.Router();
 const { verifyAuthToken } = require('../middleware/auth.middleware');
 const userController = require('../controllers/user.controller');
 const ticketController = require('../controllers/ticket.controller');
+const { validateProfileUpdate } = require('../utils/validators/user.validator');
 
 // [POST] /users/register - Tạo hồ sơ user trong Firestore sau khi đăng ký Firebase Auth
 // TODO: This route will be depreacated because mobile app already call this after sign up
@@ -13,7 +14,7 @@ router.post('/register', verifyAuthToken, userController.registerUser);
 router.get('/me', verifyAuthToken, userController.getCurrentUserProfile);
 
 // [PUT] /users/me - Cập nhật thông tin hồ sơ của người dùng
-router.put('/me', verifyAuthToken, userController.updateUserProfile);
+router.put('/me', verifyAuthToken, validateProfileUpdate, userController.updateUserProfile);
 
 // [GET] /users/me/tickets - Lấy danh sách vé của người dùng đang đăng nhập
 router.get('/me/tickets', verifyAuthToken, ticketController.getCurrentUserTickets);
