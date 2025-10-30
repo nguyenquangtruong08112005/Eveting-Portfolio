@@ -3,16 +3,18 @@ package com.tdtuer.eventing.domain.model
 data class User(
     val id: String = "",
     val email: String = "",
-    // Không lưu passwordHash - dùng Firebase Auth
-    val role: String = "attendee",  // Default attendee
+    val role: List<String> = listOf("attendee"), // Sử dụng List thay cho Array
     val name: String = "",
     val profilePicUrl: String = "",
     val historyEventIds: List<String> = emptyList(),
     val followedArtistIds: List<String> = emptyList(),
-    val points: Double = 0.0,  // Sử dụng Double cho chính xác
+    val points: Double = 0.0,
     val level: String = "basic",
     val matchingPreferences: Map<String, Any> = emptyMap(),
-    val sharedMedia: List<Map<String, String>> = emptyList()  // {eventId, mediaUrl}
+    val sharedMedia: List<Map<String, String>> = emptyList()
 ) {
-    fun isOrganizer() = role == "organizer"  // Helper method cho phân quyền
+    fun isOrganizer() = role.contains("organizer")
+
+    // Firebase yêu cầu constructor không tham số để deserialization
+    constructor() : this("", "", listOf("attendee"), "", "", emptyList(), emptyList(), 0.0, "basic", emptyMap(), emptyList())
 }

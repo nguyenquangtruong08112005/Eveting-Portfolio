@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.data.auth
 
+import android.util.Log
 import com.facebook.AccessToken
 import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FacebookAuthProvider
@@ -27,7 +28,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: return Result.failure(Exception("Sign up failed"))
-            val user = User(id = uid, name = name, email = email, role = role)
+            val user = User(id = uid, name = name, email = email, role = listOf(role))
             db.collection("Users").document(uid).set(user).await()
             Result.success(user)
         } catch (e: Exception) {
@@ -44,6 +45,8 @@ class AuthRepositoryImpl @Inject constructor(
             val uid = result.user?.uid ?: return Result.failure(Exception("Sign in failed"))
             val user = db.collection("Users").document(uid).get().await().toObject(User::class.java)
                 ?: return Result.failure(Exception("User not found"))
+            val idToken = result.user?.getIdToken(false)?.await()?.token
+            Log.d("AuthRepositoryImpl", "ID Token: $idToken")
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -127,12 +130,12 @@ class AuthRepositoryImpl @Inject constructor(
             val user = auth.currentUser
 
             val actionCodeSettings = ActionCodeSettings.newBuilder()
-                .setUrl("https://eventing-baa25.firebaseapp.com") 
+                .setUrl("https://eventing-baa25.firebaseapp.com")
                 .setHandleCodeInApp(true)
                 .setAndroidPackageName(
                     "com.tdtuer.eventing",
-                    true, 
-                    null  
+                    true,
+                    null
                 )
                 .build()
 
