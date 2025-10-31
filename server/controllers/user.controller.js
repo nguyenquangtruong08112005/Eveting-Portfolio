@@ -35,7 +35,6 @@ const getCurrentUserProfile = async (req, res) => {
 const updateUserProfile = async (req, res) => {
     try {
         const updatedUser = await userService.updateUserProfile(req.user.uid, req.body);
-        console.log(req.body);
 
         res.status(200).json(updatedUser);
     } catch (error) {

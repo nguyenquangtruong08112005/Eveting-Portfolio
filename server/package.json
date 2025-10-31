@@ -11,6 +11,7 @@
     "debug": "~2.6.9",
     "dotenv": "^17.2.2",
     "express": "~4.16.1",
+    "express-rate-limit": "^8.2.0",
     "express-validator": "^7.3.0",
     "firebase-admin": "^13.5.0",
     "geofire-common": "^6.0.0",
