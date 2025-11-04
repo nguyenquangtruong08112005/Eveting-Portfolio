@@ -57,7 +57,15 @@ const getEventById = async (eventId, requestingUser = null) => {
     }
 
     const eventData = eventDoc.data();
+    let venueData = null;
 
+    if (eventData.venueId) {
+        const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
+        if (venueDoc.exists) {
+            venueData = venueDoc.data();
+        }
+    }
+    
     // Kiểm tra visibility
     if (eventData.visibility === 'public') {
         return { id: eventDoc.id, ...eventData }; // Public thì ai cũng xem được
@@ -79,9 +87,9 @@ const getEventById = async (eventId, requestingUser = null) => {
     // Các trường hợp khác (ví dụ: unlisted nhưng user thường) - hiện tại chưa cho xem
     // TODO: Có thể thêm logic chia sẻ link unlisted sau
     if (eventData.visibility === 'unlisted') {
-        // Tạm thời chưa cho user thường xem unlisted qua ID trực tiếp
+        // Ai cũng xem được 'unlisted' miễn là đã đăng nhập (hoặc có link - logic này xử lý ở client/controller)
+        // Tạm thời cho phép nếu đã đăng nhập
         return { id: eventDoc.id, ...eventData };
-        // return null;
     }
 
     return null; // Mặc định là không cho xem private/unlisted nếu không đủ quyền
@@ -97,7 +105,7 @@ const getEventById = async (eventId, requestingUser = null) => {
 const createEvent = async (eventData, organizerId) => {
     const eventId = `evt_${uuidv4()}`; // Tạo ID trước để lưu vào document
     const eventRef = db.collection('Events').doc(eventId);
-    
+
     if (!eventData.date || typeof eventData.date !== 'number') {
         throw new Error('Invalid or missing event date (must be a timestamp).');
     }
@@ -112,6 +120,12 @@ const createEvent = async (eventData, organizerId) => {
         id: eventId, // Lưu ID vào chính document
         name: eventData.name,
         description: eventData.description || '',
+
+        // --- THÊM MỚI ---
+        imageUrl: eventData.imageUrl || null, // Ảnh thumbnail cho danh sách
+        bannerUrl: eventData.bannerUrl || null, // Ảnh bìa lớn cho trang chi tiết
+        // --- KẾT THÚC THÊM MỚI ---
+
         featuredProfileIds: eventData.featuredProfileIds || [],
         category: eventData.category || [],
         tags: eventData.tags || [],
@@ -157,7 +171,7 @@ const updateEvent = async (eventId, eventData) => {
     }
 
     const updatePayload = {
-        ...eventData,
+        ...eventData, // Bao gồm cả imageUrl và bannerUrl nếu chúng được gửi lên
         lastUpdatedAt: new Date().getTime(),
         // Chỉ cập nhật geohash nếu nó được tính toán lại
         ...(geohash !== undefined && { geohash: geohash })
@@ -167,9 +181,9 @@ const updateEvent = async (eventId, eventData) => {
     delete updatePayload.id;
     delete updatePayload.organizerId;
     delete updatePayload.createdAt;
-    delete updatePayload.hotScore; // Nên có API riêng để cập nhật điểm hot
-    delete updatePayload.viewCount; // Nên có API riêng để cập nhật lượt xem
-    delete updatePayload.revenue; // Doanh thu nên được tính toán riêng
+    delete updatePayload.hotScore;
+    delete updatePayload.viewCount;
+    delete updatePayload.revenue;
 
     await eventRef.update(updatePayload);
 
