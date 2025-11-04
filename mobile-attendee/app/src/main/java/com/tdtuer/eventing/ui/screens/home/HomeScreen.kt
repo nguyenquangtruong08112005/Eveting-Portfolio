@@ -22,16 +22,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.tdtuer.eventing.R // Ensure R class is available
-import com.tdtuer.eventing.ui.components.FacePile
 import com.tdtuer.eventing.ui.navigation.Graph
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import kotlinx.coroutines.flow.collectLatest
+import coil.compose.AsyncImage
+import com.tdtuer.eventing.helpers.formatTimestampToDay
+import com.tdtuer.eventing.helpers.formatTimestampToMonth
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavController) {
@@ -41,7 +44,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavControl
     // Lắng nghe sự kiện điều hướng từ ViewModel
     LaunchedEffect(Unit) {
         viewModel.navEvent.collectLatest {
-            when(it) {
+            when (it) {
                 HomeNavEvent.NavigateToAuth -> {
                     navController.navigate(Graph.AUTHENTICATION) {
                         popUpTo(Graph.MAIN_APP) { inclusive = true }
@@ -52,7 +55,13 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavControl
     }
 
     Scaffold(
-        bottomBar = { AppBottomBar(onItemClick = { itemName -> viewModel.onBottomBarItemClick(itemName) }) },
+        bottomBar = {
+            AppBottomBar(onItemClick = { itemName ->
+                viewModel.onBottomBarItemClick(
+                    itemName
+                )
+            })
+        },
         floatingActionButton = { AppFab(onClick = { viewModel.onFabClick() }) },
         floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
@@ -97,9 +106,18 @@ fun HomeHeader(viewModel: HomeViewModel) {
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Current Location", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                Text("New York, USA", color = Color.White, fontWeight = FontWeight.Medium) // This could come from ViewModel
+                Text(
+                    "New York, USA",
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                ) // This could come from ViewModel
             }
-            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }){                 Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
+            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = "Notifications",
+                    tint = Color.White
+                )
             }
         }
 
@@ -114,7 +132,10 @@ fun HomeHeader(viewModel: HomeViewModel) {
         ) {
             Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Search...", color = Color.White.copy(alpha = 0.8f)) // Search text could be ViewModel state
+            Text(
+                "Search...",
+                color = Color.White.copy(alpha = 0.8f)
+            ) // Search text could be ViewModel state
             Spacer(modifier = Modifier.weight(1f))
             Button(
                 onClick = { viewModel.onSearchFilterClick() },
@@ -140,9 +161,10 @@ fun HomeHeader(viewModel: HomeViewModel) {
 
 @Composable
 fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
-    val iconColor = if (isSelected && category.name == "Music") Color.Black // Specific case for Music icon being black on white background
-    else if (isSelected) category.selectedTextColor // Use defined selected text color for icon
-    else Color.White.copy(alpha = 0.8f) // Default unselected icon color
+    val iconColor =
+        if (isSelected && category.name == "Music") Color.Black // Specific case for Music icon being black on white background
+        else if (isSelected) category.selectedTextColor // Use defined selected text color for icon
+        else Color.White.copy(alpha = 0.8f) // Default unselected icon color
 
     val textColor = if (isSelected) category.selectedTextColor else Color.White
     val containerColor = if (isSelected) category.color else Color.Transparent
@@ -162,7 +184,7 @@ fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun EventSection(title: String, events: List<Event>, viewModel: HomeViewModel) {
+fun EventSection(name: String, events: List<EventCardUiModel>, viewModel: HomeViewModel) {
     Column(modifier = Modifier.padding(vertical = 24.dp)) {
         Row(
             modifier = Modifier
@@ -171,10 +193,14 @@ fun EventSection(title: String, events: List<Event>, viewModel: HomeViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            TextButton(onClick = { viewModel.onSeeAllClick(title) }) {
+            Text(name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            TextButton(onClick = { viewModel.onSeeAllClick(name) }) {
                 Text("See All")
-                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -183,26 +209,29 @@ fun EventSection(title: String, events: List<Event>, viewModel: HomeViewModel) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(events) { event ->
-                EventCard(event = event, onBookmarkClick = { viewModel.onEventBookmarkClick(event) })
+                EventCard(
+                    event = event,
+                    onBookmarkClick = { /*  viewModel.onEventBookmarkClick(event)  */ })
             }
         }
     }
 }
 
 @Composable
-fun EventCard(event: Event, onBookmarkClick: () -> Unit) {
+fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
     Card(
-        modifier = Modifier.width(250.dp),
+        modifier = Modifier.width(350.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column {
             Box(modifier = Modifier.height(150.dp)) {
-                Image(
-                    painter = painterResource(id = event.imageRes),
-                    contentDescription = event.title,
+                AsyncImage(
+                    model = event.imageUrl,
+                    contentDescription = event.name,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_launcher_background)
                 )
                 Box(
                     modifier = Modifier
@@ -213,8 +242,13 @@ fun EventCard(event: Event, onBookmarkClick: () -> Unit) {
                         .align(Alignment.TopStart)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(event.date, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF0635A))
-                        Text(event.month, fontSize = 12.sp, color = Color(0xFFF0635A))
+                        Text(
+                            event.displayDate,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF0635A)
+                        )
+                        Text(event.displayMonth, fontSize = 12.sp, color = Color(0xFFF0635A))
                     }
                 }
                 IconButton(
@@ -224,7 +258,7 @@ fun EventCard(event: Event, onBookmarkClick: () -> Unit) {
                         .padding(8.dp)
                 ) {
                     Icon(
-                        Icons.Default.BookmarkBorder, // Icon could be dynamic based on bookmarked state from ViewModel
+                        imageVector = if (event.isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = "Bookmark",
                         tint = Color.White,
                         modifier = Modifier
@@ -234,18 +268,36 @@ fun EventCard(event: Event, onBookmarkClick: () -> Unit) {
                 }
             }
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(event.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = event.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    FacePile(avatars = event.avatars)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("+${event.goingCount} Going", color = Color(0xFF3F38DD), fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                    // (Bạn có thể thêm icon $ hoặc ticket ở đây)
+                    Icon(Icons.Default.ConfirmationNumber, contentDescription = "Price", tint = Color(0xFF3F38DD), modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(event.location, color = Color.Gray, fontSize = 12.sp)
+                    Text(
+                        event.displayPrice, // <-- Dùng giá đã định dạng
+                        color = Color(0xFF3F38DD),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(event.displayLocation, color = Color.Gray, fontSize = 12.sp)
                 }
             }
         }
@@ -298,11 +350,27 @@ fun AppBottomBar(onItemClick: (String) -> Unit) {
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 // In a real app, selection state would come from ViewModel/Navigation
-                NavigationBarItem(selected = true, onClick = { onItemClick("Explore") }, icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") }, label = { Text("Explore") })
-                NavigationBarItem(selected = false, onClick = { onItemClick("Events") }, icon = { Icon(Icons.Default.CalendarToday, contentDescription = "Events") }, label = { Text("Events") })
+                NavigationBarItem(
+                    selected = true,
+                    onClick = { onItemClick("Explore") },
+                    icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") },
+                    label = { Text("Explore") })
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { onItemClick("Events") },
+                    icon = { Icon(Icons.Default.CalendarToday, contentDescription = "Events") },
+                    label = { Text("Events") })
                 Spacer(modifier = Modifier.width(40.dp)) // Spacer for FAB
-                NavigationBarItem(selected = false, onClick = { onItemClick("Map") }, icon = { Icon(Icons.Default.Map, contentDescription = "Map") }, label = { Text("Map") })
-                NavigationBarItem(selected = false, onClick = { onItemClick("Profile") }, icon = { Icon(Icons.Default.Person, contentDescription = "Profile") }, label = { Text("Profile") })
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { onItemClick("Map") },
+                    icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
+                    label = { Text("Map") })
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { onItemClick("Profile") },
+                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+                    label = { Text("Profile") })
             }
         }
     )

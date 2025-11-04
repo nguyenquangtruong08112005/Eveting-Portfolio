@@ -2,6 +2,8 @@ package com.tdtuer.eventing.di
 
 import com.tdtuer.eventing.data.auth.AuthRepository
 import com.tdtuer.eventing.data.auth.AuthRepositoryImpl // <-- Đảm bảo import này đúng với vị trí file AuthRepositoryImpl của bạn
+import com.tdtuer.eventing.data.repository.EventRepository
+import com.tdtuer.eventing.data.repository.EventRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -17,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl // Hilt sẽ biết cách tạo AuthRepositoryImpl nếu nó có @Inject constructor
     ): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindEventRepository(
+        impl: EventRepositoryImpl
+    ) : EventRepository
 }

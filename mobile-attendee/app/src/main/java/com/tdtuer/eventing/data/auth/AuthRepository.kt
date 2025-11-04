@@ -17,7 +17,6 @@ interface AuthRepository {
     suspend fun applyVerificationCode(code: String): Result<Unit>
     suspend fun signOut()
 
-    // --> ADDED FOR PASSWORD RESET
     suspend fun verifyPasswordResetCode(code: String): Result<String> // Returns the user's email
     suspend fun confirmPasswordReset(code: String, newPassword: String): Result<Unit>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>

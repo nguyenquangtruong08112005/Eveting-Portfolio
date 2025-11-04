@@ -12,15 +12,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.tdtuer.eventing.R
+import com.tdtuer.eventing.domain.usecase.events.GetAllEventsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.domain.model.Result
+import android.util.Log
+import com.tdtuer.eventing.helpers.formatDisplayPrice
+import com.tdtuer.eventing.helpers.formatTimestampToDay
+import com.tdtuer.eventing.helpers.formatTimestampToMonth
 
 // Data classes for UI state
-data class Event(val id: String, val title: String, val imageRes: Int, val date: String, val month: String, val avatars: List<Int>, val goingCount: Int, val location: String)
 data class Category(val name: String, val color: Color, val selectedTextColor: Color, val iconFactory: @Composable () -> Unit)
 
 // Enum for Navigation Events
@@ -30,7 +35,8 @@ enum class HomeNavEvent {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val firebaseAuth: FirebaseAuth // Inject FirebaseAuth
+    private val firebaseAuth: FirebaseAuth, // Inject FirebaseAuth
+    private val getAllEventsUseCase: GetAllEventsUseCase
 ) : ViewModel() {
 
     // --- Navigation ---
@@ -38,11 +44,11 @@ class HomeViewModel @Inject constructor(
     val navEvent = _navEvent.asSharedFlow()
 
     // --- UI State ---
-    private val _upcomingEvents = mutableStateOf<List<Event>>(emptyList())
-    val upcomingEvents: State<List<Event>> = _upcomingEvents
+    private val _upcomingEvents = mutableStateOf<List<EventCardUiModel>>(emptyList())
+    val upcomingEvents: State<List<EventCardUiModel>> = _upcomingEvents
 
-    private val _nearbyEvents = mutableStateOf<List<Event>>(emptyList())
-    val nearbyEvents: State<List<Event>> = _nearbyEvents
+    private val _nearbyEvents = mutableStateOf<List<EventCardUiModel>>(emptyList())
+    val nearbyEvents: State<List<EventCardUiModel>> = _nearbyEvents
 
     private val _categories = mutableStateOf<List<Category>>(emptyList())
     val categories: State<List<Category>> = _categories
@@ -51,7 +57,7 @@ class HomeViewModel @Inject constructor(
     val selectedCategoryName: String get() = _selectedCategoryName.value
 
     init {
-        loadUpcomingEvents()
+        loadEvents()
         loadNearbyEvents()
         loadCategories()
     }
@@ -70,21 +76,53 @@ class HomeViewModel @Inject constructor(
         _selectedCategoryName.value = categoryName
     }
     fun onSeeAllClick(sectionTitle: String) { /* TODO */ }
-    fun onEventBookmarkClick(event: Event) { /* TODO */ }
+    fun onEventBookmarkClick(event: EventCardUiModel) { /* TODO */ }
     fun onInviteFriendsClick() { /* TODO */ }
 
     // --- Data Loading ---
-    private fun loadUpcomingEvents() {
-        _upcomingEvents.value = listOf(
-            Event("1", "International Band Music Concert", R.drawable.ic_launcher_background, "14", "DEC", listOf(R.drawable.ic_launcher_background, R.drawable.ic_launcher_background, R.drawable.ic_launcher_background), 20, "New York, USA"),
-            Event("2", "Classical Music Festival", R.drawable.ic_launcher_background, "21", "DEC", listOf(R.drawable.ic_launcher_background, R.drawable.ic_launcher_background), 15, "Los Angeles, CA")
+    private fun loadEvents() {
+        viewModelScope.launch {
+            // (Tùy chọn) TODO: Tạo một state _isLoading và set = true
+
+            getAllEventsUseCase().collect { result ->
+                when (result) {
+                    is Result.Success -> {
+                        _upcomingEvents.value = result.data.map {
+                            domainEvent -> domainEvent.toUiModel()
+                        } // Cập nhật state với dữ liệu thật
+                        // (Tùy chọn) TODO: set _isLoading = false
+                    }
+                    is Result.Failure -> {
+                        // TODO: Tạo một state khác để báo lỗi cho UI
+                        Log.e("HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
+                        // (Tùy chọn) TODO: set _isLoading = false
+                    }
+                    is Result.Loading -> {
+                        // (Tùy chọn) TODO: set _isLoading = true
+                        Log.d("HomeViewModel", "Đang tải events...")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun Event.toUiModel(): EventCardUiModel {
+        // (Đây là logic "tiền xử lý" bạn muốn)
+        return EventCardUiModel(
+            id = this.id,
+            name = this.name,
+            imageUrl = this.imageUrl, // <-- Trường mới bạn đã thêm
+            displayDate = formatTimestampToDay(this.date),
+            displayMonth = formatTimestampToMonth(this.date),
+            displayPrice = formatDisplayPrice(this.ticketTypes),
+            displayLocation = this.location, // (Model "thật" của bạn đã là String)
+            isFavorite = false // (Tạm thời. Sẽ cập nhật sau)
         )
     }
 
     private fun loadNearbyEvents() {
         _nearbyEvents.value = listOf(
-            Event("3", "Indie Rock Night", R.drawable.ic_launcher_background, "28", "DEC", listOf(R.drawable.ic_launcher_background), 10, "Chicago, IL"),
-            Event("4", "Jazz & Blues Weekend", R.drawable.ic_launcher_background, "04", "JAN", listOf(R.drawable.ic_launcher_background, R.drawable.ic_launcher_background), 25, "New Orleans, LA")
+
         )
     }
 

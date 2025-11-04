@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.dagger.hilt)
 }
 
-hilt{
+hilt {
     enableAggregatingTask = false
 }
 
@@ -108,6 +108,15 @@ dependencies {
     // Biểu đồ
     implementation(libs.mpandroidchart) // line bar chart các kiểu
     implementation(libs.cloudinary.kotlin)
-    implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("com.airbnb.android:lottie-compose:6.4.1")
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.lottie.compose)
+
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)
+    implementation(libs.okhttp)
+
+    // Coil
+    implementation(libs.coil.compose)
 }

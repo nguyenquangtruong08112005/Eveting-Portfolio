@@ -1,9 +1,5 @@
 package com.tdtuer.eventing.constants
 
-// This is a sample file
-class SampleFile{
-    fun sampleFunction(){
-        println("This is a sample function")
-    }
-
+object Constraints {
+    const val BASE_URL = "https://uncadenced-unmelancholically-elyse.ngrok-free.dev"
 }
