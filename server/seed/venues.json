@@ -2,7 +2,12 @@
   {
     "id": "venue_gem_center",
     "name": "GEM Center",
-    "address": "8 Nguyễn Bỉnh Khiêm, Đa Kao, Quận 1, TP.HCM",
+    "addressDetails": {
+      "street": "8 Nguyễn Bỉnh Khiêm",
+      "ward": "Đa Kao",
+      "district": "Quận 1",
+      "city": "Hồ Chí Minh"
+    },
     "location": { "latitude": 10.7870, "longitude": 106.7040 },
     "nearby": ["Thảo Cầm Viên Sài Gòn", "Bảo tàng Lịch sử Việt Nam"],
     "seatMapTemplate": { "totalSeats": 1000, "layout": [{ "seatId": "A1", "type": "VIP", "row": "A" }] }
@@ -10,7 +15,12 @@
   {
     "id": "venue_mydinh_stadium",
     "name": "Sân vận động Quốc gia Mỹ Đình",
-    "address": "Lê Đức Thọ, Mỹ Đình, Nam Từ Liêm, Hà Nội",
+    "addressDetails": {
+      "street": "Lê Đức Thọ",
+      "ward": "Mỹ Đình 1",
+      "district": "Nam Từ Liêm",
+      "city": "Hà Nội"
+    },
     "location": { "latitude": 21.0207, "longitude": 105.7623 },
     "nearby": ["The Garden Shopping Center", "JW Marriott Hotel Hanoi"],
     "seatMapTemplate": { "totalSeats": 40000, "layout": [] }
@@ -18,7 +28,12 @@
   {
     "id": "venue_trungvuong_theatre",
     "name": "Nhà hát Trưng Vương",
-    "address": "86 Hùng Vương, Hải Châu 1, Hải Châu, Đà Nẵng",
+    "addressDetails": {
+      "street": "86 Hùng Vương",
+      "ward": "Hải Châu 1",
+      "district": "Hải Châu",
+      "city": "Đà Nẵng"
+    },
     "location": { "latitude": 16.0688, "longitude": 108.2198 },
     "nearby": ["Chợ Cồn", "Nhà thờ Con Gà"],
     "seatMapTemplate": { "totalSeats": 1200, "layout": [{ "seatId": "A1", "type": "VIP", "row": "A" }] }
@@ -26,7 +41,12 @@
   {
     "id": "venue_secc",
     "name": "Trung tâm Hội chợ và Triển lãm Sài Gòn (SECC)",
-    "address": "799 Nguyễn Văn Linh, Tân Phú, Quận 7, TP.HCM",
+    "addressDetails": {
+      "street": "799 Nguyễn Văn Linh",
+      "ward": "Tân Phú",
+      "district": "Quận 7",
+      "city": "Hồ Chí Minh"
+    },
     "location": { "latitude": 10.7291, "longitude": 106.7127 },
     "nearby": ["Crescent Mall", "Hồ Bán Nguyệt"],
     "seatMapTemplate": { "totalSeats": 10000, "layout": [] }
@@ -34,7 +54,12 @@
   {
     "id": "venue_hanoi_opera_house",
     "name": "Nhà hát Lớn Hà Nội",
-    "address": "1 Tràng Tiền, Phan Chu Trinh, Hoàn Kiếm, Hà Nội",
+    "addressDetails": {
+      "street": "1 Tràng Tiền",
+      "ward": "Phan Chu Trinh",
+      "district": "Hoàn Kiếm",
+      "city": "Hà Nội"
+    },
     "location": { "latitude": 21.0251, "longitude": 105.8564 },
     "nearby": ["Hồ Hoàn Kiếm", "Khách sạn Metropole"],
     "seatMapTemplate": { "totalSeats": 600, "layout": [{ "seatId": "A1", "type": "VIP", "row": "A" }] }

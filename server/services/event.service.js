@@ -2,7 +2,7 @@
 const { db, FieldValue } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
 const geofire = require('geofire-common'); // Import thư viện geofire
-
+const { calculateMinPrice } = require('../utils/tickets/calculateMinPrice.tickets')
 /**
  * Lấy danh sách sự kiện công khai, hỗ trợ phân trang.
  * @param {number} page - Trang hiện tại.
@@ -11,25 +11,41 @@ const geofire = require('geofire-common'); // Import thư viện geofire
  */
 const getAllEvents = async (page = 1, limit = 10) => {
     const eventsRef = db.collection('Events')
-        .where('visibility', '==', 'public') // Chỉ lấy sự kiện public
-        .where('status', '!=', 'cancelled'); // Không lấy sự kiện đã hủy
+        .where('visibility', '==', 'public')
+        .where('status', '==', 'active');
     const offset = (page - 1) * limit;
 
-    // Lấy tổng số lượng documents phù hợp với bộ lọc public và active
-    const countQuery = eventsRef; // Query đã có bộ lọc visibility và status
+    const countQuery = eventsRef;
     const countSnapshot = await countQuery.count().get();
     const totalEvents = countSnapshot.data().count;
 
-    // Truy vấn dữ liệu cho trang hiện tại
     const eventsSnapshot = await eventsRef
-        .orderBy('date', 'asc') // Sắp xếp theo ngày diễn ra gần nhất
+        .orderBy('date', 'asc')
         .limit(limit)
         .offset(offset)
+        .select(
+            "id", "name", "date", "imageUrl", "bannerUrl",
+            "videoUrl", "location", "city", "venueName", "eventType", "minPrice" // Thêm eventType
+        )
         .get();
 
     const events = [];
     eventsSnapshot.forEach((doc) => {
-        events.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        const eventSummary = {
+            id: doc.id,
+            name: data.name,
+            date: data.date,
+            imageUrl: data.imageUrl,
+            bannerUrl: data.bannerUrl,
+            videoUrl: data.videoUrl,
+            location: data.location,
+            city: data.city || null,
+            venueName: data.venueName || null,
+            eventType: data.eventType || 'physical', // Thêm eventType
+            minPrice: data.minPrice || null,
+        }
+        events.push(eventSummary);
     });
 
     return {
@@ -38,7 +54,7 @@ const getAllEvents = async (page = 1, limit = 10) => {
             currentPage: page,
             limit: limit,
             totalPages: Math.ceil(totalEvents / limit),
-            totalItems: totalEvents // Đổi tên cho rõ ràng
+            totalItems: totalEvents
         }
     };
 };
@@ -65,15 +81,15 @@ const getEventById = async (eventId, requestingUser = null) => {
             venueData = venueDoc.data();
         }
     }
-    
-    // Kiểm tra visibility
+
+    // Logic kiểm tra visibility (giữ nguyên)
     if (eventData.visibility === 'public') {
-        return { id: eventDoc.id, ...eventData }; // Public thì ai cũng xem được
+        return { id: eventDoc.id, ...eventData, venue: venueData }; // <-- Gửi kèm venue
     }
 
     // Nếu không phải public, cần kiểm tra người dùng đã đăng nhập chưa
     if (!requestingUser) {
-        return null; // Chưa đăng nhập thì không xem được unlisted/private
+        return null;
     }
 
     // TODO: Bổ sung logic kiểm tra quyền Admin/Organizer sau
@@ -81,7 +97,7 @@ const getEventById = async (eventId, requestingUser = null) => {
 
     // Organizer/Admin hoặc người tạo sự kiện có thể xem private/unlisted
     if (isAdminOrOrganizer || eventData.organizerId === requestingUser.uid) {
-        return { id: eventDoc.id, ...eventData };
+        return { id: eventDoc.id, ...eventData, venue: venueData }; // <-- Gửi kèm venue
     }
 
     // Các trường hợp khác (ví dụ: unlisted nhưng user thường) - hiện tại chưa cho xem
@@ -92,7 +108,7 @@ const getEventById = async (eventId, requestingUser = null) => {
         return { id: eventDoc.id, ...eventData };
     }
 
-    return null; // Mặc định là không cho xem private/unlisted nếu không đủ quyền
+    return null;
 };
 
 
@@ -103,45 +119,95 @@ const getEventById = async (eventId, requestingUser = null) => {
  * @returns {Promise<object>} Document sự kiện vừa tạo.
  */
 const createEvent = async (eventData, organizerId) => {
-    const eventId = `evt_${uuidv4()}`; // Tạo ID trước để lưu vào document
+    const eventId = `evt_${uuidv4()}`;
     const eventRef = db.collection('Events').doc(eventId);
 
     if (!eventData.date || typeof eventData.date !== 'number') {
         throw new Error('Invalid or missing event date (must be a timestamp).');
     }
-    // Tính geohash nếu có location
+
     let geohash = null;
-    if (eventData.location && eventData.location.latitude && eventData.location.longitude) {
-        geohash = geofire.geohashForLocation([eventData.location.latitude, eventData.location.longitude]);
+    let location = eventData.location || null;
+    let venueName = null;
+    let city = null;
+
+    const eventType = eventData.eventType || 'physical'; // Mặc định là 'physical'
+    let onlineUrl = eventData.onlineUrl || null;
+
+    if (eventType === 'physical') {
+        // Nếu là sự kiện offline, yêu cầu location và venueId
+        if (eventData.venueId) {
+            const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
+            if (venueDoc.exists) {
+                const venue = venueDoc.data();
+                venueName = venue.name;
+                // Lấy city từ cấu trúc addressDetails mới
+                if (venue.addressDetails) {
+                    city = venue.addressDetails.city || null;
+                }
+                // Tự động lấy location từ Venue nếu client không gửi
+                if (!location && venue.location) {
+                    location = venue.location;
+                }
+            } else {
+                throw new Error(`Venue with ID ${eventData.venueId} not found.`);
+            }
+        } else {
+            throw new Error('Physical event must have a venueId.');
+        }
+
+        // Tính geohash từ location
+        if (location && location.latitude && location.longitude) {
+            geohash = geofire.geohashForLocation([location.latitude, location.longitude]);
+        }
+        onlineUrl = null; // Sự kiện offline không có onlineUrl
+
+    } else if (eventType === 'online') {
+        // Nếu là sự kiện online, không cần địa điểm
+        location = null;
+        geohash = null;
+        venueName = "Online"; // Ghi rõ là online
+        city = "Online";
+        if (!onlineUrl) {
+            throw new Error('Online event must have an onlineUrl.');
+        }
     }
+
+    const minPrice = calculateMinPrice(eventData.ticketTypes || {});
 
     const now = new Date().getTime();
     const newEventData = {
-        id: eventId, // Lưu ID vào chính document
+        id: eventId,
         name: eventData.name,
         description: eventData.description || '',
-
-        // --- THÊM MỚI ---
-        imageUrl: eventData.imageUrl || null, // Ảnh thumbnail cho danh sách
-        bannerUrl: eventData.bannerUrl || null, // Ảnh bìa lớn cho trang chi tiết
-        // --- KẾT THÚC THÊM MỚI ---
-
+        imageUrl: eventData.imageUrl || null,
+        bannerUrl: eventData.bannerUrl || null,
         featuredProfileIds: eventData.featuredProfileIds || [],
         category: eventData.category || [],
         tags: eventData.tags || [],
-        date: eventData.date, // Yêu cầu phải có date
+        date: eventData.date,
         endDate: eventData.endDate || null,
-        location: eventData.location || null,
+
+        // --- Dữ liệu đã xử lý ---
+        eventType: eventType,
+        onlineUrl: onlineUrl,
+        location: location,
         geohash: geohash,
         venueId: eventData.venueId || null,
+        venueName: venueName, // <-- Sao chép
+        city: city,           // <-- Sao chép
+        // ---
+
+        minPrice: minPrice,
+
         ticketTypes: eventData.ticketTypes || {},
         videoUrl: eventData.videoUrl || '',
         isOutdoor: eventData.isOutdoor || false,
         organizerId: organizerId,
-        status: 'active', // Mặc định khi tạo là active
-        visibility: eventData.visibility || 'public', // Mặc định là public
+        status: 'active',
+        visibility: eventData.visibility || 'public',
         recurringRule: eventData.recurringRule || null,
-        hotScore: 0, // Khởi tạo điểm hot
+        hotScore: 0,
         viewCount: 0,
         requiredAge: eventData.requiredAge || 0,
         sponsors: eventData.sponsors || [],
@@ -152,7 +218,7 @@ const createEvent = async (eventData, organizerId) => {
     // TODO: Thêm validation chi tiết cho eventData (date phải là số, ticketTypes đúng cấu trúc...)
 
     await eventRef.set(newEventData);
-    return newEventData; // Trả về dữ liệu đã bao gồm ID
+    return newEventData;
 };
 
 /**
@@ -164,20 +230,55 @@ const createEvent = async (eventData, organizerId) => {
 const updateEvent = async (eventId, eventData) => {
     const eventRef = db.collection('Events').doc(eventId);
 
-    // Tính lại geohash nếu location thay đổi
-    let geohash = undefined;
-    if (eventData.location && eventData.location.latitude && eventData.location.longitude) {
-        geohash = geofire.geohashForLocation([eventData.location.latitude, eventData.location.longitude]);
-    }
-
     const updatePayload = {
-        ...eventData, // Bao gồm cả imageUrl và bannerUrl nếu chúng được gửi lên
+        ...eventData, // Lấy dữ liệu mới từ client
         lastUpdatedAt: new Date().getTime(),
-        // Chỉ cập nhật geohash nếu nó được tính toán lại
-        ...(geohash !== undefined && { geohash: geohash })
     };
 
-    // Xóa các trường không được phép cập nhật trực tiếp bởi client (nếu cần)
+    // Nếu client thay đổi venueId
+    if (eventData.venueId) {
+        const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
+        if (venueDoc.exists) {
+            const venue = venueDoc.data();
+            updatePayload.venueName = venue.name;
+            if (venue.addressDetails) {
+                updatePayload.city = venue.addressDetails.city || null;
+            }
+            // Tự động cập nhật location và geohash theo venue mới
+            if (venue.location) {
+                updatePayload.location = venue.location;
+                updatePayload.geohash = geofire.geohashForLocation([venue.location.latitude, venue.location.longitude]);
+            }
+        }
+    } else if (eventData.venueId === null) {
+        // Xử lý trường hợp xóa venue (ví dụ: chuyển sang online)
+        updatePayload.venueName = null;
+        updatePayload.city = null;
+        updatePayload.location = null;
+        updatePayload.geohash = null;
+    }
+
+    // Nếu client thay đổi eventType
+    if (eventData.eventType === 'online') {
+        updatePayload.location = null;
+        updatePayload.geohash = null;
+        updatePayload.venueId = null;
+        updatePayload.venueName = "Online";
+        updatePayload.city = "Online";
+    } else if (eventData.eventType === 'physical' && !eventData.venueId) {
+        // Nếu đổi sang physical mà quên gửi venueId, ta cần lấy venueId cũ
+        const currentEvent = (await eventRef.get()).data();
+        if (!currentEvent.venueId) {
+            throw new Error("Cannot change to physical event without a venueId.");
+        }
+        // Giữ nguyên các giá trị cũ nếu không có venueId mới
+    }
+
+    if (eventData.ticketTypes) {
+        updatePayload.minPrice = calculateMinPrice(eventData.ticketTypes);
+    }
+
+    // Xóa các trường không được phép cập nhật
     delete updatePayload.id;
     delete updatePayload.organizerId;
     delete updatePayload.createdAt;
@@ -186,7 +287,6 @@ const updateEvent = async (eventId, eventData) => {
     delete updatePayload.revenue;
 
     await eventRef.update(updatePayload);
-
     const updatedDoc = await eventRef.get();
     return { id: updatedDoc.id, ...updatedDoc.data() };
 };
