@@ -113,20 +113,24 @@ const searchEvents = async (req, res) => {
   }
 };
 
-// --- HÀM MỚI ---
 const findNearbyEvents = async (req, res) => {
     try {
+        // Lấy các tham số từ query
         const lat = parseFloat(req.query.lat);
         const lon = parseFloat(req.query.lon);
-        const radius = parseFloat(req.query.radius) || 5; // Mặc định bán kính 5km
+        const radius = parseFloat(req.query.radius) || 50; // Bán kính ban đầu, mặc định 50km
+        const page = parseInt(req.query.page) || 1; // Trang, mặc định 1
+        const limit = parseInt(req.query.limit) || 10; // Giới hạn, mặc định 10
 
         if (isNaN(lat) || isNaN(lon)) {
             return res.status(400).send({ error: 'Bad Request: Valid lat and lon query parameters are required.' });
         }
 
-        // Controller này chỉ cần truyền tham số vào service
-        const nearbyEvents = await eventService.findNearbyEvents(lat, lon, radius);
-        res.status(200).json(nearbyEvents);
+        // Truyền tất cả tham số vào service
+        const result = await eventService.findNearbyEvents(lat, lon, radius, page, limit);
+        
+        res.status(200).json(result);
+
     } catch (error) {
         console.error("Error in Event Controller - findNearbyEvents: ", error);
         res.status(500).send({ error: 'Internal Server Error' });

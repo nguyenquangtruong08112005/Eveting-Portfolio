@@ -8,9 +8,24 @@
       "district": "Quận 1",
       "city": "Hồ Chí Minh"
     },
-    "location": { "latitude": 10.7870, "longitude": 106.7040 },
-    "nearby": ["Thảo Cầm Viên Sài Gòn", "Bảo tàng Lịch sử Việt Nam"],
-    "seatMapTemplate": { "totalSeats": 1000, "layout": [{ "seatId": "A1", "type": "VIP", "row": "A" }] }
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "nearby": [
+      "Thảo Cầm Viên Sài Gòn",
+      "Bảo tàng Lịch sử Việt Nam"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 1000,
+      "layout": [
+        {
+          "seatId": "A1",
+          "type": "VIP",
+          "row": "A"
+        }
+      ]
+    }
   },
   {
     "id": "venue_mydinh_stadium",
@@ -21,9 +36,18 @@
       "district": "Nam Từ Liêm",
       "city": "Hà Nội"
     },
-    "location": { "latitude": 21.0207, "longitude": 105.7623 },
-    "nearby": ["The Garden Shopping Center", "JW Marriott Hotel Hanoi"],
-    "seatMapTemplate": { "totalSeats": 40000, "layout": [] }
+    "location": {
+      "latitude": 21.0207,
+      "longitude": 105.7623
+    },
+    "nearby": [
+      "The Garden Shopping Center",
+      "JW Marriott Hotel Hanoi"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 40000,
+      "layout": []
+    }
   },
   {
     "id": "venue_trungvuong_theatre",
@@ -34,9 +58,24 @@
       "district": "Hải Châu",
       "city": "Đà Nẵng"
     },
-    "location": { "latitude": 16.0688, "longitude": 108.2198 },
-    "nearby": ["Chợ Cồn", "Nhà thờ Con Gà"],
-    "seatMapTemplate": { "totalSeats": 1200, "layout": [{ "seatId": "A1", "type": "VIP", "row": "A" }] }
+    "location": {
+      "latitude": 16.068770823875518,
+      "longitude": 108.22073695468488
+    },
+    "nearby": [
+      "Chợ Cồn",
+      "Nhà thờ Con Gà"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 1200,
+      "layout": [
+        {
+          "seatId": "A1",
+          "type": "VIP",
+          "row": "A"
+        }
+      ]
+    }
   },
   {
     "id": "venue_secc",
@@ -47,9 +86,18 @@
       "district": "Quận 7",
       "city": "Hồ Chí Minh"
     },
-    "location": { "latitude": 10.7291, "longitude": 106.7127 },
-    "nearby": ["Crescent Mall", "Hồ Bán Nguyệt"],
-    "seatMapTemplate": { "totalSeats": 10000, "layout": [] }
+    "location": {
+      "latitude": 10.730711274689705,
+      "longitude": 106.72152825905006
+    },
+    "nearby": [
+      "Crescent Mall",
+      "Hồ Bán Nguyệt"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 10000,
+      "layout": []
+    }
   },
   {
     "id": "venue_hanoi_opera_house",
@@ -60,8 +108,68 @@
       "district": "Hoàn Kiếm",
       "city": "Hà Nội"
     },
-    "location": { "latitude": 21.0251, "longitude": 105.8564 },
-    "nearby": ["Hồ Hoàn Kiếm", "Khách sạn Metropole"],
-    "seatMapTemplate": { "totalSeats": 600, "layout": [{ "seatId": "A1", "type": "VIP", "row": "A" }] }
+    "location": {
+      "latitude": 21.024414028790293,
+      "longitude": 105.85767846200335
+    },
+    "nearby": [
+      "Hồ Hoàn Kiếm",
+      "Khách sạn Metropole"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 600,
+      "layout": [
+        {
+          "seatId": "A1",
+          "type": "VIP",
+          "row": "A"
+        }
+      ]
+    }
+  },
+  {
+    "id": "venue_diamond_place",
+    "name": "Trung tâm Hội Nghị - Tiệc Cưới Diamond Place",
+    "addressDetails": {
+      "street": "15A Hồ Văn Huê",
+      "ward": "Phường 9",
+      "district": "Phú Nhuận",
+      "city": "Hồ Chí Minh"
+    },
+    "location": {
+      "latitude": 10.800874633228537,
+      "longitude": 106.67544176735767
+    },
+    "nearby": [
+      "Công viên Hoàng Văn Thụ",
+      "Sân bay Tân Sơn Nhất"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 1500,
+      "layout": []
+    }
+  },
+  {
+    "id": "venue_thiskyhall_sala",
+    "name": "Thiskyhall Sala",
+    "addressDetails": {
+      "street": "10 Mai Chí Thọ",
+      "ward": "Phường An Khánh",
+      "district": "Thủ Đức",
+      "city": "Hồ Chí Minh"
+    },
+    "location": {
+      "latitude": 10.772009208723974,
+      "longitude": 106.72143620594586
+    },
+    "nearby": [
+      "Công viên Sala",
+      "Thiso Mall",
+      "Công viên Sala"
+    ],
+    "seatMapTemplate": {
+      "totalSeats": 200,
+      "layout": []
+    }
   }
 ]
