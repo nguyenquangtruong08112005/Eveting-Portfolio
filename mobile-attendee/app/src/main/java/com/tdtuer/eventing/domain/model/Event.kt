@@ -28,7 +28,7 @@ data class Event(
     val geohash: String = "",
     val imageUrl: String = "",
     val bannerUrl: String = "",
-//    val venueDetails: Map<String, Any> = emptyMap(),  // lat: Double, long: Double, nearby: List<String>
-//    val revenue: Double = 0.0,
-//    val seatMap: Map<String, Boolean> = emptyMap(),
+    val city: String = "",
+    val venueName: String = "",
+    val minPrice: Double = 0.0,
 )

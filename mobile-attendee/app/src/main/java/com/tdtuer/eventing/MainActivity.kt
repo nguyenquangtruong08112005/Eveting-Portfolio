@@ -28,30 +28,30 @@ class MainActivity : ComponentActivity() {
         val intent = this.intent
         setContent {
             EventingTheme {
-
-                LaunchedEffect(key1 = true) {
-                    val tag = "RetrofitTest"
-
-                    Log.d(tag, "Dang goi GetAllEventUsecase")
-
-                    getAllEventsUseCase().collect { result ->
-                        Log.d(tag, "dawiodawjoidioajad")
-                        when (result) {
-                            is Result.Success<*> -> {
-//                                Log.d(tag, "Success ${result.data.size}")
-                                Log.d(tag, "${result.data}")
-                            }
-
-                            is Result.Failure -> {
-                                Log.d(tag, "Error ${result.exception.message}")
-                            }
-
-                            is Result.Loading -> {
-                                Log.d(tag, "Loading")
-                            }
-                        }
-                    }
-                }
+//
+//                LaunchedEffect(key1 = true) {
+//                    val tag = "RetrofitTest"
+//
+//                    Log.d(tag, "Dang goi GetAllEventUsecase")
+//
+//                    getAllEventsUseCase().collect { result ->
+//                        Log.d(tag, "dawiodawjoidioajad")
+//                        when (result) {
+//                            is Result.Success<*> -> {
+////                                Log.d(tag, "Success ${result.data.size}")
+//                                Log.d(tag, "${result.data}")
+//                            }
+//
+//                            is Result.Failure -> {
+//                                Log.d(tag, "Error ${result.exception.message}")
+//                            }
+//
+//                            is Result.Loading -> {
+//                                Log.d(tag, "Loading")
+//                            }
+//                        }
+//                    }
+//                }
 
                 val navController = rememberNavController()
                 RootNavigationGraph(navController = navController, intent = intent)

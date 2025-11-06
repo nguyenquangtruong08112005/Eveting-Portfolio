@@ -12,29 +12,14 @@ fun EventDto.toDomainModel(): Event {
     return Event(
         id = this.id ?: "",
         name = this.name ?: "",
-        description = this.description ?: "",
-        featuredProfileIds = this.featuredProfileIds ?: emptyList(),
-        category = this.category ?: emptyList(),
-        tags = this.tags ?: emptyList(),
         date = this.date ?: 0L,
-        location = this.location?.toLocationString() ?: "",
-        geohash = this.geohash ?: "",
-        venueId = this.venueId ?: "",
-        ticketTypes = this.ticketTypes?.mapValues { it.value.toMap() } ?: emptyMap(),
+        location = "${this.venueName}, ${this.city}",
         videoUrl = this.videoUrl ?: "",
         imageUrl = this.imageUrl ?: "",
         bannerUrl = this.bannerUrl ?: "",
-        isOutdoor = this.isOutdoor ?: false,
-        organizerId = this.organizerId ?: "",
-        status = this.status ?: "unknown",
-        visibility = this.visibility ?: "public",
-        hotScore = this.hotScore?.toDouble() ?: 0.0,
-        viewCount = this.viewCount?.toLong() ?: 0L,
-        requiredAge = this.requiredAge?.toLong() ?: 0L,
-        sponsors = this.sponsors?.map { it.toSponsorString() } ?: emptyList(),
-        createdAt = this.createdAt ?: 0L,
-        lastUpdatedAt = this.lastUpdatedAt ?: 0L,
-        // recurringRule và các trường khác có thể được thêm vào sau nếu cần
+        city = this.city ?: "Viet Nam",
+        venueName = this.venueName ?: "",
+        minPrice = this.minPrice ?: 0.0,
     )
 }
 

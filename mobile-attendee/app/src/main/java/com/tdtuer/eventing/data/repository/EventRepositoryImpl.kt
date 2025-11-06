@@ -16,10 +16,16 @@ class EventRepositoryImpl @Inject constructor(
     private val apiService: EventApiService
 ) : EventRepository {
 
-    override fun getAllEvents(): Flow<Result<List<Event>>> = flow {
+    override fun getAllEvents(
+        page: Int,
+        limit: Int,
+    ): Flow<Result<List<Event>>> = flow {
         emit(Result.Loading)
         try {
-            val response = apiService.getAllEvents()
+            val response = apiService.getAllEvents(
+                page = page,
+                limit = limit
+            )
 
             if (response.isSuccessful && response.body() != null) {
 
@@ -41,5 +47,9 @@ class EventRepositoryImpl @Inject constructor(
             // SỬA LẠI:
             emit(Result.failure(e))
         }
+    }
+
+    override fun searchEvents(): Flow<Result<List<Event>>> {
+        TODO("Not yet implemented")
     }
 }

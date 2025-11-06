@@ -9,7 +9,14 @@ import com.tdtuer.eventing.domain.model.Result
 class GetAllEventsUseCase @Inject constructor(
     private val eventRepository: EventRepository
 ){
-    operator fun invoke(): Flow<Result<List<Event>>> {
-        return eventRepository.getAllEvents()
+    operator fun invoke(
+        page: Int = 1,
+        limit: Int = 10
+    ): Flow<Result<List<Event>>> {
+
+        return eventRepository.getAllEvents(
+            page = page,
+            limit = limit
+        )
     }
 }

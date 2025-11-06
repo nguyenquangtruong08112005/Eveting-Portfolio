@@ -28,13 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.tdtuer.eventing.R // Ensure R class is available
+import com.tdtuer.eventing.helpers.formatTimestampToDay
+import com.tdtuer.eventing.helpers.formatTimestampToMonth
 import com.tdtuer.eventing.ui.navigation.Graph
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import kotlinx.coroutines.flow.collectLatest
-import coil.compose.AsyncImage
-import com.tdtuer.eventing.helpers.formatTimestampToDay
-import com.tdtuer.eventing.helpers.formatTimestampToMonth
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavController) {
@@ -211,7 +211,7 @@ fun EventSection(name: String, events: List<EventCardUiModel>, viewModel: HomeVi
             items(events) { event ->
                 EventCard(
                     event = event,
-                    onBookmarkClick = { /*  viewModel.onEventBookmarkClick(event)  */ })
+                    onBookmarkClick = { viewModel.onEventBookmarkClick(event) })
             }
         }
     }
@@ -220,7 +220,7 @@ fun EventSection(name: String, events: List<EventCardUiModel>, viewModel: HomeVi
 @Composable
 fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
     Card(
-        modifier = Modifier.width(350.dp),
+        modifier = Modifier.width(300.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
@@ -243,12 +243,16 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            event.displayDate,
+                            text = event.displayDate,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFF0635A)
                         )
-                        Text(event.displayMonth, fontSize = 12.sp, color = Color(0xFFF0635A))
+                        Text(
+                            text = event.displayMonth,
+                            fontSize = 12.sp,
+                            color = Color(0xFFF0635A)
+                        )
                     }
                 }
                 IconButton(
@@ -257,12 +261,17 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
                 ) {
+                    // Chọn icon và màu sắc dựa vào trạng thái isFavorite
+                    val icon =
+                        if (event.isFavorite) Icons.Filled.Bookmark else Icons.Default.BookmarkBorder
+                    val iconTint = if (event.isFavorite) Color(0xFFF0635A) else Color.White
+
                     Icon(
-                        imageVector = if (event.isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        imageVector = icon,
                         contentDescription = "Bookmark",
-                        tint = Color.White,
+                        tint = iconTint,
                         modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                            .background(Color.Black.copy(alpha = 0.05f), CircleShape)
                             .padding(4.dp)
                     )
                 }
@@ -275,11 +284,15 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // (Bạn có thể thêm icon $ hoặc ticket ở đây)
-                    Icon(Icons.Default.ConfirmationNumber, contentDescription = "Price", tint = Color(0xFF3F38DD), modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Default.ConfirmationNumber,
+                        contentDescription = "Price",
+                        tint = Color(0xFF3F38DD),
+                        modifier = Modifier.size(16.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         event.displayPrice, // <-- Dùng giá đã định dạng
@@ -297,7 +310,13 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(event.displayLocation, color = Color.Gray, fontSize = 12.sp)
+                    Text(
+                        event.displayLocation,
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

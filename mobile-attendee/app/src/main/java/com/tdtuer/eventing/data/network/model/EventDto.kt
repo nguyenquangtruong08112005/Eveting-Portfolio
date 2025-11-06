@@ -10,35 +10,8 @@ data class EventDto(
     @SerializedName("name")
     val name: String?,
 
-    @SerializedName("description")
-    val description: String?,
-
-    @SerializedName("featuredProfileIds")
-    val featuredProfileIds: List<String>?,
-
-    @SerializedName("category")
-    val category: List<String>?,
-
-    @SerializedName("tags")
-    val tags: List<String>?,
-
     @SerializedName("date")
     val date: Long?,
-
-    @SerializedName("location")
-    val location: LocationDto?,
-
-    @SerializedName("geohash")
-    val geohash: String?,
-
-    @SerializedName("venueId")
-    val venueId: String?,
-
-    @SerializedName("ticketTypes")
-    val ticketTypes: Map<String, TicketTypeDto>?,
-
-    @SerializedName("videoUrl")
-    val videoUrl: String?,
 
     @SerializedName("imageUrl")
     val imageUrl: String?,
@@ -46,38 +19,24 @@ data class EventDto(
     @SerializedName("bannerUrl")
     val bannerUrl: String?,
 
-    @SerializedName("isOutdoor")
-    val isOutdoor: Boolean?,
+    @SerializedName("videoUrl")
+    val videoUrl: String?,
 
-    @SerializedName("organizerId")
-    val organizerId: String?,
+    @SerializedName("location")
+    val location: LocationDto?,
 
-    @SerializedName("status")
-    val status: String?,
+    @SerializedName("city")
+    val city: String?,
 
-    @SerializedName("visibility")
-    val visibility: String?,
+    @SerializedName("venueName")
+    val venueName: String?,
 
-    @SerializedName("recurringRule")
-    val recurringRule: Any?, // Dùng Any? vì giá trị là null, có thể thay đổi sau
+    @SerializedName("eventType")
+    val eventType: String?,
 
-    @SerializedName("hotScore")
-    val hotScore: Int?,
+    @SerializedName("minPrice")
+    val minPrice: Double?,
 
-    @SerializedName("viewCount")
-    val viewCount: Int?,
-
-    @SerializedName("requiredAge")
-    val requiredAge: Int?,
-
-    @SerializedName("sponsors")
-    val sponsors: List<SponsorDto>?,
-
-    @SerializedName("createdAt")
-    val createdAt: Long?,
-
-    @SerializedName("lastUpdatedAt")
-    val lastUpdatedAt: Long?
 )
 
 // Các DTO lồng bên trong

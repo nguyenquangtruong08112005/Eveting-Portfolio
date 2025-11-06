@@ -26,7 +26,12 @@ import com.tdtuer.eventing.helpers.formatTimestampToDay
 import com.tdtuer.eventing.helpers.formatTimestampToMonth
 
 // Data classes for UI state
-data class Category(val name: String, val color: Color, val selectedTextColor: Color, val iconFactory: @Composable () -> Unit)
+data class Category(
+    val name: String,
+    val color: Color,
+    val selectedTextColor: Color,
+    val iconFactory: @Composable () -> Unit
+)
 
 // Enum for Navigation Events
 enum class HomeNavEvent {
@@ -68,35 +73,78 @@ class HomeViewModel @Inject constructor(
         _navEvent.emit(HomeNavEvent.NavigateToAuth) // Phát sự kiện điều hướng
     }
 
-    fun onBottomBarItemClick(itemName: String) { /* TODO */ }
-    fun onFabClick() { /* TODO */ }
-    fun onHomeHeaderNotificationsClick() { /* TODO */ }
-    fun onSearchFilterClick() { /* TODO */ }
+    fun onBottomBarItemClick(itemName: String) { /* TODO */
+    }
+
+    fun onFabClick() { /* TODO */
+    }
+
+    fun onHomeHeaderNotificationsClick() { /* TODO */
+    }
+
+    fun onSearchFilterClick() { /* TODO */
+    }
+
     fun onCategorySelected(categoryName: String) {
         _selectedCategoryName.value = categoryName
     }
-    fun onSeeAllClick(sectionTitle: String) { /* TODO */ }
-    fun onEventBookmarkClick(event: EventCardUiModel) { /* TODO */ }
-    fun onInviteFriendsClick() { /* TODO */ }
+
+    fun onSeeAllClick(sectionTitle: String) { /* TODO */
+    }
+
+    fun onEventBookmarkClick(event: EventCardUiModel) {
+        viewModelScope.launch {
+            // Lấy danh sách hiện tại
+            val currentList = _upcomingEvents.value
+
+            // Tìm vị trí (index) của event được click
+            val eventIndex = currentList.indexOfFirst { it.id == event.id }
+
+            // Nếu không tìm thấy, thoát
+            if (eventIndex == -1) return@launch
+
+            // Tạo một bản sao (copy) của event với trạng thái isFavorite được đảo ngược
+            val updatedEvent = event.copy(isFavorite = !event.isFavorite)
+
+            // Tạo một danh sách MỚI (để Compose nhận diện được sự thay đổi)
+            // và thay thế item cũ bằng item đã cập nhật
+            val newList = currentList.toMutableList().apply {
+                set(eventIndex, updatedEvent)
+            }
+
+            // Cập nhật StateFlow với danh sách mới
+            _upcomingEvents.value = newList
+
+            // TODO: Làm tương tự cho _nearbyEvents.value nếu cần
+        }
+    }
+
+    fun onInviteFriendsClick() { /* TODO */
+    }
 
     // --- Data Loading ---
     private fun loadEvents() {
         viewModelScope.launch {
             // (Tùy chọn) TODO: Tạo một state _isLoading và set = true
 
-            getAllEventsUseCase().collect { result ->
+            getAllEventsUseCase(
+                page = 1,
+                limit = 10,
+            ).collect { result ->
                 when (result) {
                     is Result.Success -> {
-                        _upcomingEvents.value = result.data.map {
-                            domainEvent -> domainEvent.toUiModel()
+                        _upcomingEvents.value = result.data.map { domainEvent ->
+                            domainEvent.toUiModel()
                         } // Cập nhật state với dữ liệu thật
                         // (Tùy chọn) TODO: set _isLoading = false
                     }
+
                     is Result.Failure -> {
                         // TODO: Tạo một state khác để báo lỗi cho UI
                         Log.e("HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
                         // (Tùy chọn) TODO: set _isLoading = false
                     }
+
                     is Result.Loading -> {
                         // (Tùy chọn) TODO: set _isLoading = true
                         Log.d("HomeViewModel", "Đang tải events...")
@@ -114,7 +162,7 @@ class HomeViewModel @Inject constructor(
             imageUrl = this.imageUrl, // <-- Trường mới bạn đã thêm
             displayDate = formatTimestampToDay(this.date),
             displayMonth = formatTimestampToMonth(this.date),
-            displayPrice = formatDisplayPrice(this.ticketTypes),
+            displayPrice = formatDisplayPrice(this.minPrice),
             displayLocation = this.location, // (Model "thật" của bạn đã là String)
             isFavorite = false // (Tạm thời. Sẽ cập nhật sau)
         )
@@ -128,10 +176,46 @@ class HomeViewModel @Inject constructor(
 
     private fun loadCategories() {
         _categories.value = listOf(
-            Category("All", Color(0xFF5669FF), Color.White) { androidx.compose.material3.Icon(Icons.Default.Bookmark, contentDescription = null, tint = Color.White) },
-            Category("Music", Color.White, Color.Black) { androidx.compose.material3.Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.Black) },
-            Category("Sports", Color(0xFFF0635A), Color.White) { androidx.compose.material3.Icon(Icons.Default.Sports, contentDescription = null, tint = Color.White) },
-            Category("Art", Color(0xFF29D697), Color.White) { androidx.compose.material3.Icon(Icons.Default.Campaign, contentDescription = null, tint = Color.White) }
+            Category(
+                "All",
+                Color(0xFF5669FF),
+                Color.White
+            ) {
+                androidx.compose.material3.Icon(
+                    Icons.Default.Bookmark,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            },
+            Category(
+                "Music",
+                Color.White,
+                Color.Black
+            ) {
+                androidx.compose.material3.Icon(
+                    Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = Color.Black
+                )
+            },
+            Category("Sports", Color(0xFFF0635A), Color.White) {
+                androidx.compose.material3.Icon(
+                    Icons.Default.Sports,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            },
+            Category(
+                "Art",
+                Color(0xFF29D697),
+                Color.White
+            ) {
+                androidx.compose.material3.Icon(
+                    Icons.Default.Campaign,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
         )
     }
 }

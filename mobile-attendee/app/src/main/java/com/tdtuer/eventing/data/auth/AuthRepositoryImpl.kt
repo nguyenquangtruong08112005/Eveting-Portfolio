@@ -46,7 +46,7 @@ class AuthRepositoryImpl @Inject constructor(
             val user = db.collection("Users").document(uid).get().await().toObject(User::class.java)
                 ?: return Result.failure(Exception("User not found"))
             val idToken = result.user?.getIdToken(false)?.await()?.token
-
+            Log.d("Test", "idToken: $idToken")
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
