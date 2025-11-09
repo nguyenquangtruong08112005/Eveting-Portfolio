@@ -18,23 +18,23 @@ import java.util.Locale
  */
 fun getAddressFromCoordinates(context: Context, latitude: Double, longitude: Double): String {
     // Geocoder cần Context để hoạt động
-    val geocoder = Geocoder(context, Locale.getDefault())
+    val geocoder = Geocoder(context, Locale.US)
     return try {
+        @Suppress("DEPRECATION")
         // Lấy danh sách địa chỉ từ tọa độ. Số 1 có nghĩa là chúng ta chỉ muốn 1 kết quả chính xác nhất.
         val addresses = geocoder.getFromLocation(latitude, longitude, 1)
 
         if (addresses != null && addresses.isNotEmpty()) {
             val address = addresses[0]
             // Xây dựng một chuỗi địa chỉ đơn giản. Bạn có thể tùy chỉnh phần này.
-            val locality = address.locality // ví dụ: "Đà Nẵng"
-            val country = address.countryName // ví dụ: "Việt Nam"
+            val city = address.locality
+            val district = address.subAdminArea
+            val province = address.adminArea
 
-            when {
-                locality != null && country != null -> "$locality, $country"
-                locality != null -> locality
-                country != null -> country
-                else -> "Unknown Location"
-            }
+            // Lấy tên đầu tiên không bị null trong chuỗi ưu tiên
+            val displayName = city ?: district ?: province ?: "Unknown Location"
+
+            return displayName
         } else {
             "Address not found"
         }

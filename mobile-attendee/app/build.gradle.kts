@@ -123,4 +123,5 @@ dependencies {
 
     // Accompanist
     implementation(libs.accompanist.permissions)
+    implementation(libs.accompanist.swiperefresh)
 }

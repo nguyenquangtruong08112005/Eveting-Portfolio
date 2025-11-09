@@ -33,6 +33,8 @@ import android.content.pm.PackageManager
 import androidx.annotation.RequiresPermission
 import androidx.compose.material3.Icon
 import androidx.core.content.ContextCompat
+import com.tdtuer.eventing.helpers.getAddressFromCoordinates
+import kotlinx.coroutines.Dispatchers
 
 // Data classes for UI state
 data class Category(
@@ -73,6 +75,10 @@ class HomeViewModel @Inject constructor(
 
     private val _selectedCategoryName = mutableStateOf("All")
     val selectedCategoryName: String get() = _selectedCategoryName.value
+
+    private val _currentLocationDisplay = mutableStateOf<String?>(null)
+    val currentLocationDisplay: State<String?> = _currentLocationDisplay
+
 
     init {
         loadEvents()
@@ -208,7 +214,19 @@ class HomeViewModel @Inject constructor(
 
             Log.d("HomeViewModel", "Vị trí hiện tại: $location")
 
+            getAddressFromCoordinates(context, location.latitude, location.longitude)
+
             viewModelScope.launch {
+
+                launch(Dispatchers.IO) {
+                    val addressName =
+                        getAddressFromCoordinates(context, location.latitude, location.longitude)
+
+                    _currentLocationDisplay.value = addressName
+
+                    Log.d("HomeViewModel", "Địa chỉ hiện tại: $addressName")
+                }
+
                 findNearbyEventsUseCase(
                     lat = location.latitude.toString(),
                     lon = location.longitude.toString(),
@@ -217,8 +235,12 @@ class HomeViewModel @Inject constructor(
                     when (result) {
                         is Result.Loading -> {}
                         is Result.Failure -> {
-                            Log.e("HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
+                            Log.e(
+                                "HomeViewModel",
+                                "Lỗi khi tải events: ${result.exception.message}"
+                            )
                         }
+
                         is Result.Success -> {
                             _nearbyEvents.value = result.data.map { domainEvent ->
                                 domainEvent.toUiModel()

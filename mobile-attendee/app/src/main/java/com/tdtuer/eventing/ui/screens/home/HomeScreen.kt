@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -53,28 +52,27 @@ fun HomeScreen(
 
     val locationPermissionsState = rememberMultiplePermissionsState(
         permissions = listOf(
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
 
     LaunchedEffect(key1 = locationPermissionsState) @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION]) {
-        // Lấy trạng thái "đã được cấp" của 2 quyền
+// Lấy trạng thái "đã được cấp" của 2 quyền
         val allPermissionsGranted = locationPermissionsState.permissions.all {
             it.status.isGranted
         }
 
         if (allPermissionsGranted) {
-            // Nếu đã có quyền (ví dụ: người dùng đã cấp từ lần trước)
-            // -> Ra lệnh cho ViewModel tải
+// Nếu đã có quyền (ví dụ: người dùng đã cấp từ lần trước)
+// -> Ra lệnh cho ViewModel tải
             viewModel.loadNearbyEventsBasedOnLocation()
         } else {
-            // Nếu chưa có quyền -> Kích hoạt hộp thoại xin quyền
+// Nếu chưa có quyền -> Kích hoạt hộp thoại xin quyền
             locationPermissionsState.launchMultiplePermissionRequest()
         }
     }
 
-    // Lắng nghe sự kiện điều hướng từ ViewModel
+// Lắng nghe sự kiện điều hướng từ ViewModel
     LaunchedEffect(Unit) {
         viewModel.navEvent.collectLatest {
             when (it) {
@@ -86,7 +84,6 @@ fun HomeScreen(
             }
         }
     }
-
     Scaffold(
         bottomBar = {
             AppBottomBar(onItemClick = { itemName ->
@@ -95,8 +92,8 @@ fun HomeScreen(
                 )
             })
         },
-//        floatingActionButton = { AppFab(onClick = { viewModel.onFabClick() }) },
-//        floatingActionButtonPosition = FabPosition.Center
+// floatingActionButton = { AppFab(onClick = { viewModel.onFabClick() }) },
+// floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -119,59 +116,69 @@ fun HomeScreen(
 fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
     val categories by viewModel.categories
     val selectedCategoryName = viewModel.selectedCategoryName
+    val currentLocation by viewModel.currentLocationDisplay
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+//            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
             .background(
                 brush = AppTheme.extendedColors.buttonLinear
             )
-            .padding(24.dp)
+            .padding(top = 12.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onMenuClick) {
                 Icon(
                     Icons.Default.Menu,
                     contentDescription = "Menu",
-                    tint = AppTheme.colorScheme.onPrimary
+                    tint = AppTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .size(30.dp)
+                        .offset(y = (-5).dp)
                 )
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "Current Location",
-                    color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                    fontSize = 12.sp
-                )
-                Text(
-                    "New York, USA",
-                    color = AppTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Medium
-                ) // This could come from ViewModel
+            if (currentLocation != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Current Location",
+                        color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        fontSize = 10.sp
+                    )
+                    Text(
+                        currentLocation!!,
+                        color = AppTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Medium
+                    ) // This could come from ViewModel
+                }
+            } else {
+                Spacer(Modifier.width(0.dp))
             }
             IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = "Notifications",
-                    tint = AppTheme.colorScheme.onPrimary
+                    tint = AppTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .size(30.dp)
+                        .offset(y = (-5).dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    AppTheme.colorScheme.onPrimary.copy(alpha = 0.1f),
-                    RoundedCornerShape(20)
+                    AppTheme.colorScheme.onPrimary.copy(alpha = 0.1f), RoundedCornerShape(14.dp)
                 )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -189,17 +196,17 @@ fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
             Text(
                 "Search...",
                 color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                fontSize = AppTheme.typography.headlineSmall.fontSize
+                fontSize = AppTheme.typography.bodyLarge.fontSize
             ) // Search text could be ViewModel state
             Spacer(modifier = Modifier.weight(1f))
             Button(
-                onClick = { viewModel.onSearchFilterClick() },
-                colors = ButtonDefaults.buttonColors(
+                onClick = { viewModel.onSearchFilterClick() }, colors = ButtonDefaults.buttonColors(
                     containerColor = AppTheme.colorScheme.onPrimary.copy(
                         alpha = 0.0f
                     )
-                ),
-                modifier = Modifier.padding(0.dp).offset(x = 10.dp)
+                ), modifier = Modifier
+                    .padding(0.dp)
+                    .offset(x = 10.dp)
             ) {
                 Icon(
                     Icons.Default.FilterAlt,
@@ -208,18 +215,6 @@ fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
                 )
             }
         }
-//
-//        Spacer(modifier = Modifier.height(24.dp))
-//
-//        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-//            items(categories) { category ->
-//                CategoryChip(
-//                    category = category,
-//                    isSelected = category.name == selectedCategoryName,
-//                    onClick = { viewModel.onCategorySelected(category.name) }
-//                )
-//            }
-//        }
     }
 }
 
@@ -274,8 +269,7 @@ fun EventSection(name: String, events: List<EventCardUiModel>, viewModel: HomeVi
         ) {
             items(events) { event ->
                 EventCard(
-                    event = event,
-                    onBookmarkClick = { viewModel.onEventBookmarkClick(event) })
+                    event = event, onBookmarkClick = { viewModel.onEventBookmarkClick(event) })
             }
         }
     }
@@ -313,9 +307,7 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                             color = Color(0xFFF0635A)
                         )
                         Text(
-                            text = event.displayMonth,
-                            fontSize = 12.sp,
-                            color = Color(0xFFF0635A)
+                            text = event.displayMonth, fontSize = 12.sp, color = Color(0xFFF0635A)
                         )
                     }
                 }
@@ -325,7 +317,7 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
                 ) {
-                    // Chọn icon và màu sắc dựa vào trạng thái isFavorite
+// Chọn icon và màu sắc dựa vào trạng thái isFavorite
                     val icon =
                         if (event.isFavorite) Icons.Filled.Bookmark else Icons.Default.BookmarkBorder
                     val iconTint = if (event.isFavorite) Color(0xFFF0635A) else Color.White
@@ -350,7 +342,7 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // (Bạn có thể thêm icon $ hoặc ticket ở đây)
+// (Bạn có thể thêm icon $ hoặc ticket ở đây)
                     Icon(
                         Icons.Default.ConfirmationNumber,
                         contentDescription = "Price",
@@ -360,8 +352,7 @@ fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         event.displayPrice, // <-- Dùng giá đã định dạng
-                        color = Color(0xFF3F38DD),
-                        fontWeight = FontWeight.SemiBold
+                        color = Color(0xFF3F38DD), fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -413,6 +404,7 @@ fun InviteBanner(onInviteClick: () -> Unit) {
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
+
                     .padding(horizontal = 24.dp)
             ) {
                 Text(
@@ -423,9 +415,7 @@ fun InviteBanner(onInviteClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Get \$20 for ticket",
-                    color = Color.Gray,
-                    fontSize = 14.sp
+                    text = "Get \$20 for ticket", color = Color.Gray, fontSize = 14.sp
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
@@ -449,13 +439,11 @@ fun InviteBanner(onInviteClick: () -> Unit) {
 @Composable
 fun AppBottomBar(onItemClick: (String) -> Unit) {
     BottomAppBar(
-        containerColor = Color.White,
-        actions = {
+        containerColor = Color.White, actions = {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround
             ) {
-                // In a real app, selection state would come from ViewModel/Navigation
+// In a real app, selection state would come from ViewModel/Navigation
                 NavigationBarItem(
                     selected = true,
                     onClick = { onItemClick("Explore") },
@@ -478,16 +466,13 @@ fun AppBottomBar(onItemClick: (String) -> Unit) {
                     icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
                     label = { Text("Profile") })
             }
-        }
-    )
+        })
 }
 
 @Composable
 fun AppFab(onClick: () -> Unit) {
     FloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        containerColor = Color(0xFF5669FF)
+        onClick = onClick, shape = CircleShape, containerColor = Color(0xFF5669FF)
     ) {
         Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
     }
@@ -497,9 +482,9 @@ fun AppFab(onClick: () -> Unit) {
 @Composable
 fun HomeScreenPreview() {
     EventingTheme {
-//         HomeScreen(
-//             viewModel = HomeViewModel(),
-//             navController = null
-//         ) // Preview needs a NavController now
+// HomeScreen(
+// viewModel = HomeViewModel(),
+// navController = null
+// ) // Preview needs a NavController now
     }
 }
