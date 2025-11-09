@@ -49,7 +49,65 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun searchEvents(): Flow<Result<List<Event>>> {
-        TODO("Not yet implemented")
+    override fun getEventById(eventId: String): Flow<Result<Event>> = flow {
+        try {
+            val response = apiService.getEventById(eventId)
+            if (response.isSuccessful && response.body() != null) {
+                val domainEvent = response.body()!!.toDomainModel()
+                emit(Result.success(domainEvent))
+            } else {
+                emit(Result.failure(Exception("Event not found or server error: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    override fun findNearbyEvents(
+        lat: String,
+        lon: String,
+        radiusInKm: Double?,
+        page: Int,
+        limit: Int
+    ): Flow<Result<List<Event>>> = flow {
+        try {
+            val response = apiService.findNearbyEvents(lat, lon, radiusInKm, page, limit)
+            if (response.isSuccessful && response.body() != null) {
+                val domainList = response.body()!!.events.map { it.toDomainModel() }
+                emit(Result.success(domainList))
+            } else {
+                emit(Result.failure(Exception("Server error: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    override fun searchEvents(
+        category: String?,
+        date: String?,
+        sortBy: String?,
+        sortOrder: String?,
+        page: Int,
+        limit: Int
+    ): Flow<Result<List<Event>>> = flow {
+        try {
+            val response = apiService.searchEvents(
+                category = category,
+                date = date,
+                sortBy = sortBy,
+                sortOrder = sortOrder,
+                page = page,
+                limit = limit
+            )
+            if (response.isSuccessful && response.body() != null) {
+                val domainList = response.body()!!.events.map { it.toDomainModel() }
+                emit(Result.success(domainList))
+            } else {
+                emit(Result.failure(Exception("Server error: ${response.errorBody()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
     }
 }

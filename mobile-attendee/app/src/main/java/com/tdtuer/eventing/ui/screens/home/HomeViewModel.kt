@@ -21,9 +21,18 @@ import javax.inject.Inject
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import android.util.Log
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.tdtuer.eventing.domain.usecase.events.FindNearbyEventsUseCase
 import com.tdtuer.eventing.helpers.formatDisplayPrice
 import com.tdtuer.eventing.helpers.formatTimestampToDay
 import com.tdtuer.eventing.helpers.formatTimestampToMonth
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.annotation.RequiresPermission
+import androidx.compose.material3.Icon
+import androidx.core.content.ContextCompat
 
 // Data classes for UI state
 data class Category(
@@ -41,7 +50,11 @@ enum class HomeNavEvent {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth, // Inject FirebaseAuth
-    private val getAllEventsUseCase: GetAllEventsUseCase
+    private val getAllEventsUseCase: GetAllEventsUseCase,
+
+    private val findNearbyEventsUseCase: FindNearbyEventsUseCase,
+    private val fusedLocationClient: FusedLocationProviderClient,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     // --- Navigation ---
@@ -63,7 +76,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadEvents()
-        loadNearbyEvents()
+//        loadNearbyEventsBasedOnLocation()
         loadCategories()
     }
 
@@ -159,7 +172,7 @@ class HomeViewModel @Inject constructor(
         return EventCardUiModel(
             id = this.id,
             name = this.name,
-            imageUrl = this.imageUrl, // <-- Trường mới bạn đã thêm
+            imageUrl = this.bannerUrl,
             displayDate = formatTimestampToDay(this.date),
             displayMonth = formatTimestampToMonth(this.date),
             displayPrice = formatDisplayPrice(this.minPrice),
@@ -168,10 +181,53 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    private fun loadNearbyEvents() {
-        _nearbyEvents.value = listOf(
+    fun loadNearbyEventsBasedOnLocation() {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w("HomeViewModel", "Không có quyền truy cập vị trí")
+            return
+        }
 
-        )
+        fusedLocationClient.lastLocation.addOnFailureListener { exception ->
+            Log.e(
+                "HomeViewModel",
+                "Lỗi khi lấy vị trí: ${exception.message}"
+            )
+        }.addOnSuccessListener { location ->
+            if (location == null) {
+                Log.w("HomeViewModel", "Không thể trí hiện tại (location is null)")
+                return@addOnSuccessListener
+            }
+
+            Log.d("HomeViewModel", "Vị trí hiện tại: $location")
+
+            viewModelScope.launch {
+                findNearbyEventsUseCase(
+                    lat = location.latitude.toString(),
+                    lon = location.longitude.toString(),
+                    radiusInKm = 50.0
+                ).collect { result ->
+                    when (result) {
+                        is Result.Loading -> {}
+                        is Result.Failure -> {
+                            Log.e("HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
+                        }
+                        is Result.Success -> {
+                            _nearbyEvents.value = result.data.map { domainEvent ->
+                                domainEvent.toUiModel()
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun loadCategories() {
@@ -181,7 +237,7 @@ class HomeViewModel @Inject constructor(
                 Color(0xFF5669FF),
                 Color.White
             ) {
-                androidx.compose.material3.Icon(
+                Icon(
                     Icons.Default.Bookmark,
                     contentDescription = null,
                     tint = Color.White
@@ -192,14 +248,14 @@ class HomeViewModel @Inject constructor(
                 Color.White,
                 Color.Black
             ) {
-                androidx.compose.material3.Icon(
+                Icon(
                     Icons.Default.MusicNote,
                     contentDescription = null,
                     tint = Color.Black
                 )
             },
             Category("Sports", Color(0xFFF0635A), Color.White) {
-                androidx.compose.material3.Icon(
+                Icon(
                     Icons.Default.Sports,
                     contentDescription = null,
                     tint = Color.White
@@ -210,7 +266,7 @@ class HomeViewModel @Inject constructor(
                 Color(0xFF29D697),
                 Color.White
             ) {
-                androidx.compose.material3.Icon(
+                Icon(
                     Icons.Default.Campaign,
                     contentDescription = null,
                     tint = Color.White

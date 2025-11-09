@@ -19,47 +19,8 @@ data class EventDetailDto(
     @SerializedName("bannerUrl")
     val bannerUrl: String?,
 
-    @SerializedName("videoUrl")
-    val videoUrl: String?,
-
-    @SerializedName("date")
-    val date: Long?,
-
-    @SerializedName("endDate")
-    val endDate: Long?,
-
-    @SerializedName("location")
-    val location: LocationDto?, // (Bạn đã tạo LocationDto)
-
-    @SerializedName("city")
-    val city: String?,
-
-    @SerializedName("venueName")
-    val venueName: String?,
-
-    @SerializedName("venueId")
-    val venueId: String?,
-
-    @SerializedName("eventType")
-    val eventType: String?,
-
-    @SerializedName("onlineUrl")
-    val onlineUrl: String?,
-
-    @SerializedName("minPrice")
-    val minPrice: Double?,
-
-    @SerializedName("ticketTypes")
-    val ticketTypes: Map<String, Any>?, // Dùng Any cho an toàn
-
-    @SerializedName("organizerId")
-    val organizerId: String?,
-
-    @SerializedName("status")
-    val status: String?,
-
-    @SerializedName("visibility")
-    val visibility: String?,
+    @SerializedName("featuredProfileIds")
+    val featuredProfileIds: List<String>?, // Sửa thành List<String>
 
     @SerializedName("category")
     val category: List<String>?,
@@ -67,8 +28,59 @@ data class EventDetailDto(
     @SerializedName("tags")
     val tags: List<String>?,
 
-    @SerializedName("sponsors")
-    val sponsors: List<Any>? // Dùng Any cho an toàn
+    @SerializedName("date")
+    val date: Long?,
 
-// ... thêm các trường khác nếu cần
+    @SerializedName("endDate")
+    val endDate: Long?,
+
+    @SerializedName("eventType")
+    val eventType: String?,
+
+    @SerializedName("onlineUrl")
+    val onlineUrl: String?,
+
+    @SerializedName("location")
+    val location: LocationDto?,
+
+    @SerializedName("geohash")
+    val geohash: String?,
+
+    @SerializedName("city")
+    val city: String?,
+
+    @SerializedName("venueName")
+    val venueName: String?,
+
+    @SerializedName("videoUrl")
+    val videoUrl: String?,
+
+    @SerializedName("isOutdoor")
+    val isOutdoor: Boolean?,
+
+    @SerializedName("visibility")
+    val visibility: String?,
+
+    @SerializedName("requireAge")
+    val requireAge: Int?,
+
+    @SerializedName("status")
+    val status: String?,
+
+    @SerializedName("sponsors")
+    val sponsors: List<SponsorDto>?,
+
+    @SerializedName("minPrice")
+    val minPrice: Double?,
+
+    @SerializedName("ticketTypes")
+    val ticketTypes: Map<String, PublicTicketTypeDto>?,
+
+    @SerializedName("venue")
+    val venue: VenueDto? // Sửa thành VenueDto
+)
+
+data class PublicTicketTypeDto(
+    @SerializedName("price")
+    val price: Long?,
 )

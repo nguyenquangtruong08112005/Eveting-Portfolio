@@ -1,9 +1,12 @@
 package com.tdtuer.eventing.data.mapper
 
+import com.tdtuer.eventing.data.network.model.EventDetailDto
 import com.tdtuer.eventing.data.network.model.EventDto
 import com.tdtuer.eventing.data.network.model.LocationDto
+import com.tdtuer.eventing.data.network.model.PublicTicketTypeDto
 import com.tdtuer.eventing.data.network.model.SponsorDto
 import com.tdtuer.eventing.data.network.model.TicketTypeDto
+import com.tdtuer.eventing.data.network.model.VenueDto
 import com.tdtuer.eventing.domain.model.Event
 
 // --- HÀM MAP CHÍNH ---
@@ -23,24 +26,72 @@ fun EventDto.toDomainModel(): Event {
     )
 }
 
+fun EventDetailDto.toDomainModel(): Event {
+    return Event(
+        id = this.id ?: "",
+        name = this.name ?: "",
+        description = this.description ?: "",
+        imageUrl = this.imageUrl ?: "",
+        bannerUrl = this.bannerUrl ?: "",
+        featuredProfileIds = this.featuredProfileIds ?: emptyList(),
+        category = this.category ?: emptyList(),
+        tags = this.tags ?: emptyList(),
+        date = this.date ?: 0L,
+        endDate = this.endDate ?: 0L,
+        eventType = this.eventType ?: "physical",
+        onlineUrl = this.onlineUrl ?: "",
+        location = this.location?.toLocationString() ?: "",
+        geohash = this.geohash ?: "",
+        city = this.city ?: "Viet Nam",
+        venueName = this.venueName ?: "",
+        videoUrl = this.videoUrl ?: "",
+        isOutdoor = this.isOutdoor ?: false,
+        status = this.status ?: "active",
+        visibility = this.visibility ?: "public",
+        requiredAge = (this.requireAge ?: 0).toLong(),
+        sponsors = this.sponsors?.map { it.toSponsorString() } ?: emptyList(),
+        minPrice = this.minPrice ?: 0.0,
+        ticketTypes = this.ticketTypes?.mapValues { it.value.toMap() } ?: emptyMap(),
+        venueDetails = this.venue?.toVenueDetailsMap() ?: emptyMap()
+    )
+}
+
+
 // --- CÁC HÀM HELPER ---
 
-// Biến đối tượng LocationDto thành 1 chuỗi String
 private fun LocationDto.toLocationString(): String {
     return "Lat: ${this.latitude ?: 0.0}, Lon: ${this.longitude ?: 0.0}"
 }
 
-// Biến đối tượng SponsorDto thành 1 chuỗi String
 private fun SponsorDto.toSponsorString(): String {
-    // Giả sử bạn muốn lấy tên của nhà tài trợ
     return this.name ?: "Unknown Sponsor"
 }
 
-// Biến đối tượng TicketTypeDto thành một Map<String, Any>
 private fun TicketTypeDto.toMap(): Map<String, Any> {
     val map = mutableMapOf<String, Any>()
     this.price?.let { map["price"] = it }
     this.quantity?.let { map["quantity"] = it }
     this.available?.let { map["available"] = it }
+    return map
+}
+
+private fun PublicTicketTypeDto.toMap(): Map<String, Any> {
+    val map = mutableMapOf<String, Any>()
+    this.price?.let { map["price"] = it }
+    return map
+}
+
+private fun VenueDto.toVenueDetailsMap(): Map<String, Any> {
+    val map = mutableMapOf<String, Any>()
+    this.id?.let { map["id"] = it }
+    this.name?.let { map["name"] = it }
+    this.addressDetails?.let {
+        map["address"] = "${it.street}, ${it.ward}, ${it.district}, ${it.city}"
+    }
+    this.location?.let {
+        map["latitude"] = it.latitude ?: 0.0
+        map["longitude"] = it.longitude ?: 0.0
+    }
+    this.nearby?.let { map["nearby"] = it }
     return map
 }

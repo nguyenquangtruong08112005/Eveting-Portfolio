@@ -92,7 +92,7 @@ private fun InterestCard(
     Card(
         onClick = onClick,
         modifier = Modifier.aspectRatio(1f), // Make the card a square
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         border = BorderStroke(2.dp, borderColor)
     ) {

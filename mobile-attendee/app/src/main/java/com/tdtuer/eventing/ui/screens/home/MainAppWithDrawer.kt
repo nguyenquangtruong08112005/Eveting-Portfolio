@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.home
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,29 +26,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.tdtuer.eventing.R // Ensure R class is available
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import kotlinx.coroutines.launch
 
-// --- Activity ---
-class MainActivityWithDrawer : ComponentActivity() {
-    private val viewModel: MainAppWithDrawerViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                // Pass ViewModel to MainAppWithDrawer, which can then pass to AppDrawerContent
-                MainAppWithDrawer(viewModel = viewModel)
-            }
-        }
-    }
-}
 
 // --- Composable chính chứa cả Drawer và màn hình Home ---
 @Composable
-fun MainAppWithDrawer(viewModel: MainAppWithDrawerViewModel) {
+fun MainAppWithDrawer(viewModel: MainAppWithDrawerViewModel, navController: NavController) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -62,7 +51,8 @@ fun MainAppWithDrawer(viewModel: MainAppWithDrawerViewModel) {
         }
     ) {
         // HomeScreen can remain independent or also take parts of the ViewModel if needed
-        HomeScreen1(
+        HomeScreen(
+            navController = navController,
             onMenuClick = {
                 scope.launch { drawerState.open() }
             }
@@ -119,7 +109,7 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Divider()
+            HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
             Spacer(modifier = Modifier.height(16.dp))
 
             NavigationDrawerItem(
@@ -150,25 +140,12 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
     }
 }
 
-// Assuming HomeScreen is defined elsewhere or below, and takes onMenuClick
-@Composable
-fun HomeScreen1(onMenuClick: () -> Unit = {}) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column {
-            Text("Đây là Màn hình Home", fontSize = 22.sp)
-            Button(onClick = onMenuClick) {
-                Text("Mở Menu")
-            }
-        }
-    }
-}
-
-
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
 fun MainAppWithDrawerPreview() {
     EventingTheme {
         // For preview, create a new instance of the ViewModel
-        MainAppWithDrawer(viewModel = MainAppWithDrawerViewModel())
+        MainAppWithDrawer(viewModel = MainAppWithDrawerViewModel(), navController = rememberNavController())
     }
 }

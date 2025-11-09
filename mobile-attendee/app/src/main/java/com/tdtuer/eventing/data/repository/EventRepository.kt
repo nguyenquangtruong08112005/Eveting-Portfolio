@@ -10,7 +10,25 @@ interface EventRepository {
         limit: Int,
     ): Flow<Result<List<Event>>>
 
-    fun searchEvents(
+    fun getEventById(
+        eventId: String
+    ): Flow<Result<Event>>
 
+    fun findNearbyEvents(
+        lat: String,
+        lon: String,
+        radiusInKm: Double?,
+        page: Int,
+        limit: Int,
+    ): Flow<Result<List<Event>>>
+
+
+    fun searchEvents(
+        category: String?,
+        date: String?,
+        sortBy: String?,
+        sortOrder: String?,
+        page: Int,
+        limit: Int,
     ): Flow<Result<List<Event>>>
 }

@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.compose.animation.core)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -119,4 +120,7 @@ dependencies {
 
     // Coil
     implementation(libs.coil.compose)
+
+    // Accompanist
+    implementation(libs.accompanist.permissions)
 }

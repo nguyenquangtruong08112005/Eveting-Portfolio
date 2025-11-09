@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.home
 
+import android.Manifest
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,13 +34,45 @@ import com.tdtuer.eventing.R // Ensure R class is available
 import com.tdtuer.eventing.helpers.formatTimestampToDay
 import com.tdtuer.eventing.helpers.formatTimestampToMonth
 import com.tdtuer.eventing.ui.navigation.Graph
+import com.tdtuer.eventing.ui.theme.AppTheme
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import kotlinx.coroutines.flow.collectLatest
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavController) {
+fun HomeScreen(
+    viewModel: HomeViewModel = viewModel(),
+    navController: NavController,
+    onMenuClick: () -> Unit = {}
+) {
     val upcomingEvents by viewModel.upcomingEvents
     val nearbyEvents by viewModel.nearbyEvents // Assuming you have this in ViewModel
+
+    val locationPermissionsState = rememberMultiplePermissionsState(
+        permissions = listOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    )
+
+    LaunchedEffect(key1 = locationPermissionsState) @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION]) {
+        // Lấy trạng thái "đã được cấp" của 2 quyền
+        val allPermissionsGranted = locationPermissionsState.permissions.all {
+            it.status.isGranted
+        }
+
+        if (allPermissionsGranted) {
+            // Nếu đã có quyền (ví dụ: người dùng đã cấp từ lần trước)
+            // -> Ra lệnh cho ViewModel tải
+            viewModel.loadNearbyEventsBasedOnLocation()
+        } else {
+            // Nếu chưa có quyền -> Kích hoạt hộp thoại xin quyền
+            locationPermissionsState.launchMultiplePermissionRequest()
+        }
+    }
 
     // Lắng nghe sự kiện điều hướng từ ViewModel
     LaunchedEffect(Unit) {
@@ -62,8 +95,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavControl
                 )
             })
         },
-        floatingActionButton = { AppFab(onClick = { viewModel.onFabClick() }) },
-        floatingActionButtonPosition = FabPosition.Center
+//        floatingActionButton = { AppFab(onClick = { viewModel.onFabClick() }) },
+//        floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -71,16 +104,19 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(), navController: NavControl
                 .fillMaxSize()
                 .background(Color(0xFFF7F7F7))
         ) {
-            item { HomeHeader(viewModel = viewModel) }
+            item { HomeHeader(viewModel = viewModel, onMenuClick = onMenuClick) }
             item { EventSection("Upcoming Events", upcomingEvents, viewModel) }
             item { InviteBanner(onInviteClick = { viewModel.onInviteFriendsClick() }) }
-            item { EventSection("Nearby You", nearbyEvents, viewModel) }
+
+            if (nearbyEvents.isNotEmpty()) {
+                item { EventSection("Nearby You", nearbyEvents, viewModel) }
+            }
         }
     }
 }
 
 @Composable
-fun HomeHeader(viewModel: HomeViewModel) {
+fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
     val categories by viewModel.categories
     val selectedCategoryName = viewModel.selectedCategoryName
 
@@ -89,9 +125,7 @@ fun HomeHeader(viewModel: HomeViewModel) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
             .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF5A61E3), Color(0xFF7C82F2))
-                )
+                brush = AppTheme.extendedColors.buttonLinear
             )
             .padding(24.dp)
     ) {
@@ -100,15 +134,22 @@ fun HomeHeader(viewModel: HomeViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // NÚT LOGOUT TẠM THỜI
-            TextButton(onClick = { viewModel.onSignOutClick() }) {
-                Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    tint = AppTheme.colorScheme.onPrimary
+                )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Current Location", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                Text(
+                    "Current Location",
+                    color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                    fontSize = 12.sp
+                )
                 Text(
                     "New York, USA",
-                    color = Color.White,
+                    color = AppTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Medium
                 ) // This could come from ViewModel
             }
@@ -116,7 +157,7 @@ fun HomeHeader(viewModel: HomeViewModel) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = "Notifications",
-                    tint = Color.White
+                    tint = AppTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -126,36 +167,59 @@ fun HomeHeader(viewModel: HomeViewModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(50))
+                .background(
+                    AppTheme.colorScheme.onPrimary.copy(alpha = 0.1f),
+                    RoundedCornerShape(20)
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "Search",
+                tint = AppTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(30.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            VerticalDivider(
+                modifier = Modifier.height(24.dp),
+                color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 "Search...",
-                color = Color.White.copy(alpha = 0.8f)
+                color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                fontSize = AppTheme.typography.headlineSmall.fontSize
             ) // Search text could be ViewModel state
             Spacer(modifier = Modifier.weight(1f))
             Button(
                 onClick = { viewModel.onSearchFilterClick() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D65E9))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppTheme.colorScheme.onPrimary.copy(
+                        alpha = 0.0f
+                    )
+                ),
+                modifier = Modifier.padding(0.dp).offset(x = 10.dp)
             ) {
-                Icon(Icons.Default.FilterList, contentDescription = "Filters", tint = Color.White)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(categories) { category ->
-                CategoryChip(
-                    category = category,
-                    isSelected = category.name == selectedCategoryName,
-                    onClick = { viewModel.onCategorySelected(category.name) }
+                Icon(
+                    Icons.Default.FilterAlt,
+                    contentDescription = "Filters",
+                    tint = AppTheme.colorScheme.onPrimary
                 )
             }
         }
+//
+//        Spacer(modifier = Modifier.height(24.dp))
+//
+//        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+//            items(categories) { category ->
+//                CategoryChip(
+//                    category = category,
+//                    isSelected = category.name == selectedCategoryName,
+//                    onClick = { viewModel.onCategorySelected(category.name) }
+//                )
+//            }
+//        }
     }
 }
 
@@ -328,31 +392,54 @@ fun InviteBanner(onInviteClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        shape = RoundedCornerShape(16.dp)
+            .padding(horizontal = 32.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)) // Light cyan background
     ) {
-        Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp) // Set a fixed height
+        ) {
             Image(
-                painter = painterResource(id = R.drawable.banner_svgrepo_com), // Ensure this resource exists
+                painter = painterResource(id = R.drawable.invite),
                 contentDescription = null,
-                modifier = Modifier.fillMaxWidth(),
-                contentScale = ContentScale.Crop
-            )
-            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.CenterEnd)
+                    .size(250.dp)
+                    .offset(x = 20.dp, y = 25.dp) // <-- Thay đổi giá trị x, y ở đây
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(horizontal = 24.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Invite your friends", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("Get \$20 for ticket", color = Color.Gray)
-                }
+                Text(
+                    text = "Invite your friends",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Get \$20 for ticket",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onInviteClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00F8FF))
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00F8FF)),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
                 ) {
-                    Text("INVITE", color = Color.Black)
+                    Text(
+                        text = "INVITE",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }

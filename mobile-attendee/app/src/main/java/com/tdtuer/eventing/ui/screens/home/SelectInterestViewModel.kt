@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.selectinterest
 
+import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.lifecycle.ViewModel
 import com.tdtuer.eventing.R
@@ -33,12 +34,12 @@ class SelectInterestViewModel : ViewModel() {
     private fun loadInterests() {
         // Replace R.drawable placeholders with your actual icons
         val allInterests = listOf(
-            InterestItem("Design", R.drawable.logo),
-            InterestItem("Music", R.drawable.logo),
-            InterestItem("Art", R.drawable.logo),
-            InterestItem("Sports", R.drawable.logo),
-            InterestItem("Food", R.drawable.logo),
-            InterestItem("Others", R.drawable.logo)
+            InterestItem("Design", R.drawable.vector),
+            InterestItem("Music", R.drawable.quaver),
+            InterestItem("Art", R.drawable.paint_palette),
+            InterestItem("Sports", R.drawable.sports),
+            InterestItem("Food", R.drawable.noodles),
+            InterestItem("Others", R.drawable.ellipsis)
         )
         _uiState.update { it.copy(interests = allInterests) }
     }
@@ -63,8 +64,10 @@ class SelectInterestViewModel : ViewModel() {
         // Handle the next step, e.g., save interests and navigate
         if (uiState.value.selectedInterests.isNotEmpty()) {
             println("Next clicked. Selected interests: ${uiState.value.selectedInterests}")
+            Log.d("SelectInterestViewModel", "Next clicked. Selected interests: ${uiState.value.selectedInterests}")
         } else {
             println("Next clicked. No interests selected.")
+            Log.d("SelectInterestViewModel", "Next clicked. No interests selected.")
         }
     }
 }

@@ -33,6 +33,8 @@ googleidLibrary = "1.1.1"
 materialIconsExtended = "1.6.8"
 cloudinaryKotlin = "1.7.0"
 animationCore = "1.9.2"
+playServicesLocation = "21.3.0"
+accompanist = "0.34.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -95,7 +97,9 @@ play-services-auth = { group = "com.google.android.gms", name = "play-services-a
 material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 cloudinary-kotlin = { group = "com.cloudinary", name = "kotlin-url-gen", version.ref = "cloudinaryKotlin" }
 androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animationCore" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
