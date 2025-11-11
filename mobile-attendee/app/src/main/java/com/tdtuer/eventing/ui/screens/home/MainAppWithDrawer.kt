@@ -1,75 +1,184 @@
 package com.tdtuer.eventing.ui.screens.home
 
 import android.annotation.SuppressLint
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels // Added for ViewModel
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.DecayAnimationSpec
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-// MenuItem data class is now in the ViewModel
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.util.lerp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.tdtuer.eventing.R // Ensure R class is available
+import com.tdtuer.eventing.R
 import com.tdtuer.eventing.ui.theme.EventingTheme
+import com.tdtuer.eventing.ui.navigation.Screen
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
+// 1. Định nghĩa trạng thái Mở/Đóng
+enum class CustomDrawerValue { Closed, Open }
 
-// --- Composable chính chứa cả Drawer và màn hình Home ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppWithDrawer(viewModel: MainAppWithDrawerViewModel, navController: NavController) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+fun MainAppWithDrawer(
+    viewModel: MainAppWithDrawerViewModel = viewModel(),
+    navController: NavController
+) {
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            AppDrawerContent(
-                viewModel = viewModel, // Pass ViewModel here
-                onCloseDrawer = {
-                    scope.launch { drawerState.close() }
-                }
-            )
-        }
+    // --- 1. ĐỊNH NGHĨA ANCHORS (KHÔNG ĐỔI) ---
+    val openOffset = with(density) { 300.dp.toPx() }
+    val anchors = DraggableAnchors {
+        CustomDrawerValue.Closed at 0f
+        CustomDrawerValue.Open at openOffset
+    }
+
+    // --- 2. ĐỊNH NGHĨA ANIMATION SPECS (CHO CONSTRUCTOR) ---
+    val snapAnimationSpec: AnimationSpec<Float> = remember { tween() }
+    val decayAnimationSpec: DecayAnimationSpec<Float> = rememberSplineBasedDecay()
+
+    // --- 3. SỬA LỖI GỌI SAVER VÀ CONSTRUCTOR ---
+    val state = rememberSaveable(
+        // SỬA: Dùng Saver() mặc định (Lựa chọn 1 từ log lỗi)
+        // Nó sẽ tự động lưu giá trị (Closed/Open)
+        saver = AnchoredDraggableState.Saver()
     ) {
-        // HomeScreen can remain independent or also take parts of the ViewModel if needed
+        // TẤT CẢ các tham số logic được đặt BÊN TRONG lambda này
+        AnchoredDraggableState(
+            initialValue = CustomDrawerValue.Closed,
+            anchors = anchors,
+            // SỬA LỖI KIỂU: Thêm kiểu : Float rõ ràng
+            positionalThreshold = { totalDistance: Float -> totalDistance * 0.5f },
+            velocityThreshold = { with(density) { 100.dp.toPx() } },
+            snapAnimationSpec = snapAnimationSpec,
+            decayAnimationSpec = decayAnimationSpec
+        )
+    }
+
+    // (Phần tính toán progress, scale, cornerRadius... giữ nguyên)
+    val currentOffset = state.offset.coerceIn(0f, openOffset)
+    val progress = if (openOffset > 0f) (currentOffset / openOffset).coerceIn(0f, 1f) else 0f
+    val scale = lerp(1f, 0.8f, progress)
+    val cornerRadius = lerp(0.dp, 32.dp, progress)
+    val elevation = lerp(0.dp, 16.dp, progress)
+
+    val navigateToLogin by viewModel.navigateToLogin.collectAsState()
+
+    LaunchedEffect(navigateToLogin) {
+        if (navigateToLogin) {
+            navController.navigate(Screen.SignIn.route) {
+                popUpTo(navController.graph.startDestinationId) {
+                    inclusive = true
+                }
+            }
+            viewModel.onNavigationHandled()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // --- 4. NỘI DUNG DRAWER (KHÔNG ĐỔI) ---
+        AppDrawerContent(
+            viewModel = viewModel,
+            navController = navController,
+            onCloseDrawer = {
+                scope.launch {
+                    // animateTo sẽ tự động dùng snapAnimationSpec đã định nghĩa trong state
+                    state.animateTo(CustomDrawerValue.Closed)
+                }
+            }
+        )
+
+        // --- 5. MODIFIER CỦA HOME SCREEN (KHÔNG ĐỔI) ---
         HomeScreen(
             navController = navController,
             onMenuClick = {
-                scope.launch { drawerState.open() }
-            }
+                scope.launch {
+                    state.animateTo(CustomDrawerValue.Open)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .offset {
+                    IntOffset(x = currentOffset.roundToInt(), y = 0)
+                }
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    shadowElevation = with(density) { elevation.toPx() },
+                    shape = RoundedCornerShape(cornerRadius),
+                    clip = true
+                )
+                .anchoredDraggable( // SỬA: Modifier này chỉ cần state và orientation
+                    state = state,
+                    orientation = Orientation.Horizontal
+                )
+                .clickable(
+                    enabled = (state.targetValue == CustomDrawerValue.Open || state.currentValue == CustomDrawerValue.Open),
+                    onClickLabel = "Close Drawer",
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {
+                        scope.launch {
+                            state.animateTo(CustomDrawerValue.Closed)
+                        }
+                    }
+                )
         )
     }
 }
 
 
 // --- Composable cho nội dung bên trong menu trượt ---
+// (Không thay đổi, giữ nguyên như file của bạn)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () -> Unit) {
+fun AppDrawerContent(
+    viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () -> Unit, navController: NavController
+) {
     val menuItems by viewModel.menuItems
-    val selectedItem = viewModel.selectedItem // This is observable directly
+    val selectedItem = viewModel.selectedItem
 
     ModalDrawerSheet(
-        modifier = Modifier.width(300.dp) // Giới hạn chiều rộng của Drawer
+        modifier = Modifier.width(300.dp),
+        drawerContainerColor = MaterialTheme.colorScheme.background,
+        drawerContentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Column(
             modifier = Modifier
@@ -81,7 +190,7 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.default_pfp), // Placeholder, could come from user data in ViewModel
+                    painter = painterResource(id = R.drawable.default_pfp),
                     contentDescription = "User Avatar",
                     modifier = Modifier
                         .size(80.dp)
@@ -89,7 +198,9 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Ashfak Sayem", fontWeight = FontWeight.Bold, fontSize = 18.sp) // Placeholder, could come from user data
+                Text(
+                    "Ashfak Sayem", fontWeight = FontWeight.Bold, fontSize = 18.sp
+                )
             }
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -103,8 +214,19 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
                         }
                     },
                     selected = item == selectedItem,
-                    onClick = { viewModel.onMenuItemClick(item, onCloseDrawer) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    onClick = {
+                        // Sửa lại logic click (từ các bước trước)
+                        viewModel.onMenuItemSelected(item) // Chỉ cập nhật state
+                        navController.navigate(item.route) // Tự điều hướng
+                        onCloseDrawer() // Tự đóng
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        selectedIconColor = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
 
@@ -116,7 +238,10 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
                 label = { Text("Sign Out") },
                 icon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign Out") },
                 selected = false,
-                onClick = { viewModel.onSignOutClick(onCloseDrawer) }
+                onClick = { viewModel.onSignOutClick(onCloseDrawer) },
+                colors = NavigationDrawerItemDefaults.colors(
+                    unselectedContainerColor = Color.Transparent
+                )
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -127,8 +252,7 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE0F7FA),
-                    contentColor = Color(0xFF00BFA5)
+                    containerColor = Color(0xFFE0F7FA), contentColor = Color(0xFF00BFA5)
                 ),
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
@@ -140,12 +264,14 @@ fun AppDrawerContent(viewModel: MainAppWithDrawerViewModel, onCloseDrawer: () ->
     }
 }
 
+// ... (Phần Preview giữ nguyên) ...
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
 fun MainAppWithDrawerPreview() {
     EventingTheme {
-        // For preview, create a new instance of the ViewModel
-        MainAppWithDrawer(viewModel = MainAppWithDrawerViewModel(), navController = rememberNavController())
+//        MainAppWithDrawer(
+//            viewModel = MainAppWithDrawerViewModel(), navController = rememberNavController()
+//        )
     }
 }

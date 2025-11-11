@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -39,11 +40,17 @@ import kotlinx.coroutines.flow.collectLatest
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.tdtuer.eventing.ui.screens.events.AllEventsScreen
+import com.tdtuer.eventing.ui.screens.location.MapViewScreen
+import com.tdtuer.eventing.ui.screens.profile.MyProfileScreen
+import com.tdtuer.eventing.ui.navigation.Screen
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = viewModel(),
+    modifier: Modifier,
+    viewModel: HomeViewModel = hiltViewModel(),
     navController: NavController,
     onMenuClick: () -> Unit = {}
 ) {
@@ -85,6 +92,7 @@ fun HomeScreen(
         }
     }
     Scaffold(
+        modifier = modifier,
         bottomBar = {
             AppBottomBar(onItemClick = { itemName ->
                 viewModel.onBottomBarItemClick(
@@ -121,7 +129,7 @@ fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-//            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
             .background(
                 brush = AppTheme.extendedColors.buttonLinear
             )

@@ -1,4 +1,4 @@
-package com.tdtuer.eventing.ui.screens.mapview
+package com.tdtuer.eventing.ui.screens.location
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,6 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tdtuer.eventing.R // Note: Add your map and icon images to drawables
+import com.tdtuer.eventing.ui.screens.mapview.BottomSheetEvent
+import com.tdtuer.eventing.ui.screens.mapview.CategoryItem
+import com.tdtuer.eventing.ui.screens.mapview.MapEvent
+import com.tdtuer.eventing.ui.screens.mapview.MapViewModel
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 @OptIn(ExperimentalMaterial3Api::class)

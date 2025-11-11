@@ -1,4 +1,4 @@
-package com.tdtuer.eventing.ui.screens.selectinterest
+package com.tdtuer.eventing.ui.screens.home
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -20,7 +20,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tdtuer.eventing.R
+import com.tdtuer.eventing.ui.screens.selectinterest.InterestItem
+import com.tdtuer.eventing.ui.screens.selectinterest.SelectInterestViewModel
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 @OptIn(ExperimentalMaterial3Api::class)

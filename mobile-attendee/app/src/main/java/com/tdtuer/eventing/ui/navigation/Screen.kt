@@ -1,5 +1,5 @@
 // ui/navigation/Screen.kt
-package com.yourpackage.ui.navigation
+package com.tdtuer.eventing.ui.navigation
 
 sealed class Screen(val route: String) {
     // Luồng khởi động & xác thực

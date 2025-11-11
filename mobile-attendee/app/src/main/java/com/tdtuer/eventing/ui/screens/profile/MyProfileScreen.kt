@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,8 +28,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 // R class import is still needed for resources used directly in UI if not from ViewModel
-import com.tdtuer.eventing.R
 import com.tdtuer.eventing.ui.theme.EventingTheme
 // ProfileData and ProfileInterest are now in MyProfileViewModel.kt
 
@@ -133,11 +134,12 @@ fun StatsSection(following: Int, followers: Int) {
             Text(text = following.toString(), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(text = "Following", color = Color.Gray)
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
                 .height(30.dp)
                 .width(1.dp)
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 24.dp),
+            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = followers.toString(), fontSize = 18.sp, fontWeight = FontWeight.Bold)

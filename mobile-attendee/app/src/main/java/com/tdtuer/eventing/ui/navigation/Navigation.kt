@@ -23,13 +23,14 @@ import com.tdtuer.eventing.ui.screens.auth.signup.SignUpScreen
 import com.tdtuer.eventing.ui.screens.auth.signup.SignUpViewModel
 import com.tdtuer.eventing.ui.screens.auth.verification.VerificationScreen
 import com.tdtuer.eventing.ui.screens.auth.verification.VerificationViewModel
-import com.tdtuer.eventing.ui.screens.home.HomeScreen
-import com.tdtuer.eventing.ui.screens.home.HomeViewModel
+import com.tdtuer.eventing.ui.screens.home.MainAppWithDrawer
+import com.tdtuer.eventing.ui.screens.home.MainAppWithDrawerViewModel
 import com.tdtuer.eventing.ui.screens.onboarding.OnboardingScreen
 import com.tdtuer.eventing.ui.screens.onboarding.OnboardingViewModel
+import com.tdtuer.eventing.ui.screens.profile.MyProfileScreen
+import com.tdtuer.eventing.ui.screens.profile.MyProfileViewModel
 import com.tdtuer.eventing.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
-import com.yourpackage.ui.navigation.Screen
 
 @Composable
 fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
@@ -118,8 +119,8 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
         // 1. Các tab chính (Bottom Navigation Bar)
         // HomeScreen của bạn có thể chứa Scaffold và BottomNavBar
         composable(Screen.Home.route) {
-            HomeScreen(
-                viewModel = hiltViewModel<HomeViewModel>(),
+            MainAppWithDrawer(
+                viewModel = hiltViewModel<MainAppWithDrawerViewModel>(),
                 navController = navController // Dùng navController này để đi đến các màn hình chi tiết
             )
             // LƯU Ý: HomeScreen của bạn có thể cần chứa một NavHost nội bộ
@@ -141,8 +142,10 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
         }
 
         composable(Screen.Profile.route) {
-            // TODO: Tạo ProfileScreen()
-            Text("Profile Screen")
+
+            MyProfileScreen(
+                viewModel = hiltViewModel<MyProfileViewModel>(),
+            )
         }
 
         // 2. Luồng chi tiết sự kiện
