@@ -98,8 +98,6 @@ class HomeViewModel @Inject constructor(
     fun onFabClick() { /* TODO */
     }
 
-    fun onHomeHeaderNotificationsClick() { /* TODO */
-    }
 
     fun onSearchFilterClick() { /* TODO */
     }
@@ -113,28 +111,25 @@ class HomeViewModel @Inject constructor(
 
     fun onEventBookmarkClick(event: EventCardUiModel) {
         viewModelScope.launch {
-            // Lấy danh sách hiện tại
-            val currentList = _upcomingEvents.value
-
-            // Tìm vị trí (index) của event được click
-            val eventIndex = currentList.indexOfFirst { it.id == event.id }
-
-            // Nếu không tìm thấy, thoát
-            if (eventIndex == -1) return@launch
-
-            // Tạo một bản sao (copy) của event với trạng thái isFavorite được đảo ngược
             val updatedEvent = event.copy(isFavorite = !event.isFavorite)
 
-            // Tạo một danh sách MỚI (để Compose nhận diện được sự thay đổi)
-            // và thay thế item cũ bằng item đã cập nhật
-            val newList = currentList.toMutableList().apply {
-                set(eventIndex, updatedEvent)
+            // Update upcoming events list
+            val upcomingList = _upcomingEvents.value
+            val upcomingEventIndex = upcomingList.indexOfFirst { it.id == event.id }
+            if (upcomingEventIndex != -1) {
+                _upcomingEvents.value = upcomingList.toMutableList().apply {
+                    set(upcomingEventIndex, updatedEvent)
+                }
             }
 
-            // Cập nhật StateFlow với danh sách mới
-            _upcomingEvents.value = newList
-
-            // TODO: Làm tương tự cho _nearbyEvents.value nếu cần
+            // Update nearby events list
+            val nearbyList = _nearbyEvents.value
+            val nearbyEventIndex = nearbyList.indexOfFirst { it.id == event.id }
+            if (nearbyEventIndex != -1) {
+                _nearbyEvents.value = nearbyList.toMutableList().apply {
+                    set(nearbyEventIndex, updatedEvent)
+                }
+            }
         }
     }
 
@@ -189,12 +184,9 @@ class HomeViewModel @Inject constructor(
 
     fun loadNearbyEventsBasedOnLocation() {
         if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             Log.w("HomeViewModel", "Không có quyền truy cập vị trí")
@@ -203,8 +195,7 @@ class HomeViewModel @Inject constructor(
 
         fusedLocationClient.lastLocation.addOnFailureListener { exception ->
             Log.e(
-                "HomeViewModel",
-                "Lỗi khi lấy vị trí: ${exception.message}"
+                "HomeViewModel", "Lỗi khi lấy vị trí: ${exception.message}"
             )
         }.addOnSuccessListener { location ->
             if (location == null) {
@@ -236,8 +227,7 @@ class HomeViewModel @Inject constructor(
                         is Result.Loading -> {}
                         is Result.Failure -> {
                             Log.e(
-                                "HomeViewModel",
-                                "Lỗi khi tải events: ${result.exception.message}"
+                                "HomeViewModel", "Lỗi khi tải events: ${result.exception.message}"
                             )
                         }
 
@@ -255,45 +245,27 @@ class HomeViewModel @Inject constructor(
     private fun loadCategories() {
         _categories.value = listOf(
             Category(
-                "All",
-                Color(0xFF5669FF),
-                Color.White
-            ) {
-                Icon(
-                    Icons.Default.Bookmark,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            },
-            Category(
-                "Music",
-                Color.White,
-                Color.Black
-            ) {
-                Icon(
-                    Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-            },
-            Category("Sports", Color(0xFFF0635A), Color.White) {
-                Icon(
-                    Icons.Default.Sports,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            },
-            Category(
-                "Art",
-                Color(0xFF29D697),
-                Color.White
-            ) {
-                Icon(
-                    Icons.Default.Campaign,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            }
-        )
+            "All", Color(0xFF5669FF), Color.White
+        ) {
+            Icon(
+                Icons.Default.Bookmark, contentDescription = null, tint = Color.White
+            )
+        }, Category(
+            "Music", Color.White, Color.Black
+        ) {
+            Icon(
+                Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
+            )
+        }, Category("Sports", Color(0xFFF0635A), Color.White) {
+            Icon(
+                Icons.Default.Sports, contentDescription = null, tint = Color.White
+            )
+        }, Category(
+            "Art", Color(0xFF29D697), Color.White
+        ) {
+            Icon(
+                Icons.Default.Campaign, contentDescription = null, tint = Color.White
+            )
+        })
     }
 }

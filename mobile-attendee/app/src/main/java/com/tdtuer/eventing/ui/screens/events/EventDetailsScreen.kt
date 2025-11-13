@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.events
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,28 +31,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 // R class import is crucial, ensure it's correct and project is synced
 import com.tdtuer.eventing.ui.components.EventDetailRow
 import com.tdtuer.eventing.ui.components.FacePile
 import com.tdtuer.eventing.ui.components.GradientButton
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
-class EventDetailsActivity : ComponentActivity() {
-    private val viewModel: EventDetailsViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                EventDetailsScreen(viewModel = viewModel)
-            }
-        }
-    }
-}
 
 @Composable
-fun EventDetailsScreen(viewModel: EventDetailsViewModel) {
+fun EventDetailsScreen(viewModel: EventDetailsViewModel, navController: NavHostController) {
     val eventDetails by viewModel.eventDetails
 
     Scaffold(
@@ -272,11 +262,15 @@ fun BuyTicketBottomBar(price: String, onBuyClick: () -> Unit) {
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun EventDetailsScreenPreview() {
     EventingTheme {
         // For preview, create a new instance of the ViewModel
-        EventDetailsScreen(viewModel = EventDetailsViewModel())
+        EventDetailsScreen(
+            viewModel = EventDetailsViewModel(),
+            navController = rememberNavController(),
+        )
     }
 }

@@ -36,7 +36,7 @@ val RedError = Color(0xFFEB5757)
 val TextBlack = Color(0xFF20222C)
 val TextWhite = Color(0xFFFDFDFD)
 
-val BackgroundGrey = Color(0xFFFBFBFB)
+val BackgroundGrey = Color(0xFFF5F5F5)
 val SurfaceWhite = Color(0xFFFDFDFD)
 
 

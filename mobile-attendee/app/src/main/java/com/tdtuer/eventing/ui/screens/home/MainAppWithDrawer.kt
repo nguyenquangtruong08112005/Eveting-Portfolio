@@ -59,28 +59,15 @@ fun MainAppWithDrawer(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    // --- 1. ĐỊNH NGHĨA ANCHORS (KHÔNG ĐỔI) ---
-    val openOffset = with(density) { 300.dp.toPx() }
-    val anchors = DraggableAnchors {
-        CustomDrawerValue.Closed at 0f
-        CustomDrawerValue.Open at openOffset
-    }
-
-    // --- 2. ĐỊNH NGHĨA ANIMATION SPECS (CHO CONSTRUCTOR) ---
+    // 1. Define animation specs
     val snapAnimationSpec: AnimationSpec<Float> = remember { tween() }
     val decayAnimationSpec: DecayAnimationSpec<Float> = rememberSplineBasedDecay()
 
-    // --- 3. SỬA LỖI GỌI SAVER VÀ CONSTRUCTOR ---
-    val state = rememberSaveable(
-        // SỬA: Dùng Saver() mặc định (Lựa chọn 1 từ log lỗi)
-        // Nó sẽ tự động lưu giá trị (Closed/Open)
-        saver = AnchoredDraggableState.Saver()
-    ) {
-        // TẤT CẢ các tham số logic được đặt BÊN TRONG lambda này
+    // 2. Initialize the state safely
+    val state = rememberSaveable(saver = AnchoredDraggableState.Saver()) {
         AnchoredDraggableState(
             initialValue = CustomDrawerValue.Closed,
-            anchors = anchors,
-            // SỬA LỖI KIỂU: Thêm kiểu : Float rõ ràng
+            anchors = DraggableAnchors { }, // Initialize with empty anchors
             positionalThreshold = { totalDistance: Float -> totalDistance * 0.5f },
             velocityThreshold = { with(density) { 100.dp.toPx() } },
             snapAnimationSpec = snapAnimationSpec,
@@ -88,8 +75,28 @@ fun MainAppWithDrawer(
         )
     }
 
-    // (Phần tính toán progress, scale, cornerRadius... giữ nguyên)
-    val currentOffset = state.offset.coerceIn(0f, openOffset)
+    // 3. Calculate anchors and update the state in an effect
+    val openOffset = with(density) { 300.dp.toPx() }
+    val anchors = remember(openOffset) {
+        DraggableAnchors {
+            CustomDrawerValue.Closed at 0f
+            CustomDrawerValue.Open at openOffset
+        }
+    }
+
+    LaunchedEffect(anchors) {
+        if (anchors != state.anchors) { // Prevent unnecessary updates
+            state.updateAnchors(anchors)
+        }
+    }
+
+    // 4. Guard against access before anchors are set
+    val areAnchorsSet = state.anchors.size > 0
+
+    // Calculations for UI effects
+    val rawOffset = state.offset
+    // Ensure openOffset isn't zero to avoid division by zero
+    val currentOffset = if (areAnchorsSet && !rawOffset.isNaN()) rawOffset.coerceIn(0f, openOffset) else 0f
     val progress = if (openOffset > 0f) (currentOffset / openOffset).coerceIn(0f, 1f) else 0f
     val scale = lerp(1f, 0.8f, progress)
     val cornerRadius = lerp(0.dp, 32.dp, progress)
@@ -113,24 +120,21 @@ fun MainAppWithDrawer(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // --- 4. NỘI DUNG DRAWER (KHÔNG ĐỔI) ---
         AppDrawerContent(
             viewModel = viewModel,
             navController = navController,
             onCloseDrawer = {
                 scope.launch {
-                    // animateTo sẽ tự động dùng snapAnimationSpec đã định nghĩa trong state
-                    state.animateTo(CustomDrawerValue.Closed)
+                    if (areAnchorsSet) state.animateTo(CustomDrawerValue.Closed)
                 }
             }
         )
 
-        // --- 5. MODIFIER CỦA HOME SCREEN (KHÔNG ĐỔI) ---
         HomeScreen(
             navController = navController,
             onMenuClick = {
                 scope.launch {
-                    state.animateTo(CustomDrawerValue.Open)
+                    if (areAnchorsSet) state.animateTo(CustomDrawerValue.Open)
                 }
             },
             modifier = Modifier
@@ -145,18 +149,19 @@ fun MainAppWithDrawer(
                     shape = RoundedCornerShape(cornerRadius),
                     clip = true
                 )
-                .anchoredDraggable( // SỬA: Modifier này chỉ cần state và orientation
+                .anchoredDraggable(
                     state = state,
-                    orientation = Orientation.Horizontal
+                    orientation = Orientation.Horizontal,
+                    enabled = areAnchorsSet // Only enable when anchors are set
                 )
                 .clickable(
-                    enabled = (state.targetValue == CustomDrawerValue.Open || state.currentValue == CustomDrawerValue.Open),
+                    enabled = areAnchorsSet && (state.targetValue == CustomDrawerValue.Open || state.currentValue == CustomDrawerValue.Open),
                     onClickLabel = "Close Drawer",
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick = {
                         scope.launch {
-                            state.animateTo(CustomDrawerValue.Closed)
+                            if (areAnchorsSet) state.animateTo(CustomDrawerValue.Closed)
                         }
                     }
                 )

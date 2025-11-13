@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.notifications
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,30 +30,17 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 // R class import is still needed for resources used directly in UI if any
-import com.tdtuer.eventing.R
 import com.tdtuer.eventing.ui.theme.EventingTheme
 // NotificationItem and NotificationType are now in NotificationViewModel.kt
 
-// --- Activity ---
-class NotificationActivity : ComponentActivity() {
-    private val viewModel: NotificationViewModel by viewModels() // Use ViewModel delegate
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            EventingTheme {
-                NotificationScreen(viewModel = viewModel) // Pass ViewModel
-            }
-        }
-    }
-}
 
 // --- Composable cho toàn bộ màn hình ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationScreen(viewModel: NotificationViewModel) { // Accept ViewModel
+fun NotificationScreen(viewModel: NotificationViewModel, navController: NavHostController) { // Accept ViewModel
     val notifications by viewModel.notifications // Observe notifications from ViewModel
 
     Scaffold(
@@ -172,11 +161,15 @@ fun NotificationItemRow(
 }
 
 // --- Preview ---
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun NotificationScreenPreview() {
     EventingTheme {
         // For preview, create a new instance of the ViewModel
-        NotificationScreen(viewModel = NotificationViewModel())
+        NotificationScreen(
+            viewModel = NotificationViewModel(),
+            navController = rememberNavController(),
+        )
     }
 }

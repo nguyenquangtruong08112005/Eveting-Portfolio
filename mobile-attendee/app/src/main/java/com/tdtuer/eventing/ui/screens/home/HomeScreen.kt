@@ -2,8 +2,10 @@ package com.tdtuer.eventing.ui.screens.home
 
 import android.Manifest
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,8 +20,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,12 +35,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import coil.compose.AsyncImage
 import com.tdtuer.eventing.R // Ensure R class is available
-import com.tdtuer.eventing.helpers.formatTimestampToDay
-import com.tdtuer.eventing.helpers.formatTimestampToMonth
 import com.tdtuer.eventing.ui.navigation.Graph
 import com.tdtuer.eventing.ui.theme.AppTheme
 import com.tdtuer.eventing.ui.theme.EventingTheme
@@ -42,86 +50,176 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.tdtuer.eventing.ui.screens.events.AllEventsScreen
 import com.tdtuer.eventing.ui.screens.location.MapViewScreen
 import com.tdtuer.eventing.ui.screens.profile.MyProfileScreen
 import com.tdtuer.eventing.ui.navigation.Screen
+import com.tdtuer.eventing.ui.screens.events.AllEventsScreen
+import com.tdtuer.eventing.ui.screens.schedule.CalendarScreen
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    modifier: Modifier,
-    viewModel: HomeViewModel = hiltViewModel(),
-    navController: NavController,
+    modifier: Modifier = Modifier, // <-- Thêm modifier
+    navController: NavController, // Đây là mainNavController
     onMenuClick: () -> Unit = {}
 ) {
-    val upcomingEvents by viewModel.upcomingEvents
-    val nearbyEvents by viewModel.nearbyEvents // Assuming you have this in ViewModel
+    // 1. Tạo một NavController nội bộ cho Bottom Bar
+    val bottomNavController = rememberNavController()
 
+    Scaffold(
+        modifier = modifier, // <-- Áp dụng modifier (cho Drawer)
+        bottomBar = {
+            // 2. Truyền bottomNavController vào BottomBar
+            AppBottomBar(
+                bottomNavController = bottomNavController,
+                onItemClick = { route ->
+                    bottomNavController.navigate(route) {
+                        // Pop up về start destination để tránh back stack lớn
+                        popUpTo(bottomNavController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            )
+        },
+    ) { innerPadding ->
+        // 3. Tạo NavHost lồng nhau
+        BottomNavGraph(
+            modifier = Modifier.padding(innerPadding),
+            mainNavController = navController, // Dùng để đi đến các màn hình chi tiết
+            bottomNavController = bottomNavController, // Dùng để quản lý các tab
+            onMenuClick = onMenuClick // Truyền onMenuClick vào tab "Home" (ExploreScreen)
+        )
+    }
+}
+
+@Composable
+fun BottomNavGraph(
+    modifier: Modifier = Modifier,
+    mainNavController: NavController,
+    bottomNavController: NavHostController,
+    onMenuClick: () -> Unit
+) {
+    NavHost(
+        navController = bottomNavController,
+        startDestination = Screen.Home.route, // Bắt đầu ở tab Home
+        modifier = modifier
+    ) {
+        // Tab 1: Home (Explore)
+        composable(Screen.Home.route) {
+            ExploreScreen(
+                mainNavController = mainNavController,
+                onMenuClick = onMenuClick,
+                viewModel = hiltViewModel<HomeViewModel>() // HomeViewModel giờ thuộc về tab này
+            )
+        }
+
+        // Tab 2: Events
+        composable(Screen.Events.route) {
+            // (Bạn cần import AllEventsScreen và viewModel của nó)
+            AllEventsScreen(
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Tab 3: Map
+        composable(Screen.Map.route) {
+            // (Bạn cần import MapViewScreen và viewModel của nó)
+            MapViewScreen(viewModel = hiltViewModel())
+        }
+
+        // Tab 4: Profile
+        composable(Screen.Profile.route) {
+            // (Bạn cần import MyProfileScreen và viewModel của nó)
+            MyProfileScreen(viewModel = hiltViewModel())
+        }
+    }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun ExploreScreen(
+    mainNavController: NavController,
+    onMenuClick: () -> Unit,
+    viewModel: HomeViewModel // Nhận ViewModel từ BottomNavGraph
+) {
+    val upcomingEvents by viewModel.upcomingEvents
+    val nearbyEvents by viewModel.nearbyEvents
+
+    // (Code xin quyền và LaunchedEffect cho NavEvent giữ nguyên)
     val locationPermissionsState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
 
-    LaunchedEffect(key1 = locationPermissionsState) @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION]) {
-// Lấy trạng thái "đã được cấp" của 2 quyền
+    LaunchedEffect(key1 = locationPermissionsState) {
         val allPermissionsGranted = locationPermissionsState.permissions.all {
             it.status.isGranted
         }
-
         if (allPermissionsGranted) {
-// Nếu đã có quyền (ví dụ: người dùng đã cấp từ lần trước)
-// -> Ra lệnh cho ViewModel tải
             viewModel.loadNearbyEventsBasedOnLocation()
         } else {
-// Nếu chưa có quyền -> Kích hoạt hộp thoại xin quyền
             locationPermissionsState.launchMultiplePermissionRequest()
         }
     }
 
-// Lắng nghe sự kiện điều hướng từ ViewModel
     LaunchedEffect(Unit) {
         viewModel.navEvent.collectLatest {
             when (it) {
                 HomeNavEvent.NavigateToAuth -> {
-                    navController.navigate(Graph.AUTHENTICATION) {
+                    mainNavController.navigate(Graph.AUTHENTICATION) {
                         popUpTo(Graph.MAIN_APP) { inclusive = true }
                     }
                 }
             }
         }
     }
-    Scaffold(
-        modifier = modifier,
-        bottomBar = {
-            AppBottomBar(onItemClick = { itemName ->
-                viewModel.onBottomBarItemClick(
-                    itemName
-                )
-            })
-        },
-// floatingActionButton = { AppFab(onClick = { viewModel.onFabClick() }) },
-// floatingActionButtonPosition = FabPosition.Center
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .background(Color(0xFFF7F7F7))
-        ) {
-            item { HomeHeader(viewModel = viewModel, onMenuClick = onMenuClick) }
-            item { EventSection("Upcoming Events", upcomingEvents, viewModel) }
-            item { InviteBanner(onInviteClick = { viewModel.onInviteFriendsClick() }) }
 
-            if (nearbyEvents.isNotEmpty()) {
-                item { EventSection("Nearby You", nearbyEvents, viewModel) }
-            }
+    // Đây là LazyColumn cũ của bạn
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colorScheme.background)
+    ) {
+        item {
+            HomeHeader(
+                viewModel = viewModel,
+                onMenuClick = onMenuClick,
+                onNotificationsClick = {
+                    mainNavController.navigate(Screen.Notifications.route)
+                })
+        }
+        item {
+            EventSection(
+                "Upcoming Events",
+                upcomingEvents,
+                viewModel,
+                mainNavController
+            )
+        } // <-- Thêm mainNavController
+        item { InviteBanner(onInviteClick = { viewModel.onInviteFriendsClick() }) }
+
+        if (nearbyEvents.isNotEmpty()) {
+            item {
+                EventSection(
+                    "Nearby You",
+                    nearbyEvents,
+                    viewModel,
+                    mainNavController
+                )
+            } // <-- Thêm mainNavController
         }
     }
 }
 
 @Composable
-fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
+fun HomeHeader(
+    viewModel: HomeViewModel, onMenuClick: () -> Unit,
+    onNotificationsClick: () -> Unit = {}
+) {
     val categories by viewModel.categories
     val selectedCategoryName = viewModel.selectedCategoryName
     val currentLocation by viewModel.currentLocationDisplay
@@ -166,7 +264,7 @@ fun HomeHeader(viewModel: HomeViewModel, onMenuClick: () -> Unit) {
             } else {
                 Spacer(Modifier.width(0.dp))
             }
-            IconButton(onClick = { viewModel.onHomeHeaderNotificationsClick() }) {
+            IconButton(onClick = { onNotificationsClick() }) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = "Notifications",
@@ -251,8 +349,14 @@ fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun EventSection(name: String, events: List<EventCardUiModel>, viewModel: HomeViewModel) {
+fun EventSection(
+    name: String,
+    events: List<EventCardUiModel>,
+    viewModel: HomeViewModel,
+    mainNavController: NavController // <-- Thêm tham số này
+) {
     Column(modifier = Modifier.padding(vertical = 24.dp)) {
+        // ... (Phần Row "See All" giữ nguyên)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -277,110 +381,178 @@ fun EventSection(name: String, events: List<EventCardUiModel>, viewModel: HomeVi
         ) {
             items(events) { event ->
                 EventCard(
-                    event = event, onBookmarkClick = { viewModel.onEventBookmarkClick(event) })
+                    event = event,
+                    onBookmarkClick = { viewModel.onEventBookmarkClick(event) },
+                    onCardClick = { // <-- Thêm hành động click
+                        mainNavController.navigate(
+                            Screen.EventDetails.createRoute(event.id)
+                        )
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun EventCard(event: EventCardUiModel, onBookmarkClick: () -> Unit) {
+fun EventCard(
+    event: EventCardUiModel,
+    onBookmarkClick: () -> Unit,
+    onCardClick: () -> Unit
+) {
+    val density = LocalDensity.current
+
+    // --- Cấu hình cho hiệu ứng vé ---
+    val cutoutRadius = 12.dp
+    val junctionY = 150.dp // Chiều cao của Box chứa ảnh
+
+    // 1. "phần lõm là màu nền" -> Lấy màu nền từ Theme
+    val cutoutColor = AppTheme.colorScheme.background
+
+    // 2. "height của dash dày hơn"
+    val dashStrokeWidth = 10f // <-- ĐÃ TĂNG LÊN 3f
+    val dashColor = AppTheme.colorScheme.outline.copy(alpha = 0.7f)
+    val dashWidth = 10f
+    val dashGap = 10f
+    val pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidth, dashGap), 0f)
+    // --- Kết thúc cấu hình ---
+
     Card(
-        modifier = Modifier.width(300.dp),
+        modifier = Modifier
+            .width(300.dp)
+            .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
     ) {
-        Column {
-            Box(modifier = Modifier.height(150.dp)) {
-                AsyncImage(
-                    model = event.imageUrl,
-                    contentDescription = event.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(id = R.drawable.ic_launcher_background)
-                )
-                Box(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = 0.8f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                        .align(Alignment.TopStart)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = event.displayDate,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFF0635A)
-                        )
-                        Text(
-                            text = event.displayMonth, fontSize = 12.sp, color = Color(0xFFF0635A)
+        Box {
+            // LỚP 1: NỘI DUNG (BÊN DƯỚI)
+            Column {
+                Box(modifier = Modifier.height(junctionY)) {
+                    AsyncImage(
+                        model = event.imageUrl,
+                        contentDescription = event.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(id = R.drawable.ic_launcher_background)
+                    )
+                    // Box ngày tháng (không đổi)
+                    Box(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.8f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .align(Alignment.TopStart)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = event.displayDate,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF0635A)
+                            )
+                            Text(
+                                text = event.displayMonth,
+                                fontSize = 12.sp,
+                                color = Color(0xFFF0635A)
+                            )
+                        }
+                    }
+                    // IconButton bookmark (không đổi)
+                    IconButton(
+                        onClick = onBookmarkClick,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    ) {
+                        val icon =
+                            if (event.isFavorite) Icons.Filled.Bookmark else Icons.Default.BookmarkBorder
+                        val iconTint = if (event.isFavorite) Color(0xFFF0635A) else Color.White
+
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = "Bookmark",
+                            tint = iconTint,
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.05f), CircleShape)
+                                .padding(4.dp)
                         )
                     }
                 }
-                IconButton(
-                    onClick = onBookmarkClick,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                ) {
-// Chọn icon và màu sắc dựa vào trạng thái isFavorite
-                    val icon =
-                        if (event.isFavorite) Icons.Filled.Bookmark else Icons.Default.BookmarkBorder
-                    val iconTint = if (event.isFavorite) Color(0xFFF0635A) else Color.White
 
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = "Bookmark",
-                        tint = iconTint,
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.05f), CircleShape)
-                            .padding(4.dp)
-                    )
-                }
-            }
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = event.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-// (Bạn có thể thêm icon $ hoặc ticket ở đây)
-                    Icon(
-                        Icons.Default.ConfirmationNumber,
-                        contentDescription = "Price",
-                        tint = Color(0xFF3F38DD),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        event.displayPrice, // <-- Dùng giá đã định dạng
-                        color = Color(0xFF3F38DD), fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        event.displayLocation,
-                        color = Color.Gray,
-                        fontSize = 12.sp,
+                        text = event.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.ConfirmationNumber,
+                            contentDescription = "Price",
+                            tint = Color(0xFF3F38DD),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            event.displayPrice,
+                            color = Color(0xFF3F38DD), fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            event.displayLocation,
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
+            }
+
+            // *** THAY ĐỔI 2: LỚP PHỦ (BÊN TRÊN) ***
+            // Canvas này sẽ vẽ "đè lên" Column nội dung
+            Canvas(modifier = Modifier.matchParentSize()) {
+                val cutoutRadiusPx = with(density) { cutoutRadius.toPx() }
+                val junctionYPx = with(density) { junctionY.toPx() }
+
+                // 1. Vẽ "lỗ cắt" bên trái (đè lên AsyncImage)
+                //    với màu nền của màn hình
+                drawCircle(
+                    color = cutoutColor,
+                    radius = cutoutRadiusPx,
+                    center = Offset(x = 0f, y = junctionYPx),
+                )
+
+                // 2. Vẽ "lỗ cắt" bên phải (đè lên AsyncImage)
+                //    với màu nền của màn hình
+                drawCircle(
+                    color = cutoutColor,
+                    radius = cutoutRadiusPx,
+                    center = Offset(x = size.width, y = junctionYPx)
+                )
+
+                // 3. Vẽ đường răng cưa (đè lên AsyncImage)
+                //    với độ dày 3f
+                drawLine(
+                    color = dashColor,
+                    start = Offset(x = cutoutRadiusPx, y = junctionYPx),
+                    end = Offset(x = size.width - cutoutRadiusPx, y = junctionYPx),
+                    strokeWidth = dashStrokeWidth, // <-- Đã dày hơn
+                    pathEffect = pathEffect
+                )
             }
         }
     }
@@ -445,36 +617,57 @@ fun InviteBanner(onInviteClick: () -> Unit) {
 }
 
 @Composable
-fun AppBottomBar(onItemClick: (String) -> Unit) {
+fun AppBottomBar(
+    bottomNavController: NavHostController, // <-- Nhận bottomNavController
+    onItemClick: (String) -> Unit
+) {
+    // Lấy trạng thái back stack hiện tại để biết item nào đang được chọn
+    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val items = listOf(
+        Screen.Home,
+        Screen.Events,
+        Screen.Map,
+        Screen.Profile
+    )
+    val icons = mapOf(
+        Screen.Home.route to Icons.Default.Explore,
+        Screen.Events.route to Icons.Default.CalendarToday,
+        Screen.Map.route to Icons.Default.Map,
+        Screen.Profile.route to Icons.Default.Person
+    )
+    val labels = mapOf(
+        Screen.Home.route to "Explore",
+        Screen.Events.route to "Events",
+        Screen.Map.route to "Map",
+        Screen.Profile.route to "Profile"
+    )
+
     BottomAppBar(
-        containerColor = Color.White, actions = {
+        containerColor = Color.White,
+        actions = {
             Row(
-                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
-// In a real app, selection state would come from ViewModel/Navigation
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { onItemClick("Explore") },
-                    icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") },
-                    label = { Text("Explore") })
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { onItemClick("Events") },
-                    icon = { Icon(Icons.Default.CalendarToday, contentDescription = "Events") },
-                    label = { Text("Events") })
-                Spacer(modifier = Modifier.width(40.dp)) // Spacer for FAB
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { onItemClick("Map") },
-                    icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
-                    label = { Text("Map") })
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { onItemClick("Profile") },
-                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                    label = { Text("Profile") })
+                items.forEach { screen ->
+                    // Bỏ qua Spacer, chỉ thêm 4 item
+                    NavigationBarItem(
+                        selected = currentRoute == screen.route,
+                        onClick = { onItemClick(screen.route) },
+                        icon = {
+                            Icon(
+                                icons[screen.route]!!,
+                                contentDescription = labels[screen.route]
+                            )
+                        },
+                        label = { Text(labels[screen.route]!!) }
+                    )
+                }
             }
-        })
+        }
+    )
 }
 
 @Composable

@@ -31,6 +31,13 @@ import com.tdtuer.eventing.ui.screens.profile.MyProfileScreen
 import com.tdtuer.eventing.ui.screens.profile.MyProfileViewModel
 import com.tdtuer.eventing.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
+import androidx.core.net.toUri
+import com.tdtuer.eventing.ui.screens.events.EventDetailsScreen
+import com.tdtuer.eventing.ui.screens.events.EventDetailsViewModel
+import com.tdtuer.eventing.ui.screens.events.EventPreviewScreen
+import com.tdtuer.eventing.ui.screens.events.EventPreviewViewModel
+import com.tdtuer.eventing.ui.screens.notifications.NotificationScreen
+import com.tdtuer.eventing.ui.screens.notifications.NotificationViewModel
 
 @Composable
 fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
@@ -39,7 +46,7 @@ fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
     LaunchedEffect(intent) {
         val link = intent?.data?.toString()
         if (link != null) {
-            val uri = Uri.parse(link)
+            val uri = link.toUri()
             val mode = uri.getQueryParameter("mode")
             val oobCode = uri.getQueryParameter("oobCode")
 
@@ -150,12 +157,25 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
 
         // 2. Luồng chi tiết sự kiện
         composable(
-            route = Screen.EventDetails.route,
+            route = Screen.EventPreview.route,
             arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) {
             // val eventId = it.arguments?.getString("eventId")
             // TODO: Tạo EventDetailsScreen(eventId = eventId, navController = navController)
-            Text("Event Details Screen")
+            EventPreviewScreen(
+                viewModel = hiltViewModel<EventPreviewViewModel>(),
+                navController = navController
+            )
+        }
+
+        composable(
+            route = Screen.EventDetails.route,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) {
+            EventDetailsScreen(
+                viewModel = hiltViewModel<EventDetailsViewModel>(),
+                navController = navController
+            )
         }
 
         composable(
@@ -211,8 +231,10 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
         }
 
         composable(Screen.Notifications.route) {
-            // TODO: Tạo NotificationsScreen(navController = navController)
-            Text("Notifications Screen")
+            NotificationScreen(
+                navController = navController,
+                viewModel = hiltViewModel<NotificationViewModel>()
+            )
         }
 
         composable(Screen.MyBookings.route) {

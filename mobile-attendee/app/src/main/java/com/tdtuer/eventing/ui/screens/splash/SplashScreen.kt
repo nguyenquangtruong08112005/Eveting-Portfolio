@@ -29,7 +29,7 @@ fun SplashScreen(
 
     val alphaAnim = animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = 1000)
+        animationSpec = tween(durationMillis = 10)
     )
 
     LaunchedEffect(key1 = true) {

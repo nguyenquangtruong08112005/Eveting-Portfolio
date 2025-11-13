@@ -16,9 +16,19 @@ fun formatTimestampToDay(timestamp: Long): String {
 
 fun formatTimestampToMonth(timestamp: Long): String {
     return try {
-        val sdf = SimpleDateFormat("MMM", Locale.getDefault())
+        val sdf = SimpleDateFormat("MMM", Locale.US)
         val netDate = Date(timestamp)
-        sdf.format(netDate).uppercase(Locale.getDefault())
+        sdf.format(netDate).uppercase(Locale.US)
+    } catch (e: Exception) {
+        "?"
+    }
+}
+
+fun formatTimestampToYear(timestamp: Long): String {
+    return try {
+        val sdf = SimpleDateFormat("yyyy", Locale.US)
+        val netDate = Date(timestamp)
+        sdf.format(netDate)
     } catch (e: Exception) {
         "?"
     }

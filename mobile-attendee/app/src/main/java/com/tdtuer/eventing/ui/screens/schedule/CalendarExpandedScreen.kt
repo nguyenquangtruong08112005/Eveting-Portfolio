@@ -1,5 +1,7 @@
-package com.tdtuer.eventing.ui.screens.calendarexpanded
+package com.tdtuer.eventing.ui.screens.schedule
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tdtuer.eventing.ui.screens.calendar.Event
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -26,8 +27,9 @@ import java.util.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.ExperimentalFoundationApi
 
-import com.tdtuer.eventing.ui.screens.calendar.EventCard
+import com.tdtuer.eventing.ui.screens.calendarexpanded.CalendarExpandedViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CalendarExpandedScreen(viewModel: CalendarExpandedViewModel) {
@@ -125,6 +127,7 @@ private fun FilterBar() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun CalendarMonthView(selectedDate: LocalDate, onDateSelected: (LocalDate) -> Unit) {
     val daysInMonth = (1..31).toList()
@@ -193,6 +196,7 @@ private fun DateCell(day: String, isSelected: Boolean, onClick: () -> Unit) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showSystemUi = true)
 @Composable
 fun CalendarExpandedScreenPreview() {

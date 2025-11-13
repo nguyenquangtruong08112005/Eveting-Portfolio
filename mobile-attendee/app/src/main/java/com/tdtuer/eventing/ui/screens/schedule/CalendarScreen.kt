@@ -1,5 +1,7 @@
-package com.tdtuer.eventing.ui.screens.calendar
+package com.tdtuer.eventing.ui.screens.schedule
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -24,12 +26,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tdtuer.eventing.R
+import com.tdtuer.eventing.ui.screens.calendar.CalendarViewModel
+import com.tdtuer.eventing.ui.screens.calendar.Event
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CalendarScreen(viewModel: CalendarViewModel) {
@@ -58,12 +62,6 @@ fun CalendarScreen(viewModel: CalendarViewModel) {
                     }
                 }
             )
-        },
-        bottomBar = {
-            AppBottomNavigation(
-                selectedItem = uiState.selectedBottomNavItem,
-                onItemSelected = viewModel::onBottomNavItemClick
-            )
         }
     ) { innerPadding ->
         LazyColumn(
@@ -86,6 +84,7 @@ fun CalendarScreen(viewModel: CalendarViewModel) {
 
 // --- Custom Composables for this Screen ---
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun DateHeader(date: LocalDate) {
     Row(
@@ -132,6 +131,7 @@ private fun DateIndicator(day: String, month: String) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun EventCard(event: Event) {
     Card(
@@ -189,6 +189,7 @@ private fun AppBottomNavigation(selectedItem: String, onItemSelected: (String) -
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showSystemUi = true)
 @Composable
 fun CalendarScreenPreview() {

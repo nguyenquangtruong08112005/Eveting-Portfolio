@@ -28,7 +28,11 @@ sealed class Screen(val route: String) {
     data object Profile : Screen("profile_screen")
 
     // Luồng chi tiết sự kiện
-    data object EventDetails : Screen("event_details_screen/{eventId}") {
+    data object EventPreview : Screen("event_preview_screen/{eventId}") {
+        fun createRoute(eventId: String) = "event_preview_screen/$eventId"
+    }
+
+    data object EventDetails: Screen("event_details_screen/{eventId}") {
         fun createRoute(eventId: String) = "event_details_screen/$eventId"
     }
 
