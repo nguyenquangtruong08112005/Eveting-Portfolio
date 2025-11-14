@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,7 +29,9 @@ import com.tdtuer.eventing.ui.theme.AppTheme
 fun GradientButton(
     text: String,
     onClick: () -> Unit,
-    brush: Brush = AppTheme.extendedColors.blackLinear
+    brush: Brush = AppTheme.extendedColors.blackLinear,
+    icon: ImageVector? = null,
+    modifier: Modifier? = Modifier
 ) {
     Surface(
         onClick = onClick,
@@ -37,7 +40,7 @@ fun GradientButton(
             .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
 
-    ) {
+        ) {
         Box(
             modifier = Modifier
                 .background(AppTheme.extendedColors.buttonLinear)
@@ -51,12 +54,14 @@ fun GradientButton(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Button Arrow",
-                    tint = AppTheme.colorScheme.onPrimary
-                )
+                if (icon != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Button Arrow",
+                        tint = AppTheme.colorScheme.onPrimary
+                    )
+                }
             }
         }
     }

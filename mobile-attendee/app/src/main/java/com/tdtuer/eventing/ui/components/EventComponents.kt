@@ -21,12 +21,12 @@ import com.tdtuer.eventing.ui.theme.AppTheme
 
 @Composable
 fun EventDetailRow(icon: ImageVector, title: String, subtitle: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.Top) {
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(AppTheme.colorScheme.secondaryContainer), // Màu nền icon
+                .background(AppTheme.colorScheme.outline), // Màu nền icon
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = null, tint = AppTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(24.dp))

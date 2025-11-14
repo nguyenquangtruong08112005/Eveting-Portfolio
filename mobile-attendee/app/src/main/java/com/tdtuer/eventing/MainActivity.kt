@@ -60,11 +60,11 @@ class MainActivity : ComponentActivity() {
 //
 //                    // --- Test 2: GetEventById (Lấy 1 ID cụ thể) ---
 //                    // (Lấy ID từ JSON mẫu của bạn)
-//                    val testEventId = "evt_foodfest_saigon_2025"
+//                    val testEventId = "evt_gaming_expo_hanoi_2026"
 //                    Log.d(TAG, "[Test 2] Đang gọi GetEventById($testEventId)...")
 //                    getEventByIdUseCase(testEventId).collect { result ->
 //                        when (result) {
-//                            is Result.Success -> Log.d(TAG, "[GetEventById] ✅ THÀNH CÔNG: ${result.data.name}. Mô tả: ${result.data.description}...")
+//                            is Result.Success -> Log.d(TAG, "[GetEventById] ✅ THÀNH CÔNG: ${result.data}. Mô tả: ${result.data.description}...")
 //                            is Result.Failure -> Log.e(TAG, "[GetEventById] ❌ LỖI: ${result.exception.message}")
 //                            is Result.Loading -> Log.d(TAG, "[GetEventById] ⏳ Đang tải...")
 //                        }

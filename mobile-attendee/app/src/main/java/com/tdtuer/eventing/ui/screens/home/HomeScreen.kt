@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.home
 
+import TicketShape
 import android.Manifest
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -229,7 +230,7 @@ fun HomeHeader(
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
             .background(
-                brush = AppTheme.extendedColors.buttonLinear
+                brush = AppTheme.extendedColors.orangeLinear
             )
             .padding(top = 12.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
     ) {
@@ -403,29 +404,46 @@ fun EventCard(
     val density = LocalDensity.current
 
     // --- Cấu hình cho hiệu ứng vé ---
+    val cornerRadius = 16.dp
     val cutoutRadius = 12.dp
     val junctionY = 150.dp // Chiều cao của Box chứa ảnh
 
-    // 1. "phần lõm là màu nền" -> Lấy màu nền từ Theme
+    // 1. "phần lõm là màu nền"
     val cutoutColor = AppTheme.colorScheme.background
 
     // 2. "height của dash dày hơn"
-    val dashStrokeWidth = 10f // <-- ĐÃ TĂNG LÊN 3f
+    val dashStrokeWidth = 10f
     val dashColor = AppTheme.colorScheme.outline.copy(alpha = 0.7f)
     val dashWidth = 10f
     val dashGap = 10f
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidth, dashGap), 0f)
+
+    // 3. Cấu hình Inset Shadow (Bóng mờ cho vết lõm)
+    val shadowRadius = cutoutRadius // Lớn hơn vết lõm 4.dp
+    val shadowColor = Color.Black.copy(alpha = 0f) // Màu đen mờ
     // --- Kết thúc cấu hình ---
 
-    Card(
+    // Khởi tạo TicketShape
+    val ticketShape = remember(cornerRadius, cutoutRadius, junctionY) {
+        TicketShape(cornerRadius, cutoutRadius, junctionY)
+    }
+
+    // Sử dụng Box để xếp chồng Card và Canvas
+    Box(
         modifier = Modifier
             .width(300.dp)
-            .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+            .clickable(onClick = onCardClick)
     ) {
-        Box {
-            // LỚP 1: NỘI DUNG (BÊN DƯỚI)
+
+        // LỚP 1: CARD (NỘI DUNG CHÍNH, BỊ CẮT XÉN)
+        Card(
+//            modifier = Modifier.matchParentSize(),
+            shape = ticketShape, // <-- ÁP DỤNG SHAPE CẮT XÉN
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        ) {
+            // Column này và mọi thứ bên trong nó sẽ bị cắt (clip)
+            // bởi `ticketShape`
             Column {
                 Box(modifier = Modifier.height(junctionY)) {
                     AsyncImage(
@@ -435,7 +453,7 @@ fun EventCard(
                         contentScale = ContentScale.Crop,
                         placeholder = painterResource(id = R.drawable.ic_launcher_background)
                     )
-                    // Box ngày tháng (không đổi)
+                    // ... (Code Box ngày tháng không đổi) ...
                     Box(
                         modifier = Modifier
                             .padding(8.dp)
@@ -458,7 +476,7 @@ fun EventCard(
                             )
                         }
                     }
-                    // IconButton bookmark (không đổi)
+                    // ... (Code IconButton bookmark không đổi) ...
                     IconButton(
                         onClick = onBookmarkClick,
                         modifier = Modifier
@@ -493,13 +511,13 @@ fun EventCard(
                         Icon(
                             Icons.Default.ConfirmationNumber,
                             contentDescription = "Price",
-                            tint = Color(0xFF3F38DD),
+                            tint = AppTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             event.displayPrice,
-                            color = Color(0xFF3F38DD), fontWeight = FontWeight.SemiBold
+                            color = AppTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -521,42 +539,43 @@ fun EventCard(
                     }
                 }
             }
+        }
+        // *** THAY ĐỔI 2: LỚP PHỦ (BÊN TRÊN) ***
+        // Canvas này sẽ vẽ "đè lên" Column nội dung
+        Canvas(
+            modifier = Modifier.matchParentSize()
+        ) {
+            val cutoutRadiusPx = with(density) { cutoutRadius.toPx() }
+            val junctionYPx = with(density) { junctionY.toPx() }
+//                // 1. Vẽ "lỗ cắt" bên trái (đè lên AsyncImage)
+//                //    với màu nền của màn hình
+//                drawCircle(
+//                    color = cutoutColor,
+//                    radius = cutoutRadiusPx,
+//                    center = Offset(x = 0f, y = junctionYPx),
+//                )
+//
+//                // 2. Vẽ "lỗ cắt" bên phải (đè lên AsyncImage)
+//                //    với màu nền của màn hình
+//                drawCircle(
+//                    color = cutoutColor,
+//                    radius = cutoutRadiusPx,
+//                    center = Offset(x = size.width, y = junctionYPx)
+//                )
 
-            // *** THAY ĐỔI 2: LỚP PHỦ (BÊN TRÊN) ***
-            // Canvas này sẽ vẽ "đè lên" Column nội dung
-            Canvas(modifier = Modifier.matchParentSize()) {
-                val cutoutRadiusPx = with(density) { cutoutRadius.toPx() }
-                val junctionYPx = with(density) { junctionY.toPx() }
-
-                // 1. Vẽ "lỗ cắt" bên trái (đè lên AsyncImage)
-                //    với màu nền của màn hình
-                drawCircle(
-                    color = cutoutColor,
-                    radius = cutoutRadiusPx,
-                    center = Offset(x = 0f, y = junctionYPx),
-                )
-
-                // 2. Vẽ "lỗ cắt" bên phải (đè lên AsyncImage)
-                //    với màu nền của màn hình
-                drawCircle(
-                    color = cutoutColor,
-                    radius = cutoutRadiusPx,
-                    center = Offset(x = size.width, y = junctionYPx)
-                )
-
-                // 3. Vẽ đường răng cưa (đè lên AsyncImage)
-                //    với độ dày 3f
-                drawLine(
-                    color = dashColor,
-                    start = Offset(x = cutoutRadiusPx, y = junctionYPx),
-                    end = Offset(x = size.width - cutoutRadiusPx, y = junctionYPx),
-                    strokeWidth = dashStrokeWidth, // <-- Đã dày hơn
-                    pathEffect = pathEffect
-                )
-            }
+            // 3. Vẽ đường răng cưa (đè lên AsyncImage)
+            //    với độ dày 3f
+            drawLine(
+                color = dashColor,
+                start = Offset(x = cutoutRadiusPx, y = junctionYPx),
+                end = Offset(x = size.width - cutoutRadiusPx, y = junctionYPx),
+                strokeWidth = dashStrokeWidth, // <-- Đã dày hơn
+                pathEffect = pathEffect
+            )
         }
     }
 }
+
 
 @Composable
 fun InviteBanner(onInviteClick: () -> Unit) {

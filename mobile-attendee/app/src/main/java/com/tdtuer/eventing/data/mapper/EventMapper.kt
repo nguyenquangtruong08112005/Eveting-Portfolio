@@ -33,7 +33,7 @@ fun EventDetailDto.toDomainModel(): Event {
         description = this.description ?: "",
         imageUrl = this.imageUrl ?: "",
         bannerUrl = this.bannerUrl ?: "",
-        featuredProfileIds = this.featuredProfileIds ?: emptyList(),
+        featuredProfiles = this.featuredProfiles ?: emptyList(),
         category = this.category ?: emptyList(),
         tags = this.tags ?: emptyList(),
         date = this.date ?: 0L,

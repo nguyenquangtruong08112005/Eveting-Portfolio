@@ -1,45 +1,79 @@
 package com.tdtuer.eventing.ui.screens.events
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.tdtuer.eventing.R // Assuming R class is available
+import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing.R
+import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.usecase.events.GetEventByIdUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-// Data class for event details, can be expanded as needed
-data class EventDetailsData(
-    val title: String = "International Band Music Concert",
-    val date: String = "14 December, 2021",
-    val dateTimeSubtitle: String = "Tuesday, 4:00PM - 9:00PM",
-    val locationTitle: String = "Gala Convention Center",
-    val locationSubtitle: String = "36 Guild Street London, UK",
-    val organizerAvatarRes: Int = R.drawable.default_pfp,
-    val organizerName: String = "Ashfak Sayem",
-    val organizerRole: String = "Organizer",
-    val aboutEvent: String = "Enjoy your favorite dishe and a lovely your friends and family and have a great time.\nFood from local food trucks will be available for purchase.",
-    val ticketPrice: String = "$120",
-    val bannerImageRes: Int = R.drawable.banner_svgrepo_com,
-    val goingFacePileAvatars: List<Int> = listOf(R.drawable.default_pfp, R.drawable.default_pfp, R.drawable.default_pfp),
-    val goingCountText: String = "+20 Going"
+// 1. Định nghĩa UI State mới để quản lý các trạng thái
+data class EventDetailsUiState(
+    val isLoading: Boolean = true,
+    val event: Event? = null,
+    val error: String? = null
 )
 
-class EventDetailsViewModel : ViewModel() {
+@HiltViewModel
+class EventDetailsViewModel @Inject constructor(
+    private val getEventByIdUseCase: GetEventByIdUseCase, // Tiêm UseCase
+    savedStateHandle: SavedStateHandle // Tiêm SavedStateHandle
+) : ViewModel() {
 
-    private val _eventDetails = mutableStateOf(EventDetailsData()) // Initialize with default/placeholder data
-    val eventDetails: State<EventDetailsData> = _eventDetails
+    // 2. Sử dụng StateFlow cho UI State
+    private val _uiState = MutableStateFlow(EventDetailsUiState())
+    val uiState: StateFlow<EventDetailsUiState> = _uiState.asStateFlow()
 
-    // In a real app, you would load this data, e.g., from a repository based on an event ID
-    // init {
-    //     loadEventDetails(eventId = "some_event_id")
-    // }
+    init {
+        // 3. Lấy eventId từ navigation arguments
+        val eventId: String? = savedStateHandle.get("eventId")
+        if (eventId != null) {
+            loadEventDetails(eventId)
+        } else {
+            _uiState.value = EventDetailsUiState(
+                isLoading = false,
+                error = "Không tìm thấy ID của sự kiện."
+            )
+        }
+    }
 
-    // private fun loadEventDetails(eventId: String) {
-    //     // viewModelScope.launch {
-    //     //     _eventDetails.value = repository.getEventDetails(eventId)
-    //     // }
-    // }
+    // 4. Hàm gọi UseCase để lấy dữ liệu thật
+    private fun loadEventDetails(eventId: String) {
+        viewModelScope.launch {
+            getEventByIdUseCase(eventId).collectLatest { result ->
+                when (result) {
+                    is Result.Loading -> {
+                        _uiState.value = EventDetailsUiState(isLoading = true)
+                    }
+                    is Result.Success -> {
+                        _uiState.value = EventDetailsUiState(
+                            isLoading = false,
+                            event = result.data // <-- Dữ liệu thật từ API
+                        )
+                    }
+                    is Result.Failure -> {
+                        _uiState.value = EventDetailsUiState(
+                            isLoading = false,
+                            error = result.exception.message ?: "Đã xảy ra lỗi không xác định"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Các trình xử lý sự kiện (Event Handlers) giữ nguyên ---
 
     fun onBackNavigationClick() {
-        // TODO: Implement back navigation logic
+        // TODO: Implement back navigation logic (thường là navController.popBackStack())
         println("Back navigation clicked")
     }
 
@@ -60,6 +94,7 @@ class EventDetailsViewModel : ViewModel() {
 
     fun onBuyTicketClick() {
         // TODO: Implement buy ticket logic
-        println("Buy Ticket clicked for price: ${eventDetails.value.ticketPrice}")
+        val price = uiState.value.event?.minPrice ?: 0.0
+        println("Buy Ticket clicked for price: $price")
     }
 }

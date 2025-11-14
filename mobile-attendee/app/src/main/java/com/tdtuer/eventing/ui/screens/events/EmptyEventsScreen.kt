@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -63,7 +64,11 @@ fun EmptyEventsScreen() {
         bottomBar = {
             // Đặt nút vào bottomBar để nó luôn ở dưới cùng
             Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                GradientButton(text = "EXPLORE EVENTS", onClick = { /* Handle explore */ })
+                GradientButton(
+                    text = "EXPLORE EVENTS",
+                    onClick = { /* Handle explore */ },
+                    icon = Icons.AutoMirrored.Default.ArrowForward
+                )
             }
         },
         containerColor = Color.White

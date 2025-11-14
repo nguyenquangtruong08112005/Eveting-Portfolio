@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -327,7 +328,11 @@ private fun SignUpForm(
                 CircularProgressIndicator()
             }
         } else {
-            GradientButton(text = "SIGN UP", onClick = onSignUpClick)
+            GradientButton(
+                text = "SIGN UP",
+                onClick = onSignUpClick,
+                icon = Icons.AutoMirrored.Default.ArrowForward
+            )
         }
     }
 }

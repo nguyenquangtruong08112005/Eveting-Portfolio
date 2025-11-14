@@ -10,7 +10,7 @@ data class Event(
     val description: String = "",
     val endDate: Long? = null,
     val eventType: String = "physical",
-    val featuredProfileIds: List<String> = emptyList(),
+    val featuredProfiles: List<Any> = emptyList(),
     val geohash: String = "",
     val hotScore: Double = 0.0,
     val id: String = "",
