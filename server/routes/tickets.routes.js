@@ -9,6 +9,8 @@ router.get('/',  verifyAuthToken, ticketController.getCurrentUserTickets);
 // [POST] /tickets/book - Đặt vé cho một sự kiện
 router.post('/book', verifyAuthToken, ticketController.bookTicket);
 
-// Lưu ý: Route check-in đã được chuyển sang organizer.routes.js để quản lý tập trung.
+// [GET] /tickets/:ticketId - Lấy chi tiết vé (để hiển thị sau khi thanh toán)
+// Yêu cầu xác thực để đảm bảo đúng chủ sở hữu
+router.get('/:ticketId', verifyAuthToken, ticketController.getTicketDetails);
 
 module.exports = router;

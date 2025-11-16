@@ -14,10 +14,10 @@ router.get(
     organizerController.getEventAttendees
 );
 
-// [POST] /organizer/tickets/:ticketId/check-in - Check-in vé
+// [POST] /organizer/check-in-qr - Quét QR để check-in vé
 router.post(
-    '/tickets/:ticketId/check-in',
-    organizerController.checkInTicket
+    '/check-in-qr',
+    organizerController.checkInByQr
 );
 
 module.exports = router;

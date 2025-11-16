@@ -39,7 +39,35 @@ const bookTicket = async (req, res) => {
     }
 }
 
+/**
+ * API Endpoint: (GET /tickets/:ticketId)
+ * Lấy thông tin chi tiết, đã gộp của một vé.
+ */
+const getTicketDetails = async (req, res) => {
+    try {
+        const { ticketId } = req.params;
+        const userId = req.user.uid; // Lấy từ middleware verifyAuthToken
+
+        const ticketDetails = await ticketService.getTicketDetailsById(ticketId, userId);
+        
+        res.status(200).json(ticketDetails);
+    } catch (error) {
+        console.error("Error in Ticket Controller - getTicketDetails: ", error);
+        
+        // Phân loại lỗi từ service
+        if (error.message.includes('not found')) {
+            return res.status(404).send({ error: error.message });
+        }
+        if (error.message.includes('Forbidden')) {
+            return res.status(403).send({ error: error.message });
+        }
+        
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getCurrentUserTickets,
     bookTicket,
+    getTicketDetails,
 };

@@ -34,35 +34,57 @@ const getAttendeesByEventId = async (eventId) => {
 };
 
 /**
- * Check-in cho một vé.
- * @param {string} ticketId - ID của vé cần check-in.
- * @returns {Promise<object>} Document vé sau khi đã cập nhật.
+ * Xác thực một mã QR (JWT) và check-in vé.
+ * @param {string} qrToken - Chuỗi JWT từ mã QR.
+ * @param {string} requestingOrganizerId - ID của organizer đang quét mã.
+ * @returns {Promise<object>} Document vé đã được check-in.
  */
+const checkInByQr = async (qrToken, requestingOrganizerId) => {
+    let payload;
 
-const checkInTicket = async (ticketId) => {
+    // 1. Giải mã và xác thực JWT
+    try {
+        payload = jwt.verify(qrToken, TICKET_SECRET);
+    } catch (error) {
+        console.error("Lỗi xác thực QR JWT:", error.message);
+        throw new Error('Invalid or tampered QR Code.');
+    }
+
+    const { ticketId, eventId, userId } = payload;
+    
+    // 2. Lấy thông tin vé và sự kiện (trong 1 transaction để an toàn)
     const ticketRef = db.collection('Tickets').doc(ticketId);
-    const ticketDoc = await ticketRef.get();
+    const eventRef = db.collection('Events').doc(eventId);
 
-    if (!ticketDoc.exists) {
-        throw new Error('Ticket not found.');
-    }
+    return db.runTransaction(async (transaction) => {
+        const ticketDoc = await transaction.get(ticketRef);
+        const eventDoc = await transaction.get(eventRef);
 
-    const ticketData = ticketDoc.data();
+        if (!ticketDoc.exists) throw new Error('Ticket not found.');
+        if (!eventDoc.exists) throw new Error('Event not found.');
 
-    if (ticketData.status === 'checkedIn') {
-        return ticketData; // Vé đã được check-in, trả về thông tin hiện tại
-    }
+        // 3. Kiểm tra quyền sở hữu
+        if (eventDoc.data().organizerId !== requestingOrganizerId) {
+            throw new Error('Forbidden: You do not have permission for this event.');
+        }
 
-    if (ticketData.status !== 'paid') {
-        throw new Error(`Cannot check-in ticket with status '${ticketData.status}'.`);
-    }
+        // 4. Kiểm tra trạng thái vé
+        const ticketData = ticketDoc.data();
+        if (ticketData.status === 'checkedIn') {
+            throw new Error('This ticket has already been checked in.');
+        }
+        if (ticketData.status !== 'paid') {
+            throw new Error(`Cannot check-in ticket with status '${ticketData.status}'.`);
+        }
 
-    await ticketRef.update({ status: 'checkedIn' });
+        // 5. Check-in vé
+        transaction.update(ticketRef, { status: 'checkedIn' });
 
-    return { ...ticketData, status: 'checkedIn' };
+        return { ...ticketData, status: 'checkedIn' };
+    });
 };
 
 module.exports = {
     getAttendeesByEventId,
-    checkInTicket,
+    checkInByQr,
 };

@@ -1,6 +1,9 @@
 // services/ticket.service.js
 const { db, FieldValue } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
+
+const TICKET_SECRET = process.env.JWT_TICKET_SECRET;
 
 /**
  * Lấy tất cả vé của một người dùng cụ thể.
@@ -51,10 +54,9 @@ const bookTicket = async (userId, eventId, ticketType, promoCode = null) => {
     const eventRef = db.collection('Events').doc(eventId);
     const ticketId = `tkt_${uuidv4()}`;
     const ticketRef = db.collection('Tickets').doc(ticketId);
-    let promotionRef = null; // Biến để lưu ref của promotion nếu có
-    let promotionData = null; // Biến để lưu data của promotion nếu có
+    let promotionRef = null;
+    let promotionData = null;
 
-    // Chạy toàn bộ logic trong một transaction
     return db.runTransaction(async (transaction) => {
         // --- 1. Lấy thông tin sự kiện ---
         const eventDoc = await transaction.get(eventRef);
@@ -71,68 +73,74 @@ const bookTicket = async (userId, eventId, ticketType, promoCode = null) => {
         if (ticketTypeData.available <= 0) {
             throw new Error(`Ticket type '${ticketType}' is sold out.`);
         }
-        let finalPrice = ticketTypeData.price; // Giá vé ban đầu
+        let finalPrice = ticketTypeData.price;
 
         // --- 3. Xử lý mã khuyến mãi (nếu có) ---
         if (promoCode) {
+            // ... (Logic xử lý promo code giữ nguyên)
             const promoQuery = db.collection('Promotions').where('code', '==', promoCode).limit(1);
-            const promoSnapshot = await transaction.get(promoQuery); // Phải get trong transaction
-
-            if (promoSnapshot.empty) {
-                throw new Error('Invalid promotion code.');
-            }
-            
-            promotionRef = promoSnapshot.docs[0].ref; // Lấy ref để update sau
+            const promoSnapshot = await transaction.get(promoQuery);
+            if (promoSnapshot.empty) { throw new Error('Invalid promotion code.'); }
+            promotionRef = promoSnapshot.docs[0].ref;
             promotionData = promoSnapshot.docs[0].data();
             const now = new Date().getTime();
-
-            // Validate promotion (expiry, usage, event applicability)
             if (promotionData.validUntil <= now) throw new Error('Promotion has expired.');
             if (promotionData.usedCount >= promotionData.usageLimit) throw new Error('Promotion has reached its usage limit.');
             if (promotionData.eventId !== null && promotionData.eventId !== eventId) throw new Error('Promotion not valid for this event.');
-
-            // Tính lại giá cuối cùng
             if (promotionData.discountPercent > 0) {
                 finalPrice = finalPrice * (1 - promotionData.discountPercent);
             } else if (promotionData.discountAmount > 0) {
-                finalPrice = Math.max(0, finalPrice - promotionData.discountAmount); // Đảm bảo giá không âm
+                finalPrice = Math.max(0, finalPrice - promotionData.discountAmount);
             }
         }
 
         // --- 4. Chuẩn bị dữ liệu vé mới ---
+
+        // --- BẮT ĐẦU SỬA ĐỔI (TẠO QR BẰNG JWT) ---
+        const qrPayload = {
+            ticketId: ticketId,
+            userId: userId,
+            eventId: eventId
+        };
+        // Ký (sign) token, không cần đặt hạn (no expiration)
+        const qrCodeJwt = jwt.sign(qrPayload, TICKET_SECRET); 
+        // --- KẾT THÚC SỬA ĐỔI ---
+
         const newTicketData = {
             id: ticketId,
             eventId: eventId,
             userId: userId,
             organizerId: eventData.organizerId,
             type: ticketType,
-            price: finalPrice, // <-- Dùng giá cuối cùng
-            originalPrice: ticketTypeData.price, // Lưu lại giá gốc để tham khảo
-            appliedPromoCode: promoCode, // Lưu lại mã đã áp dụng
-            seat: null, // TODO: Sẽ xử lý logic chọn ghế sau
-            qrCode: `EVENTING_${ticketId}`,
-            status: 'pending', // Trạng thái ban đầu là chờ thanh toán
+            price: finalPrice,
+            originalPrice: ticketTypeData.price,
+            appliedPromoCode: promoCode,
+            seat: null, 
+            qrCode: qrCodeJwt, // <-- Gán JWT đã ký vào đây
+            status: 'pending', 
             purchaseDate: new Date().getTime(),
             groupId: null,
         };
 
         // --- 5. Thực hiện các thao tác ghi trong transaction ---
-        transaction.set(ticketRef, newTicketData); // Tạo vé mới
-
-        // Cập nhật số lượng vé còn lại trong Events
+        transaction.set(ticketRef, newTicketData);
         const newAvailableCount = ticketTypeData.available - 1;
         transaction.update(eventRef, {
             [`ticketTypes.${ticketType}.available`]: newAvailableCount
         });
-
-        // Cập nhật số lượt đã dùng của promotion (nếu có)
         if (promotionRef && promotionData) {
             transaction.update(promotionRef, {
-                usedCount: FieldValue.increment(1) // Tăng usedCount lên 1
+                usedCount: FieldValue.increment(1)
             });
         }
 
-        return newTicketData; // Trả về vé vừa tạo nếu thành công
+        // Chỉ trả về thông tin tối thiểu
+        return {
+            id: newTicketData.id,
+            status: newTicketData.status,
+            price: newTicketData.price,
+            originalPrice: newTicketData.originalPrice
+        };
     });
 };
 
@@ -204,6 +212,22 @@ const confirmTicketPayment = async (ticketId) => {
         await ticketRef.update({ status: 'paid' });
         console.log(`Ticket ${ticketId} status updated to 'paid'.`);
 
+        const eventRef = db.collection('Events').doc(ticketData.eventId);
+        const analyticsRef = db.collection('Analytics').doc(ticketData.eventId);
+
+        await db.runTransaction(async (transaction) => {
+            // 1. Cập nhật trạng thái vé
+            transaction.update(ticketRef, { status: 'paid' });
+
+            // 2. Cập nhật Analytics (tăng doanh thu và vé bán)
+            // Dùng FieldValue.increment() để cộng dồn an toàn
+            transaction.set(analyticsRef, {
+                totalRevenue: FieldValue.increment(ticketData.price),
+                ticketsSold: {
+                    [ticketData.type]: FieldValue.increment(1)
+                }
+            }, { merge: true }); // Dùng merge: true để tạo mới nếu chưa có, hoặc gộp nếu đã có
+        });
         // TODO: Sau khi xác nhận thanh toán, ta có thể:
         // 1. Gửi email/thông báo xác nhận cho người dùng.
         // 2. Cập nhật dữ liệu trong collection Analytics (tăng doanh thu, vé bán).
@@ -216,9 +240,74 @@ const confirmTicketPayment = async (ticketId) => {
     }
 };
 
+/**
+ * LẤY HÀM NÀY THÊM VÀO
+ * Lấy thông tin chi tiết (đã gộp) của một vé.
+ * @param {string} ticketId - ID của vé.
+ * @param {string} requestingUserId - ID của người đang yêu cầu (đã xác thực).
+ * @returns {Promise<object>} Dữ liệu gộp của Vé, Sự kiện, và Địa điểm.
+ */
+const getTicketDetailsById = async (ticketId, requestingUserId) => {
+    // 1. Lấy thông tin vé
+    const ticketRef = db.collection('Tickets').doc(ticketId);
+    const ticketDoc = await ticketRef.get();
+
+    if (!ticketDoc.exists) {
+        throw new Error('Ticket not found.');
+    }
+    const ticketData = ticketDoc.data();
+
+    // 2. Lấy thông tin sự kiện
+    const eventRef = db.collection('Events').doc(ticketData.eventId);
+    const eventDoc = await eventRef.get();
+    if (!eventDoc.exists) {
+        throw new Error('Associated event not found.');
+    }
+    const eventData = eventDoc.data();
+
+    // 3. Kiểm tra quyền (Bảo mật quan trọng)
+    const isTicketOwner = ticketData.userId === requestingUserId;
+    const isEventOrganizer = eventData.organizerId === requestingUserId;
+    
+    if (!isTicketOwner && !isEventOrganizer) {
+        // Nếu người gọi không phải chủ vé VÀ cũng không phải người tổ chức
+        throw new Error('Forbidden: You do not have permission to view this ticket.');
+    }
+
+    // 4. Lấy thông tin địa điểm (Venue) (Nếu là sự kiện offline)
+    let venueData = null;
+    if (eventData.venueId) {
+        const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
+        if (venueDoc.exists) {
+            venueData = venueDoc.data();
+        }
+    }
+
+    // 5. Trả về đối tượng DTO đã gộp
+    return {
+        ticket: ticketData, // Toàn bộ thông tin vé (id, qrCode, seat, price...)
+        event: { // Các thông tin public của sự kiện
+            name: eventData.name,
+            date: eventData.date,
+            endDate: eventData.endDate,
+            bannerUrl: eventData.bannerUrl,
+            eventType: eventData.eventType,
+            onlineUrl: eventData.onlineUrl,
+            city: eventData.city,
+            venueName: eventData.venueName,
+        },
+        venue: venueData ? { // Thông tin địa điểm (nếu có)
+            name: venueData.name,
+            addressDetails: venueData.addressDetails,
+            location: venueData.location
+        } : null
+    };
+};
+
 module.exports = {
     getTicketsByUserId,
     bookTicket,
     cancelPendingTicket,
     confirmTicketPayment,
+    getTicketDetailsById,
 };
