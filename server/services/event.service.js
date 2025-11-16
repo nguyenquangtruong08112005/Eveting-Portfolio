@@ -1,9 +1,35 @@
 // services/event.service.js
 const { db, FieldValue } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
-const geofire = require('geofire-common'); // Import thư viện geofire
-// Giả sử bạn đã tạo file này và export hàm
+const geofire = require('geofire-common');
 const { calculateMinPrice } = require('../utils/tickets/calculateMinPrice.tickets');
+
+// --- HÀM HỖ TRỢ MỚI ---
+
+/**
+ * Lọc đối tượng ticketTypes, chỉ giữ lại thông tin public (price).
+ */
+const mapPublicTicketTypes = (ticketTypes) => {
+    if (!ticketTypes) return {};
+    const publicTypes = {};
+    for (const key in ticketTypes) {
+        publicTypes[key] = {
+            price: ticketTypes[key].price,
+            // Ẩn đi 'quantity' và 'available'
+        };
+    }
+    return publicTypes;
+};
+
+/**
+ * Lọc đối tượng venue, loại bỏ thông tin nhạy cảm (seatMapTemplate).
+ */
+const mapPublicVenue = (venueData) => {
+    if (!venueData) return null;
+    const { seatMapTemplate, ...publicVenue } = venueData;
+    return publicVenue;
+};
+
 
 /**
  * Lấy danh sách sự kiện công khai, hỗ trợ phân trang.
@@ -14,7 +40,7 @@ const { calculateMinPrice } = require('../utils/tickets/calculateMinPrice.ticket
 const getAllEvents = async (page = 1, limit = 10) => {
     const eventsRef = db.collection('Events')
         .where('visibility', '==', 'public')
-        .where('status', '==', 'active'); // Đã sửa: '==' active nhất quán hơn
+        .where('status', '==', 'active');
     const offset = (page - 1) * limit;
 
     const countQuery = eventsRef;
@@ -27,7 +53,7 @@ const getAllEvents = async (page = 1, limit = 10) => {
         .offset(offset)
         .select(
             "id", "name", "date", "imageUrl", "bannerUrl",
-            "videoUrl", "location", "city", "venueName",
+            "videoUrl", "location", "city", "venueName", 
             "eventType", "minPrice"
         )
         .get();
@@ -77,45 +103,92 @@ const getEventById = async (eventId, requestingUser = null) => {
 
     const eventData = eventDoc.data();
     let venueData = null;
+    let featuredProfilesData = []; // <-- Khởi tạo mảng rỗng
 
-    // --- Thêm logic gộp Venue ---
+    // Gộp (join) thông tin Venue
     if (eventData.venueId) {
         const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
         if (venueDoc.exists) {
             venueData = venueDoc.data();
         }
     }
-    // --- Kết thúc ---
 
-    // Logic kiểm tra visibility
+    // --- BẮT ĐẦU CHỈNH SỬA: Gộp (join) thông tin FeaturedProfiles ---
+    if (eventData.featuredProfileIds && eventData.featuredProfileIds.length > 0) {
+        // Dùng truy vấn 'in' để lấy tất cả profiles trong 1 lượt gọi API
+        const profilesSnapshot = await db.collection('FeaturedProfiles')
+            .where('id', 'in', eventData.featuredProfileIds)
+            .get();
+        
+        profilesSnapshot.forEach(doc => {
+            featuredProfilesData.push(doc.data());
+        });
+    }
+    // --- KẾT THÚC CHỈNH SỬA ---
+
+    // --- BƯỚC 1: Xác định quyền sở hữu ---
+    let isOwnerOrAdmin = false;
+    if (requestingUser) {
+        const isAdmin = requestingUser.roles?.includes('organizer'); // Hoặc 'admin'
+        const isOwner = eventData.organizerId === requestingUser.uid;
+        isOwnerOrAdmin = isAdmin || isOwner;
+    }
+
+    // --- BƯỚC 2: Xử lý logic Visibility và trả về DTO phù hợp ---
+
+    // 2a. Nếu là chủ sở hữu/Admin (Trả về Full Data)
+    if (isOwnerOrAdmin) {
+        return { 
+            id: eventDoc.id, 
+            ...eventData, 
+            venue: venueData, 
+            featuredProfiles: featuredProfilesData // <-- Thêm mảng profiles
+        };
+    }
+
+    // 2b. Nếu là người dùng vãng lai (hoặc attendee) (Trả về DTO Public)
+    
+    // Tạo DTO Công Khai (lọc bỏ các trường nhạy cảm)
+    const publicEventView = {
+        id: eventDoc.id,
+        name: eventData.name,
+        description: eventData.description,
+        imageUrl: eventData.imageUrl,
+        bannerUrl: eventData.bannerUrl,
+        // featuredProfileIds: eventData.featuredProfileIds, // <-- Xóa trường ID
+        category: eventData.category,
+        tags: eventData.tags,
+        date: eventData.date,
+        endDate: eventData.endDate,
+        eventType: eventData.eventType,
+        onlineUrl: eventData.onlineUrl,
+        location: eventData.location,
+        geohash: eventData.geohash,
+        city: eventData.city,
+        venueName: eventData.venueName,
+        videoUrl: eventData.videoUrl,
+        isOutdoor: eventData.isOutdoor,
+        status: eventData.status,
+        visibility: eventData.visibility,
+        requiredAge: eventData.requiredAge,
+        sponsors: eventData.sponsors,
+        minPrice: eventData.minPrice,
+        // --- DỮ LIỆU ĐÃ LỌC VÀ GỘP ---
+        featuredProfiles: featuredProfilesData, // <-- Thêm mảng profiles
+        ticketTypes: eventData.ticketTypes,
+        venue: mapPublicVenue(venueData)
+    };
+
     if (eventData.visibility === 'public') {
-        return { id: eventDoc.id, ...eventData, venue: venueData }; // Gửi kèm venue
+        return publicEventView;
     }
 
-    // Nếu không phải public, cần kiểm tra người dùng đã đăng nhập chưa
-    if (!requestingUser) {
-        return null;
-    }
-
-    // TODO: Bổ sung logic kiểm tra quyền Admin/Organizer sau
-    const isAdminOrOrganizer = requestingUser.roles?.includes('organizer'); // || requestingUser.roles?.includes('admin');
-
-    // Organizer/Admin hoặc người tạo sự kiện có thể xem private/unlisted
-    if (isAdminOrOrganizer || eventData.organizerId === requestingUser.uid) {
-        return { id: eventDoc.id, ...eventData, venue: venueData }; // Gửi kèm venue
-    }
-
-    // Các trường hợp khác (ví dụ: unlisted nhưng user thường) - hiện tại chưa cho xem
-    // TODO: Có thể thêm logic chia sẻ link unlisted sau
-    if (eventData.visibility === 'unlisted') {
-        // Ai cũng xem được 'unlisted' miễn là đã đăng nhập (hoặc có link - logic này xử lý ở client/controller)
-        // Tạm thời cho phép nếu đã đăng nhập
-        return { id: eventDoc.id, ...eventData };
+    if (eventData.visibility === 'unlisted' && requestingUser) {
+        return publicEventView;
     }
 
     return null;
 };
-
 
 /**
  * Tạo một sự kiện mới.
@@ -157,7 +230,7 @@ const createEvent = async (eventData, organizerId) => {
                 throw new Error(`Venue with ID ${eventData.venueId} not found.`);
             }
         } else {
-            throw new Error('Physical event must have a venueId.');
+             throw new Error('Physical event must have a venueId.');
         }
 
         // Tính geohash từ location
@@ -193,7 +266,7 @@ const createEvent = async (eventData, organizerId) => {
         venueName: venueName,
         city: city,
         ticketTypes: eventData.ticketTypes || {},
-        minPrice: minPrice,
+        minPrice: minPrice, 
         videoUrl: eventData.videoUrl || '',
         isOutdoor: eventData.isOutdoor || false,
         organizerId: organizerId,
@@ -254,7 +327,7 @@ const updateEvent = async (eventId, eventData) => {
         updatePayload.location = null;
         updatePayload.geohash = null;
     }
-
+    
     if (eventData.eventType === 'online') {
         updatePayload.location = null; updatePayload.geohash = null; updatePayload.venueId = null; updatePayload.venueName = "Online"; updatePayload.city = "Online";
     }
@@ -318,8 +391,6 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
 
     // --- VÒNG LẶP TỰ ĐỘNG MỞ RỘNG BÁN KÍNH ---
     while (uniqueResults.length < MIN_RESULTS_TARGET && currentRadiusKm <= MAX_RADIUS_KM) {
-        
-        // console.log(`[GeoQuery] Đang tìm kiếm với bán kính: ${currentRadiusKm} km`);
         finalRadiusUsed = currentRadiusKm; // Ghi lại bán kính cuối cùng được sử dụng
         
         const radiusInM = currentRadiusKm * 1000;
@@ -361,12 +432,8 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
 
         // Nếu đã đủ kết quả hoặc đã đạt bán kính tối đa, thoát vòng lặp
         if (uniqueResults.length >= MIN_RESULTS_TARGET || currentRadiusKm >= MAX_RADIUS_KM) {
-            console.log(`[GeoQuery] Tìm thấy ${uniqueResults.length} kết quả. Dừng tìm kiếm.`);
             break;
         }
-
-        // Nếu chưa đủ, mở rộng bán kính cho vòng lặp tiếp theo
-        console.log(`[GeoQuery] Chỉ tìm thấy ${uniqueResults.length} kết quả (< ${MIN_RESULTS_TARGET}). Mở rộng bán kính...`);
         currentRadiusKm *= RADIUS_EXPANSION_FACTOR;
     }
 
@@ -403,7 +470,7 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
             limit: limit,
             totalPages: totalPages,
             totalItems: totalItems,
-            actualRadiusKm: finalRadiusUsed // Trả về bán kính cuối cùng đã dùng
+            actualRadiusKm: finalRadiusUsed
         }
     };
 };
@@ -436,7 +503,7 @@ const searchEvents = async (queryParams) => {
         // Nếu đã lọc theo date 'past' thì không thể lọc theo status '!=' cancelled nữa.
         // Do đó, nên đổi status thành 'active', 'finished' thay vì dùng '!=' cancelled.
         // Tạm thời bỏ qua lọc status nếu lọc theo date=past để tránh lỗi index.
-        query = query.where('date', '<', now);
+         query = query.where('date', '<', now);
         // query = query.where('status', '==', 'finished'); // Cần đổi logic status
     }
     if (queryParams.isOutdoor === 'true' || queryParams.isOutdoor === 'false') {
@@ -472,17 +539,16 @@ const searchEvents = async (queryParams) => {
     const limit = parseInt(queryParams.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // --- BẮT ĐẦU SỬA ĐỔI: Thêm .select() ---
     query = query.limit(limit).offset(offset).select(
         "id", "name", "date", "imageUrl", "bannerUrl",
-        "videoUrl", "location", "city", "venueName",
+        "videoUrl", "location", "city", "venueName", 
         "eventType", "minPrice"
     );
 
     // --- LẤY DỮ LIỆU ---
     const snapshot = await query.get();
     const events = [];
-
+    
     // --- BẮT ĐẦU SỬA ĐỔI: Tạo summary model ---
     snapshot.forEach(doc => {
         const data = doc.data();

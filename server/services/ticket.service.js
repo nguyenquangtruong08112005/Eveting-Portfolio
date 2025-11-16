@@ -144,29 +144,36 @@ const bookTicket = async (userId, eventId, ticketType, promoCode = null) => {
 const cancelPendingTicket = async (ticketId) => {
     const ticketRef = db.collection('Tickets').doc(ticketId);
     
-    // Dùng transaction để đảm bảo chỉ hủy vé đang ở trạng thái 'pending'
+    // Dùng transaction để đảm bảo an toàn dữ liệu
     return db.runTransaction(async (transaction) => {
         const ticketDoc = await transaction.get(ticketRef);
         if (!ticketDoc.exists) {
             console.warn(`Attempted to cancel non-existent ticket: ${ticketId}`);
-            return null; // Hoặc throw error tùy logic
+            return null; // Vé không tồn tại
         }
 
         const ticketData = ticketDoc.data();
         if (ticketData.status !== 'pending') {
-            console.log(`Ticket ${ticketId} is not in 'pending' state, cannot cancel.`);
-            return ticketData; // Trả về trạng thái hiện tại
+            console.log(`Ticket ${ticketId} is not in 'pending' state (${ticketData.status}), cannot cancel.`);
+            return ticketData; // Trả về trạng thái hiện tại (ví dụ: đã paid, đã checkedIn)
         }
 
-        // Hủy vé
+        // --- HOÀN THIỆN TODO ---
+        
+        // 1. Hủy vé
         transaction.update(ticketRef, { status: 'cancelled' });
 
-        // TODO (Quan trọng): Hoàn trả lại số lượng vé 'available' cho sự kiện
-        // const eventRef = db.collection('Events').doc(ticketData.eventId);
-        // transaction.update(eventRef, {
-        //     [`ticketTypes.${ticketData.type}.available`]: FieldValue.increment(1)
-        // });
+        // 2. Hoàn trả lại số lượng vé 'available' cho sự kiện
+        const eventRef = db.collection('Events').doc(ticketData.eventId);
+        
+        // Dùng FieldValue.increment(1) để cộng lại 1 vé vào 'available'
+        transaction.update(eventRef, {
+            [`ticketTypes.${ticketData.type}.available`]: FieldValue.increment(1)
+        });
+        
+        // --- KẾT THÚC TODO ---
 
+        console.log(`Ticket ${ticketId} cancelled, 1 ticket of type ${ticketData.type} returned to event ${ticketData.eventId}.`);
         return { ...ticketData, status: 'cancelled' };
     });
 };
