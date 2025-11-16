@@ -1,5 +1,6 @@
 package com.tdtuer.eventing
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import com.tdtuer.eventing.domain.usecase.events.GetEventByIdUseCase
 import com.tdtuer.eventing.domain.usecase.events.FindNearbyEventsUseCase
 import com.tdtuer.eventing.domain.usecase.events.SearchEventsUseCase
 import com.tdtuer.eventing.domain.model.Result
+import vn.zalopay.sdk.ZaloPaySDK
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -107,5 +109,12 @@ class MainActivity : ComponentActivity() {
                 RootNavigationGraph(navController = navController, intent = intent)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Khi ZaloPay quay lại, nó sẽ gọi hàm này
+        // Chúng ta chuyển intent này cho ZaloPay SDK xử lý
+        ZaloPaySDK.getInstance().onResult(intent)
     }
 }

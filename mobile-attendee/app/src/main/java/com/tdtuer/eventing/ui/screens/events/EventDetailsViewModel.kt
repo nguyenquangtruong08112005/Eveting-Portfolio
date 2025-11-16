@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.ui.screens.events
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,10 +9,12 @@ import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.usecase.events.GetEventByIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,10 +34,20 @@ class EventDetailsViewModel @Inject constructor(
     // 2. Sử dụng StateFlow cho UI State
     private val _uiState = MutableStateFlow(EventDetailsUiState())
     val uiState: StateFlow<EventDetailsUiState> = _uiState.asStateFlow()
+    private val _navChannel = Channel<BuyTicketNavigation>()
+    val navChannel = _navChannel.receiveAsFlow()
+    private var currentEventId: String? = null
+
+    sealed class BuyTicketNavigation {
+        data class ToBuyTicket(val eventId: String, val ticketData: String) : BuyTicketNavigation()
+    }
 
     init {
         // 3. Lấy eventId từ navigation arguments
-        val eventId: String? = savedStateHandle.get("eventId")
+        val eventId: String? = savedStateHandle["eventId"]
+
+        this.currentEventId = eventId
+
         if (eventId != null) {
             loadEventDetails(eventId)
         } else {
@@ -53,12 +66,14 @@ class EventDetailsViewModel @Inject constructor(
                     is Result.Loading -> {
                         _uiState.value = EventDetailsUiState(isLoading = true)
                     }
+
                     is Result.Success -> {
                         _uiState.value = EventDetailsUiState(
                             isLoading = false,
                             event = result.data // <-- Dữ liệu thật từ API
                         )
                     }
+
                     is Result.Failure -> {
                         _uiState.value = EventDetailsUiState(
                             isLoading = false,
@@ -93,8 +108,23 @@ class EventDetailsViewModel @Inject constructor(
     }
 
     fun onBuyTicketClick() {
-        // TODO: Implement buy ticket logic
-        val price = uiState.value.event?.minPrice ?: 0.0
-        println("Buy Ticket clicked for price: $price")
+        val event = _uiState.value.event ?: return
+
+        val eventIdToSend = currentEventId
+        if (eventIdToSend.isNullOrEmpty()) {
+            Log.e("EventDetailsViewModel", "Không thể điều hướng, eventId gốc bị rỗng!")
+            return // Không làm gì nếu eventId gốc không hợp lệ
+        }
+        // 1. Chuyển đổi Map<String, Map<String, Any>> phức tạp
+        // thành một chuỗi đơn giản: "VIP:50.0|Economy:30.0"
+        val ticketDataString = event.ticketTypes.map { (name, details) ->
+            val price = (details["price"] as? Number)?.toDouble() ?: 0.0
+            "$name:$price" // Ghép Tên:Giá
+        }.joinToString("|") // Nối các loại vé bằng dấu |
+        Log.d("EventDetailsViewModel", "Ticket Data String: $ticketDataString")
+        // 2. Gửi sự kiện điều hướng chứa ID và chuỗi dữ liệu vé
+        viewModelScope.launch {
+            _navChannel.send(BuyTicketNavigation.ToBuyTicket(event.id, ticketDataString))
+        }
     }
 }

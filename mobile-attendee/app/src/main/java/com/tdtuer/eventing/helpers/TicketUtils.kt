@@ -16,3 +16,11 @@ fun formatDisplayPrice(minPrice: Double?): String {
         else -> "Free"
     }
 }
+
+// *** HELPER ĐỊNH DẠNG TIỀN TỆ (VNĐ) ***
+// (Vì formatDisplayPrice thêm "Starts at", chúng ta cần hàm này cho TicketTypeRow)
+fun formatVNCurrency(price: Double): String {
+    if (price == 0.0) return "Free" // Giữ "Free" cho 0
+    val formatter = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+    return formatter.format(price)
+}

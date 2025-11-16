@@ -1,9 +1,21 @@
 package com.tdtuer.eventing.ui.screens.buyticket
 
+import android.util.Log
+import androidx.compose.ui.platform.LocalGraphicsContext
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.model.Ticket
+import com.tdtuer.eventing.domain.usecase.payment.BookTicketUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // --- Data Models ---
 data class TicketType(val name: String, val price: Double)
@@ -11,7 +23,9 @@ data class TicketType(val name: String, val price: Double)
 data class BuyTicketUiState(
     val ticketTypes: List<TicketType> = emptyList(),
     val selectedTicketType: TicketType = TicketType("", 0.0),
-    val quantity: Int = 1
+    val quantity: Int = 1,
+    val isLoading: Boolean = false, // <-- Thêm trạng thái loading
+    val errorMessage: String? = null // <-- Thêm trạng thái lỗi
 ) {
     // Calculated property for the price of the selected ticket
     val ticketPrice: Double
@@ -22,26 +36,51 @@ data class BuyTicketUiState(
         get() = selectedTicketType.price * quantity
 }
 
-
-class BuyTicketViewModel : ViewModel() {
+@HiltViewModel
+class BuyTicketViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val bookTicketUseCase: BookTicketUseCase // <-- (1) Inject UseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuyTicketUiState())
     val uiState = _uiState.asStateFlow()
 
-    init {
-        loadTicketOptions()
+    private val _navigationEvent = Channel<NavigationEvent>()
+    val navigationEvent = _navigationEvent.receiveAsFlow()
+
+    sealed class NavigationEvent {
+        data class GoToPayment(val ticketId: String) : NavigationEvent()
     }
 
-    private fun loadTicketOptions() {
-        val ticketTypes = listOf(
-            TicketType("VIP", 50.0),
-            TicketType("Economy", 30.0)
-        )
+    private
+    val eventId: String = savedStateHandle.get<String>("eventId") ?: ""
+
+
+    init {
+        parseTicketOptions(savedStateHandle.get<String>("ticketTypes")) // <-- GỌI HÀM PARSE
+    }
+
+    private fun parseTicketOptions(ticketDataString: String?) {
+        if (ticketDataString.isNullOrEmpty()) {
+            _uiState.update { it.copy(ticketTypes = emptyList()) }
+            return
+        }
+
+        // Chuyển đổi "VIP:50.0|Economy:30.0" thành List<TicketType>
+        val ticketTypesList = ticketDataString.split('|').mapNotNull { part ->
+            val details = part.split(':')
+            if (details.size == 2) {
+                TicketType(name = details[0], price = details[1].toDoubleOrNull() ?: 0.0)
+            } else {
+                null
+            }
+        }
+
         _uiState.update {
             it.copy(
-                ticketTypes = ticketTypes,
-                selectedTicketType = ticketTypes.first(), // Default to VIP
-                quantity = 5 // Initial quantity from the design
+                ticketTypes = ticketTypesList,
+                selectedTicketType = ticketTypesList.firstOrNull() ?: TicketType("", 0.0),
+                quantity = 1 // Giữ nguyên số lượng là 1
             )
         }
     }
@@ -60,7 +99,7 @@ class BuyTicketViewModel : ViewModel() {
     }
 
     fun onIncreaseQuantity() {
-        _uiState.update { it.copy(quantity = it.quantity + 1) }
+//        _uiState.update { it.copy(quantity = it.quantity + 1) }
     }
 
     fun onDecreaseQuantity() {
@@ -72,10 +111,37 @@ class BuyTicketViewModel : ViewModel() {
 
     fun onContinueClick() {
         val finalSelection = uiState.value
-        println(
-            "Continue clicked: " +
-                    "${finalSelection.quantity} x ${finalSelection.selectedTicketType.name} tickets. " +
-                    "Total: ${finalSelection.totalPrice}"
-        )
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            val result = bookTicketUseCase(
+                eventId = eventId,
+                ticketType = finalSelection.selectedTicketType.name,
+                promoCode = null
+            )
+
+            when (result) {
+                is Result.Success<Ticket> -> {
+                    val ticketId = result.data.id
+                    Log.d("BuyTicketViewModel", "Tạo vé pending thành công: $ticketId")
+                    _navigationEvent.send(NavigationEvent.GoToPayment(ticketId))
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+
+                is Result.Failure -> {
+                    // Thất bại, hiển thị lỗi
+                    Log.e("BuyTicketViewModel", "Lỗi tạo vé: ${result.exception.message}")
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.exception.message ?: "Lỗi không xác định"
+                        )
+                    }
+                }
+
+                is Result.Loading -> {}
+            }
+        }
     }
 }

@@ -20,7 +20,7 @@ data class EventDetailDto(
     val bannerUrl: String?,
 
     @SerializedName("featuredProfiles")
-    val featuredProfiles: List<featuredProfilesDto>?, // Sửa thành List<String>
+    val featuredProfiles: List<FeaturedProfileDto>?, // Sửa thành List<String>
 
     @SerializedName("category")
     val category: List<String>?,
@@ -81,11 +81,17 @@ data class EventDetailDto(
 )
 
 data class PublicTicketTypeDto(
+    @SerializedName("quantity")
+    val quantity: Int?,
+
     @SerializedName("price")
     val price: Long?,
+
+    @SerializedName("available")
+    val available: Int?,
 )
 
-data class featuredProfilesDto(
+data class FeaturedProfileDto(
     @SerializedName("id")
     val id: String?,
 

@@ -1,5 +1,7 @@
 package com.tdtuer.eventing.ui.screens.payment
 
+import android.app.Activity
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -14,21 +16,90 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tdtuer.eventing.R
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.tdtuer.eventing.ui.navigation.Screen
+//import com.tdtuer.eventing.ui.screens.payment.PaymentViewModel.PaymentEvent // <-- (2) Import
 import com.tdtuer.eventing.ui.theme.EventingTheme
+import kotlinx.coroutines.flow.collectLatest
+import vn.zalopay.sdk.ZaloPayError
+import vn.zalopay.sdk.ZaloPaySDK
+import vn.zalopay.sdk.listeners.PayOrderListener
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentScreen(viewModel: PaymentViewModel) {
+fun PaymentScreen(
+    viewModel: PaymentViewModel = hiltViewModel(),
+    navController: NavController
+) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState()
+    val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        viewModel.paymentEvent.collectLatest { event ->
+            when (event) {
+                is PaymentEvent.RequestZaloPay -> {
+                    // CÓ TOKEN! GỌI ZALOPAY SDK
+                    // (Logic này lấy từ file merchantDemo/MainActivity.java của bạn)
+                    ZaloPaySDK.getInstance().payOrder(
+                        context as Activity, // SDK yêu cầu một Activity
+                        event.zpToken,
+                        "zp-554://app", // Scheme của bạn (với AppID 554)
+                        object : PayOrderListener {
+                            override fun onPaymentSucceeded(
+                                transactionId: String,
+                                transToken: String,
+                                appTransID: String
+                            ) {
+                                viewModel.onPaymentSuccess()
+                            }
+
+                            override fun onPaymentCanceled(
+                                zpTransToken: String,
+                                appTransID: String
+                            ) {
+                                Toast.makeText(context, "Thanh toán bị hủy.", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+
+                            override fun onPaymentError(
+                                zaloPayError: ZaloPayError,
+                                zpTransToken: String,
+                                appTransID: String
+                            ) {
+                                Toast.makeText(
+                                    context,
+                                    "Lỗi thanh toán: ${zaloPayError.name}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    )
+                }
+
+                is PaymentEvent.PaymentError -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+
+                is PaymentEvent.PaymentSuccess -> {
+                    navController.navigate(Screen.Ticket.createRoute(event.ticketId)) {
+                        popUpTo(Screen.Home.route) {
+                            inclusive = false
+                        }
+                    }
+                }
+            }
+        }
+    }
     // Show the bottom sheet when the state is true
     if (uiState.showAddNewCardSheet) {
         ModalBottomSheet(
@@ -183,7 +254,12 @@ private fun AddNewCardSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Expires End", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    "Expires End",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.newCardExpiry,
@@ -249,7 +325,10 @@ private fun PaymentOptionRow(
 ) {
     OutlinedCard(
         onClick = onClick,
-        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
+        border = BorderStroke(
+            1.dp,
+            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -259,7 +338,11 @@ private fun PaymentOptionRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             method.logoRes?.let {
-                Image(painter = painterResource(id = it), contentDescription = method.name, modifier = Modifier.size(24.dp))
+                Image(
+                    painter = painterResource(id = it),
+                    contentDescription = method.name,
+                    modifier = Modifier.size(24.dp)
+                )
                 Spacer(modifier = Modifier.width(16.dp))
             }
             Text(method.name, modifier = Modifier.weight(1f))
@@ -275,7 +358,11 @@ private fun CreditCardPaymentOption(
     onClick: () -> Unit
 ) {
     Column {
-        PaymentOptionRow(method = method.copy(logoRes = null), isSelected = isSelected, onClick = onClick)
+        PaymentOptionRow(
+            method = method.copy(logoRes = null),
+            isSelected = isSelected,
+            onClick = onClick
+        )
         AnimatedVisibility(visible = isSelected) {
             OutlinedCard(
                 modifier = Modifier
@@ -289,7 +376,11 @@ private fun CreditCardPaymentOption(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     method.logoRes?.let {
-                        Image(painter = painterResource(id = it), contentDescription = "Card Brand", modifier = Modifier.height(24.dp))
+                        Image(
+                            painter = painterResource(id = it),
+                            contentDescription = "Card Brand",
+                            modifier = Modifier.height(24.dp)
+                        )
                         Spacer(modifier = Modifier.width(16.dp))
                     }
                     Text(method.cardDetails ?: "")
@@ -303,6 +394,6 @@ private fun CreditCardPaymentOption(
 @Composable
 fun PaymentScreenPreview() {
     EventingTheme {
-        PaymentScreen(viewModel = viewModel())
+        PaymentScreen(viewModel = viewModel(), navController = rememberNavController())
     }
 }

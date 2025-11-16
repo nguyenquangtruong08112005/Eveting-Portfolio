@@ -32,7 +32,10 @@ private val LightColorScheme = lightColorScheme(
     onSurfaceVariant = SoftDarkishSecondary, // Màu cho text/icon phụ
     outline = Grey2Secondary, // Màu cho viền
     error = RedError,
-    onError = WhiteSecondary
+    onError = WhiteSecondary,
+    secondaryContainer =  Grey2Secondary,
+    primaryContainer = GreenSecondary
+
 )
 
 private val DarkColorScheme = darkColorScheme(

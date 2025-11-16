@@ -32,7 +32,7 @@ sealed class Screen(val route: String) {
         fun createRoute(eventId: String) = "event_preview_screen/$eventId"
     }
 
-    data object EventDetails: Screen("event_details_screen/{eventId}") {
+    data object EventDetails : Screen("event_details_screen/{eventId}") {
         fun createRoute(eventId: String) = "event_details_screen/$eventId"
     }
 
@@ -40,11 +40,15 @@ sealed class Screen(val route: String) {
         fun createRoute(organizerId: String) = "organizer_profile_screen/$organizerId"
     }
 
-    data object BookEvent : Screen("book_event_screen/{eventId}") {
-        fun createRoute(eventId: String) = "book_event_screen/$eventId"
+    data object BookEvent : Screen("book_event_screen/{eventId}?ticketTypes={ticketTypes}") {
+        fun createRoute(eventId: String, ticketData: String) =
+            "book_event_screen/$eventId?ticketTypes=$ticketData"
     }
 
-    data object SelectPayment : Screen("select_payment_screen")
+    data object Payment : Screen("payment_screen/{ticketId}") {
+        fun createRoute(ticketId: String) = "payment_screen/$ticketId"
+    }
+
     data object AddCard : Screen("add_card_screen")
     data object ReviewSummary : Screen("review_summary_screen")
     data object BookingConfirmation : Screen("booking_confirmation_screen/{ticketId}") {
@@ -61,7 +65,8 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings_screen")
     data object InviteFriends : Screen("invite_friends_screen")
 
-    // Luồng tạo sự kiện (nếu có)
-    data object CreateEventStep1 : Screen("create_event_step1_screen")
+    data object Ticket : Screen("ticket_screen/{ticketId}") {
+        fun createRoute(ticketId: String) = "ticket_screen/$ticketId"
+    }
     // ... thêm các bước tạo sự kiện khác
 }

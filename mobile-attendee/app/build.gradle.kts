@@ -124,4 +124,14 @@ dependencies {
     // Accompanist
     implementation(libs.accompanist.permissions)
     implementation(libs.accompanist.swiperefresh)
+
+    // Zalo pay
+    implementation(fileTree(mapOf(
+        "dir" to "libs",
+        "include" to listOf("*.aar", "*.jar"),
+        "exclude" to listOf("")
+    )))
+
+    // Zxing
+    implementation(libs.zxing.core) // <-- THÊM THƯ VIỆN QR CODE
 }

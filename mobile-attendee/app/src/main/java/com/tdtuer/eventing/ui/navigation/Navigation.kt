@@ -32,12 +32,18 @@ import com.tdtuer.eventing.ui.screens.profile.MyProfileViewModel
 import com.tdtuer.eventing.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
 import androidx.core.net.toUri
+import com.tdtuer.eventing.ui.screens.buyticket.BuyTicketScreen
+import com.tdtuer.eventing.ui.screens.buyticket.BuyTicketViewModel
 import com.tdtuer.eventing.ui.screens.events.EventDetailsScreen
 import com.tdtuer.eventing.ui.screens.events.EventDetailsViewModel
 import com.tdtuer.eventing.ui.screens.events.EventPreviewScreen
 import com.tdtuer.eventing.ui.screens.events.EventPreviewViewModel
 import com.tdtuer.eventing.ui.screens.notifications.NotificationScreen
 import com.tdtuer.eventing.ui.screens.notifications.NotificationViewModel
+import com.tdtuer.eventing.ui.screens.payment.PaymentScreen
+import com.tdtuer.eventing.ui.screens.payment.PaymentViewModel
+import com.tdtuer.eventing.ui.screens.ticket.TicketScreen
+import com.tdtuer.eventing.ui.screens.ticket.TicketViewModel
 
 @Composable
 fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
@@ -189,15 +195,29 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
         // 3. Luồng Đặt vé
         composable(
             route = Screen.BookEvent.route,
-            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("eventId") { type = NavType.StringType },
+                navArgument("ticketTypes") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) {
-            // TODO: Tạo BookEventScreen(navController = navController)
-            Text("Book Event Screen")
+            BuyTicketScreen(
+                viewModel = hiltViewModel<BuyTicketViewModel>(),
+                navController = navController
+            )
         }
 
-        composable(Screen.SelectPayment.route) {
-            // TODO: Tạo SelectPaymentScreen(navController = navController)
-            Text("Select Payment Screen")
+        composable(
+            Screen.Payment.route,
+            arguments = listOf(navArgument("ticketId") { type = NavType.StringType })
+        ) {
+            PaymentScreen(
+                viewModel = hiltViewModel<PaymentViewModel>(),
+                navController = navController
+            )
         }
 
         composable(Screen.AddCard.route) {
@@ -211,11 +231,13 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
         }
 
         composable(
-            route = Screen.BookingConfirmation.route,
+            route = Screen.Ticket.route,
             arguments = listOf(navArgument("ticketId") { type = NavType.StringType })
         ) {
-            // TODO: Tạo BookingConfirmationScreen(navController = navController)
-            Text("Booking Confirmation Screen")
+            TicketScreen(
+                viewModel = hiltViewModel<TicketViewModel>(),
+                navController = navController
+            )
         }
 
         // 4. Luồng Tìm kiếm

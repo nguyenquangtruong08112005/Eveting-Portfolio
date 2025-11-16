@@ -1,6 +1,5 @@
 package com.tdtuer.eventing.ui.screens.buyticket
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -9,6 +8,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,14 +19,26 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
+import com.tdtuer.eventing.helpers.formatVNCurrency
+import com.tdtuer.eventing.ui.navigation.Screen
 import com.tdtuer.eventing.ui.theme.EventingTheme
-import java.text.NumberFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BuyTicketScreen(viewModel: BuyTicketViewModel) {
+fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostController) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collect { event ->
+            when (event) {
+                is BuyTicketViewModel.NavigationEvent.GoToPayment -> {
+                    navController.navigate(Screen.Payment.createRoute(event.ticketId))
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -47,7 +59,8 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel) {
         bottomBar = {
             TicketPurchaseBottomBar(
                 totalPrice = uiState.totalPrice,
-                onContinueClick = { viewModel.onContinueClick() }
+                onContinueClick = { viewModel.onContinueClick() },
+                isLoading = uiState.isLoading
             )
         }
     ) { innerPadding ->
@@ -81,6 +94,15 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel) {
                 pricePerTicket = uiState.ticketPrice,
                 quantity = uiState.quantity
             )
+
+            uiState.errorMessage?.let { error ->
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
@@ -163,14 +185,14 @@ private fun PriceBreakdown(ticketType: String, pricePerTicket: Double, quantity:
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("$ticketType Ticket", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(formatCurrency(pricePerTicket), fontWeight = FontWeight.Medium)
+            Text(formatVNCurrency(pricePerTicket), fontWeight = FontWeight.Medium)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
             Text(
-                text = "$quantity x ${formatCurrency(pricePerTicket)}",
+                text = "$quantity x ${formatVNCurrency(pricePerTicket)}",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
@@ -180,7 +202,11 @@ private fun PriceBreakdown(ticketType: String, pricePerTicket: Double, quantity:
 
 
 @Composable
-private fun TicketPurchaseBottomBar(totalPrice: Double, onContinueClick: () -> Unit) {
+private fun TicketPurchaseBottomBar(
+    totalPrice: Double,
+    onContinueClick: () -> Unit,
+    isLoading: Boolean
+) {
     Surface(shadowElevation = 8.dp) {
         Column(modifier = Modifier.padding(16.dp)) {
             HorizontalDivider()
@@ -190,33 +216,42 @@ private fun TicketPurchaseBottomBar(totalPrice: Double, onContinueClick: () -> U
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Total Price", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
-                Text(formatCurrency(totalPrice), fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                Text(
+                    "Total Price",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 16.sp
+                )
+                Text(formatVNCurrency(totalPrice), fontWeight = FontWeight.Bold, fontSize = 22.sp)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onContinueClick,
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF212121))
             ) {
-                Text("CONTINUE", fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("CONTINUE", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
 }
 
-// Helper function to format currency
-private fun formatCurrency(amount: Double): String {
-    return NumberFormat.getCurrencyInstance(Locale("en", "US")).format(amount)
-}
 
 @Preview(showSystemUi = true)
 @Composable
 fun BuyTicketScreenPreview() {
     EventingTheme {
-        BuyTicketScreen(viewModel = viewModel())
+        BuyTicketScreen(viewModel = viewModel(), navController = rememberNavController())
     }
 }

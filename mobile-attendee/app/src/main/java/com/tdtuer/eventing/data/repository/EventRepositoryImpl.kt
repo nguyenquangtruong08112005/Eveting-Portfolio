@@ -2,12 +2,17 @@ package com.tdtuer.eventing.data.repository
 
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
+import com.tdtuer.eventing.data.network.model.BookTicketRequest
+import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
+import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
+import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Event
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success
 
@@ -110,4 +115,5 @@ class EventRepositoryImpl @Inject constructor(
             emit(Result.failure(e))
         }
     }
+
 }
