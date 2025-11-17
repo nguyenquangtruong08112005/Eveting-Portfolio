@@ -27,11 +27,17 @@ interface EventRepository {
 
 
     fun searchEvents(
+        query: String?,
+        location: String?,
         category: String?,
-        date: String?,
+        datePreset: String?,
+        startDate: Long?,
+        endDate: Long?,
+        minPrice: Double?,
+        maxPrice: Double?,
         sortBy: String?,
         sortOrder: String?,
         page: Int,
-        limit: Int,
+        limit: Int
     ): Flow<Result<List<Event>>>
 }

@@ -106,9 +106,6 @@ class HomeViewModel @Inject constructor(
         _selectedCategoryName.value = categoryName
     }
 
-    fun onSeeAllClick(sectionTitle: String) { /* TODO */
-    }
-
     fun onEventBookmarkClick(event: EventCardUiModel) {
         viewModelScope.launch {
             val updatedEvent = event.copy(isFavorite = !event.isFavorite)

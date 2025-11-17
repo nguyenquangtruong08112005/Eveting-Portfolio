@@ -6,6 +6,7 @@ import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
+import com.tdtuer.eventing.ui.screens.ticket.SaveRequest
 
 interface TicketRepository {
 
@@ -23,5 +24,5 @@ interface TicketRepository {
     suspend fun getTicketDetails(ticketId: String): Result<DetailedTicket>
 
     // Hàm mới của chúng ta
-    suspend fun saveImageToGallery(imageBitmap: ImageBitmap, fileName: String): Result<Unit>
+    suspend fun saveTicketImages(request: SaveRequest): Result<Unit>
 }

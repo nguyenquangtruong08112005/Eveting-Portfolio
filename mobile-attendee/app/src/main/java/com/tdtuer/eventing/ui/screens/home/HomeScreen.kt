@@ -1,3 +1,4 @@
+// eventing.zip/ui/screens/home/HomeScreen.kt (ĐÃ CẬP NHẬT)
 package com.tdtuer.eventing.ui.screens.home
 
 import TicketShape
@@ -55,7 +56,11 @@ import com.tdtuer.eventing.ui.screens.location.MapViewScreen
 import com.tdtuer.eventing.ui.screens.profile.MyProfileScreen
 import com.tdtuer.eventing.ui.navigation.Screen
 import com.tdtuer.eventing.ui.screens.events.AllEventsScreen
-import com.tdtuer.eventing.ui.screens.schedule.CalendarScreen
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -75,7 +80,6 @@ fun HomeScreen(
                 bottomNavController = bottomNavController,
                 onItemClick = { route ->
                     bottomNavController.navigate(route) {
-                        // Pop up về start destination để tránh back stack lớn
                         popUpTo(bottomNavController.graph.startDestinationId) {
                             saveState = true
                         }
@@ -103,6 +107,8 @@ fun BottomNavGraph(
     bottomNavController: NavHostController,
     onMenuClick: () -> Unit
 ) {
+    val sharedViewModel: SharedSearchViewModel = hiltViewModel()
+
     NavHost(
         navController = bottomNavController,
         startDestination = Screen.Home.route, // Bắt đầu ở tab Home
@@ -112,28 +118,29 @@ fun BottomNavGraph(
         composable(Screen.Home.route) {
             ExploreScreen(
                 mainNavController = mainNavController,
+                bottomNavController = bottomNavController,
                 onMenuClick = onMenuClick,
-                viewModel = hiltViewModel<HomeViewModel>() // HomeViewModel giờ thuộc về tab này
+                viewModel = hiltViewModel<HomeViewModel>(),
+                sharedViewModel = sharedViewModel
             )
         }
 
         // Tab 2: Events
         composable(Screen.Events.route) {
-            // (Bạn cần import AllEventsScreen và viewModel của nó)
-            AllEventsScreen(
-                viewModel = hiltViewModel()
+            AllEventsScreen( // (YÊU CẦU 5) Truyền bottomNavController
+                viewModel = hiltViewModel(),
+                sharedViewModel = sharedViewModel,
+                bottomNavController = bottomNavController
             )
         }
 
         // Tab 3: Map
         composable(Screen.Map.route) {
-            // (Bạn cần import MapViewScreen và viewModel của nó)
             MapViewScreen(viewModel = hiltViewModel())
         }
 
         // Tab 4: Profile
         composable(Screen.Profile.route) {
-            // (Bạn cần import MyProfileScreen và viewModel của nó)
             MyProfileScreen(viewModel = hiltViewModel())
         }
     }
@@ -144,17 +151,37 @@ fun BottomNavGraph(
 fun ExploreScreen(
     mainNavController: NavController,
     onMenuClick: () -> Unit,
-    viewModel: HomeViewModel // Nhận ViewModel từ BottomNavGraph
+    viewModel: HomeViewModel,
+    bottomNavController: NavHostController,
+    sharedViewModel: SharedSearchViewModel
 ) {
     val upcomingEvents by viewModel.upcomingEvents
     val nearbyEvents by viewModel.nearbyEvents
 
-    // (Code xin quyền và LaunchedEffect cho NavEvent giữ nguyên)
     val locationPermissionsState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
+
+    var showFilterSheet by rememberSaveable { mutableStateOf(false) }
+
+    if (showFilterSheet) {
+        FilterBottomSheet(
+            onDismiss = { showFilterSheet = false },
+            onApplyFilters = { params ->
+                showFilterSheet = false
+                sharedViewModel.applyFilters(params)
+                bottomNavController.navigate(Screen.Events.route) {
+                    popUpTo(bottomNavController.graph.startDestinationId) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        )
+    }
 
     LaunchedEffect(key1 = locationPermissionsState) {
         val allPermissionsGranted = locationPermissionsState.permissions.all {
@@ -179,7 +206,16 @@ fun ExploreScreen(
         }
     }
 
-    // Đây là LazyColumn cũ của bạn
+    // (YÊU CẦU 5) Lambda điều hướng cho "See All"
+    val onSeeAllClickLambda = {
+        sharedViewModel.clearSearchAndFilters() // Xóa filter
+        bottomNavController.navigate(Screen.Events.route) { // Điều hướng
+            popUpTo(bottomNavController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -191,39 +227,49 @@ fun ExploreScreen(
                 onMenuClick = onMenuClick,
                 onNotificationsClick = {
                     mainNavController.navigate(Screen.Notifications.route)
-                })
+                },
+                bottomNavController = bottomNavController,
+                sharedViewModel = sharedViewModel,
+                onFilterClick = { showFilterSheet = true }
+            )
         }
         item {
-            EventSection(
+            EventSection( // (YÊU CẦU 5) Truyền lambda
                 "Upcoming Events",
                 upcomingEvents,
-                viewModel,
-                mainNavController
+                mainNavController,
+                onSeeAllClick = onSeeAllClickLambda,
+                onBookmarkClick = { event -> viewModel.onEventBookmarkClick(event) }
             )
-        } // <-- Thêm mainNavController
+        }
         item { InviteBanner(onInviteClick = { viewModel.onInviteFriendsClick() }) }
 
         if (nearbyEvents.isNotEmpty()) {
             item {
-                EventSection(
+                EventSection( // (YÊU CẦU 5) Truyền lambda
                     "Nearby You",
                     nearbyEvents,
-                    viewModel,
-                    mainNavController
+                    mainNavController,
+                    onSeeAllClick = onSeeAllClickLambda,
+                    onBookmarkClick = { event -> viewModel.onEventBookmarkClick(event) }
                 )
-            } // <-- Thêm mainNavController
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // Cần cho OutlinedTextField
 @Composable
 fun HomeHeader(
     viewModel: HomeViewModel, onMenuClick: () -> Unit,
-    onNotificationsClick: () -> Unit = {}
+    onNotificationsClick: () -> Unit = {},
+    sharedViewModel: SharedSearchViewModel,
+    bottomNavController: NavHostController,
+    onFilterClick: () -> Unit
 ) {
-    val categories by viewModel.categories
-    val selectedCategoryName = viewModel.selectedCategoryName
     val currentLocation by viewModel.currentLocationDisplay
+    val searchState by sharedViewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
@@ -260,7 +306,7 @@ fun HomeHeader(
                         currentLocation!!,
                         color = AppTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Medium
-                    ) // This could come from ViewModel
+                    )
                 }
             } else {
                 Spacer(Modifier.width(0.dp))
@@ -279,51 +325,126 @@ fun HomeHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
+        OutlinedTextField(
+            value = searchState.searchQuery,
+            onValueChange = { sharedViewModel.onSearchQueryChanged(it) },
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    AppTheme.colorScheme.onPrimary.copy(alpha = 0.1f), RoundedCornerShape(14.dp)
+                    AppTheme.colorScheme.onPrimary.copy(alpha = 0.1f),
+                    RoundedCornerShape(14.dp)
+                ),
+            placeholder = {
+                Text(
+                    "Search event, artist...",
+                    color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = "Search",
-                tint = AppTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(30.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            VerticalDivider(
-                modifier = Modifier.height(24.dp),
-                color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "Search...",
-                color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                fontSize = AppTheme.typography.bodyLarge.fontSize
-            ) // Search text could be ViewModel state
-            Spacer(modifier = Modifier.weight(1f))
-            Button(
-                onClick = { viewModel.onSearchFilterClick() }, colors = ButtonDefaults.buttonColors(
-                    containerColor = AppTheme.colorScheme.onPrimary.copy(
-                        alpha = 0.0f
-                    )
-                ), modifier = Modifier
-                    .padding(0.dp)
-                    .offset(x = 10.dp)
-            ) {
+            },
+            leadingIcon = {
                 Icon(
-                    Icons.Default.FilterAlt,
-                    contentDescription = "Filters",
-                    tint = AppTheme.colorScheme.onPrimary
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = AppTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(30.dp)
+                )
+            },
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VerticalDivider(
+                        modifier = Modifier.height(24.dp),
+                        color = AppTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                    )
+                    IconButton(onClick = onFilterClick) {
+                        Icon(
+                            Icons.Default.FilterAlt,
+                            contentDescription = "Filters",
+                            tint = AppTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                cursorColor = AppTheme.colorScheme.onPrimary,
+                focusedTextColor = AppTheme.colorScheme.onPrimary,
+                unfocusedTextColor = AppTheme.colorScheme.onPrimary,
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    focusManager.clearFocus()
+                    sharedViewModel.executeSearchFromQuery()
+
+                    bottomNavController.navigate(Screen.Events.route) {
+                        popUpTo(bottomNavController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            ),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp)
+        )
+    }
+}
+
+// ... (CategoryChip giữ nguyên) ...
+
+// (YÊU CẦU 5) Cập nhật chữ ký (signature) của EventSection
+@Composable
+fun EventSection(
+    name: String,
+    events: List<EventCardUiModel>,
+    mainNavController: NavController,
+    onSeeAllClick: () -> Unit, // <-- THAY ĐỔI
+    onBookmarkClick: (EventCardUiModel) -> Unit // <-- THÊM
+) {
+    Column(modifier = Modifier.padding(vertical = 24.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            TextButton(onClick = onSeeAllClick) { // <-- THAY ĐỔI
+                Text("See All")
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(events) { event ->
+                EventCard(
+                    event = event,
+                    onBookmarkClick = { onBookmarkClick(event) }, // <-- THAY ĐỔI
+                    onCardClick = {
+                        mainNavController.navigate(
+                            Screen.EventDetails.createRoute(event.id)
+                        )
+                    }
                 )
             }
         }
     }
 }
+
+// ... (EventCard, InviteBanner, AppBottomBar, AppFab, Preview giữ nguyên) ...
+// (Lưu ý: Đảm bảo các composable này vẫn còn trong file của bạn)
 
 @Composable
 fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
@@ -350,52 +471,6 @@ fun CategoryChip(category: Category, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun EventSection(
-    name: String,
-    events: List<EventCardUiModel>,
-    viewModel: HomeViewModel,
-    mainNavController: NavController // <-- Thêm tham số này
-) {
-    Column(modifier = Modifier.padding(vertical = 24.dp)) {
-        // ... (Phần Row "See All" giữ nguyên)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            TextButton(onClick = { viewModel.onSeeAllClick(name) }) {
-                Text("See All")
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(events) { event ->
-                EventCard(
-                    event = event,
-                    onBookmarkClick = { viewModel.onEventBookmarkClick(event) },
-                    onCardClick = { // <-- Thêm hành động click
-                        mainNavController.navigate(
-                            Screen.EventDetails.createRoute(event.id)
-                        )
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun EventCard(
     event: EventCardUiModel,
     onBookmarkClick: () -> Unit,
@@ -403,47 +478,32 @@ fun EventCard(
 ) {
     val density = LocalDensity.current
 
-    // --- Cấu hình cho hiệu ứng vé ---
     val cornerRadius = 16.dp
     val cutoutRadius = 12.dp
-    val junctionY = 150.dp // Chiều cao của Box chứa ảnh
+    val junctionY = 150.dp
 
-    // 1. "phần lõm là màu nền"
     val cutoutColor = AppTheme.colorScheme.background
 
-    // 2. "height của dash dày hơn"
     val dashStrokeWidth = 10f
     val dashColor = AppTheme.colorScheme.outline.copy(alpha = 0.7f)
     val dashWidth = 10f
     val dashGap = 10f
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidth, dashGap), 0f)
 
-    // 3. Cấu hình Inset Shadow (Bóng mờ cho vết lõm)
-    val shadowRadius = cutoutRadius // Lớn hơn vết lõm 4.dp
-    val shadowColor = Color.Black.copy(alpha = 0f) // Màu đen mờ
-    // --- Kết thúc cấu hình ---
-
-    // Khởi tạo TicketShape
     val ticketShape = remember(cornerRadius, cutoutRadius, junctionY) {
         TicketShape(cornerRadius, cutoutRadius, junctionY)
     }
 
-    // Sử dụng Box để xếp chồng Card và Canvas
     Box(
         modifier = Modifier
             .width(300.dp)
             .clickable(onClick = onCardClick)
     ) {
-
-        // LỚP 1: CARD (NỘI DUNG CHÍNH, BỊ CẮT XÉN)
         Card(
-//            modifier = Modifier.matchParentSize(),
-            shape = ticketShape, // <-- ÁP DỤNG SHAPE CẮT XÉN
+            shape = ticketShape,
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
-            // Column này và mọi thứ bên trong nó sẽ bị cắt (clip)
-            // bởi `ticketShape`
             Column {
                 Box(modifier = Modifier.height(junctionY)) {
                     AsyncImage(
@@ -453,7 +513,6 @@ fun EventCard(
                         contentScale = ContentScale.Crop,
                         placeholder = painterResource(id = R.drawable.ic_launcher_background)
                     )
-                    // ... (Code Box ngày tháng không đổi) ...
                     Box(
                         modifier = Modifier
                             .padding(8.dp)
@@ -476,7 +535,6 @@ fun EventCard(
                             )
                         }
                     }
-                    // ... (Code IconButton bookmark không đổi) ...
                     IconButton(
                         onClick = onBookmarkClick,
                         modifier = Modifier
@@ -540,36 +598,16 @@ fun EventCard(
                 }
             }
         }
-        // *** THAY ĐỔI 2: LỚP PHỦ (BÊN TRÊN) ***
-        // Canvas này sẽ vẽ "đè lên" Column nội dung
         Canvas(
             modifier = Modifier.matchParentSize()
         ) {
             val cutoutRadiusPx = with(density) { cutoutRadius.toPx() }
             val junctionYPx = with(density) { junctionY.toPx() }
-//                // 1. Vẽ "lỗ cắt" bên trái (đè lên AsyncImage)
-//                //    với màu nền của màn hình
-//                drawCircle(
-//                    color = cutoutColor,
-//                    radius = cutoutRadiusPx,
-//                    center = Offset(x = 0f, y = junctionYPx),
-//                )
-//
-//                // 2. Vẽ "lỗ cắt" bên phải (đè lên AsyncImage)
-//                //    với màu nền của màn hình
-//                drawCircle(
-//                    color = cutoutColor,
-//                    radius = cutoutRadiusPx,
-//                    center = Offset(x = size.width, y = junctionYPx)
-//                )
-
-            // 3. Vẽ đường răng cưa (đè lên AsyncImage)
-            //    với độ dày 3f
             drawLine(
                 color = dashColor,
                 start = Offset(x = cutoutRadiusPx, y = junctionYPx),
                 end = Offset(x = size.width - cutoutRadiusPx, y = junctionYPx),
-                strokeWidth = dashStrokeWidth, // <-- Đã dày hơn
+                strokeWidth = dashStrokeWidth,
                 pathEffect = pathEffect
             )
         }
@@ -584,12 +622,12 @@ fun InviteBanner(onInviteClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 32.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)) // Light cyan background
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp) // Set a fixed height
+                .height(150.dp)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.invite),
@@ -597,13 +635,12 @@ fun InviteBanner(onInviteClick: () -> Unit) {
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .size(250.dp)
-                    .offset(x = 20.dp, y = 25.dp) // <-- Thay đổi giá trị x, y ở đây
+                    .offset(x = 20.dp, y = 25.dp)
             )
 
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-
                     .padding(horizontal = 24.dp)
             ) {
                 Text(
@@ -637,10 +674,9 @@ fun InviteBanner(onInviteClick: () -> Unit) {
 
 @Composable
 fun AppBottomBar(
-    bottomNavController: NavHostController, // <-- Nhận bottomNavController
+    bottomNavController: NavHostController,
     onItemClick: (String) -> Unit
 ) {
-    // Lấy trạng thái back stack hiện tại để biết item nào đang được chọn
     val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -671,7 +707,6 @@ fun AppBottomBar(
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 items.forEach { screen ->
-                    // Bỏ qua Spacer, chỉ thêm 4 item
                     NavigationBarItem(
                         selected = currentRoute == screen.route,
                         onClick = { onItemClick(screen.route) },
@@ -702,9 +737,7 @@ fun AppFab(onClick: () -> Unit) {
 @Composable
 fun HomeScreenPreview() {
     EventingTheme {
-// HomeScreen(
-// viewModel = HomeViewModel(),
-// navController = null
-// ) // Preview needs a NavController now
+        // Previewing HomeScreen now requires a NavController
+        // HomeScreen(navController = rememberNavController())
     }
 }

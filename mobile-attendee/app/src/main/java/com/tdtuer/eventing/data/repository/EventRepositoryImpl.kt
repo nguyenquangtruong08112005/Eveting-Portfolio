@@ -89,17 +89,29 @@ class EventRepositoryImpl @Inject constructor(
     }
 
     override fun searchEvents(
+        query: String?,
+        location: String?,
         category: String?,
-        date: String?,
+        datePreset: String?,
+        startDate: Long?,
+        endDate: Long?,
+        minPrice: Double?,
+        maxPrice: Double?,
         sortBy: String?,
         sortOrder: String?,
         page: Int,
         limit: Int
     ): Flow<Result<List<Event>>> = flow {
         try {
-            val response = apiService.searchEvents(
+            val response = apiService.searchEvents( //
+                query = query,
+                location = location,
                 category = category,
-                date = date,
+                datePreset = datePreset,
+                startDate = startDate,
+                endDate = endDate,
+                minPrice = minPrice,
+                maxPrice = maxPrice,
                 sortBy = sortBy,
                 sortOrder = sortOrder,
                 page = page,

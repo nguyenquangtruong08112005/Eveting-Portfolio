@@ -3,12 +3,18 @@ package com.tdtuer.eventing.data.repository
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas // <-- THÊM
+import android.graphics.Color // <-- THÊM
+import android.graphics.Paint // <-- THÊM
+import android.graphics.Typeface // <-- THÊM
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.core.content.res.ResourcesCompat // <-- THÊM
+import com.tdtuer.eventing.R // <-- THÊM
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
@@ -19,6 +25,14 @@ import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success
+import com.tdtuer.eventing.helpers.formatTimestampToDay
+import com.tdtuer.eventing.helpers.formatTimestampToHour
+import com.tdtuer.eventing.helpers.formatTimestampToMinute
+import com.tdtuer.eventing.helpers.formatTimestampToMonth
+import com.tdtuer.eventing.helpers.formatTimestampToYear
+import com.tdtuer.eventing.helpers.generateBarCodeBitmap
+import com.tdtuer.eventing.helpers.generateQrCodeBitmap
+import com.tdtuer.eventing.ui.screens.ticket.SaveRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,7 +40,6 @@ import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// LỖI REDECLARATION ĐÃ ĐƯỢC XÓA (Không có interface ở đây)
 
 @Singleton
 class TicketRepositoryImpl @Inject constructor(
@@ -90,22 +103,128 @@ class TicketRepositoryImpl @Inject constructor(
         }
     }
 
-    // --- HÀM LƯU ẢNH (ĐÃ HOÀN CHỈNH) ---
-    override suspend fun saveImageToGallery(imageBitmap: ImageBitmap, fileName: String): Result<Unit> {
+    /**
+     * HÀM MỚI: Nhận yêu cầu, tạo 2 ảnh template và lưu
+     */
+    override suspend fun saveTicketImages(request: SaveRequest): Result<Unit> {
         return try {
-            saveImageBitmapToMediaStore(context, imageBitmap, fileName)
+            // Logic nghiệp vụ: Quyết định tên file
+            val safeName = request.eventName.replace(Regex("[^A-Za-z0-9]"), "_")
+            val ticketIdShort = request.ticketId.takeLast(6)
+
+            // 1. TẠO VÀ LƯU ẢNH QR
+            val qrBitmap = generateQrCodeBitmap(request.qrCodeData)
+            val qrTemplate = createTicketTemplate(context, request, qrBitmap, true)
+            saveImageBitmapToMediaStore(context, qrTemplate, "${safeName}_${ticketIdShort}_QR.png")
+
+            // 2. TẠO VÀ LƯU ẢNH BARCODE
+            val barBitmap = generateBarCodeBitmap(request.qrCodeData)
+            val barTemplate = createTicketTemplate(context, request, barBitmap, false)
+            saveImageBitmapToMediaStore(
+                context,
+                barTemplate,
+                "${safeName}_${ticketIdShort}_Barcode.png"
+            )
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
+    /**
+     * HÀM TẠO TEMPLATE:
+     * Vẽ chữ và mã code lên một Bitmap mới.
+     */
+    private fun createTicketTemplate(
+        context: Context,
+        request: SaveRequest,
+        codeBitmap: Bitmap,
+        isQrCode: Boolean
+    ): Bitmap {
+        // Cấu hình kích thước ảnh
+        val templateWidth = 800
+        val templateHeight = if (isQrCode) 1000 else 650
+        val padding = 40f
+
+        // Tải font Poppins (đảm bảo bạn có R.font.poppins_bold và poppins_regular)
+        val boldTypeface = try {
+            ResourcesCompat.getFont(context, R.font.poppins_bold) ?: Typeface.DEFAULT_BOLD
+        } catch (e: Exception) {
+            Typeface.DEFAULT_BOLD
+        }
+
+        val regularTypeface = try {
+            ResourcesCompat.getFont(context, R.font.poppins_regular) ?: Typeface.DEFAULT
+        } catch (e: Exception) {
+            Typeface.DEFAULT
+        }
+
+        // Cấu hình các loại Paint (cọ vẽ)
+        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 42f
+            typeface = boldTypeface
+        }
+        val dataPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 32f
+            typeface = regularTypeface
+        }
+        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.GRAY
+            textSize = 28f
+            typeface = regularTypeface
+        }
+        val whiteBgPaint = Paint().apply { color = Color.WHITE }
+
+        // Bắt đầu vẽ
+        val finalBitmap =
+            Bitmap.createBitmap(templateWidth, templateHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(finalBitmap)
+
+        // 1. Vẽ nền trắng
+        canvas.drawRect(0f, 0f, templateWidth.toFloat(), templateHeight.toFloat(), whiteBgPaint)
+
+        // 2. Vẽ thông tin (Tên sự kiện)
+        canvas.drawText(request.eventName, padding, padding + 40f, titlePaint)
+
+        // 3. Vẽ thông tin (Mã vé)
+        canvas.drawText("Ticket ID:", padding, padding + 120f, labelPaint)
+        canvas.drawText(request.ticketId, padding, padding + 160f, dataPaint)
+
+        // 4. Vẽ mã code (Barcode hoặc QR)
+        val codeTop = padding + 220f
+        val codeWidth = (templateWidth - padding * 2)
+        val codeHeight = if (isQrCode) codeWidth else 200f // Barcode thấp hơn
+
+        val scaledCode =
+            Bitmap.createScaledBitmap(codeBitmap, codeWidth.toInt(), codeHeight.toInt(), false)
+        canvas.drawBitmap(scaledCode, padding, codeTop, null)
+
+        // 5. Thêm logo hoặc text "Mobile Eventing" ở dưới
+        canvas.drawText(
+            "Generated by Mobile Eventing",
+            padding,
+            templateHeight - padding,
+            labelPaint
+        )
+
+        return finalBitmap
+    }
+
+
+    /**
+     * Hàm private (riêng tư) chứa logic lưu file vào MediaStore.
+     * Nó chạy trên IO Dispatcher.
+     */
     private suspend fun saveImageBitmapToMediaStore(
         context: Context,
-        imageBitmap: ImageBitmap,
+        bitmap: Bitmap, // <-- SỬA: Nhận android.graphics.Bitmap
         fileName: String
     ) {
-        val bitmap = imageBitmap.asAndroidBitmap()
+        // KHÔNG CẦN CONVERT (vì đã là Bitmap)
+        // val bitmap = imageBitmap.asAndroidBitmap()
 
         withContext(Dispatchers.IO) {
             val resolver = context.contentResolver
@@ -119,7 +238,10 @@ class TicketRepositoryImpl @Inject constructor(
                 put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Eventing")
+                    put(
+                        MediaStore.Images.Media.RELATIVE_PATH,
+                        "${Environment.DIRECTORY_PICTURES}/Eventing"
+                    )
                     put(MediaStore.Images.Media.IS_PENDING, 1)
                 }
             }
@@ -149,4 +271,16 @@ class TicketRepositoryImpl @Inject constructor(
             }
         }
     }
+
+    // (Hàm này đã bị xóa khỏi interface, xóa luôn ở đây)
+    /*
+    override suspend fun saveImageToGallery(imageBitmap: ImageBitmap, fileName: String): Result<Unit> {
+        return try {
+            saveImageBitmapToMediaStore(context, imageBitmap.asAndroidBitmap(), fileName)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    */
 }

@@ -159,7 +159,7 @@ fun TicketScreen(
                 is TicketUiState.Success -> {
                     // (Sửa: Dùng generateBarCodeBitmap như trong file của bạn)
                     val barCodeBitmap = remember(state.ticket.qrCode) {
-                        generateBarCodeBitmap(state.ticket.qrCode)
+                        generateBarCodeBitmap(state.ticket.qrCode).asImageBitmap()
                     }
                     Ticket(
                         details = state.ticket,
@@ -177,7 +177,10 @@ fun TicketScreen(
 // --- Custom Composables for this Screen ---
 
 @Composable
-private fun Ticket(details: DetailedTicket, barCodeImage: ImageBitmap) {
+private fun Ticket(
+    details: DetailedTicket,
+    barCodeImage: ImageBitmap
+) { // <-- (1) barCodeImage VẪN LÀ ImageBitmap
     val density = LocalDensity.current
 
     val cornerRadius = 24.dp
@@ -211,7 +214,7 @@ private fun Ticket(details: DetailedTicket, barCodeImage: ImageBitmap) {
 
     // Tạo mã QR (giữ nguyên)
     val qrCodeBitmap = remember(details.qrCode) {
-        generateQrCodeBitmap(details.qrCode)
+        generateQrCodeBitmap(details.qrCode).asImageBitmap()
     }
 
     // (3) THAY ĐỔI: Click sẽ CỘNG DỒN góc xoay
