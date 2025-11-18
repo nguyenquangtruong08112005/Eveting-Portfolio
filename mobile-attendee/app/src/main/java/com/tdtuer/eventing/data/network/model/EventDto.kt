@@ -37,6 +37,8 @@ data class EventDto(
     @SerializedName("minPrice")
     val minPrice: Double?,
 
+    @SerializedName("category")
+    val category: List<String>?,
 )
 
 // Các DTO lồng bên trong

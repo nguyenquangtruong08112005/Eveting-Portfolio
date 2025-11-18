@@ -2,15 +2,20 @@
 package com.tdtuer.eventing.ui.screens.location
 
 import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Layers // Icon cho nút chọn style
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -30,12 +35,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.mapbox.geojson.Point
+import com.mapbox.maps.Style
 import com.mapbox.maps.ViewAnnotationAnchor
 import com.mapbox.maps.ViewAnnotationAnchorConfig
-// *** (FIX 1) IMPORT THÊM CÁI NÀY ***
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.ViewAnnotation
+import com.mapbox.maps.extension.compose.style.MapStyle
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import com.tdtuer.eventing.R
@@ -44,12 +50,17 @@ import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.helpers.formatDisplayPrice
 import com.tdtuer.eventing.ui.screens.mapview.CategoryItem
 import com.tdtuer.eventing.ui.screens.mapview.MapViewModel
+import com.tdtuer.eventing.ui.theme.AppTheme
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import kotlinx.coroutines.delay
+import kotlin.math.pow
 
 @Composable
 fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // State lưu trữ kiểu bản đồ hiện tại
+    var currentMapStyle by remember { mutableStateOf(Style.MAPBOX_STREETS) }
 
     val mapViewportState = rememberMapViewportState {
         setCameraOptions {
@@ -69,36 +80,40 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
         )
     }
 
-    // Logic gọi API thông minh (Debounce)
     LaunchedEffect(mapViewportState.cameraState) {
         delay(1000)
         val cameraState = mapViewportState.cameraState
         if (cameraState != null) {
             val center = cameraState.center
             val zoom = cameraState.zoom
-            val estimatedRadiusKm = (40000 / Math.pow(2.0, zoom)) / 2
+            val estimatedRadiusKm = (40000 / 2.0.pow(zoom)) / 2
             viewModel.fetchEventsSmart(center, estimatedRadiusKm)
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Mapbox Map với Dynamic Style
         MapboxMap(
             Modifier.fillMaxSize(),
             mapViewportState = mapViewportState,
+            style = { MapStyle(style = currentMapStyle) } // <-- Cập nhật style tại đây
         ) {
-            // Render Card sự kiện lên Map
             if (uiState.nearbyEventsResult is Result.Success) {
                 val events = (uiState.nearbyEventsResult as Result.Success).data
-                val coordinateCounts = mutableMapOf<String, Int>()
 
-                events.forEach { event ->
-                    val point = parseLocationToPoint(event.coordinates)
+                val groupedEvents = remember(events) {
+                    // Gom nhóm theo tọa độ để tránh chồng lấn
+                    // Lưu ý: Sử dụng thuộc tính 'coordinates' như bạn đã chỉnh sửa trong Event model
+                    events.groupBy { it.coordinates } // Nếu bạn đã đổi tên field thành coordinates thì sửa ở đây
+                }
+
+                groupedEvents.forEach { (coordinateString, eventList) ->
+                    val point = parseLocationToPoint(coordinateString)
                     if (point != null) {
                         ViewAnnotation(
                             options = viewAnnotationOptions {
                                 geometry(point)
                                 allowOverlap(true)
-                                // *** (FIX 2) SỬ DỤNG ĐÚNG CẤU TRÚC CONFIG ***
                                 variableAnchors(
                                     listOf(
                                         ViewAnnotationAnchorConfig.Builder()
@@ -108,7 +123,11 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
                                 )
                             }
                         ) {
-                            MapEventCard(event = event)
+                            if (eventList.size == 1) {
+                                MapEventCard(event = eventList.first())
+                            } else {
+                                MultiEventCarousel(events = eventList)
+                            }
                         }
                     }
                 }
@@ -125,6 +144,7 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
             )
         }
 
+        // 2. Các thành phần giao diện phía trên
         Column {
             MapSearchBar(
                 query = uiState.searchQuery,
@@ -137,29 +157,138 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
             )
         }
 
-        FloatingActionButton(
-            onClick = {
-                mapViewportState.flyTo(
-                    com.mapbox.maps.CameraOptions.Builder()
-                        .center(uiState.initialCameraPosition)
-                        .zoom(12.0)
-                        .build()
-                )
-            },
+        // 3. Các nút điều khiển (Layer & Location)
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
-                .padding(bottom = 80.dp),
-            containerColor = Color.White,
-            shape = CircleShape
+                .padding(bottom = 80.dp), // Tránh Bottom Navigation Bar
+            verticalArrangement = Arrangement.spacedBy(16.dp), // Khoảng cách giữa các nút
+            horizontalAlignment = Alignment.End
         ) {
-            Icon(Icons.Default.MyLocation, contentDescription = "My Location", tint = Color(0xFF5669FF))
+            // Nút chọn kiểu bản đồ
+            MapStyleSelector(
+                currentStyle = currentMapStyle,
+                onStyleSelected = { newStyle -> currentMapStyle = newStyle }
+            )
+
+            // Nút vị trí của tôi
+            FloatingActionButton(
+                onClick = {
+                    mapViewportState.flyTo(
+                        com.mapbox.maps.CameraOptions.Builder()
+                            .center(uiState.initialCameraPosition)
+                            .zoom(12.0)
+                            .build()
+                    )
+                },
+                containerColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.MyLocation, contentDescription = "My Location", tint = AppTheme.colorScheme.primary)
+            }
         }
     }
 }
 
+// --- Composable chọn kiểu bản đồ ---
 @Composable
-fun MapEventCard(event: Event) {
+fun MapStyleSelector(
+    currentStyle: String,
+    onStyleSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        FloatingActionButton(
+            onClick = { expanded = true },
+            containerColor = Color.White,
+            shape = CircleShape
+        ) {
+            Icon(Icons.Default.Layers, contentDescription = "Map Style", tint = AppTheme.colorScheme.primary    )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(Color.White)
+        ) {
+            val styles = listOf(
+                "Streets" to Style.MAPBOX_STREETS,
+                "Traffic Day" to Style.TRAFFIC_DAY,
+                "Traffic Night" to Style.TRAFFIC_NIGHT,
+                "Satellite" to Style.SATELLITE_STREETS,
+                "Outdoors" to Style.OUTDOORS,
+                "Dark" to Style.DARK,
+                "Light" to Style.LIGHT
+            )
+
+            styles.forEach { (name, styleUrl) ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            name,
+                            fontWeight = if (currentStyle == styleUrl) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = {
+                        onStyleSelected(styleUrl)
+                        expanded = false
+                    },
+                    trailingIcon = {
+                        if (currentStyle == styleUrl) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF5669FF))
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun MultiEventCarousel(events: List<Event>) {
+    val pagerState = rememberPagerState(pageCount = { events.size })
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.7f),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.padding(bottom = 4.dp)
+        ) {
+            Text(
+                text = "${pagerState.currentPage + 1}/${events.size}",
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.width(160.dp)
+        ) { page ->
+            MapEventCard(event = events[page], isCarouselItem = true)
+        }
+
+        Icon(
+            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+            contentDescription = null,
+            modifier = Modifier
+                .size(16.dp)
+                .offset(y = (-4).dp),
+            tint = Color.White
+        )
+    }
+}
+
+@Composable
+fun MapEventCard(event: Event, isCarouselItem: Boolean = false) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.shadow(8.dp, RoundedCornerShape(12.dp))
@@ -210,19 +339,20 @@ fun MapEventCard(event: Event) {
             }
         }
 
-        Icon(
-            painter = painterResource(id = R.drawable.ic_launcher_foreground),
-            contentDescription = null,
-            modifier = Modifier
-                .size(16.dp)
-                .offset(y = (-4).dp),
-            tint = Color.White
-        )
+        if (!isCarouselItem) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(16.dp)
+                    .offset(y = (-4).dp),
+                tint = Color.White
+            )
+        }
     }
 }
 
 private fun parseLocationToPoint(locationString: String): Point? {
-    Log.d("MapViewScreen", "parseLocationToPoint: $locationString")
     return try {
         val parts = locationString.split(",")
         val lat = parts[0].substringAfter("Lat:").trim().toDouble()
@@ -250,11 +380,11 @@ private fun MapSearchBar(query: String, onQueryChange: (String) -> Unit) {
             placeholder = { Text("Tìm kiếm...", color = Color.Gray, fontSize = 14.sp) },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray) },
-            trailingIcon = {
-                IconButton(onClick = { }) {
-                    Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = Color(0xFF5669FF))
-                }
-            },
+//            trailingIcon = {
+//                IconButton(onClick = { }) {
+//                    Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = AppTheme.colorScheme.primary)
+//                }
+//            },
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
@@ -288,9 +418,9 @@ private fun CategoryFilters(categories: List<CategoryItem>, selectedCategory: St
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF5669FF),
-                    selectedLabelColor = Color.White,
-                    selectedLeadingIconColor = Color.White
+                    selectedContainerColor = AppTheme.colorScheme.onPrimary,
+                    selectedLabelColor = AppTheme.colorScheme.secondary,
+                    selectedLeadingIconColor = AppTheme.colorScheme.primary,
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
@@ -299,5 +429,13 @@ private fun CategoryFilters(categories: List<CategoryItem>, selectedCategory: St
                 )
             )
         }
+    }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+fun MapViewScreenPreview() {
+    EventingTheme {
+        // Preview
     }
 }

@@ -1,4 +1,4 @@
-// eventing.zip/ui/screens/mapview/MapViewModel.kt
+// eventing.zip/ui/screens/mapview/MapViewModel.kt (ĐÃ HOÀN THIỆN SEARCH & FILTER)
 package com.tdtuer.eventing.ui.screens.mapview
 
 import android.Manifest
@@ -29,7 +29,6 @@ data class MapUiState(
     val searchQuery: String = "",
     val categories: List<CategoryItem> = emptyList(),
     val selectedCategory: String = "All",
-    // Mặc định trỏ về Việt Nam (ví dụ Đà Nẵng để nhìn thấy cả 2 miền, hoặc HCM)
     val initialCameraPosition: Point = Point.fromLngLat(106.7009, 10.7769),
     val isLocationLoading: Boolean = true,
     val nearbyEventsResult: Result<List<Event>> = Result.Success(emptyList())
@@ -45,7 +44,9 @@ class MapViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState = _uiState.asStateFlow()
 
-    // Lưu trữ vị trí và bán kính lần cuối gọi API thành công để chống spam request
+    // Cache danh sách gốc lấy từ API để lọc local mà không cần gọi lại server
+    private var allRetrievedEvents: List<Event> = emptyList()
+
     private var lastFetchedLocation: Location? = null
     private var lastFetchedRadius: Double = 0.0
 
@@ -54,13 +55,28 @@ class MapViewModel @Inject constructor(
         getInitialUserLocation()
     }
 
+    // --- 1. SETUP CATEGORIES ---
+    private fun loadCategories() {
+        // Danh sách category khớp với yêu cầu của bạn
+        val categories = listOf(
+            CategoryItem("All", R.drawable.group_34057),
+            CategoryItem("Music", R.drawable.quaver), // Đảm bảo có icon tương ứng
+            CategoryItem("Sports", R.drawable.sports),
+            CategoryItem("Art", R.drawable.paint_palette),
+            CategoryItem("Food", R.drawable.noodles),
+            CategoryItem("Tech", R.drawable.vector), // Icon ví dụ
+            CategoryItem("Other", R.drawable.ellipsis)
+        )
+        _uiState.update { it.copy(categories = categories, selectedCategory = "All") }
+    }
+
+    // --- 2. XỬ LÝ VỊ TRÍ ---
     private fun getInitialUserLocation() {
         val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
         if (!hasFine && !hasCoarse) {
             _uiState.update { it.copy(isLocationLoading = false) }
-            // Mặc định tải khu vực HCM với bán kính rộng
             fetchEventsSmart(Point.fromLngLat(106.7009, 10.7769), 20.0, force = true)
             return
         }
@@ -79,37 +95,30 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Gọi API thông minh: Kiểm tra khoảng cách và bán kính trước khi gửi request.
-     * Giúp tránh lỗi 429 Rate Limit.
-     */
+    // --- 3. GỌI API (SMART FETCH) ---
     fun fetchEventsSmart(center: Point, rawRadiusKm: Double, force: Boolean = false) {
-        // 1. Tối ưu bán kính: Luôn lấy tối thiểu 5km để mở rộng vùng tìm kiếm, tránh lãng phí khi zoom quá gần
         val optimizedRadius = rawRadiusKm.coerceAtLeast(5.0).coerceAtMost(100.0)
 
-        // 2. Kiểm tra khoảng cách so với lần fetch trước
         if (!force && lastFetchedLocation != null) {
             val newLocation = Location("new").apply {
                 latitude = center.latitude()
                 longitude = center.longitude()
             }
             val distanceMeters = newLocation.distanceTo(lastFetchedLocation!!)
-
-            // Nếu di chuyển dưới 2km VÀ bán kính không đổi quá nhiều (20%) -> KHÔNG GỌI API
             val radiusDiff = Math.abs(optimizedRadius - lastFetchedRadius)
+
+            // Nếu di chuyển ít (<2km) và bán kính không đổi nhiều -> Không gọi API
             if (distanceMeters < 2000 && radiusDiff < (lastFetchedRadius * 0.2)) {
-                return // Bỏ qua request này
+                return
             }
         }
 
-        // 3. Lưu trạng thái mới
         lastFetchedLocation = Location("last").apply {
             latitude = center.latitude()
             longitude = center.longitude()
         }
         lastFetchedRadius = optimizedRadius
 
-        // 4. Gọi API
         fetchEventsInternal(center, optimizedRadius)
     }
 
@@ -121,29 +130,63 @@ class MapViewModel @Inject constructor(
                 lat = center.latitude().toString(),
                 lon = center.longitude().toString(),
                 radiusInKm = radiusKm,
-                limit = 50, // Lấy nhiều hơn vì hiển thị trực tiếp trên map
+                limit = 100, // Lấy nhiều hơn để lọc client
                 page = 1
             ).collect { result ->
-                _uiState.update { it.copy(nearbyEventsResult = result) }
+                if (result is Result.Success) {
+                    // Lưu vào cache
+                    allRetrievedEvents = result.data
+                    // Áp dụng bộ lọc ngay lập tức
+                    applyFilters()
+                } else {
+                    _uiState.update { it.copy(nearbyEventsResult = result) }
+                }
             }
         }
     }
 
-    private fun loadCategories() {
-        val categories = listOf(
-            CategoryItem("All", R.drawable.group_34057),
-            CategoryItem("Music", R.drawable.quaver),
-            CategoryItem("Sports", R.drawable.sports),
-            CategoryItem("Food", R.drawable.noodles)
-        )
-        _uiState.update { it.copy(categories = categories) }
+    // --- 4. LOGIC LỌC & TÌM KIẾM (CORE) ---
+    private fun applyFilters() {
+        val query = _uiState.value.searchQuery.trim()
+        val category = _uiState.value.selectedCategory
+
+        val filteredList = allRetrievedEvents.filter { event ->
+            // 1. Lọc theo Category
+            val matchesCategory = if (category == "All") {
+                true
+            } else {
+                // Giả sử event.category là List<String> ["Music", "Live"]
+                // Kiểm tra xem có chứa category đang chọn không (không phân biệt hoa thường)
+                event.category.any { it.equals(category, ignoreCase = true) }
+            }
+
+            // 2. Lọc theo Search Query (Tên sự kiện hoặc Địa điểm)
+            val matchesSearch = if (query.isEmpty()) {
+                true
+            } else {
+                event.name.contains(query, ignoreCase = true) ||
+                        event.location.contains(query, ignoreCase = true) ||
+                        event.venueName.contains(query, ignoreCase = true)
+            }
+
+            matchesCategory && matchesSearch
+        }
+
+        // Cập nhật UI State với danh sách ĐÃ LỌC
+        _uiState.update {
+            it.copy(nearbyEventsResult = Result.Success(filteredList))
+        }
     }
 
+    // Sự kiện từ UI: Nhập text tìm kiếm
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
+        applyFilters() // Lọc lại ngay khi nhập
     }
 
+    // Sự kiện từ UI: Chọn Category Chip
     fun onCategorySelected(categoryName: String) {
         _uiState.update { it.copy(selectedCategory = categoryName) }
+        applyFilters() // Lọc lại ngay khi chọn
     }
 }
