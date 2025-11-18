@@ -17,6 +17,7 @@ fun EventDto.toDomainModel(): Event {
         name = this.name ?: "",
         date = this.date ?: 0L,
         location = "${this.venueName}, ${this.city}",
+        coordinates = this.location?.toLocationString() ?: "",
         videoUrl = this.videoUrl ?: "",
         imageUrl = this.imageUrl ?: "",
         bannerUrl = this.bannerUrl ?: "",

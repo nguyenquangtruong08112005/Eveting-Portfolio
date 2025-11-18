@@ -6,6 +6,7 @@ data class Event(
     val category: List<String> = emptyList(),
     val city: String = "",
     val createdAt: Long = 0L,
+    val coordinates: String = "",
     val date: Long = 0L,
     val description: String = "",
     val endDate: Long? = null,

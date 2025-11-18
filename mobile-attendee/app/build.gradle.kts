@@ -135,4 +135,7 @@ dependencies {
 
     // Zxing
     implementation(libs.zxing.core) // <-- THÊM THƯ VIỆN QR CODE
+
+    implementation(libs.mapbox.android)
+    implementation(libs.mapbox.compose)
 }

@@ -152,7 +152,7 @@ fun MainAppWithDrawer(
                 .anchoredDraggable(
                     state = state,
                     orientation = Orientation.Horizontal,
-                    enabled = areAnchorsSet // Only enable when anchors are set
+                    enabled = false // Only enable when anchors are set
                 )
                 .clickable(
                     enabled = areAnchorsSet && (state.targetValue == CustomDrawerValue.Open || state.currentValue == CustomDrawerValue.Open),

@@ -37,6 +37,7 @@ animationCore = "1.9.2"
 playServicesLocation = "21.3.0"
 accompanist = "0.34.0"
 zxingCore = "3.5.3"
+mapboxMaps = "11.16.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -106,6 +107,12 @@ accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompani
 
 # Zxing quét mã vạch
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
+
+# Mapbox Standard
+mapbox-android = { group = "com.mapbox.maps", name = "android", version.ref = "mapboxMaps" }
+# Mapbox Compose Extension
+mapbox-compose = { group = "com.mapbox.extension", name = "maps-compose", version.ref = "mapboxMaps" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
