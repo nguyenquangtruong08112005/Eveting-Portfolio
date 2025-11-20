@@ -5,41 +5,51 @@ const { db } = require('../config/firebase.config');
 const getEventReviews = async (req, res) => {
     try {
         const { eventId } = req.params;
-        const reviews = await reviewService.getReviewsByEventId(eventId);
-        res.status(200).json(reviews);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const result = await reviewService.getReviewsByEventId(eventId, page, limit);
+        res.status(200).json(result);
     } catch (error) {
-        console.error("Error in Review Controller - getEventReviews: ", error);
+        console.error("Error getting reviews:", error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
 };
 
-const createEventReview = async (req, res) => {
+const createReview = async (req, res) => {
     try {
-        const { eventId } = req.params;
         const userId = req.user.uid;
+        const { eventId } = req.params;
+        const { rating, comment } = req.body;
 
-        // --- Logic kiểm tra quan trọng ---
-        // Kiểm tra xem user có vé đã 'checkedIn' hoặc 'paid' cho sự kiện này không.
-        const ticketsSnapshot = await db.collection('Tickets')
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).send({ error: 'Invalid rating (1-5).' });
+        }
+
+        // --- KIỂM TRA QUYỀN ---
+        // Chỉ cho phép review nếu user có vé với status 'paid' hoặc 'checkedIn' cho sự kiện này
+        const ticketSnapshot = await db.collection('Tickets')
             .where('userId', '==', userId)
             .where('eventId', '==', eventId)
-            .where('status', 'in', ['checkedIn', 'paid'])
+            .where('status', 'in', ['paid', 'checkedIn'])
             .limit(1)
             .get();
 
-        if (ticketsSnapshot.empty) {
-            return res.status(403).send({ error: 'Forbidden: User has not attended this event.' });
+        if (ticketSnapshot.empty) {
+            return res.status(403).send({ error: 'Forbidden: You must attend the event to review.' });
         }
+        // --- KẾT THÚC KIỂM TRA ---
 
-        const newReview = await reviewService.createReview(userId, eventId, req.body);
+        const newReview = await reviewService.createReview(userId, eventId, rating, comment);
         res.status(201).json(newReview);
+
     } catch (error) {
-        console.error("Error in Review Controller - createEventReview: ", error);
+        console.error("Error creating review:", error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
 };
 
 module.exports = {
     getEventReviews,
-    createEventReview,
+    createReview
 };

@@ -1,5 +1,7 @@
 // services/organizer.service.js
-const { db } = require('../config/firebase.config');
+const { db, FieldValue } = require('../config/firebase.config');
+const TICKET_SECRET = process.env.JWT_TICKET_SECRET;
+const jwt = require('jsonwebtoken');
 
 /**
  * Lấy danh sách người tham dự (attendees) cho một sự kiện.
@@ -51,10 +53,11 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
     }
 
     const { ticketId, eventId, userId } = payload;
-    
+
     // 2. Lấy thông tin vé và sự kiện (trong 1 transaction để an toàn)
     const ticketRef = db.collection('Tickets').doc(ticketId);
     const eventRef = db.collection('Events').doc(eventId);
+    const userRef = db.collection('Users').doc(userId); // <-- Tham chiếu đến User
 
     return db.runTransaction(async (transaction) => {
         const ticketDoc = await transaction.get(ticketRef);
@@ -79,7 +82,13 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
 
         // 5. Check-in vé
         transaction.update(ticketRef, { status: 'checkedIn' });
-
+        transaction.update(userRef, {
+            historyEventIds: FieldValue.arrayUnion(eventId)
+        });
+        const analyticsRef = db.collection('Analytics').doc(eventId);
+        transaction.set(analyticsRef, {
+            checkIns: FieldValue.increment(1)
+        }, { merge: true });
         return { ...ticketData, status: 'checkedIn' };
     });
 };

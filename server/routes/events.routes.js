@@ -5,7 +5,7 @@ const { verifyAuthToken, isOrganizer } = require('../middleware/auth.middleware'
 const reviewsRouter = require('./reviews.routes');
 const eventController = require('../controllers/event.controller');
 const { publicApiLimiter } = require('../middleware/rateLimit.middleware');
-
+const mediaRouter = require('./media.routes'); // <-- Import mới
 // --- Đặt các route cụ thể hơn lên trước các route có param động ---
 
 // [GET] /events/search - Tìm kiếm sự kiện với các tham số query
@@ -42,5 +42,8 @@ router.delete('/:eventId', verifyAuthToken, eventController.cancelEventControlle
 // --- Nested Routes ---
 // Gắn route cho reviews vào dưới một sự kiện cụ thể: /events/:eventId/reviews
 router.use('/:eventId/reviews', reviewsRouter);
+
+// Media Gallery (Thư viện ảnh/video)
+router.use('/:eventId/media', mediaRouter);
 
 module.exports = router;

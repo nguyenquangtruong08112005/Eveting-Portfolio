@@ -1,4 +1,3 @@
-// controllers/payment.controller.js
 const ticketService = require('../services/ticket.service');
 const paymentService = require('../services/payment.service');
 const { db } = require('../config/firebase.config');
@@ -12,94 +11,127 @@ const createPaymentOrder = async (req, res) => {
         const { ticketId } = req.body;
         const userId = req.user.uid;
 
-        if (!ticketId) {
-            return res.status(400).send({ error: 'Bad Request: ticketId is required.' });
-        }
+        if (!ticketId) return res.status(400).send({ error: 'Bad Request: ticketId is required.' });
 
-        // 1. Lấy thông tin vé
-        const ticketDoc = await db.collection('Tickets').doc(ticketId).get();
-        if (!ticketDoc.exists) {
-            return res.status(404).send({ error: 'Ticket not found.' });
-        }
+        const ticketRef = db.collection('Tickets').doc(ticketId);
+        const ticketDoc = await ticketRef.get();
+        
+        if (!ticketDoc.exists) return res.status(404).send({ error: 'Ticket not found.' });
         const ticket = ticketDoc.data();
 
-        // 2. Kiểm tra quyền sở hữu và trạng thái vé
-        if (ticket.userId !== userId) {
-            return res.status(403).send({ error: 'Forbidden: You do not own this ticket.' });
-        }
-        if (ticket.status !== 'pending') {
-            return res.status(409).send({ error: `Conflict: Ticket is not in 'pending' state (status: ${ticket.status}).` });
+        if (ticket.userId !== userId) return res.status(403).send({ error: 'Forbidden.' });
+        if (ticket.status !== 'pending' && ticket.status !== 'failed') {
+            return res.status(409).send({ error: `Ticket not payable (status: ${ticket.status}).` });
         }
 
-        // 3. Gọi service để tạo đơn hàng bên ZaloPay
-        const zaloPayResponse = await paymentService.createZaloPayOrder(ticket);
+        const zaloResponse = await paymentService.createZaloPayOrder(ticket);
 
-        // 4. Trả về zp_trans_token và các thông tin khác cho mobile app
-        res.status(200).json(zaloPayResponse);
+        await ticketRef.update({
+            zaloAppTransId: zaloResponse.app_trans_id,
+            paymentStatus: 'processing',
+            lastPaymentAttempt: new Date().toISOString()
+        });
+
+        res.status(200).json(zaloResponse);
 
     } catch (error) {
-        console.error("Error in Payment Controller - createPaymentOrder: ", error);
+        console.error("Error createPaymentOrder:", error);
         res.status(500).send({ error: error.message || 'Internal Server Error' });
     }
 };
 
-
 /**
  * API Endpoint: (POST /payments/callback)
  * ZaloPay Server gọi để thông báo kết quả thanh toán.
+ * QUY TẮC: MAC HỢP LỆ = THANH TOÁN THÀNH CÔNG.
  */
 const handleZaloPayCallback = async (req, res) => {
+    let result = {}; // Biến lưu kết quả trả về cho ZaloPay
+
     try {
-        // console.log("--- ZaloPay Webhook Received ---");
-        // console.log("Body:", JSON.stringify(req.body, null, 2));
+        // 1. Log request để debug (tạm tắt khi lên production)
+        // console.log("[ZaloPay Callback] Body:", JSON.stringify(req.body));
 
-        // 1. Xác thực MAC (đảm bảo request đến từ ZaloPay)
+        // 2. Xác thực MAC (Quan trọng nhất)
+        // Logic: Nếu MAC khớp -> Tin tưởng tuyệt đối là ZaloPay báo thành công.
         const isVerified = paymentService.verifyZaloPayCallback(req.body);
+
         if (!isVerified) {
-            // console.error("ZaloPay Webhook: MAC verification failed! Request might be tampered.");
-            // Trả về cho ZaloPay biết là có lỗi
-            return res.status(200).json({
-                return_code: -1,
-                return_message: "MAC verification failed"
-            });
-        }
-
-        // 2. Xử lý logic nghiệp vụ
-        const { data } = req.body;
-        const dataObj = JSON.parse(data);
-        
-        // Lấy ticketId mà chúng ta đã nhúng vào
-        const embed_data = JSON.parse(dataObj.embed_data);
-        const ticketId = embed_data.ticket_id;
-
-        if (dataObj.return_code === 1) {
-            // THANH TOÁN THÀNH CÔNG
-            // console.log(`Payment confirmed for ticket: ${ticketId}`);
-            await ticketService.confirmTicketPayment(ticketId);
+            console.warn("[ZaloPay Callback] Invalid MAC signature!");
+            result.return_code = -1;
+            result.return_message = "mac not equal";
         } else {
-            // THANH TOÁN THẤT BẠI
-            // console.log(`Payment failed for ticket: ${ticketId}. Cancelling...`);
-            await ticketService.cancelPendingTicket(ticketId);
-        }
+            // --- TRƯỜNG HỢP THANH TOÁN THÀNH CÔNG ---
+            
+            // 3. Parse dữ liệu
+            const { data: dataStr } = req.body;
+            const dataObj = JSON.parse(dataStr);
+            
+            // Lấy ticketId từ embed_data
+            // Lưu ý: embed_data cũng là 1 chuỗi JSON string bên trong dataObj
+            const embedData = JSON.parse(dataObj.embed_data); 
+            const ticketId = embedData.ticket_id;
+            const zpTransId = dataObj.zp_trans_id; // Mã giao dịch ZaloPay
 
-        // 3. Trả về kết quả 200 OK cho ZaloPay
-        // Báo cho ZaloPay biết là đã nhận và xử lý thành công
-        return res.status(200).json({
-            return_code: 1,
-            return_message: "Callback processed successfully"
-        });
+            console.log(`[ZaloPay Callback] Success Verified. Ticket: ${ticketId}, ZaloID: ${zpTransId}`);
+
+            // 4. Cập nhật Database (Xử lý nghiệp vụ)
+            // Gọi service update status = 'paid'
+            await ticketService.confirmTicketPayment(ticketId, zpTransId);
+
+            // 5. Báo cho ZaloPay biết mình đã xử lý xong
+            result.return_code = 1;
+            result.return_message = "success";
+        }
 
     } catch (error) {
-        // console.error("Error processing ZaloPay callback:", error);
-        // Nếu có lỗi, trả về thông báo lỗi cho ZaloPay
-        return res.status(200).json({
-            return_code: 0,
-            return_message: "Server error processing callback"
-        });
+        console.error("[ZaloPay Callback] Exception:", error);
+        // ZaloPay quy định: Nếu merchant trả về khác 1, ZaloPay sẽ retry callback (tối đa 3 lần)
+        result.return_code = 0; 
+        result.return_message = error.message;
+    }
+
+    // 6. Trả response cuối cùng
+    return res.json(result);
+};
+
+/**
+ * API Endpoint: (POST /payments/check-status)
+ * Dùng cho Mobile App/Admin kiểm tra chủ động.
+ */
+const manualCheckPaymentStatus = async (req, res) => {
+    try {
+        const { ticketId } = req.body;
+        
+        const ticketDoc = await db.collection('Tickets').doc(ticketId).get();
+        if (!ticketDoc.exists) return res.status(404).json({error: "Not found"});
+        const ticket = ticketDoc.data();
+        
+        if (ticket.status === 'paid') return res.json({ status: 'paid', message: "Paid confirmed" });
+        if (!ticket.zaloAppTransId) return res.status(400).json({ error: "No transaction ID" });
+
+        // Gọi API Query của ZaloPay
+        const queryResult = await paymentService.queryZaloPayOrder(ticket.zaloAppTransId);
+
+        // Logic Query thì CÓ return_code
+        if (queryResult.return_code === 1) {
+            // Nếu query thấy thành công mà DB chưa update -> Update luôn
+            await ticketService.confirmTicketPayment(ticketId, queryResult.zp_trans_id || "re-query");
+            return res.json({ status: 'paid', raw: queryResult });
+        } else if (queryResult.return_code === 2) {
+            return res.json({ status: 'failed', raw: queryResult });
+        }
+
+        return res.json({ status: 'pending', zalo_code: queryResult.return_code });
+
+    } catch (error) {
+        console.error("Error manualCheckPaymentStatus:", error);
+        res.status(500).json({ error: error.message });
     }
 };
 
 module.exports = {
     createPaymentOrder,
-    handleZaloPayCallback, // Đổi tên hàm cho rõ ràng
+    handleZaloPayCallback,
+    manualCheckPaymentStatus
 };

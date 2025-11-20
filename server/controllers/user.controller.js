@@ -19,12 +19,14 @@ const registerUser = async (req, res) => {
 
 const getCurrentUserProfile = async (req, res) => {
     try {
-        // ID user được lấy an toàn từ token, không phải từ params
         const userProfile = await userService.getUserById(req.user.uid);
+        
         if (!userProfile) {
-            // Trường hợp user đã xác thực nhưng chưa có profile trong DB
-            return res.status(404).send({ error: 'Not Found: User profile does not exist.' });
+            // Nếu user đã login (có token) nhưng chưa có profile trong DB
+            // Có thể tự động tạo profile rỗng hoặc trả về 404
+            return res.status(404).send({ error: 'User profile not found. Please complete registration.' });
         }
+        
         res.status(200).json(userProfile);
     } catch (error) {
         console.error("Error in User Controller - getCurrentUserProfile: ", error);
@@ -34,8 +36,8 @@ const getCurrentUserProfile = async (req, res) => {
 
 const updateUserProfile = async (req, res) => {
     try {
+        // req.body bây giờ có thể chứa: name, aboutMe, interests, coverPhotoUrl...
         const updatedUser = await userService.updateUserProfile(req.user.uid, req.body);
-
         res.status(200).json(updatedUser);
     } catch (error) {
         console.error("Error in User Controller - updateUserProfile: ", error);

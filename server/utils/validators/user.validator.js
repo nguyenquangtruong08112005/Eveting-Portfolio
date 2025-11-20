@@ -2,21 +2,12 @@
 const { body, validationResult } = require('express-validator');
 
 const validateProfileUpdate = [
-    // Kiểm tra name: là chuỗi, không được trống
-    body('name')
-        .optional() // Chỉ validate nếu trường này được gửi lên
-        .notEmpty().withMessage('Name cannot be empty.')
-        .isString().withMessage('Name must be a string.'),
-    // Kiểm tra profilePicUrl: phải là URL hợp lệ (nếu có)
-    body('profilePicUrl')
-        .optional()
-        .isURL().withMessage('Profile picture URL must be a valid URL.'),
-    // Kiểm tra birthDate: phải là timestamp hợp lệ (nếu có)
-    body('birthDate')
-        .optional()
-        .isNumeric().withMessage('Birth date must be a valid timestamp (number).'),
-
-    // Middleware xử lý lỗi
+    body('name').optional().isString().withMessage('Name must be a string'),
+    body('aboutMe').optional().isString().withMessage('About Me must be a string'),
+    body('coverPhotoUrl').optional().isURL().withMessage('Cover photo must be a valid URL'),
+    body('profilePicUrl').optional().isURL().withMessage('Profile picture must be a valid URL'),
+    body('interests').optional().isArray().withMessage('Interests must be an array of strings'),
+    
     (req, res, next) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

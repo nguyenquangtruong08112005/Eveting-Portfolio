@@ -3,7 +3,9 @@ const { db, FieldValue } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
 const geofire = require('geofire-common');
 const { calculateMinPrice } = require('../utils/tickets/calculateMinPrice.tickets');
-
+const esClient = require('../config/elasticsearch.config'); // <-- Import ES Client
+const moment = require('moment');
+const ELASTIC_INDEX = 'events';
 // --- HÀM HỖ TRỢ MỚI ---
 
 /**
@@ -53,7 +55,7 @@ const getAllEvents = async (page = 1, limit = 10) => {
         .offset(offset)
         .select(
             "id", "name", "date", "imageUrl", "bannerUrl",
-            "videoUrl", "location", "city", "venueName", 
+            "videoUrl", "location", "city", "venueName",
             "eventType", "minPrice"
         )
         .get();
@@ -65,6 +67,7 @@ const getAllEvents = async (page = 1, limit = 10) => {
             id: doc.id,
             name: data.name,
             date: data.date,
+            category: data.category,
             imageUrl: data.imageUrl,
             bannerUrl: data.bannerUrl,
             videoUrl: data.videoUrl,
@@ -119,7 +122,7 @@ const getEventById = async (eventId, requestingUser = null) => {
         const profilesSnapshot = await db.collection('FeaturedProfiles')
             .where('id', 'in', eventData.featuredProfileIds)
             .get();
-        
+
         profilesSnapshot.forEach(doc => {
             featuredProfilesData.push(doc.data());
         });
@@ -138,16 +141,16 @@ const getEventById = async (eventId, requestingUser = null) => {
 
     // 2a. Nếu là chủ sở hữu/Admin (Trả về Full Data)
     if (isOwnerOrAdmin) {
-        return { 
-            id: eventDoc.id, 
-            ...eventData, 
-            venue: venueData, 
+        return {
+            id: eventDoc.id,
+            ...eventData,
+            venue: venueData,
             featuredProfiles: featuredProfilesData // <-- Thêm mảng profiles
         };
     }
 
     // 2b. Nếu là người dùng vãng lai (hoặc attendee) (Trả về DTO Public)
-    
+
     // Tạo DTO Công Khai (lọc bỏ các trường nhạy cảm)
     const publicEventView = {
         id: eventDoc.id,
@@ -230,7 +233,7 @@ const createEvent = async (eventData, organizerId) => {
                 throw new Error(`Venue with ID ${eventData.venueId} not found.`);
             }
         } else {
-             throw new Error('Physical event must have a venueId.');
+            throw new Error('Physical event must have a venueId.');
         }
 
         // Tính geohash từ location
@@ -266,7 +269,7 @@ const createEvent = async (eventData, organizerId) => {
         venueName: venueName,
         city: city,
         ticketTypes: eventData.ticketTypes || {},
-        minPrice: minPrice, 
+        minPrice: minPrice,
         videoUrl: eventData.videoUrl || '',
         isOutdoor: eventData.isOutdoor || false,
         organizerId: organizerId,
@@ -327,7 +330,7 @@ const updateEvent = async (eventId, eventData) => {
         updatePayload.location = null;
         updatePayload.geohash = null;
     }
-    
+
     if (eventData.eventType === 'online') {
         updatePayload.location = null; updatePayload.geohash = null; updatePayload.venueId = null; updatePayload.venueName = "Online"; updatePayload.city = "Online";
     }
@@ -392,7 +395,7 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
     // --- VÒNG LẶP TỰ ĐỘNG MỞ RỘNG BÁN KÍNH ---
     while (uniqueResults.length < MIN_RESULTS_TARGET && currentRadiusKm <= MAX_RADIUS_KM) {
         finalRadiusUsed = currentRadiusKm; // Ghi lại bán kính cuối cùng được sử dụng
-        
+
         const radiusInM = currentRadiusKm * 1000;
         const bounds = geofire.geohashQueryBounds(center, radiusInM);
         const promises = [];
@@ -451,6 +454,7 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
         id: data.id,
         name: data.name,
         date: data.date,
+        category: data.category,
         imageUrl: data.imageUrl,
         bannerUrl: data.bannerUrl,
         videoUrl: data.videoUrl,
@@ -459,7 +463,7 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
         venueName: data.venueName || null,
         eventType: data.eventType || 'physical',
         minPrice: data.minPrice !== undefined ? data.minPrice : null,
-        distanceKm: data.distanceKm 
+        distanceKm: data.distanceKm
     }));
 
     // --- TRẢ VỀ KẾT QUẢ KÈM PHÂN TRANG ---
@@ -476,108 +480,184 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
 };
 
 /**
- * Tìm kiếm sự kiện nâng cao với bộ lọc, sắp xếp và phân trang.
- * @param {object} queryParams - Các tham số query (q, category, date, isOutdoor, sortBy, sortOrder, page, limit).
+ * Tìm kiếm sự kiện nâng cao bằng Elasticsearch.
+ * @param {object} queryParams - Các tham số query (q, category, location, date...).
  * @returns {Promise<object>} Object chứa danh sách sự kiện và thông tin phân trang.
  */
 const searchEvents = async (queryParams) => {
-    let query = db.collection('Events');
-
-    // --- BỘ LỌC ---
-    query = query.where('visibility', '==', 'public'); // Luôn chỉ tìm public trong search
-    query = query.where('status', '==', 'active'); // Luôn chỉ tìm active trong search
-
-    if (queryParams.q) {
-        const keyword = queryParams.q;
-        // Firestore chỉ hỗ trợ prefix search hiệu quả
-        query = query.where('name', '>=', keyword).where('name', '<=', keyword + '\uf8ff');
-    }
-    if (queryParams.category) {
-        query = query.where('category', 'array-contains', queryParams.category);
-    }
-    const now = new Date().getTime();
-    if (queryParams.date === 'upcoming') {
-        query = query.where('date', '>=', now);
-    } else if (queryParams.date === 'past') {
-        // Lưu ý: Firestore giới hạn chỉ một trường có bộ lọc bất đẳng thức (<, >, !=) trong một query
-        // Nếu đã lọc theo date 'past' thì không thể lọc theo status '!=' cancelled nữa.
-        // Do đó, nên đổi status thành 'active', 'finished' thay vì dùng '!=' cancelled.
-        // Tạm thời bỏ qua lọc status nếu lọc theo date=past để tránh lỗi index.
-         query = query.where('date', '<', now);
-        // query = query.where('status', '==', 'finished'); // Cần đổi logic status
-    }
-    if (queryParams.isOutdoor === 'true' || queryParams.isOutdoor === 'false') {
-        query = query.where('isOutdoor', '==', queryParams.isOutdoor === 'true');
-    }
-    // TODO: Thêm lọc theo city
-    // if (queryParams.city) {
-    //     query = query.where('city', '==', queryParams.city);
-    // }
-
-    // --- ĐẾM TỔNG ---
-    const countQuery = query;
-    const countSnapshot = await countQuery.count().get();
-    const totalEvents = countSnapshot.data().count;
-
-    // --- SẮP XẾP ---
-    let sortBy = queryParams.sortBy || (queryParams.date === 'upcoming' ? 'date' : 'createdAt'); // Mặc định sort theo date (upcoming) hoặc ngày tạo (nếu không lọc date)
-    let sortOrder = queryParams.sortOrder || (sortBy === 'date' ? 'asc' : 'desc'); // Mặc định asc cho date, desc cho createdAt/hotScore
-
-    if (!['date', 'hotScore', 'createdAt'].includes(sortBy)) sortBy = (queryParams.date === 'upcoming' ? 'date' : 'createdAt');
-    if (!['asc', 'desc'].includes(sortOrder)) sortOrder = (sortBy === 'date' ? 'asc' : 'desc');
-
-    // Xử lý index phức tạp khi có nhiều orderBy và filter
-    // Ưu tiên orderBy trường có filter bất đẳng thức trước (date)
-    if (queryParams.date && sortBy !== 'date') {
-        query = query.orderBy('date', queryParams.date === 'upcoming' ? 'asc' : 'desc').orderBy(sortBy, sortOrder);
-    } else {
-        query = query.orderBy(sortBy, sortOrder);
+    if (!esClient) {
+        // --- TODO 1 (Fallback): Đã xử lý. Ném lỗi rõ ràng. ---
+        console.error("Elasticsearch client is not configured. Search is unavailable.");
+        throw new Error("Dịch vụ tìm kiếm hiện đang gián đoạn. Vui lòng thử lại sau.");
     }
 
-    // --- PHÂN TRANG ---
     const page = parseInt(queryParams.page) || 1;
     const limit = parseInt(queryParams.limit) || 10;
     const offset = (page - 1) * limit;
 
-    query = query.limit(limit).offset(offset).select(
-        "id", "name", "date", "imageUrl", "bannerUrl",
-        "videoUrl", "location", "city", "venueName", 
-        "eventType", "minPrice"
-    );
+    const mustFilters = []; // AND
+    const shouldClauses = []; // OR (dùng cho 'q')
 
-    // --- LẤY DỮ LIỆU ---
-    const snapshot = await query.get();
-    const events = [];
-    
-    // --- BẮT ĐẦU SỬA ĐỔI: Tạo summary model ---
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        const eventSummary = {
-            id: doc.id,
-            name: data.name,
-            date: data.date,
-            imageUrl: data.imageUrl,
-            bannerUrl: data.bannerUrl,
-            videoUrl: data.videoUrl,
-            location: data.location,
-            city: data.city || null,
-            venueName: data.venueName || null,
-            eventType: data.eventType || 'physical',
-            minPrice: data.minPrice !== undefined ? data.minPrice : null,
-        }
-        events.push(eventSummary);
-    });
+    // 1. Lọc theo các trường chính xác (Equality)
+    if (queryParams.category) {
+        mustFilters.push({
+            term: { "category.keyword": queryParams.category }
+        });
+    }
+    if (queryParams.location) { // Lọc theo thành phố
+        mustFilters.push({
+            term: { "city.keyword": queryParams.location }
+        });
+    }
 
-    return {
-        events,
-        pagination: {
-            currentPage: page,
-            limit: limit,
-            totalPages: Math.ceil(totalEvents / limit),
-            totalItems: totalEvents
+    // 2. Lọc theo KHOẢNG (Range filters)
+    const rangeFilters = {};
+
+    // --- TODO 2: Relative Dates (Hỗ trợ múi giờ VN, GMT+7) ---
+    const now = () => moment().utcOffset('+07:00').startOf('day');
+
+    if (queryParams.startDate) {
+        rangeFilters.date = { gte: Number(queryParams.startDate) };
+    }
+    if (queryParams.endDate) {
+        rangeFilters.date = { ...rangeFilters.date, lte: Number(queryParams.endDate) };
+    }
+
+    // Xử lý các query `date` tương đối
+    if (queryParams.date) {
+        if (queryParams.date === 'today') {
+            rangeFilters.date = {
+                gte: now().valueOf(),
+                lt: now().add(1, 'day').valueOf()
+            };
+        } else if (queryParams.date === 'tomorrow') {
+            rangeFilters.date = {
+                gte: now().add(1, 'day').valueOf(),
+                lt: now().add(2, 'day').valueOf()
+            };
+        } else if (queryParams.date === 'this_week') {
+            rangeFilters.date = {
+                gte: now().valueOf(),
+                lte: now().endOf('week').valueOf()
+            };
+        } else if (queryParams.date === 'upcoming') {
+            rangeFilters.date = { gte: now().valueOf() };
         }
-    };
+    }
+    // --- Kết thúc TODO 2 ---
+
+    if (queryParams.minPrice) {
+        rangeFilters.minPrice = { gte: Number(queryParams.minPrice) };
+    }
+    if (queryParams.maxPrice) {
+        // Sử dụng cùng trường minPrice để lọc
+        rangeFilters.minPrice = { ...rangeFilters.minPrice, lte: Number(queryParams.maxPrice) };
+    }
+
+    if (Object.keys(rangeFilters).length > 0) {
+        mustFilters.push({ range: rangeFilters });
+    }
+
+    // 3. Lọc theo TỪ KHÓA (Full-text search)
+    if (queryParams.q) {
+        const q = queryParams.q;
+
+        // Clause 1: Tìm kiếm mờ trên Tên sự kiện, Mô tả, Tags
+        shouldClauses.push({
+            multi_match: {
+                query: q,
+                fields: ["name", "description", "tags"],
+                fuzziness: "AUTO" // Cho phép gõ sai
+            }
+        });
+
+        // --- TODO 3: Tìm theo tên nghệ sĩ (đã được đồng bộ) ---
+        shouldClauses.push({
+            match: {
+                "featuredProfileNames": {
+                    query: q,
+                    fuzziness: "AUTO"
+                }
+            }
+        });
+        // --- Kết thúc TODO 3 ---
+
+        // Thêm logic OR (should) vào bộ lọc AND (must)
+        mustFilters.push({
+            bool: {
+                should: shouldClauses,
+                minimum_should_match: 1 // Chỉ cần 1 trong các (should) là đúng
+            }
+        });
+    }
+
+    // --- Sắp xếp ---
+    let sort = [];
+    const sortBy = queryParams.sortBy || (queryParams.q ? '_score' : 'date');
+    const sortOrder = queryParams.sortOrder || (sortBy === 'date' ? 'asc' : 'desc');
+
+    if (sortBy === '_score') {
+        sort.push({ _score: { order: "desc" } });
+    } else if (sortBy === 'date' || sortBy === 'minPrice') { // hotScore chưa được index
+        sort.push({ [sortBy]: { order: sortOrder } });
+    } else {
+        sort.push({ date: { order: 'asc' } }); // Mặc định an toàn
+    }
+
+    // --- Thực Thi Truy Vấn ---
+    try {
+        const response = await esClient.search({
+            index: ELASTIC_INDEX,
+            from: offset,
+            size: limit,
+            body: {
+                query: {
+                    bool: {
+                        must: mustFilters.length > 0 ? mustFilters : { match_all: {} },
+                    }
+                },
+                sort: sort
+            }
+        });
+
+        // --- Xử Lý Kết Quả ---
+        const totalItems = response.hits.total.value;
+
+        const events = response.hits.hits.map(hit => {
+            // Tái tạo lại Summary Model giống như getAllEvents
+            const data = hit._source;
+            return {
+                id: hit._id,
+                name: data.name,
+                date: data.date,
+                category: data.category,
+                imageUrl: data.imageUrl,
+                bannerUrl: data.bannerUrl,
+                videoUrl: data.videoUrl,
+                location: data.location,
+                city: data.city,
+                venueName: data.venueName,
+                eventType: data.eventType,
+                minPrice: data.minPrice,
+            };
+        });
+
+        return {
+            events,
+            pagination: {
+                currentPage: page,
+                limit: limit,
+                totalPages: Math.ceil(totalItems / limit),
+                totalItems: totalItems
+            }
+        };
+
+    } catch (e) {
+        console.error("Lỗi khi tìm kiếm Elasticsearch:", e.meta ? e.meta.body.error : e);
+        throw new Error("Lỗi máy chủ tìm kiếm. Vui lòng thử lại sau.");
+    }
 };
+
 
 module.exports = {
     getAllEvents,

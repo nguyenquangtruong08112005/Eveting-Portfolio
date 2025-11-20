@@ -3,48 +3,66 @@ const { db } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * Lấy tất cả review của một sự kiện.
- * @param {string} eventId - ID của sự kiện.
- * @returns {Promise<Array<object>>} Mảng các review.
+ * Lấy danh sách đánh giá của một sự kiện
  */
-const getReviewsByEventId = async (eventId) => {
+const getReviewsByEventId = async (eventId, page = 1, limit = 10) => {
+    const reviewsRef = db.collection('Reviews').where('eventId', '==', eventId);
+    const offset = (page - 1) * limit;
+
+    const countSnapshot = await reviewsRef.count().get();
+    const totalReviews = countSnapshot.data().count;
+
+    const snapshot = await reviewsRef
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
+        .offset(offset)
+        .get();
+
     const reviews = [];
-    const snapshot = await db.collection('Reviews').where('eventId', '==', eventId).orderBy('createdAt', 'desc').get();
+    // Để tối ưu, ta có thể lấy thông tin user tóm tắt (tên, avatar) để hiển thị
+    // Ở đây mình giả định client sẽ tự lấy hoặc ta populate sau
+    for (const doc of snapshot.docs) {
+        const reviewData = doc.data();
+        // Lấy thông tin user cơ bản để hiển thị kèm review
+        const userDoc = await db.collection('Users').doc(reviewData.userId).get();
+        const userData = userDoc.exists ? userDoc.data() : {};
 
-    snapshot.forEach(doc => {
-        reviews.push(doc.data());
-    });
+        reviews.push({
+            id: doc.id,
+            ...reviewData,
+            user: {
+                name: userData.name || 'Anonymous',
+                profilePicUrl: userData.profilePicUrl || ''
+            }
+        });
+    }
 
-    return reviews;
+    return {
+        reviews,
+        pagination: {
+            currentPage: page,
+            limit: limit,
+            totalPages: Math.ceil(totalReviews / limit),
+            totalItems: totalReviews
+        }
+    };
 };
 
 /**
- * Tạo một review mới.
- * @param {string} userId - ID của người viết review.
- * @param {string} eventId - ID của sự kiện được review.
- * @param {object} reviewData - Dữ liệu review (rating, comment).
- * @returns {Promise<object>} Document review vừa được tạo.
+ * Tạo đánh giá mới
  */
-const createReview = async (userId, eventId, reviewData) => {
+const createReview = async (userId, eventId, rating, comment) => {
     const reviewId = `rev_${uuidv4()}`;
-
-    // Kiểm tra và đảm bảo rating là một con số hợp lệ.
-    const rating = Number(reviewData.rating);
-    if (isNaN(rating) || rating < 1 || rating > 5) {
-        // Ném ra một lỗi rõ ràng nếu rating không hợp lệ
-        throw new Error('Invalid rating value. Rating must be a number between 1 and 5.');
-    }
-
+    const now = new Date().getTime();
+    
     const newReview = {
         id: reviewId,
-        eventId,
         userId,
-        rating: reviewData.rating,
-        comment: reviewData.comment || '',
-        createdAt: new Date().getTime(),
+        eventId,
+        rating: Number(rating),
+        comment,
+        createdAt: now
     };
-
-    // TODO: Thêm validation cho rating (phải từ 1 đến 5).
 
     await db.collection('Reviews').doc(reviewId).set(newReview);
     return newReview;
@@ -52,5 +70,5 @@ const createReview = async (userId, eventId, reviewData) => {
 
 module.exports = {
     getReviewsByEventId,
-    createReview,
+    createReview
 };

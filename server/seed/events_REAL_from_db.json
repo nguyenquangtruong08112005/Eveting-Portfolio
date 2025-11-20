@@ -1,0 +1,1119 @@
+[
+  {
+    "id": "evt_art_exhibit_hanoi_2026",
+    "name": "Triển lãm nghệ thuật 'Di Sản'",
+    "description": "Trưng bày các tác phẩm nghệ thuật đương đại lấy cảm hứng từ di sản văn hóa Việt Nam.",
+    "featuredProfileIds": [],
+    "category": [
+      "art",
+      "exhibition",
+      "culture"
+    ],
+    "tags": [
+      "contemporary art",
+      "vietnam culture"
+    ],
+    "date": 1784341200000,
+    "endDate": null,
+    "location": {
+      "latitude": 21.024414028790293,
+      "longitude": 105.85767846200335
+    },
+    "geohash": "w7er8g7hnd",
+    "venueId": "venue_hanoi_opera_house",
+    "venueName": "Nhà hát Lớn Hà Nội",
+    "city": "Hà Nội",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "FreeEntrance": {
+        "price": 0,
+        "quantity": 1000,
+        "available": 1000
+      }
+    },
+    "minPrice": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=example10",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 65,
+    "viewCount": 2800,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1758700000000,
+    "lastUpdatedAt": 1759900000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_ballet_hoabattu_2025",
+    "name": "Vở Ballet 'Hồ Thiên Nga'",
+    "description": "Thưởng thức vở ballet kinh điển 'Hồ Thiên Nga' được trình diễn bởi các nghệ sĩ tài năng của Nhà hát Giao hưởng Nhạc Vũ Kịch TP.HCM.",
+    "featuredProfileIds": [],
+    "category": [
+      "art",
+      "performance"
+    ],
+    "tags": [
+      "ballet",
+      "classic",
+      "theatre"
+    ],
+    "date": 1768318800000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "ZoneA": {
+        "price": 1500000,
+        "quantity": 100,
+        "available": 30
+      },
+      "ZoneB": {
+        "price": 900000,
+        "quantity": 200,
+        "available": 80
+      }
+    },
+    "minPrice": 900000,
+    "seatMap": {
+      "A10": false,
+      "B5": true,
+      "C12": false
+    },
+    "videoUrl": "https://www.youtube.com/watch?v=example16",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "unlisted",
+    "recurringRule": null,
+    "hotScore": 89,
+    "viewCount": 6000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1759300000000,
+    "lastUpdatedAt": 1760500000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_bookfair_hcm_2026",
+    "name": "Hội Sách TP. Hồ Chí Minh Lần XI",
+    "description": "Sự kiện văn hóa đọc lớn nhất thành phố. Hàng ngàn đầu sách mới với ưu đãi hấp dẫn cùng các buổi giao lưu với tác giả nổi tiếng.",
+    "featuredProfileIds": [],
+    "category": [
+      "expo",
+      "culture",
+      "education"
+    ],
+    "tags": [
+      "reading",
+      "books",
+      "family"
+    ],
+    "date": 1790408400000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "minPrice": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=example11",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 85,
+    "viewCount": 22000,
+    "requiredAge": 0,
+    "sponsors": [
+      {
+        "name": "Fahasa",
+        "logoUrl": "url_to_logo",
+        "level": "diamond"
+      }
+    ],
+    "createdAt": 1758800000000,
+    "lastUpdatedAt": 1760000000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "ticketTypes": {
+      "FreeEntrance": {
+        "price": 0,
+        "quantity": 100000,
+        "available": 99998
+      }
+    }
+  },
+  {
+    "id": "evt_cancelled_marathon_2025",
+    "name": "Da Nang International Marathon (Cancelled)",
+    "description": "Giải chạy marathon quốc tế tại Đà Nẵng đã bị hủy...",
+    "featuredProfileIds": [],
+    "category": [
+      "sports",
+      "marathon"
+    ],
+    "tags": [
+      "running",
+      "danang"
+    ],
+    "date": 1757394000000,
+    "endDate": null,
+    "location": {
+      "latitude": 16.068770823875518,
+      "longitude": 108.22073695468488
+    },
+    "geohash": "w6ugqt5zmg",
+    "venueId": "venue_trungvuong_theatre",
+    "venueName": "Nhà hát Trưng Vương",
+    "city": "Đà Nẵng",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Runner": {
+        "price": 800000,
+        "quantity": 2000,
+        "available": 2000
+      }
+    },
+    "minPrice": 800000,
+    "videoUrl": "https://www.youtube.com/watch?v=example7",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "cancelled",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 60,
+    "viewCount": 3000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1757000000000,
+    "lastUpdatedAt": 1757048400000,
+    "cancelledAt": 1757048400000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_cat_show_hcm_2026",
+    "name": "International Cat Show HCMC",
+    "description": "Cuộc thi sắc đẹp dành cho các 'hoàng thượng'. Nơi quy tụ những giống mèo đẹp và hiếm nhất.",
+    "featuredProfileIds": [],
+    "category": [
+      "expo",
+      "pets"
+    ],
+    "tags": [
+      "cat lovers",
+      "pets",
+      "family"
+    ],
+    "date": 1788738000000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Visitor": {
+        "price": 100000,
+        "quantity": 1000,
+        "available": 500
+      }
+    },
+    "minPrice": 100000,
+    "videoUrl": "https://www.youtube.com/watch?v=example9",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 70,
+    "viewCount": 4500,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1758600000000,
+    "lastUpdatedAt": 1759800000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_circus_hcm_2025",
+    "name": "Show Xiếc Quốc Tế 'Giấc Mơ'",
+    "description": "Mãn nhãn với các tiết mục nhào lộn, ảo thuật và xiếc thú đặc sắc từ các đoàn xiếc quốc tế.",
+    "featuredProfileIds": [],
+    "category": [
+      "performance",
+      "family"
+    ],
+    "tags": [
+      "circus",
+      "family friendly"
+    ],
+    "date": 1769538000000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Adult": {
+        "price": 300000,
+        "quantity": 500,
+        "available": 200
+      },
+      "Child": {
+        "price": 150000,
+        "quantity": 300,
+        "available": 100
+      }
+    },
+    "minPrice": 150000,
+    "videoUrl": "https://www.youtube.com/watch?v=example19",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 79,
+    "viewCount": 5500,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1759600000000,
+    "lastUpdatedAt": 1760800000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_coffee_expo_bmt_2026",
+    "name": "Lễ hội Cà phê Buôn Ma Thuột",
+    "description": "Tôn vinh hạt cà phê Việt Nam. Tham gia các hoạt động trưng bày, nếm thử và tìm hiểu quy trình rang xay cà phê.",
+    "featuredProfileIds": [],
+    "category": [
+      "expo",
+      "food",
+      "culture"
+    ],
+    "tags": [
+      "coffee",
+      "buon ma thuot"
+    ],
+    "date": 1783083600000,
+    "endDate": null,
+    "location": {
+      "latitude": 16.068770823875518,
+      "longitude": 108.22073695468488
+    },
+    "geohash": "w6ugqt5zmg",
+    "venueId": "venue_trungvuong_theatre",
+    "venueName": "Nhà hát Trưng Vương",
+    "city": "Đà Nẵng",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Visitor": {
+        "price": 80000,
+        "quantity": 3000,
+        "available": 2500
+      }
+    },
+    "minPrice": 80000,
+    "videoUrl": "https://www.youtube.com/watch?v=example18",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 84,
+    "viewCount": 9000,
+    "requiredAge": 0,
+    "sponsors": [
+      {
+        "name": "Trung Nguyên Legend",
+        "logoUrl": "url_to_logo",
+        "level": "platinum"
+      }
+    ],
+    "createdAt": 1759500000000,
+    "lastUpdatedAt": 1760700000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_fashion_week_hanoi_2026",
+    "name": "Vietnam International Fashion Week - Hanoi",
+    "description": "Chiêm ngưỡng những bộ sưu tập mới nhất từ các nhà thiết kế hàng đầu Việt Nam và quốc tế.",
+    "featuredProfileIds": [],
+    "category": [
+      "expo",
+      "art",
+      "culture"
+    ],
+    "tags": [
+      "fashion",
+      "runway",
+      "designer"
+    ],
+    "date": 1792242000000,
+    "endDate": null,
+    "location": {
+      "latitude": 21.024414028790293,
+      "longitude": 105.85767846200335
+    },
+    "geohash": "w7er8g7hnd",
+    "venueId": "venue_hanoi_opera_house",
+    "venueName": "Nhà hát Lớn Hà Nội",
+    "city": "Hà Nội",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "FrontRow": {
+        "price": 2500000,
+        "quantity": 100,
+        "available": 20
+      },
+      "Standard": {
+        "price": 800000,
+        "quantity": 400,
+        "available": 250
+      }
+    },
+    "minPrice": 800000,
+    "videoUrl": "https://www.youtube.com/watch?v=example20",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 87,
+    "viewCount": 11000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1759700000000,
+    "lastUpdatedAt": 1760900000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_foodfest_saigon_2025",
+    "name": "Saigon International Food Fest",
+    "description": "Lễ hội ẩm thực quốc tế lớn nhất Sài Gòn. Thưởng thức hàng trăm món ăn từ khắp nơi trên thế giới.",
+    "featuredProfileIds": [],
+    "category": [
+      "food",
+      "festival",
+      "culture"
+    ],
+    "tags": [
+      "foodie",
+      "saigon"
+    ],
+    "date": 1759928400000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "minPrice": 150000,
+    "videoUrl": "https://www.youtube.com/watch?v=example4",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 88,
+    "viewCount": 15000,
+    "requiredAge": 0,
+    "sponsors": [
+      {
+        "name": "Coca-Cola",
+        "logoUrl": "url_to_logo",
+        "level": "gold"
+      }
+    ],
+    "createdAt": 1758300000000,
+    "lastUpdatedAt": 1759300000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "ticketTypes": {
+      "Entrance": {
+        "price": 150000,
+        "quantity": 5000,
+        "available": 1993
+      }
+    }
+  },
+  {
+    "id": "evt_gaming_expo_hanoi_2026",
+    "name": "Vietnam GameVerse 2026 - Hanoi",
+    "description": "Ngày hội dành cho cộng đồng game thủ. Trải nghiệm các tựa game mới, thi đấu eSports và cosplay.",
+    "featuredProfileIds": [
+      "fp_riot_games"
+    ],
+    "category": [
+      "expo",
+      "tech",
+      "esports"
+    ],
+    "tags": [
+      "gaming",
+      "esports",
+      "cosplay"
+    ],
+    "date": 1792846800000,
+    "endDate": null,
+    "location": {
+      "latitude": 21.024414028790293,
+      "longitude": 105.85767846200335
+    },
+    "geohash": "w7er8g7hnd",
+    "venueId": "venue_hanoi_opera_house",
+    "venueName": "Nhà hát Lớn Hà Nội",
+    "city": "Hà Nội",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Standard": {
+        "price": 250000,
+        "quantity": 2000,
+        "available": 1200
+      }
+    },
+    "minPrice": 250000,
+    "videoUrl": "https://www.youtube.com/watch?v=example14",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 82,
+    "viewCount": 9500,
+    "requiredAge": 0,
+    "sponsors": [
+      {
+        "name": "Riot Games",
+        "logoUrl": "url_to_logo",
+        "level": "gold"
+      }
+    ],
+    "createdAt": 1759100000000,
+    "lastUpdatedAt": 1760300000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_haanh_show_dalat_2026",
+    "name": "Đêm nhạc Hà Anh Tuấn - Đà Lạt",
+    "description": "Thưởng thức giọng ca của Hà Anh Tuấn trong không gian lãng mạn của Đà Lạt.",
+    "featuredProfileIds": [
+      "fp_hat"
+    ],
+    "category": [
+      "music",
+      "concert",
+      "v-pop"
+    ],
+    "tags": [
+      "v-pop",
+      "acoustic",
+      "dalat"
+    ],
+    "date": 1783707600000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Standard": {
+        "price": 1500000,
+        "quantity": 500,
+        "available": 100
+      }
+    },
+    "minPrice": 1500000,
+    "videoUrl": "https://www.youtube.com/watch?v=example8",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 96,
+    "viewCount": 18000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1758500000000,
+    "lastUpdatedAt": 1759700000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_lantern_hoian_2026",
+    "name": "Lễ Hội Đèn Lồng Hội An",
+    "description": "Trải nghiệm không gian huyền ảo của phố cổ...",
+    "featuredProfileIds": [],
+    "category": [
+      "culture",
+      "festival"
+    ],
+    "tags": [
+      "hoian",
+      "traditional",
+      "lantern"
+    ],
+    "date": 1782296400000,
+    "endDate": null,
+    "location": {
+      "latitude": 16.068770823875518,
+      "longitude": 108.22073695468488
+    },
+    "geohash": "w6ugqt5zmg",
+    "venueId": "venue_trungvuong_theatre",
+    "venueName": "Nhà hát Trưng Vương",
+    "city": "Đà Nẵng",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "FreeEntrance": {
+        "price": 0,
+        "quantity": 50000,
+        "available": 50000
+      }
+    },
+    "minPrice": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=example13",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 93,
+    "viewCount": 18000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1759000000000,
+    "lastUpdatedAt": 1760200000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_lany_concert_2025_past",
+    "name": "LANY Concert in HCMC (Past Event)",
+    "description": "Chuyến lưu diễn của ban nhạc LANY đã diễn ra thành công tại TP.HCM.",
+    "featuredProfileIds": [],
+    "category": [
+      "music",
+      "concert",
+      "pop"
+    ],
+    "tags": [
+      "us-uk",
+      "lany",
+      "indie pop"
+    ],
+    "date": 1728666000000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Standard": {
+        "price": 1200000,
+        "quantity": 3000,
+        "available": 0
+      }
+    },
+    "minPrice": 1200000,
+    "videoUrl": "https://www.youtube.com/watch?v=example6",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "finished",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 92,
+    "viewCount": 25000,
+    "requiredAge": 16,
+    "sponsors": [],
+    "createdAt": 1728000000000,
+    "lastUpdatedAt": 1728666000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_marketing_conf_2026",
+    "name": "Vietnam Marketing Conference 2026",
+    "description": "Hội thảo chuyên sâu về các xu hướng marketing mới nhất: AI in Marketing, Performance Marketing, và Brand Building.",
+    "featuredProfileIds": [],
+    "category": [
+      "conference",
+      "business"
+    ],
+    "tags": [
+      "marketing",
+      "digital marketing"
+    ],
+    "date": 1789966800000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Standard": {
+        "price": 2000000,
+        "quantity": 400,
+        "available": 150
+      }
+    },
+    "minPrice": 2000000,
+    "videoUrl": "https://www.youtube.com/watch?v=example17",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 76,
+    "viewCount": 7000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1759400000000,
+    "lastUpdatedAt": 1760600000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_online_webinar_2026",
+    "name": "Global AI Webinar",
+    "description": "Learn about the future of AI from industry leaders.",
+    "featuredProfileIds": [
+      "fp_google_experts"
+    ],
+    "category": [
+      "tech",
+      "conference",
+      "online"
+    ],
+    "tags": [
+      "AI",
+      "webinar",
+      "online"
+    ],
+    "date": 1790000000000,
+    "endDate": 1790007200000,
+    "location": null,
+    "geohash": null,
+    "venueId": null,
+    "venueName": "Online",
+    "city": "Online",
+    "eventType": "online",
+    "onlineUrl": "https://zoom.us/j/123456789",
+    "ticketTypes": {
+      "Free": {
+        "price": 0,
+        "quantity": 1000,
+        "available": 1000
+      }
+    },
+    "minPrice": 0,
+    "videoUrl": null,
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 70,
+    "viewCount": 5000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1761000000000,
+    "lastUpdatedAt": 1761000000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_rapviet_allstar_2025",
+    "name": "Rap Việt All-Star Concert 2025",
+    "description": "Bùng nổ sân khấu cùng những cái tên hot nhất làng Rap Việt. Một đêm diễn quy tụ các HLV, giám khảo và thí sinh được yêu thích nhất.",
+    "featuredProfileIds": [
+      "fp_rapviet_stars"
+    ],
+    "category": [
+      "music",
+      "concert",
+      "hip-hop"
+    ],
+    "tags": [
+      "rapviet",
+      "hip-hop",
+      "v-rap"
+    ],
+    "date": 1767118800000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.730711274689705,
+      "longitude": 106.72152825905006
+    },
+    "geohash": "w3gvh92nzv",
+    "venueId": "venue_secc",
+    "venueName": "Trung tâm Hội chợ và Triển lãm Sài Gòn (SECC)",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "minPrice": 1200000,
+    "videoUrl": "https://www.youtube.com/watch?v=example12",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 99,
+    "viewCount": 50000,
+    "requiredAge": 16,
+    "sponsors": [],
+    "createdAt": 1758900000000,
+    "lastUpdatedAt": 1760100000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "ticketTypes": {
+      "VIP": {
+        "price": 3000000,
+        "quantity": 300,
+        "available": 50
+      },
+      "GA": {
+        "price": 1200000,
+        "quantity": 8000,
+        "available": 1500
+      }
+    }
+  },
+  {
+    "id": "evt_ravolution_hanoi_2026",
+    "name": "Ravolution Music Festival - Hanoi",
+    "description": "Đại tiệc âm nhạc điện tử EDM trở lại Hà Nội với dàn DJ quốc tế hàng đầu. Một đêm không ngủ cùng âm thanh và ánh sáng đỉnh cao.",
+    "featuredProfileIds": [
+      "fp_ravolution_djs"
+    ],
+    "category": [
+      "music",
+      "festival",
+      "edm"
+    ],
+    "tags": [
+      "edm",
+      "rave",
+      "hanoi nightlife"
+    ],
+    "date": 1781154000000,
+    "endDate": null,
+    "location": {
+      "latitude": 21.0207,
+      "longitude": 105.7623
+    },
+    "geohash": "w7epwdty2n",
+    "venueId": "venue_mydinh_stadium",
+    "venueName": "Sân vận động Quốc gia Mỹ Đình",
+    "city": "Hà Nội",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "GA": {
+        "price": 950000,
+        "quantity": 10000,
+        "available": 3500
+      },
+      "VIP": {
+        "price": 2500000,
+        "quantity": 500,
+        "available": 120
+      }
+    },
+    "minPrice": 950000,
+    "videoUrl": "https://www.youtube.com/watch?v=example2",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 98,
+    "viewCount": 35000,
+    "requiredAge": 18,
+    "sponsors": [],
+    "createdAt": 1758100000000,
+    "lastUpdatedAt": 1759100000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_startup_expo_2026",
+    "name": "Vietnam Startup Expo 2026",
+    "description": "Triển lãm và hội thảo dành cho cộng đồng khởi nghiệp. Cơ hội kết nối với các nhà đầu tư và quỹ mạo hiểm hàng đầu.",
+    "featuredProfileIds": [],
+    "category": [
+      "expo",
+      "tech",
+      "business"
+    ],
+    "tags": [
+      "startup",
+      "investment"
+    ],
+    "date": 1786126800000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.772009208723974,
+      "longitude": 106.72143620594586
+    },
+    "geohash": "w3gvk8bpt8",
+    "venueId": "venue_thiskyhall_sala",
+    "venueName": "Thiskyhall Sala",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "Visitor": {
+        "price": 200000,
+        "quantity": 1000,
+        "available": 800
+      },
+      "Exhibitor": {
+        "price": 5000000,
+        "quantity": 100,
+        "available": 30
+      }
+    },
+    "minPrice": 200000,
+    "videoUrl": "https://www.youtube.com/watch?v=example5",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 75,
+    "viewCount": 8000,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1758400000000,
+    "lastUpdatedAt": 1759400000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  },
+  {
+    "id": "evt_tedx_danang_2025",
+    "name": "TEDx Da Nang: Bridges",
+    "description": "Sân khấu của những ý tưởng đáng lan tỏa. Lắng nghe những câu chuyện truyền cảm hứng về việc xây dựng những cây cầu kết nối.",
+    "featuredProfileIds": [
+      "fp_tedx_speakers"
+    ],
+    "category": [
+      "conference",
+      "inspiration"
+    ],
+    "tags": [
+      "tedx",
+      "danang",
+      "public speaking"
+    ],
+    "date": 1762424400000,
+    "endDate": null,
+    "location": {
+      "latitude": 16.068770823875518,
+      "longitude": 108.22073695468488
+    },
+    "geohash": "w6ugqt5zmg",
+    "venueId": "venue_trungvuong_theatre",
+    "venueName": "Nhà hát Trưng Vương",
+    "city": "Đà Nẵng",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "minPrice": 500000,
+    "videoUrl": "https://www.youtube.com/watch?v=example3",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 80,
+    "viewCount": 5200,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1758200000000,
+    "lastUpdatedAt": 1759200000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "ticketTypes": {
+      "Standard": {
+        "price": 500000,
+        "quantity": 300,
+        "available": 19
+      }
+    }
+  },
+  {
+    "id": "evt_vdf_hcm_2025",
+    "name": "Vietnam Developer Festival 2025",
+    "description": "Sự kiện công nghệ lớn nhất năm dành cho lập trình viên Việt Nam. Quy tụ các chuyên gia đầu ngành trong lĩnh vực AI, Cloud, và Web3.",
+    "featuredProfileIds": [
+      "fp_google_experts"
+    ],
+    "category": [
+      "conference",
+      "tech",
+      "networking"
+    ],
+    "tags": [
+      "devfest",
+      "google developer group",
+      "vietnam tech"
+    ],
+    "date": 1765506000000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.800874633228537,
+      "longitude": 106.67544176735767
+    },
+    "geohash": "w3gv7qnxtu",
+    "venueId": "venue_diamond_place",
+    "venueName": "Trung tâm Hội Nghị - Tiệc Cưới Diamond Place",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "minPrice": 700000,
+    "videoUrl": "https://www.youtube.com/watch?v=example1",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 95,
+    "viewCount": 12500,
+    "requiredAge": 0,
+    "sponsors": [
+      {
+        "name": "Google Vietnam",
+        "logoUrl": "url_to_logo",
+        "level": "platinum"
+      }
+    ],
+    "createdAt": 1758000000000,
+    "lastUpdatedAt": 1759000000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "ticketTypes": {
+      "Standard": {
+        "price": 1000000,
+        "quantity": 500,
+        "available": 448
+      },
+      "EarlyBird": {
+        "price": 700000,
+        "quantity": 200,
+        "available": 50
+      }
+    }
+  },
+  {
+    "id": "evt_yoga_retreat_dalat_2026",
+    "name": "Yoga & Meditation Retreat in Da Lat",
+    "description": "Tìm lại sự cân bằng và bình yên cho tâm hồn giữa thiên nhiên Đà Lạt. Khóa tu thiền và yoga chuyên sâu.",
+    "featuredProfileIds": [],
+    "category": [
+      "wellness",
+      "sports"
+    ],
+    "tags": [
+      "yoga",
+      "meditation",
+      "dalat"
+    ],
+    "date": 1785531600000,
+    "endDate": null,
+    "location": {
+      "latitude": 10.790167396059529,
+      "longitude": 106.70234016637507
+    },
+    "geohash": "w3gvkh6328",
+    "venueId": "venue_gem_center",
+    "venueName": "GEM Center",
+    "city": "Hồ Chí Minh",
+    "eventType": "physical",
+    "onlineUrl": null,
+    "ticketTypes": {
+      "AllInclusive": {
+        "price": 4500000,
+        "quantity": 50,
+        "available": 15
+      }
+    },
+    "minPrice": 4500000,
+    "videoUrl": "https://www.youtube.com/watch?v=example15",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "status": "active",
+    "visibility": "public",
+    "recurringRule": null,
+    "hotScore": 78,
+    "viewCount": 3500,
+    "requiredAge": 18,
+    "sponsors": [],
+    "createdAt": 1759200000000,
+    "lastUpdatedAt": 1760400000000,
+    "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+  }
+]

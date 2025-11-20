@@ -6,42 +6,108 @@ const jwt = require('jsonwebtoken');
 const TICKET_SECRET = process.env.JWT_TICKET_SECRET;
 
 /**
- * Lấy tất cả vé của một người dùng cụ thể.
+ * Lấy danh sách vé chi tiết của người dùng (Kèm thông tin sự kiện).
  * @param {string} userId - ID của người dùng.
- * @returns {Promise<Array<object>>} Mảng các document vé.
+ * @param {number} page - Trang.
+ * @param {number} limit - Giới hạn.
+ * @returns {Promise<object>} Dữ liệu phân trang + Chi tiết vé.
  */
-
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
+    // 1. Lấy TOÀN BỘ vé của user (Bỏ limit/offset ở query DB)
     const ticketsRef = db.collection('Tickets').where('userId', '==', userId);
-    const offset = (page - 1) * limit;
+    const snapshot = await ticketsRef.get();
 
-    // Lấy tổng số lượng vé của user
-    const countSnapshot = await ticketsRef.count().get();
-    const totalTickets = countSnapshot.data().count;
+    if (snapshot.empty) {
+        return {
+            tickets: [],
+            pagination: {
+                currentPage: page,
+                limit: limit,
+                totalPages: 0,
+                totalItems: 0
+            }
+        };
+    }
 
-    // Truy vấn dữ liệu vé cho trang hiện tại
-    const ticketsSnapshot = await ticketsRef
-        .orderBy('purchaseDate', 'desc') // Sắp xếp vé mới nhất lên đầu
-        .limit(limit)
-        .offset(offset)
-        .get();
-
-    const tickets = [];
-    ticketsSnapshot.forEach(doc => {
-        tickets.push(doc.data());
+    // Chuyển đổi sang mảng dữ liệu
+    let allTickets = [];
+    snapshot.forEach(doc => {
+        allTickets.push({ id: doc.id, ...doc.data() });
     });
 
+    // 2. Định nghĩa độ ưu tiên (Số càng nhỏ càng ưu tiên)
+    const statusPriority = {
+        'paid': 1,      // Vé đã bán (Quan trọng nhất)
+        'pending': 2,   // Đang xử lý
+        'checkedIn': 3, // Đã check-in (Đã dùng)
+        'cancelled': 4  // Đã hủy (Ít quan trọng nhất)
+    };
+
+    // 3. Sắp xếp In-Memory
+    allTickets.sort((a, b) => {
+        // Lấy độ ưu tiên, mặc định là 99 nếu không khớp
+        const priorityA = statusPriority[a.status] || 99;
+        const priorityB = statusPriority[b.status] || 99;
+
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB; // Sắp xếp theo status trước
+        }
+        // Nếu cùng status, sắp xếp theo ngày mua giảm dần (mới nhất lên đầu)
+        return b.purchaseDate - a.purchaseDate;
+    });
+
+    // 4. Phân trang thủ công (Cắt mảng)
+    const totalItems = allTickets.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    
+    // Lấy ra đúng số vé cho trang hiện tại
+    const paginatedTickets = allTickets.slice(startIndex, endIndex);
+
+    // 5. Gộp thông tin sự kiện (Enrich Data) cho các vé TRÊN TRANG ĐÓ
+    const ticketsWithEventDetails = await Promise.all(paginatedTickets.map(async (ticketData) => {
+        // Lấy thông tin Event tương ứng
+        const eventSnapshot = await db.collection('Events').doc(ticketData.eventId).get();
+        let eventData = null;
+        
+        if (eventSnapshot.exists) {
+            const rawEvent = eventSnapshot.data();
+            eventData = {
+                id: rawEvent.id,
+                name: rawEvent.name,
+                date: rawEvent.date,
+                imageUrl: rawEvent.imageUrl,
+                venueName: rawEvent.venueName,
+                city: rawEvent.city,
+                status: rawEvent.status
+            };
+        } else {
+            eventData = { id: ticketData.eventId, name: "Unknown Event", status: "deleted" };
+        }
+
+        return {
+            id: ticketData.id,
+            status: ticketData.status,
+            type: ticketData.type,
+            price: ticketData.price,
+            seat: ticketData.seat,
+            qrCode: ticketData.qrCode,
+            purchaseDate: ticketData.purchaseDate,
+            event: eventData 
+        };
+    }));
+
     return {
-        tickets,
+        tickets: ticketsWithEventDetails,
         pagination: {
             currentPage: page,
             limit: limit,
-            totalPages: Math.ceil(totalTickets / limit),
-            totalItems: totalTickets
+            totalPages: totalPages,
+            totalItems: totalItems
         }
     };
 };
-
 /**
  * Xử lý logic đặt vé cho một sự kiện bằng Transaction, có hỗ trợ mã khuyến mãi.
  * @param {string} userId - ID người mua.
