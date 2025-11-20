@@ -138,4 +138,6 @@ dependencies {
 
     implementation(libs.mapbox.android)
     implementation(libs.mapbox.compose)
+    implementation("com.google.accompanist:accompanist-drawablepainter:0.34.0") // Dùng phiên bản mới nhất
+    implementation("com.google.firebase:firebase-storage")
 }

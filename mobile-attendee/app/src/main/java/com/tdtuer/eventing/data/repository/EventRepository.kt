@@ -5,6 +5,8 @@ import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
+import com.tdtuer.eventing.ui.screens.postevent.MediaItem
+import com.tdtuer.eventing.ui.screens.postevent.ReviewItem
 import kotlinx.coroutines.flow.Flow
 
 interface EventRepository {
@@ -40,4 +42,9 @@ interface EventRepository {
         page: Int,
         limit: Int
     ): Flow<Result<List<Event>>>
+
+    fun getEventReviews(eventId: String): Flow<Result<List<ReviewItem>>>
+    suspend fun postEventReview(eventId: String, rating: Int, comment: String): Result<Unit>
+    fun getEventMedia(eventId: String): Flow<Result<List<MediaItem>>>
+    suspend fun postEventMedia(eventId: String, url: String, type: String): Result<Unit>
 }

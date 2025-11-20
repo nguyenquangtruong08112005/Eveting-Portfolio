@@ -26,6 +26,7 @@ sealed class Screen(val route: String) {
     data object Events : Screen("events_screen")
     data object Map : Screen("map_screen")
     data object Profile : Screen("profile_screen")
+    data object MyTickets : Screen("my_tickets_screen")
 
     // Luồng chi tiết sự kiện
     data object EventPreview : Screen("event_preview_screen/{eventId}") {
@@ -68,5 +69,13 @@ sealed class Screen(val route: String) {
     data object Ticket : Screen("ticket_screen/{ticketId}") {
         fun createRoute(ticketId: String) = "ticket_screen/$ticketId"
     }
+
+    data object PostEvent : Screen("post_event_screen/{eventId}") {
+        fun createRoute(eventId: String) = "post_event_screen/$eventId"
+    }
+
+    data object Calendar : Screen("calendar_screen") // Đã có màn hình CalendarScreen
+    data object Bookmark : Screen("bookmark_screen") // Map với WishlistScreen
+    data object HelpFaqs : Screen("help_faqs_screen") // Màn hình mới hoặc webview
     // ... thêm các bước tạo sự kiện khác
 }

@@ -40,19 +40,27 @@ private val LightColorScheme = lightColorScheme(
 
 private val DarkColorScheme = darkColorScheme(
     primary = OrangePrimaryDark,
-    onPrimary = TextBlack,
+    onPrimary = Color(0xFF12141A), // SỬA: Chữ màu tối trên nền Cam sáng để dễ đọc
     secondary = YellowSecondaryDark,
-    onSecondary = TextBlack,
+    onSecondary = Color(0xFF12141A), // Tương tự cho các màu pastel khác
     tertiary = BlueSecondaryDark,
-    onTertiary = WhiteSecondary,
+    onTertiary = Color(0xFF12141A),
+
     background = DarkBackground,
-    onBackground = TextWhiteDark,
+    onBackground = TextWhiteDark, // Chữ trắng dịu trên nền tối
+
     surface = DarkSurface,
     onSurface = TextWhiteDark,
-    onSurfaceVariant = TextGreyDark, // Màu cho text/icon phụ
-    outline = SoftDarkishSecondaryDark, // Màu cho viền
+
+    onSurfaceVariant = TextGreyDark, // Màu cho text phụ
+    outline = SoftDarkishSecondaryDark,
+
     error = RedErrorDark,
-    onError = TextBlack
+    onError = Color(0xFF12141A), // Chữ tối trên nền đỏ nhạt
+
+    // Cấu hình thêm container nếu cần thiết cho Material 3
+    primaryContainer = Color(0xFF3E1C0A), // Màu nền container cam rất tối
+    onPrimaryContainer = Color(0xFFFFDBCF) // Chữ cam rất sáng trên nền container tối
 )
 
 // --- 2. Hệ thống màu mở rộng (cho Gradients và các màu không có trong ColorScheme) ---

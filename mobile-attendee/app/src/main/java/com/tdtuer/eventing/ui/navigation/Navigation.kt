@@ -3,9 +3,13 @@ package com.tdtuer.eventing.ui.navigation
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -34,6 +38,8 @@ import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
 import androidx.core.net.toUri
 import com.tdtuer.eventing.ui.screens.buyticket.BuyTicketScreen
 import com.tdtuer.eventing.ui.screens.buyticket.BuyTicketViewModel
+import com.tdtuer.eventing.ui.screens.editprofile.EditProfileScreen
+import com.tdtuer.eventing.ui.screens.editprofile.EditProfileViewModel
 import com.tdtuer.eventing.ui.screens.events.EventDetailsScreen
 import com.tdtuer.eventing.ui.screens.events.EventDetailsViewModel
 import com.tdtuer.eventing.ui.screens.events.EventPreviewScreen
@@ -42,17 +48,37 @@ import com.tdtuer.eventing.ui.screens.notifications.NotificationScreen
 import com.tdtuer.eventing.ui.screens.notifications.NotificationViewModel
 import com.tdtuer.eventing.ui.screens.payment.PaymentScreen
 import com.tdtuer.eventing.ui.screens.payment.PaymentViewModel
+import com.tdtuer.eventing.ui.screens.postevent.PostEventScreen
+import com.tdtuer.eventing.ui.screens.postevent.PostEventViewModel
+import com.tdtuer.eventing.ui.screens.settings.SettingsScreen
+import com.tdtuer.eventing.ui.screens.settings.SettingsViewModel
 import com.tdtuer.eventing.ui.screens.ticket.TicketScreen
 import com.tdtuer.eventing.ui.screens.ticket.TicketViewModel
 
 @Composable
 fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
 
-    // Handle deep links
+// Handle deep links
     LaunchedEffect(intent) {
         val link = intent?.data?.toString()
         if (link != null) {
             val uri = link.toUri()
+
+            // --- NEW LOGIC: Deep Link cho Sự kiện ---
+            // Kiểm tra: host phải là eventing.tdtuer.com VÀ path segment đầu tiên là 'events'
+            if (uri.host == "eventing.tdtuer.com" && uri.pathSegments.firstOrNull() == "events" && uri.pathSegments.size > 1) {
+                val eventIdFromLink = uri.pathSegments[1]
+
+                if (eventIdFromLink.isNotBlank()) {
+                    // Điều hướng thẳng đến màn hình chi tiết sự kiện và xóa backstack
+                    navController.navigate(Screen.EventDetails.createRoute(eventIdFromLink)) {
+                        popUpTo(Graph.ROOT) { inclusive = true }
+                    }
+                    return@LaunchedEffect // Thoát để không xử lý tiếp các Deep Link khác
+                }
+            }
+
+            // --- Existing Logic: Firebase Auth Deep Link ---
             val mode = uri.getQueryParameter("mode")
             val oobCode = uri.getQueryParameter("oobCode")
 
@@ -63,7 +89,6 @@ fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
                     }
 
                     "verifyEmail" -> {
-                        // The verification link is handled inside VerificationScreen
                         navController.navigate(Screen.Verification.route)
                     }
                 }
@@ -248,8 +273,10 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
 
         // 5. Luồng Profile & Cài đặt
         composable(Screen.EditProfile.route) {
-            // TODO: Tạo EditProfileScreen(navController = navController)
-            Text("Edit Profile Screen")
+            EditProfileScreen(
+                viewModel = hiltViewModel<EditProfileViewModel>(),
+                navController = navController
+            )
         }
 
         composable(Screen.Notifications.route) {
@@ -265,8 +292,10 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
         }
 
         composable(Screen.Settings.route) {
-            // TODO: Tạo SettingsScreen(navController = navController)
-            Text("Settings Screen")
+            SettingsScreen(
+                viewModel = hiltViewModel<SettingsViewModel>(),
+                navController = navController
+            )
         }
 
         composable(Screen.InviteFriends.route) {
@@ -274,7 +303,36 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
             Text("Invite Friends Screen")
         }
 
-        // (Thêm các màn hình còn lại trong Screen.kt vào đây)
+        composable(
+            route = Screen.PostEvent.route,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) {
+            PostEventScreen(
+                viewModel = hiltViewModel<PostEventViewModel>(),
+                navController = navController
+            )
+        }
+
+        // Màn hình Calendar (Đã có code CalendarScreen)
+        composable(Screen.Calendar.route) {
+            com.tdtuer.eventing.ui.screens.schedule.CalendarScreen(
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Màn hình Bookmark (Dùng WishlistScreen)
+        composable(Screen.Bookmark.route) {
+            com.tdtuer.eventing.ui.screens.wishlist.WishlistScreen(
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Màn hình Help & FAQs (Placeholder)
+        composable(Screen.HelpFaqs.route) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Help & FAQs coming soon!")
+            }
+        }
     }
 }
 

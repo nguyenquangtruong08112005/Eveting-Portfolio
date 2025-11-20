@@ -8,6 +8,8 @@ import com.tdtuer.eventing.data.repository.EventRepository
 import com.tdtuer.eventing.data.repository.EventRepositoryImpl
 import com.tdtuer.eventing.data.repository.TicketRepository
 import com.tdtuer.eventing.data.repository.TicketRepositoryImpl
+import com.tdtuer.eventing.data.repository.UserRepository
+import com.tdtuer.eventing.data.repository.UserRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -45,4 +47,10 @@ abstract class RepositoryModule {
             return TicketRepositoryImpl(context, apiService)
         }
     }
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(
+        userRepositoryImpl: UserRepositoryImpl
+    ): UserRepository
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
@@ -31,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage // <-- (YÊU CẦU 4) Import AsyncImage
@@ -49,12 +51,14 @@ import com.tdtuer.eventing.ui.screens.home.GlobalSearchState
 import com.tdtuer.eventing.ui.screens.home.SharedSearchViewModel
 import com.tdtuer.eventing.ui.theme.AppTheme
 import com.tdtuer.eventing.ui.theme.EventingTheme
+import com.tdtuer.eventing.ui.navigation.Screen // Import Screen routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AllEventsScreen(
     viewModel: AllEventsViewModel = hiltViewModel(),
     sharedViewModel: SharedSearchViewModel,
+    mainNavController: NavController, // <--- THÊM THAM SỐ NÀY
     bottomNavController: NavHostController // <-- Thêm NavController
 ) {
     val searchState by sharedViewModel.uiState.collectAsState()
@@ -81,22 +85,44 @@ fun AllEventsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Events", fontWeight = FontWeight.Bold, color = Color.White, fontSize = AppTheme.typography.headlineLarge.fontSize) },
+                title = {
+                    Text(
+                        "Events",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = AppTheme.typography.headlineLarge.fontSize
+                    )
+                },
                 // (YÊU CẦU 2) Xóa nút back
-                navigationIcon = {},
-                actions = {
+                navigationIcon = {
+                    IconButton(onClick = { bottomNavController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                }, actions = {
                     // (YÊU CẦU 1) Khôi phục nút Search
                     IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(Icons.Default.FilterAlt, contentDescription = "Search/Filter", tint = Color.White)
+                        Icon(
+                            Icons.Default.FilterAlt,
+                            contentDescription = "Search/Filter",
+                            tint = Color.White
+                        )
                     }
                     IconButton(onClick = { viewModel.onMoreOptionsClick() }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "More",
+                            tint = Color.White
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppTheme.colorScheme.primary)
             )
         },
-        containerColor = AppTheme.colorScheme.primary.copy(alpha = 0.3f)
+        containerColor = AppTheme.colorScheme.surface
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
 
@@ -117,14 +143,18 @@ fun AllEventsScreen(
                         CircularProgressIndicator()
                     }
                 }
+
                 is Result.Failure -> {
                     Text(
-                        text = "Lỗi tìm kiếm: ${result.exception.message}",
-                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                        text = "Search Error: ${result.exception.message}",
+                        modifier = Modifier
+                            .padding(24.dp)
+                            .fillMaxWidth(),
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center
                     )
                 }
+
                 is Result.Success -> {
                     val eventsToShow = if (isActive) {
                         // Map kết quả search (Domain) sang UI
@@ -136,13 +166,18 @@ fun AllEventsScreen(
 
                     // Hiển thị Loading/Error của "All Events" (chỉ khi không search)
                     if (!isActive && isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             CircularProgressIndicator()
                         }
                     } else if (!isActive && error != null) {
                         Text(
                             text = "Lỗi tải danh sách: $error",
-                            modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .fillMaxWidth(),
                             color = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center
                         )
@@ -177,7 +212,8 @@ fun AllEventsScreen(
                             items(eventsToShow) { event ->
                                 EventListCard(
                                     event = event,
-                                    onItemClick = { viewModel.onEventItemClick(event) }
+                                    onItemClick = {
+                                        mainNavController.navigate(Screen.EventDetails.createRoute(eventId = event.id))                                    }
                                 )
                             }
                         }
@@ -186,7 +222,7 @@ fun AllEventsScreen(
             }
         }
 
-        GradientHeader()
+//        GradientHeader()
     }
 }
 
@@ -258,10 +294,13 @@ fun EventListCard(event: EventListItem, onItemClick: () -> Unit) {
 
 // (YÊU CẦU 4) Cập nhật hàm map
 private fun mapDomainEventToListItem(event: Event): EventListItem {
-    val dateString = "${formatTimestampToDay(event.date)} ${formatTimestampToMonth(event.date)}, ${formatTimestampToYear(event.date)}"
+    val dateString = "${formatTimestampToDay(event.date)} ${formatTimestampToMonth(event.date)}, ${
+        formatTimestampToYear(event.date)
+    }"
     val timeString = "${formatTimestampToHour(event.date)}:${formatTimestampToMinute(event.date)}"
 
     return EventListItem(
+        id = event.id,
         title = event.name,
         dateTime = "$dateString ⋅ $timeString",
         location = event.location.ifEmpty { "${event.venueName}, ${event.city}" },
@@ -326,7 +365,8 @@ fun AllEventsScreenPreview() {
         AllEventsScreen(
             viewModel = hiltViewModel(),
             sharedViewModel = sharedViewModel,
-            bottomNavController = rememberNavController()
+            bottomNavController = rememberNavController(),
+            mainNavController = rememberNavController()
         )
     }
 }

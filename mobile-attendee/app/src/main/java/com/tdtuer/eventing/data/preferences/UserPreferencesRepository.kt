@@ -14,6 +14,7 @@ class UserPreferencesRepository @Inject constructor(
     private object PreferencesKeys {
         val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
         val REMEMBER_ME = booleanPreferencesKey("remember_me")
+        val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
     }
 
     val isOnboardingCompleted: Flow<Boolean> = dataStore.data
@@ -26,6 +27,9 @@ class UserPreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.REMEMBER_ME] ?: false
         }
 
+    val isDarkMode: Flow<Boolean?> = dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.IS_DARK_MODE] }
+
     suspend fun setOnboardingCompleted(completed: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] = completed
@@ -36,5 +40,10 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.REMEMBER_ME] = rememberMe
         }
+    }
+
+    // Hàm lưu theme
+    suspend fun setDarkMode(isDark: Boolean) {
+        dataStore.edit { it[PreferencesKeys.IS_DARK_MODE] = isDark }
     }
 }

@@ -3,18 +3,23 @@ package com.tdtuer.eventing.domain.model
 data class User(
     val id: String = "",
     val email: String = "",
-    val role: List<String> = listOf("attendee"), // Sử dụng List thay cho Array
-    val name: String = "",
+    val name: String = "", // Sẽ map từ userName
     val profilePicUrl: String = "",
-    val historyEventIds: List<String> = emptyList(),
-    val followedArtistIds: List<String> = emptyList(),
-    val points: Double = 0.0,
-    val level: String = "basic",
-    val matchingPreferences: Map<String, Any> = emptyMap(),
-    val sharedMedia: List<Map<String, String>> = emptyList()
-) {
-    fun isOrganizer() = role.contains("organizer")
+    val coverPhotoUrl: String = "",
+    val isOrganizer: Boolean = false,
+    val bio: String = "", // Sẽ map từ aboutMe
+    val birthDate: Long = 0L,
+    val address: String = "",
+    val interests: List<String> = emptyList(),
+    val followersCount: Int = 0,
+    val followingCount: Int = 0,
+    val joinedEvents: List<JoinedEvent> = emptyList(), // List sự kiện tham gia
+    val role: List<String> = listOf("attendee") // Giữ lại để tương thích ngược nếu cần
+)
 
-    // Firebase yêu cầu constructor không tham số để deserialization
-    constructor() : this("", "", listOf("attendee"), "", "", emptyList(), emptyList(), 0.0, "basic", emptyMap(), emptyList())
-}
+data class JoinedEvent(
+    val id: String,
+    val name: String,
+    val date: Long,
+    val imageUrl: String
+)

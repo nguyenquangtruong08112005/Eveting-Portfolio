@@ -20,6 +20,7 @@ import com.tdtuer.eventing.data.network.EventApiService
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
+import com.tdtuer.eventing.data.network.model.UserTicketDto
 import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
@@ -35,6 +36,8 @@ import com.tdtuer.eventing.helpers.generateQrCodeBitmap
 import com.tdtuer.eventing.ui.screens.ticket.SaveRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.OutputStream
 import javax.inject.Inject
@@ -272,15 +275,18 @@ class TicketRepositoryImpl @Inject constructor(
         }
     }
 
-    // (Hàm này đã bị xóa khỏi interface, xóa luôn ở đây)
-    /*
-    override suspend fun saveImageToGallery(imageBitmap: ImageBitmap, fileName: String): Result<Unit> {
-        return try {
-            saveImageBitmapToMediaStore(context, imageBitmap.asAndroidBitmap(), fileName)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
+    override suspend fun getUserTickets(page: Int, limit: Int): Flow<Result<List<UserTicketDto>>> =
+        flow {
+            emit(Result.Loading)
+            try {
+                val response = apiService.getUserTickets(page, limit)
+                if (response.isSuccessful && response.body() != null) {
+                    emit(Result.success(response.body()!!.tickets))
+                } else {
+                    emit(Result.failure(Exception("Lỗi: ${response.code()} ${response.message()}")))
+                }
+            } catch (e: Exception) {
+                emit(Result.failure(e))
+            }
         }
-    }
-    */
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -59,23 +61,30 @@ fun MainAppWithDrawer(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    // 1. Define animation specs
+    // ... (Phần AnimationSpec và State giữ nguyên) ...
     val snapAnimationSpec: AnimationSpec<Float> = remember { tween() }
     val decayAnimationSpec: DecayAnimationSpec<Float> = rememberSplineBasedDecay()
 
-    // 2. Initialize the state safely
     val state = rememberSaveable(saver = AnchoredDraggableState.Saver()) {
         AnchoredDraggableState(
             initialValue = CustomDrawerValue.Closed,
-            anchors = DraggableAnchors { }, // Initialize with empty anchors
+            anchors = DraggableAnchors { },
             positionalThreshold = { totalDistance: Float -> totalDistance * 0.5f },
             velocityThreshold = { with(density) { 100.dp.toPx() } },
             snapAnimationSpec = snapAnimationSpec,
             decayAnimationSpec = decayAnimationSpec
         )
     }
+    // Biến kiểm tra xem Drawer có đang mở không
+    val isDrawerOpen =
+        state.currentValue == CustomDrawerValue.Open || state.targetValue == CustomDrawerValue.Open
+    // State theo dõi route hiện tại (đã làm ở bước trước)
+    var isAtHomeScreen by remember { mutableStateOf(true) }
 
-    // 3. Calculate anchors and update the state in an effect
+    // LOGIC QUAN TRỌNG: Cho phép vuốt nếu (Đang ở Home) HOẶC (Drawer đang mở)
+    val gesturesEnabled = isAtHomeScreen || isDrawerOpen
+
+    // ... (Phần Anchors calculation giữ nguyên) ...
     val openOffset = with(density) { 300.dp.toPx() }
     val anchors = remember(openOffset) {
         DraggableAnchors {
@@ -96,13 +105,15 @@ fun MainAppWithDrawer(
     // Calculations for UI effects
     val rawOffset = state.offset
     // Ensure openOffset isn't zero to avoid division by zero
-    val currentOffset = if (areAnchorsSet && !rawOffset.isNaN()) rawOffset.coerceIn(0f, openOffset) else 0f
+    val currentOffset =
+        if (areAnchorsSet && !rawOffset.isNaN()) rawOffset.coerceIn(0f, openOffset) else 0f
     val progress = if (openOffset > 0f) (currentOffset / openOffset).coerceIn(0f, 1f) else 0f
     val scale = lerp(1f, 0.8f, progress)
     val cornerRadius = lerp(0.dp, 32.dp, progress)
     val elevation = lerp(0.dp, 16.dp, progress)
 
     val navigateToLogin by viewModel.navigateToLogin.collectAsState()
+    var isDrawerSwipeEnabled by remember { mutableStateOf(true) }
 
     LaunchedEffect(navigateToLogin) {
         if (navigateToLogin) {
@@ -133,9 +144,12 @@ fun MainAppWithDrawer(
         HomeScreen(
             navController = navController,
             onMenuClick = {
-                scope.launch {
-                    if (areAnchorsSet) state.animateTo(CustomDrawerValue.Open)
-                }
+                scope.launch { if (areAnchorsSet) state.animateTo(CustomDrawerValue.Open) }
+            },
+            // 2. Cập nhật trạng thái vuốt dựa trên Route
+            onCurrentRouteChanged = { route ->
+                // Chỉ cho phép vuốt khi ở màn hình Home (Explore)
+                isAtHomeScreen = (route == Screen.Home.route)
             },
             modifier = Modifier
                 .fillMaxSize()
@@ -152,20 +166,31 @@ fun MainAppWithDrawer(
                 .anchoredDraggable(
                     state = state,
                     orientation = Orientation.Horizontal,
-                    enabled = false // Only enable when anchors are set
+                    enabled = gesturesEnabled
                 )
                 .clickable(
-                    enabled = areAnchorsSet && (state.targetValue == CustomDrawerValue.Open || state.currentValue == CustomDrawerValue.Open),
+                    enabled = isDrawerOpen, // Chỉ clickable khi drawer đang mở
                     onClickLabel = "Close Drawer",
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick = {
-                        scope.launch {
-                            if (areAnchorsSet) state.animateTo(CustomDrawerValue.Closed)
-                        }
+                        scope.launch { if (areAnchorsSet) state.animateTo(CustomDrawerValue.Closed) }
                     }
                 )
         )
+        if (isDrawerOpen) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset { IntOffset(x = currentOffset.roundToInt(), y = 0) }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        scope.launch { state.animateTo(CustomDrawerValue.Closed) }
+                    }
+            )
+        }
     }
 }
 
@@ -220,10 +245,7 @@ fun AppDrawerContent(
                     },
                     selected = item == selectedItem,
                     onClick = {
-                        // Sửa lại logic click (từ các bước trước)
-                        viewModel.onMenuItemSelected(item) // Chỉ cập nhật state
-                        navController.navigate(item.route) // Tự điều hướng
-                        onCloseDrawer() // Tự đóng
+                        viewModel.onMenuItemClick(item, navController, onCloseDrawer)
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     colors = NavigationDrawerItemDefaults.colors(
@@ -248,6 +270,29 @@ fun AppDrawerContent(
                     unselectedContainerColor = Color.Transparent
                 )
             )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.DarkMode,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Dark Mode", fontWeight = FontWeight.Medium)
+                }
+                Switch(
+                    checked = isSystemInDarkTheme(), // Hoặc lấy từ ViewModel state
+                    onCheckedChange = { /* TODO: Gọi ViewModel đổi theme */ },
+                    modifier = Modifier.scale(0.8f)
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 

@@ -1,42 +1,77 @@
 package com.tdtuer.eventing.ui.screens.share
 
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
-import com.tdtuer.eventing.R // Assuming R class is available
+import com.tdtuer.eventing.R
+import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.helpers.ShareUtils
 
-// --- Data Model cho một tùy chọn chia sẻ ---
+// Cập nhật Data Model: Thêm packageName
 data class ShareOption(
     val name: String,
     val iconRes: Int,
-    val backgroundColor: Color // Background for the icon circle
+    val backgroundColor: Color,
+    val packageName: String? = null, // Null nghĩa là hành động đặc biệt (Copy) hoặc System Share
+    val isCopyAction: Boolean = false
 )
 
 class ShareViewModel : ViewModel() {
 
-    // Dữ liệu mẫu cho các tùy chọn chia sẻ
+    // Dữ liệu mẫu đã map với Package Name thực tế
     val shareOptions: List<ShareOption> = listOf(
-        ShareOption("Copy Link", R.drawable.default_pfp, Color(0xFFF0F0F0)), // Replace R.drawable.default_pfp with actual icons
-        ShareOption("WhatsApp", R.drawable.default_pfp, Color(0xFF25D366)),
-        ShareOption("Facebook", R.drawable.default_pfp, Color(0xFF1877F2)),
-        ShareOption("Messenger", R.drawable.default_pfp, Color(0xFF00B2FF)),
-        ShareOption("Twitter", R.drawable.default_pfp, Color(0xFF1DA1F2)),
-        ShareOption("Instagram", R.drawable.default_pfp, Color(0xFFE4405F)),
-        ShareOption("Skype", R.drawable.default_pfp, Color(0xFF00AFF0)),
-        ShareOption("Message", R.drawable.default_pfp, Color(0xFF4CAF50))
+        ShareOption("Copy Link", R.drawable.copy_link, Color(0xFFF0F0F0), isCopyAction = true),
+        ShareOption(
+            "WhatsApp",
+            R.drawable.whatsapp,
+            Color(0xFFF0F0F0),
+            packageName = "com.whatsapp"
+        ),
+        ShareOption(
+            "Facebook",
+            R.drawable.facebook,
+            Color(0xFFF0F0F0),
+            packageName = "com.facebook.katana"
+        ),
+        ShareOption(
+            "Messenger",
+            R.drawable.messenger,
+            Color(0xFFF0F0F0),
+            packageName = "com.facebook.orca"
+        ),
+        ShareOption(
+            "X",
+            R.drawable.twitter,
+            Color(0xFFF0F0F0),
+            packageName = "com.twitter.android"
+        ), // Hoặc com.x.android
+        ShareOption(
+            "Instagram",
+            R.drawable.instagram,
+            Color(0xFFF0F0F0),
+            packageName = "com.instagram.android"
+        ),
+        ShareOption(
+            name = "Zalo",
+            iconRes = R.drawable.icon_of_zalo, // Sửa lại thành icon Zalo thực tế
+            backgroundColor = Color(0xFFF0F0F0), // Màu xanh Zalo Brand Color
+            packageName = "com.zing.zalo" // Package Name cho Zalo
+        ),
+        ShareOption(
+            "Message",
+            R.drawable.chatting,
+            Color(0xFFF0F0F0),
+            packageName = "com.google.android.apps.messaging"
+        ) // SMS mặc định
     )
 
-    fun onShareOptionClicked(option: ShareOption) {
-        // TODO: Implement logic for when a share option is clicked.
-        // This might involve preparing data for a share intent or other actions.
-        println("Share option clicked: ${option.name}")
-        // For example, you might want to call a callback function passed to the ViewModel
-        // or use a SharedFlow to notify the UI/Activity to perform the actual sharing.
-    }
-
-    // The onCancel action is typically handled by the composable that shows the BottomSheet,
-    // but the ViewModel could be notified if needed for any cleanup or state change.
-    fun onCancelClicked() {
-        println("Cancel clicked in ShareBottomSheet")
-        // Potentially notify the hosting Activity/Fragment if the ViewModel needs to react.
+    // Cần nhận thêm Context và Event để thực hiện chia sẻ
+    fun onShareOptionClicked(context: Context, option: ShareOption, event: Event) {
+        if (option.isCopyAction) {
+            ShareUtils.copyToClipboard(context, event)
+        } else {
+            // Chia sẻ tới package cụ thể hoặc fallback
+            ShareUtils.shareToPackage(context, event, option.packageName)
+        }
     }
 }

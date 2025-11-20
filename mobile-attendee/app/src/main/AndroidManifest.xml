@@ -57,8 +57,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Eventing"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Eventing">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -84,6 +84,17 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="zp-554" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https" />
+                <data android:host="eventing.tdtuer.com" />
+                <data android:pathPrefix="/events" />
             </intent-filter>
         </activity>
 

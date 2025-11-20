@@ -5,13 +5,21 @@ import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.EventDetailDto
 import com.tdtuer.eventing.data.network.model.EventListResponse
+import com.tdtuer.eventing.data.network.model.MediaResponse
+import com.tdtuer.eventing.data.network.model.PostMediaRequest
+import com.tdtuer.eventing.data.network.model.PostReviewRequest
+import com.tdtuer.eventing.data.network.model.ReviewResponse
 import com.tdtuer.eventing.data.network.model.TicketDetailResponse
+import com.tdtuer.eventing.data.network.model.UpdateUserRequest
+import com.tdtuer.eventing.data.network.model.UserDto
+import com.tdtuer.eventing.data.network.model.UserTicketResponse
 import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.usecase.payment.CreateZaloPayOrderUseCase
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -70,4 +78,46 @@ interface EventApiService {
     suspend fun getTicketDetails(
         @Path("ticketId") ticketId: String
     ): Response<TicketDetailResponse>
+
+    @GET("users/me/tickets")
+    suspend fun getUserTickets(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int
+    ): Response<UserTicketResponse>
+
+    // Lấy thông tin profile cá nhân
+    @GET("users/me")
+    suspend fun getUserProfile(): Response<UserDto>
+
+    // Cập nhật thông tin profile
+    @PUT("users/me")
+    suspend fun updateUserProfile(@Body request: UpdateUserRequest): Response<UserDto>
+
+    // --- REVIEW API ---
+    @GET("events/{eventId}/reviews")
+    suspend fun getEventReviews(
+        @Path("eventId") eventId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<ReviewResponse> // Trả về Wrapper có chứa list
+
+    @POST("events/{eventId}/reviews")
+    suspend fun postEventReview(
+        @Path("eventId") eventId: String,
+        @Body request: PostReviewRequest
+    ): Response<Unit> // Hoặc Response<ReviewDto> nếu server trả về review vừa tạo
+
+    // --- MEDIA API ---
+    @GET("events/{eventId}/media")
+    suspend fun getEventMedia(
+        @Path("eventId") eventId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<MediaResponse> // Trả về Wrapper
+
+    @POST("events/{eventId}/media")
+    suspend fun postEventMedia(
+        @Path("eventId") eventId: String,
+        @Body request: PostMediaRequest // Gửi dạng Object chứa mảng mediaItems
+    ): Response<Unit>
 }

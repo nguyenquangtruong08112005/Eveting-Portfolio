@@ -11,7 +11,11 @@ import com.tdtuer.eventing.ui.navigation.RootNavigationGraph
 import com.tdtuer.eventing.ui.theme.EventingTheme
 import dagger.hilt.android.AndroidEntryPoint
 import android.util.Log
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import javax.inject.Inject
 
 // --- IMPORT CÁC USECASE MỚI ---
@@ -20,6 +24,7 @@ import com.tdtuer.eventing.domain.usecase.events.GetEventByIdUseCase
 import com.tdtuer.eventing.domain.usecase.events.FindNearbyEventsUseCase
 import com.tdtuer.eventing.domain.usecase.events.SearchEventsUseCase
 import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.ui.main.MainViewModel
 import vn.zalopay.sdk.ZaloPaySDK
 
 @AndroidEntryPoint
@@ -44,7 +49,13 @@ class MainActivity : ComponentActivity() {
 
         val intent = this.intent
         setContent {
-            EventingTheme {
+            // 1. Khởi tạo MainViewModel để lắng nghe Theme
+            val mainViewModel: MainViewModel = hiltViewModel()
+            val isDarkModePreference by mainViewModel.isDarkMode.collectAsState()
+
+            // 2. Quyết định Theme: Nếu user chưa cài đặt (null) thì dùng theo hệ thống
+            val useDarkTheme = isDarkModePreference ?: isSystemInDarkTheme()
+            EventingTheme(darkTheme = useDarkTheme) {
 //
 //                // --- KHỐI TEST LOGCAT ---
 //                LaunchedEffect(key1 = true) { // Chạy 1 lần duy nhất

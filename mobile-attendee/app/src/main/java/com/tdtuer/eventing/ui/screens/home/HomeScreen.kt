@@ -22,12 +22,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -55,22 +52,33 @@ import androidx.navigation.compose.rememberNavController
 import com.tdtuer.eventing.ui.screens.location.MapViewScreen
 import com.tdtuer.eventing.ui.screens.profile.MyProfileScreen
 import com.tdtuer.eventing.ui.navigation.Screen
-import com.tdtuer.eventing.ui.screens.events.AllEventsScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
+import com.tdtuer.eventing.ui.screens.events.AllEventsScreen
+import com.tdtuer.eventing.ui.screens.ticket.MyTicketScreen
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    modifier: Modifier = Modifier, // <-- Thêm modifier
-    navController: NavController, // Đây là mainNavController
-    onMenuClick: () -> Unit = {}
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    onMenuClick: () -> Unit = {},
+    // 1. Thêm callback để báo route hiện tại ra ngoài
+    onCurrentRouteChanged: (String) -> Unit = {}
 ) {
-    // 1. Tạo một NavController nội bộ cho Bottom Bar
     val bottomNavController = rememberNavController()
+
+    // 2. Lắng nghe sự thay đổi của Route
+    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // 3. Báo cáo ra ngoài mỗi khi route thay đổi
+    LaunchedEffect(currentRoute) {
+        onCurrentRouteChanged(currentRoute ?: Screen.Home.route)
+    }
 
     Scaffold(
         modifier = modifier, // <-- Áp dụng modifier (cho Drawer)
@@ -125,23 +133,38 @@ fun BottomNavGraph(
             )
         }
 
-        // Tab 2: Events
+//      Tab 2: Events
         composable(Screen.Events.route) {
             AllEventsScreen( // (YÊU CẦU 5) Truyền bottomNavController
                 viewModel = hiltViewModel(),
                 sharedViewModel = sharedViewModel,
-                bottomNavController = bottomNavController
+                bottomNavController = bottomNavController,
+                mainNavController = mainNavController
             )
         }
 
         // Tab 3: Map
         composable(Screen.Map.route) {
-            MapViewScreen(viewModel = hiltViewModel())
+            MapViewScreen(
+                viewModel = hiltViewModel(),
+                navController = mainNavController
+            )
         }
 
-        // Tab 4: Profile
+        composable(Screen.MyTickets.route) {
+            MyTicketScreen(
+                viewModel = hiltViewModel(),
+                navController = mainNavController
+            )
+        }
+
+
+// Tab 4: Profile
         composable(Screen.Profile.route) {
-            MyProfileScreen(viewModel = hiltViewModel())
+            MyProfileScreen(
+                viewModel = hiltViewModel(),
+                navController = mainNavController
+            )
         }
     }
 }
@@ -682,20 +705,20 @@ fun AppBottomBar(
 
     val items = listOf(
         Screen.Home,
-        Screen.Events,
         Screen.Map,
+        Screen.MyTickets,
         Screen.Profile
     )
     val icons = mapOf(
         Screen.Home.route to Icons.Default.Explore,
-        Screen.Events.route to Icons.Default.CalendarToday,
         Screen.Map.route to Icons.Default.Map,
+        Screen.MyTickets.route to Icons.Default.ConfirmationNumber,
         Screen.Profile.route to Icons.Default.Person
     )
     val labels = mapOf(
         Screen.Home.route to "Explore",
-        Screen.Events.route to "Events",
         Screen.Map.route to "Map",
+        Screen.MyTickets.route to "Tickets",
         Screen.Profile.route to "Profile"
     )
 

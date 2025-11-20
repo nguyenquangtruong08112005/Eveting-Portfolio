@@ -20,6 +20,7 @@ import javax.inject.Inject
 
 // (YÊU CẦU 4) Cập nhật Data Model để dùng imageUrl (String) thay vì imageRes (Int)
 data class EventListItem(
+    val id: String, // <--- Thêm ID
     val title: String,
     val dateTime: String,
     val location: String,
@@ -76,6 +77,7 @@ class AllEventsViewModel @Inject constructor(
         val timeString = "${formatTimestampToHour(this.date)}:${formatTimestampToMinute(this.date)}"
 
         return EventListItem(
+            id = this.id, // Map ID từ domain
             title = this.name,
             dateTime = "$dateString ⋅ $timeString",
             location = this.location.ifEmpty { "${this.venueName}, ${this.city}" },

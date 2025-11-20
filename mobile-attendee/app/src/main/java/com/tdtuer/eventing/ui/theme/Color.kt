@@ -3,7 +3,9 @@ package com.tdtuer.eventing.ui.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 
-// Light Theme Colors from Palette
+// ==========================================================================
+// LIGHT THEME COLORS (Giữ nguyên hoặc tinh chỉnh nhẹ nếu cần)
+// ==========================================================================
 val OrangePrimary = Color(0xFFF76B10)
 val OrangePirmary_80 = Color(0xCCF56B11)
 val OrangePrimary_60 = Color(0x99F56B11)
@@ -29,6 +31,8 @@ val DividerLinear = Brush.horizontalGradient(
         1.0f to Color(0x2020222C)
     )
 )
+
+// Các màu Semantic cho Light Theme
 val BlueInfo = Color(0xFF2F80ED)
 val GreenSuccess = Color(0xFF27AE60)
 val YellowWarning = Color(0xFFE2B93B)
@@ -40,57 +44,60 @@ val BackgroundGrey = Color(0xFFF5F5F5)
 val SurfaceWhite = Color(0xFFFDFDFD)
 
 
+// ==========================================================================
+// DARK THEME COLORS (HARMONIZED)
+// ==========================================================================
 
+// 1. Nền (Background & Surface)
+// Sử dụng tông màu than chì pha chút xanh (Blue-Grey) để tạo cảm giác hiện đại, không dùng đen tuyền.
+val DarkBackground = Color(0xFF12141A) // Tối hơn, sâu hơn
+val DarkSurface = Color(0xFF1E212B)    // Sáng hơn nền một chút để nổi bật Card
 
+// 2. Màu Chủ đạo (Primary)
+// Chuyển từ Cam rực rỡ sang Cam Pastel (Coral/Peach) để dịu mắt trên nền tối.
+val OrangePrimaryDark = Color(0xFFFF8F66) // Màu cam san hô dịu nhẹ
 
+// 3. Các màu phụ (Secondary/Tertiary)
+// Giảm độ bão hòa (Desaturate) các màu này
+val YellowSecondaryDark = Color(0xFFFFD54F) // Vàng nhạt
+val BlueSecondaryDark = Color(0xFF64B5F6)   // Xanh dương nhạt
+val GreenSecondaryDark = Color(0xFF81C784)  // Xanh lá nhạt
+val DarkOrangeSecondaryDark = Color(0xFFFFAB91) // Cam đất nhạt
+val SoftDarkishSecondaryDark = Color(0xFF9FA2B4) // Màu xám xanh cho icon/text phụ
 
+// 4. Màu trạng thái (Semantic)
+// Dùng các tông màu pastel để không bị chói (Neon effect)
+val BlueInfoDark = Color(0xFF64B5F6)
+val GreenSuccessDark = Color(0xFF81C784)
+val YellowWarningDark = Color(0xFFFFD54F)
+val RedErrorDark = Color(0xFFE57373) // Đỏ nhạt
 
+// 5. Màu chữ (Typography)
+// Không dùng trắng tinh (0xFFFFFF) vì gây mỏi mắt. Dùng trắng ngà hoặc xám sáng.
+val TextWhiteDark = Color(0xFFE8EAED) // Trắng dịu (High Emphasis)
+val TextGreyDark = Color(0xFFB0B3B8)  // Xám sáng (Medium Emphasis)
 
-
-
-
-
-
-
-
-
-//--------------------------------------------------------------------------------
-// Dark Theme Colors (New & Beautiful!)
-//--------------------------------------------------------------------------------
-
-// Nền chính của Dark Theme, lấy từ màu chữ của Light Theme để tạo sự liên kết.
-val DarkBackground = Color(0xFF171924)
-// Nền cho các bề mặt (Card, Dialog), hơi sáng hơn nền chính một chút.
-val DarkSurface = Color(0xFF20222C)
-
-// Màu cam chủ đạo được làm dịu lại để không quá chói trên nền tối.
-val OrangePrimaryDark = Color(0xFFF8813B)
-
-// Các màu phụ được làm sáng hơn để đảm bảo độ tương phản.
-val YellowSecondaryDark = Color(0xFFFCCB6B)
-val BlueSecondaryDark = Color(0xFF639DFA)
-val GreenSecondaryDark = Color(0xFF52B3A6)
-val DarkOrangeSecondaryDark = Color(0xFFD4753D)
-val SoftDarkishSecondaryDark = Color(0xFF7E828E)
-
-// Màu trạng thái cũng được làm sáng và dịu hơn.
-val BlueInfoDark = Color(0xFF5899F0)
-val GreenSuccessDark = Color(0xFF4DCA7F)
-val YellowWarningDark = Color(0xFFE9C561)
-val RedErrorDark = Color(0xFFEE7878)
-
-// Màu chữ cho nền tối.
-val TextWhiteDark = Color(0xFFFDFDFD) // Chữ chính, độ tương phản cao.
-val TextGreyDark = Color(0xFFA0A3AF) // Chữ phụ, độ tương phản thấp hơn.
-
-// Gradients cho Dark Theme
-val OrangeLinearDark = Brush.verticalGradient(colors = listOf(Color(0xFFF8813B), Color(0xFFFDA571)))
-val ButtonLinearDark = Brush.verticalGradient(colors = listOf(Color(0xFF2A2D3A), Color(0xFF20222C)))
-val DividerLinearDark = Brush.horizontalGradient(
-    colorStops = arrayOf(
-        0.0f to Color(0x20A0A3AF),
-        0.5f to Color(0x33A0A3AF),
-        1.0f to Color(0x20A0A3AF)
+// 6. Gradients cho Dark Theme
+// Gradient nên nhẹ nhàng hơn, không quá gắt
+val OrangeLinearDark = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFFFF8F66), // Cam san hô
+        Color(0xFFFF7043)  // Cam đậm hơn chút
     )
 )
 
+// Button Gradient trong Dark mode nên sáng hơn nền một chút để nổi bật
+val ButtonLinearDark = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFF2D313F),
+        Color(0xFF242731)
+    )
+)
+
+val DividerLinearDark = Brush.horizontalGradient(
+    colorStops = arrayOf(
+        0.0f to Color(0x00FFFFFF), // Trong suốt ở 2 đầu
+        0.5f to Color(0x40FFFFFF), // Trắng mờ ở giữa
+        1.0f to Color(0x00FFFFFF)
+    )
+)

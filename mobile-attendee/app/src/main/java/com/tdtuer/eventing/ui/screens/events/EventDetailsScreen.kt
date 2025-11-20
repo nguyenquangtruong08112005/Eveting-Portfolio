@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -45,19 +44,37 @@ import com.tdtuer.eventing.helpers.formatVNCurrency
 import com.tdtuer.eventing.ui.components.EventDetailRow
 import com.tdtuer.eventing.ui.components.GradientHeader
 import com.tdtuer.eventing.ui.navigation.Screen
+import com.tdtuer.eventing.ui.screens.share.ShareBottomSheetContent
+import com.tdtuer.eventing.ui.screens.share.ShareViewModel
 // import com.tdtuer.eventing.ui.components.FacePile // Không còn dùng
 import com.tdtuer.eventing.ui.theme.AppTheme
 import com.tdtuer.eventing.ui.theme.EventingTheme
-import java.text.NumberFormat
-import java.util.Locale
 
 // --- Composable Chính (Quản lý State) ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDetailsScreen(
     viewModel: EventDetailsViewModel = hiltViewModel(),
     navController: NavHostController
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showShareSheet by remember { mutableStateOf(false) }
+    val shareSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    if (showShareSheet && uiState.event != null) { // Kiểm tra event != null
+        ModalBottomSheet(
+            onDismissRequest = { showShareSheet = false },
+            sheetState = shareSheetState,
+            containerColor = AppTheme.colorScheme.surface,
+            contentWindowInsets = { WindowInsets.navigationBars }
+        ) {
+            ShareBottomSheetContent(
+                viewModel = hiltViewModel<ShareViewModel>(),
+                event = uiState.event!!, // <--- TRUYỀN EVENT VÀO ĐÂY
+                onCancel = { showShareSheet = false }
+            )
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -80,7 +97,8 @@ fun EventDetailsScreen(
                 EventDetailsContent(
                     event = uiState.event!!,
                     viewModel = viewModel,
-                    navController = navController
+                    navController = navController,
+                    onShareClick = { showShareSheet = true }
                 )
             }
         }
@@ -93,7 +111,8 @@ fun EventDetailsScreen(
 fun EventDetailsContent(
     event: Event,
     viewModel: EventDetailsViewModel,
-    navController: NavHostController
+    navController: NavHostController,
+    onShareClick: () -> Unit
 ) {
     // Trích xuất dữ liệu
     val profiles = (event.featuredProfiles as? List<*>)
@@ -129,7 +148,7 @@ fun EventDetailsContent(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Share logic */ }) {
+                    IconButton(onClick = onShareClick ) {
                         Icon(Icons.Default.Share, "Share", tint = Color.White)
                     }
                 },

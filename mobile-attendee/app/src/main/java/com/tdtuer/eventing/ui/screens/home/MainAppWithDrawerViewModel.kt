@@ -1,5 +1,8 @@
 package com.tdtuer.eventing.ui.screens.home
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.*
@@ -13,6 +16,7 @@ import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.domain.usecase.authentication.SignOutUseCase
 import com.tdtuer.eventing.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -23,12 +27,14 @@ data class MenuItem(
     val title: String,
     val icon: ImageVector,
     val badgeCount: Int? = null,
-    val route: String // Added for navigation purposes, can be adapted
+    val route: String, // Added for navigation purposes, can be adapted
+    val isExternal: Boolean = false // Cờ đánh dấu link ngoài (Contact Us)
 )
 
 @HiltViewModel
 class MainAppWithDrawerViewModel @Inject constructor(
-    private val signOutUseCase: SignOutUseCase
+    private val signOutUseCase: SignOutUseCase,
+    @ApplicationContext private val context: Context // Inject Context để mở Intent
 ) : ViewModel() {
 
     private val _menuItems = mutableStateOf<List<MenuItem>>(emptyList())
@@ -52,12 +58,11 @@ class MainAppWithDrawerViewModel @Inject constructor(
     private fun loadMenuItems() {
         _menuItems.value = listOf(
             MenuItem("My Profile", Icons.Default.Person, route = Screen.Profile.route),
-//            MenuItem("Message", Icons.AutoMirrored.Filled.Message, badgeCount = 3, route = "messages"),
-            MenuItem("Calender", Icons.Default.CalendarToday, route = "calendar"),
-            MenuItem("Bookmark", Icons.Default.Bookmark, route = "bookmarks"),
-            MenuItem("Contact Us", Icons.Default.Email, route = "contact_us"),
-            MenuItem("Settings", Icons.Default.Settings, route = "settings"),
-            MenuItem("Helps & FAQs", Icons.AutoMirrored.Filled.Help, route = "help_faqs"),
+            MenuItem("Calendar", Icons.Default.CalendarToday, route = Screen.Calendar.route), // Link tới CalendarScreen
+            MenuItem("Bookmark", Icons.Default.Bookmark, route = Screen.Bookmark.route), // Link tới WishlistScreen
+            MenuItem("Contact Us", Icons.Default.Email, route = "mailto:nguyenquangtruong08112005@gmail.com", isExternal = true),
+            MenuItem("Settings", Icons.Default.Settings, route = Screen.Settings.route),
+            MenuItem("Helps & FAQs", Icons.AutoMirrored.Filled.Help, route = Screen.HelpFaqs.route),
         )
     }
 
@@ -65,10 +70,23 @@ class MainAppWithDrawerViewModel @Inject constructor(
         selectedItem = item
     }
 
-    fun onMenuItemClick(item: MenuItem, closeDrawerCallback: () -> Unit) {
+    fun onMenuItemClick(item: MenuItem, navController: androidx.navigation.NavController, closeDrawerCallback: () -> Unit) {
         selectedItem = item
-        println("Menu item clicked: ${item.title}, navigating to ${item.route}")
-//        closeDrawerCallback() // Close drawer after item click
+        closeDrawerCallback() // Đóng drawer trước khi thực hiện hành động
+
+        if (item.isExternal) {
+            // Xử lý mở Email hoặc Web
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.route))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                // Handle error (ví dụ không có app mail)
+            }
+        } else {
+            // Điều hướng nội bộ
+            navController.navigate(item.route)
+        }
     }
 
     fun onSignOutClick(closeDrawerCallback: () -> Unit) {

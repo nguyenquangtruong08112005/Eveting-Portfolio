@@ -33,8 +33,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.Style
 import com.mapbox.maps.ViewAnnotationAnchor
 import com.mapbox.maps.ViewAnnotationAnchorConfig
@@ -48,6 +50,7 @@ import com.tdtuer.eventing.R
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.helpers.formatDisplayPrice
+import com.tdtuer.eventing.ui.navigation.Screen
 import com.tdtuer.eventing.ui.screens.mapview.CategoryItem
 import com.tdtuer.eventing.ui.screens.mapview.MapViewModel
 import com.tdtuer.eventing.ui.theme.AppTheme
@@ -56,7 +59,10 @@ import kotlinx.coroutines.delay
 import kotlin.math.pow
 
 @Composable
-fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
+fun MapViewScreen(
+    viewModel: MapViewModel = hiltViewModel(),
+    navController: NavController
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     // State lưu trữ kiểu bản đồ hiện tại
@@ -73,7 +79,7 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
 
     LaunchedEffect(uiState.initialCameraPosition) {
         mapViewportState.flyTo(
-            com.mapbox.maps.CameraOptions.Builder()
+            CameraOptions.Builder()
                 .center(uiState.initialCameraPosition)
                 .zoom(12.0)
                 .build()
@@ -89,6 +95,10 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
             val estimatedRadiusKm = (40000 / 2.0.pow(zoom)) / 2
             viewModel.fetchEventsSmart(center, estimatedRadiusKm)
         }
+    }
+
+    val navigateToDetail = { eventId: String ->
+        navController.navigate(Screen.EventDetails.createRoute(eventId))
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -124,9 +134,15 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
                             }
                         ) {
                             if (eventList.size == 1) {
-                                MapEventCard(event = eventList.first())
+                                MapEventCard(
+                                    event = eventList.first(),
+                                    onEventClick = navigateToDetail
+                                )
                             } else {
-                                MultiEventCarousel(events = eventList)
+                                MultiEventCarousel(
+                                    events = eventList,
+                                    onEventClick = navigateToDetail
+                                )
                             }
                         }
                     }
@@ -176,7 +192,7 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
             FloatingActionButton(
                 onClick = {
                     mapViewportState.flyTo(
-                        com.mapbox.maps.CameraOptions.Builder()
+                        CameraOptions.Builder()
                             .center(uiState.initialCameraPosition)
                             .zoom(12.0)
                             .build()
@@ -185,7 +201,11 @@ fun MapViewScreen(viewModel: MapViewModel = hiltViewModel()) {
                 containerColor = Color.White,
                 shape = CircleShape
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "My Location", tint = AppTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.MyLocation,
+                    contentDescription = "My Location",
+                    tint = AppTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -205,7 +225,11 @@ fun MapStyleSelector(
             containerColor = Color.White,
             shape = CircleShape
         ) {
-            Icon(Icons.Default.Layers, contentDescription = "Map Style", tint = AppTheme.colorScheme.primary    )
+            Icon(
+                Icons.Default.Layers,
+                contentDescription = "Map Style",
+                tint = AppTheme.colorScheme.primary
+            )
         }
 
         DropdownMenu(
@@ -237,7 +261,11 @@ fun MapStyleSelector(
                     },
                     trailingIcon = {
                         if (currentStyle == styleUrl) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF5669FF))
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color(0xFF5669FF)
+                            )
                         }
                     }
                 )
@@ -249,7 +277,10 @@ fun MapStyleSelector(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MultiEventCarousel(events: List<Event>) {
+fun MultiEventCarousel(
+    events: List<Event>,
+    onEventClick: (String) -> Unit
+) {
     val pagerState = rememberPagerState(pageCount = { events.size })
 
     Column(
@@ -273,7 +304,10 @@ fun MultiEventCarousel(events: List<Event>) {
             state = pagerState,
             modifier = Modifier.width(160.dp)
         ) { page ->
-            MapEventCard(event = events[page], isCarouselItem = true)
+            MapEventCard(
+                event = events[page], isCarouselItem = true,
+                onEventClick = onEventClick
+            )
         }
 
         Icon(
@@ -288,7 +322,7 @@ fun MultiEventCarousel(events: List<Event>) {
 }
 
 @Composable
-fun MapEventCard(event: Event, isCarouselItem: Boolean = false) {
+fun MapEventCard(event: Event, isCarouselItem: Boolean = false, onEventClick: (String) -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.shadow(8.dp, RoundedCornerShape(12.dp))
@@ -297,7 +331,7 @@ fun MapEventCard(event: Event, isCarouselItem: Boolean = false) {
             modifier = Modifier
                 .width(160.dp)
                 .height(110.dp)
-                .clickable { /* TODO: Navigate to detail */ },
+                .clickable { onEventClick(event.id) },
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
@@ -379,7 +413,13 @@ private fun MapSearchBar(query: String, onQueryChange: (String) -> Unit) {
             onValueChange = onQueryChange,
             placeholder = { Text("Tìm kiếm...", color = Color.Gray, fontSize = 14.sp) },
             modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = Color.Gray
+                )
+            },
 //            trailingIcon = {
 //                IconButton(onClick = { }) {
 //                    Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = AppTheme.colorScheme.primary)
@@ -399,7 +439,11 @@ private fun MapSearchBar(query: String, onQueryChange: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryFilters(categories: List<CategoryItem>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
+private fun CategoryFilters(
+    categories: List<CategoryItem>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)

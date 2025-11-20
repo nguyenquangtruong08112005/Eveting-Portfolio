@@ -3,10 +3,12 @@ package com.tdtuer.eventing.data.repository
 
 import androidx.compose.ui.graphics.ImageBitmap
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
+import com.tdtuer.eventing.data.network.model.UserTicketDto
 import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.ui.screens.ticket.SaveRequest
+import kotlinx.coroutines.flow.Flow
 
 interface TicketRepository {
 
@@ -25,4 +27,6 @@ interface TicketRepository {
 
     // Hàm mới của chúng ta
     suspend fun saveTicketImages(request: SaveRequest): Result<Unit>
+
+    suspend fun getUserTickets(page: Int, limit: Int): Flow<Result<List<UserTicketDto>>>
 }
