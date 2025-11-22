@@ -8,7 +8,9 @@ data class FilterParams(
     val customDateRange: Pair<Long, Long>? = null,
     val location: String? = null,
     val priceRange: Pair<Double, Double>? = null,
-    // artistName đã bị loại bỏ, vì nó sẽ được gộp vào 'query'
+    val hasVideo: Boolean? = null,
+    val sortBy: String? = null,
+    val sortOrder: String? = null,
     val page: Int = 1,
     val limit: Int = 20
 )

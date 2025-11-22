@@ -7,7 +7,9 @@ import com.tdtuer.eventing.data.network.model.PublicTicketTypeDto
 import com.tdtuer.eventing.data.network.model.SponsorDto
 import com.tdtuer.eventing.data.network.model.TicketTypeDto
 import com.tdtuer.eventing.data.network.model.VenueDto
+import com.tdtuer.eventing.data.network.model.WeatherDto
 import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.domain.model.Weather
 
 // --- HÀM MAP CHÍNH ---
 // Đây là hàm "biên dịch" DTO thô thành Domain Model "sạch"
@@ -96,4 +98,13 @@ private fun VenueDto.toVenueDetailsMap(): Map<String, Any> {
     }
     this.nearby?.let { map["nearby"] = it }
     return map
+}
+
+fun WeatherDto.toDomainModel(): Weather {
+    return Weather(
+        temperature = this.temperature.toInt(),
+        condition = this.condition,
+        description = this.description.replaceFirstChar { it.uppercase() },
+        iconUrl = this.iconUrl.replace("http://", "https://")
+    )
 }

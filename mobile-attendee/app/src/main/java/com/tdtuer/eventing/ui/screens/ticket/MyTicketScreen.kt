@@ -236,8 +236,6 @@ fun MyTicketScreen(
     }
 }
 
-// ... (Các composable con FilterPill, TimeTabButton, TicketCard, EmptyTicketState giữ nguyên)
-
 @Composable
 fun FilterPill(
     text: String,
@@ -323,12 +321,41 @@ fun TicketCard(ticket: MyTicketUiModel, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    ticket.fullDate,
-                    color = AppTheme.colorScheme.primary.copy(alpha = 0.8f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row {
+                    Text(
+                        ticket.fullDate,
+                        color = AppTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (ticket.weather != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = Color(0xFFE3F2FD), // Nền xanh nhạt
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                AsyncImage(
+                                    model = ticket.weather.iconUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${ticket.weather.temperature}°C",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppTheme.extendedColors.info
+                                )
+                            }
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     ticket.eventName,

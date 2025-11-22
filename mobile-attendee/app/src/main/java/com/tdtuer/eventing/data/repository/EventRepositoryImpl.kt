@@ -2,20 +2,16 @@ package com.tdtuer.eventing.data.repository
 
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
-import com.tdtuer.eventing.data.network.model.BookTicketRequest
-import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
-import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.MediaItemRequest
 import com.tdtuer.eventing.data.network.model.PostMediaRequest
 import com.tdtuer.eventing.data.network.model.PostReviewRequest
-import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Event
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.tdtuer.eventing.domain.model.Result
-import com.tdtuer.eventing.domain.model.Ticket
+import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success
 import com.tdtuer.eventing.ui.screens.postevent.MediaItem
@@ -105,10 +101,12 @@ class EventRepositoryImpl @Inject constructor(
         sortBy: String?,
         sortOrder: String?,
         page: Int,
-        limit: Int
+        limit: Int,
+        hasVideo: Boolean?
     ): Flow<Result<List<Event>>> = flow {
         try {
-            val response = apiService.searchEvents( //
+            val response = apiService.searchEvents(
+                //
                 query = query,
                 location = location,
                 category = category,
@@ -120,7 +118,8 @@ class EventRepositoryImpl @Inject constructor(
                 sortBy = sortBy,
                 sortOrder = sortOrder,
                 page = page,
-                limit = limit
+                limit = limit,
+                hasVideo = hasVideo,
             )
             if (response.isSuccessful && response.body() != null) {
                 val domainList = response.body()!!.events.map { it.toDomainModel() }
@@ -203,4 +202,47 @@ class EventRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override fun getRecommendations(limit: Int): Flow<Result<List<Event>>> = flow {
+        emit(Result.Loading)
+        try {
+            val response = apiService.getRecommendations(limit)
+
+            if (response.isSuccessful && response.body() != null) {
+                // Response body bây giờ là List<EventDto>, không cần .events nữa
+                val eventDtos = response.body()!!
+                val events = eventDtos.map { it.toDomainModel() }
+
+                emit(Result.success(events))
+            } else {
+                emit(Result.failure(Exception("Failed to get recommendations: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            // Log lỗi ra để dễ debug nếu vẫn không lên
+            e.printStackTrace()
+            emit(Result.failure(e))
+        }
+    }
+
+    override fun getEventWeather(eventId: String): Flow<Result<Weather>> = flow {
+        // Không cần emit Loading ở đây vì Weather chỉ là phụ,
+        // UI sẽ tự hiển thị khi có data, không cần xoay vòng loading toàn màn hình
+        try {
+            val response = apiService.getWeather(eventId)
+
+            if (response.isSuccessful && response.body() != null) {
+                val weatherData = response.body()!!.toDomainModel()
+                emit(Result.success(weatherData))
+            } else {
+                // Nếu lỗi hoặc không có weather (ví dụ sự kiện trong nhà),
+                // ta có thể emit failure hoặc đơn giản là không làm gì
+                emit(Result.failure(Exception("Weather info not available: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(Result.failure(e))
+        }
+    }
+
+
 }

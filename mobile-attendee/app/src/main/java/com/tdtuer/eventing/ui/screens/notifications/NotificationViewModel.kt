@@ -1,46 +1,55 @@
 package com.tdtuer.eventing.ui.screens.notifications
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.tdtuer.eventing.R // Assuming R class is correctly imported
+import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing.data.repository.NotificationRepository
+import com.tdtuer.eventing.domain.model.Notification
+import com.tdtuer.eventing.domain.model.Result
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-// --- Data Models ---
-data class NotificationItem(
-    val id: Int,
-    val userName: String,
-    val userAvatarRes: Int,
-    val timestamp: String,
-    val type: NotificationType
-)
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val notificationRepository: NotificationRepository
+) : ViewModel() {
 
-sealed class NotificationType {
-    data class Invite(val eventName: String) : NotificationType()
-    object Follow : NotificationType()
-    data class Like(val target: String) : NotificationType()
-    data class Join(val eventName: String) : NotificationType()
-}
+    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
+    val notifications: StateFlow<List<Notification>> = _notifications
 
-class NotificationViewModel : ViewModel() {
-
-    private val _notifications = mutableStateOf<List<NotificationItem>>(emptyList())
-    val notifications: State<List<NotificationItem>> = _notifications
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
     init {
         loadNotifications()
     }
 
     private fun loadNotifications() {
-        // Replace with actual data fetching logic
-        _notifications.value = listOf(
-            NotificationItem(1, "David Silbia", R.drawable.default_pfp, "Just now", NotificationType.Invite("Jo Malone London's Mother's")),
-            NotificationItem(2, "Adnan Safi", R.drawable.default_pfp, "5 min ago", NotificationType.Follow),
-            NotificationItem(3, "Joan Baker", R.drawable.default_pfp, "20 min ago", NotificationType.Invite("A virtual Evening of Smooth Jazz")),
-            NotificationItem(4, "Ronald C. Kinch", R.drawable.default_pfp, "1 hr ago", NotificationType.Like("you events")),
-            NotificationItem(5, "Clara Tolson", R.drawable.default_pfp, "9 hr ago", NotificationType.Join("your Event Gala Music Festival")),
-            NotificationItem(6, "Jennifer Fritz", R.drawable.default_pfp, "Tue, 5:10 pm", NotificationType.Invite("International Kids Safe")),
-            NotificationItem(7, "Eric G. Prickett", R.drawable.default_pfp, "Wed, 3:30 pm", NotificationType.Follow)
-        )
+        viewModelScope.launch {
+            notificationRepository.getNotifications().collect { result ->
+                when (result) {
+                    is Result.Loading -> _isLoading.value = true
+                    is Result.Success -> {
+                        _isLoading.value = false
+                        _notifications.value = result.data
+                    }
+
+                    is Result.Failure -> {
+                        _isLoading.value = false
+                        // Handle error
+                    }
+                }
+            }
+        }
+    }
+
+    fun markAsRead(notification: Notification) {
+        viewModelScope.launch {
+            notificationRepository.markAsRead(notification.id)
+            // Có thể reload lại list hoặc update local state
+        }
     }
 
     fun onBackPress() {

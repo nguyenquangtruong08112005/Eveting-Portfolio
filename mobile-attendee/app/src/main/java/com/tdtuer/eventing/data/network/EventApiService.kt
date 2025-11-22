@@ -4,15 +4,19 @@ import com.tdtuer.eventing.data.network.model.BookTicketRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.EventDetailDto
+import com.tdtuer.eventing.data.network.model.EventDto
 import com.tdtuer.eventing.data.network.model.EventListResponse
 import com.tdtuer.eventing.data.network.model.MediaResponse
+import com.tdtuer.eventing.data.network.model.NotificationDto
 import com.tdtuer.eventing.data.network.model.PostMediaRequest
 import com.tdtuer.eventing.data.network.model.PostReviewRequest
+import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing.data.network.model.ReviewResponse
 import com.tdtuer.eventing.data.network.model.TicketDetailResponse
 import com.tdtuer.eventing.data.network.model.UpdateUserRequest
 import com.tdtuer.eventing.data.network.model.UserDto
 import com.tdtuer.eventing.data.network.model.UserTicketResponse
+import com.tdtuer.eventing.data.network.model.WeatherDto
 import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.usecase.payment.CreateZaloPayOrderUseCase
 import retrofit2.Response
@@ -60,6 +64,7 @@ interface EventApiService {
         // --- Sắp xếp & Phân trang ---
         @Query("sortBy") sortBy: String?,
         @Query("sortOrder") sortOrder: String?,
+        @Query("hasVideo") hasVideo: Boolean?,
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): Response<EventListResponse>
@@ -120,4 +125,25 @@ interface EventApiService {
         @Path("eventId") eventId: String,
         @Body request: PostMediaRequest // Gửi dạng Object chứa mảng mediaItems
     ): Response<Unit>
+
+    @GET("events/recommendations")
+    suspend fun getRecommendations(
+        @Query("limit") limit: Int = 10
+    ): Response<List<EventDto>>
+
+    @GET("events/{id}/weather")
+    suspend fun getWeather(@Path("id") eventId: String): Response<WeatherDto> // Cần tạo DTO này
+
+    // 1. Hủy đăng ký FCM Token (Logout)
+    @POST("users/me/device-token/remove")
+    suspend fun removeFcmToken(@Body request: RemoveTokenRequest): Response<Unit>
+
+    // 2. Lấy danh sách thông báo
+    @GET("notifications")
+    suspend fun getNotifications(): Response<List<NotificationDto>>
+
+    // 3. Đánh dấu đã đọc
+    @POST("notifications/{id}/read")
+    suspend fun markNotificationAsRead(@Path("id") notificationId: String): Response<Unit>
+
 }

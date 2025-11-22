@@ -93,6 +93,8 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.playservices)
     implementation(libs.googleid)
+    implementation(libs.firebase.messaging)
+
     //Facebook
     implementation(libs.facebook.login)
 
@@ -140,4 +142,14 @@ dependencies {
     implementation(libs.mapbox.compose)
     implementation("com.google.accompanist:accompanist-drawablepainter:0.34.0") // Dùng phiên bản mới nhất
     implementation("com.google.firebase:firebase-storage")
+
+    implementation("androidx.hilt:hilt-work:1.0.0")
+    kapt("androidx.hilt:hilt-compiler:1.0.0")
+    implementation("androidx.work:work-runtime-ktx:2.8.1")
+
+    // Media3 (ExoPlayer)
+    val media3Version = "1.2.0" // Hoặc phiên bản mới nhất
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-common:$media3Version")
 }

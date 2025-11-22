@@ -1,10 +1,8 @@
 package com.tdtuer.eventing.data.repository
 
-import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
-import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
-import com.tdtuer.eventing.domain.model.Ticket
+import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.ui.screens.postevent.MediaItem
 import com.tdtuer.eventing.ui.screens.postevent.ReviewItem
 import kotlinx.coroutines.flow.Flow
@@ -27,7 +25,6 @@ interface EventRepository {
         limit: Int,
     ): Flow<Result<List<Event>>>
 
-
     fun searchEvents(
         query: String?,
         location: String?,
@@ -40,11 +37,18 @@ interface EventRepository {
         sortBy: String?,
         sortOrder: String?,
         page: Int,
-        limit: Int
+        limit: Int,
+        hasVideo: Boolean? // Đã có tham số này
     ): Flow<Result<List<Event>>>
 
     fun getEventReviews(eventId: String): Flow<Result<List<ReviewItem>>>
+
     suspend fun postEventReview(eventId: String, rating: Int, comment: String): Result<Unit>
+
     fun getEventMedia(eventId: String): Flow<Result<List<MediaItem>>>
+
     suspend fun postEventMedia(eventId: String, url: String, type: String): Result<Unit>
+
+    fun getRecommendations(limit: Int = 10): Flow<Result<List<Event>>>
+    fun getEventWeather(eventId: String): Flow<Result<Weather>>
 }

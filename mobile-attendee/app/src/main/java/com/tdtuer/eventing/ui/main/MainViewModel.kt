@@ -2,23 +2,32 @@ package com.tdtuer.eventing.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing.data.network.model.UpdateUserRequest
 import com.tdtuer.eventing.domain.usecase.settings.GetThemeUseCase
+import com.tdtuer.eventing.domain.usecase.user.UpdateUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    getThemeUseCase: GetThemeUseCase
+    getThemeUseCase: GetThemeUseCase,
+    private val updateUserProfileUseCase: UpdateUserProfileUseCase // Inject thêm
 ) : ViewModel() {
 
-    // StateFlow trả về: true (Dark), false (Light), null (Theo hệ thống)
     val isDarkMode: StateFlow<Boolean?> = getThemeUseCase()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun updateFcmToken(token: String) {
+        viewModelScope.launch {
+            try {
+                updateUserProfileUseCase(UpdateUserRequest(fcmToken = token))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 }

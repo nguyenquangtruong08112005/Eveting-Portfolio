@@ -30,9 +30,9 @@ class SearchEventsUseCase @Inject constructor(
             minPrice = params.priceRange?.first,
             maxPrice = params.priceRange?.second,
 
-            // Tự động sắp xếp theo độ liên quan (_score) nếu có tìm kiếm
-            sortBy = if (params.query != null) "_score" else "date",
-            sortOrder = if (params.query != null) "desc" else "asc",
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
+            hasVideo = params.hasVideo, // Truyền vào repository
 
             page = params.page,
             limit = params.limit

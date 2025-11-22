@@ -90,7 +90,7 @@ fun AllEventsScreen(
                         "Events",
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        fontSize = AppTheme.typography.headlineLarge.fontSize
+                        fontSize = AppTheme.typography.headlineSmall.fontSize
                     )
                 },
                 // (YÊU CẦU 2) Xóa nút back

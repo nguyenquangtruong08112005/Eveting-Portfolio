@@ -8,6 +8,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tdtuer.eventing.data.network.EventApiService
+import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +19,8 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
-    private val db: FirebaseFirestore
+    private val db: FirebaseFirestore,
+    private val apiService: EventApiService
 ) : AuthRepository {
     override suspend fun signUp(
         name: String,
@@ -166,6 +169,12 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOut() {
+        try {
+            val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+            apiService.removeFcmToken(RemoveTokenRequest(token))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         auth.signOut()
     }
 

@@ -3,6 +3,7 @@ package com.tdtuer.eventing.ui.screens.events
 import android.annotation.SuppressLint
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,6 +37,7 @@ import coil.compose.AsyncImage
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.helpers.formatDisplayPrice // <-- ĐÃ IMPORT
 import com.tdtuer.eventing.helpers.formatTimestampToDay
 import com.tdtuer.eventing.helpers.formatTimestampToMonth
@@ -43,6 +45,7 @@ import com.tdtuer.eventing.helpers.formatTimestampToYear
 import com.tdtuer.eventing.helpers.formatVNCurrency
 import com.tdtuer.eventing.ui.components.EventDetailRow
 import com.tdtuer.eventing.ui.components.GradientHeader
+import com.tdtuer.eventing.ui.components.WeatherInfoCard
 import com.tdtuer.eventing.ui.navigation.Screen
 import com.tdtuer.eventing.ui.screens.share.ShareBottomSheetContent
 import com.tdtuer.eventing.ui.screens.share.ShareViewModel
@@ -83,14 +86,25 @@ fun EventDetailsScreen(
             }
 
             uiState.error != null -> {
-                Text(
-                    text = uiState.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp)
-                )
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.error), // <-- THAY THẾ BẰNG ICON CỦA BẠN
+                        contentDescription = "No Event Details Found",
+                        modifier = Modifier
+                            .size(120.dp)
+                    )
+
+                    Text(
+                        text = uiState.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .padding(16.dp)
+                    )
+                }
             }
 
             uiState.event != null -> {
@@ -98,7 +112,8 @@ fun EventDetailsScreen(
                     event = uiState.event!!,
                     viewModel = viewModel,
                     navController = navController,
-                    onShareClick = { showShareSheet = true }
+                    onShareClick = { showShareSheet = true },
+                    weather = uiState.weather,
                 )
             }
         }
@@ -110,6 +125,7 @@ fun EventDetailsScreen(
 @Composable
 fun EventDetailsContent(
     event: Event,
+    weather: Weather?,
     viewModel: EventDetailsViewModel,
     navController: NavHostController,
     onShareClick: () -> Unit
@@ -148,7 +164,7 @@ fun EventDetailsContent(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onShareClick ) {
+                    IconButton(onClick = onShareClick) {
                         Icon(Icons.Default.Share, "Share", tint = Color.White)
                     }
                 },
@@ -204,6 +220,7 @@ fun EventDetailsContent(
                         date = event.date,
                         venueName = event.venueName,
                         address = event.venueDetails["address"]?.toString() ?: event.location,
+                        weather = weather
                     )
                 }
             }
@@ -300,7 +317,13 @@ fun EventMediaSection(bannerUrl: String, videoUrl: String?) {
 
 // --- PHẦN 2: THÔNG TIN (Bên trong Card) ---
 @Composable
-fun EventInfoSection(name: String, date: Long, venueName: String, address: String) {
+fun EventInfoSection(
+    name: String,
+    date: Long,
+    weather: Weather?,
+    venueName: String,
+    address: String
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,11 +346,17 @@ fun EventInfoSection(name: String, date: Long, venueName: String, address: Strin
             subtitle = "Tuesday, 4:00PM - 9:00PM" // TODO: Cần thêm logic định dạng giờ
         )
         Spacer(modifier = Modifier.height(16.dp))
+
         EventDetailRow(
             icon = Icons.Default.LocationOn,
             title = venueName,
             subtitle = address
         )
+
+        if (weather != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            WeatherInfoCard(weather = weather)
+        }
     }
 }
 

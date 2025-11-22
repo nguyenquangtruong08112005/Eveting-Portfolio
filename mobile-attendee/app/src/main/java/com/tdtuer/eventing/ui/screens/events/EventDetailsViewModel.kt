@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.domain.usecase.events.GetEventByIdUseCase
+import com.tdtuer.eventing.domain.usecase.events.GetEventWeatherUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,12 +25,14 @@ import javax.inject.Inject
 data class EventDetailsUiState(
     val isLoading: Boolean = true,
     val event: Event? = null,
+    val weather: Weather? = null, // Thêm trường này
     val error: String? = null
 )
 
 @HiltViewModel
 class EventDetailsViewModel @Inject constructor(
     private val getEventByIdUseCase: GetEventByIdUseCase, // Tiêm UseCase
+    private val getEventWeatherUseCase: GetEventWeatherUseCase, // Inject thêm
     savedStateHandle: SavedStateHandle // Tiêm SavedStateHandle
 ) : ViewModel() {
 
@@ -68,10 +73,13 @@ class EventDetailsViewModel @Inject constructor(
                     }
 
                     is Result.Success -> {
-                        _uiState.value = EventDetailsUiState(
-                            isLoading = false,
-                            event = result.data // <-- Dữ liệu thật từ API
-                        )
+                        val event = result.data
+                        _uiState.update { it.copy(isLoading = false, event = event) }
+
+                        // 2. Nếu là sự kiện ngoài trời -> Load Weather
+                        if (event.isOutdoor) {
+                            loadWeather(eventId)
+                        }
                     }
 
                     is Result.Failure -> {
@@ -80,6 +88,17 @@ class EventDetailsViewModel @Inject constructor(
                             error = result.exception.message ?: "Đã xảy ra lỗi không xác định"
                         )
                     }
+                }
+            }
+        }
+    }
+
+    private fun loadWeather(eventId: String) {
+        viewModelScope.launch {
+            getEventWeatherUseCase(eventId).collect { result ->
+                if (result is Result.Success) {
+                    Log.d("EventDetailsViewModel", result.data.toString())
+                    _uiState.update { it.copy(weather = result.data) }
                 }
             }
         }

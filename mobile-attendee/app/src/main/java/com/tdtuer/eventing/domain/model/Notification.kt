@@ -1,10 +1,15 @@
 package com.tdtuer.eventing.domain.model
 
 data class Notification(
-    val id: String = "",
-    val userId: String = "",  // Or "all"
-    val type: String = "",
-    val message: String = "",
-    val eventId: String? = null,
-    val sentDate: Long = 0L
+    val id: String,
+    val title: String,
+    val message: String,
+    val type: NotificationType,
+    val eventId: String?,
+    val isRead: Boolean,
+    val timeAgo: String
 )
+
+enum class NotificationType {
+    REMINDER, UPDATE, PROMOTION, SYSTEM, UNKNOWN, INVITE, FOLLOW, LIKE, JOIN
+}

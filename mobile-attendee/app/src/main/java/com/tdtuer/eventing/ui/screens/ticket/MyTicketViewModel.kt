@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.domain.model.MyTicketUiModel
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.TicketStatus
+import com.tdtuer.eventing.domain.model.Weather
+import com.tdtuer.eventing.domain.usecase.events.GetEventWeatherUseCase
 import com.tdtuer.eventing.domain.usecase.tickets.GetUserTicketsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -13,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MyTicketViewModel @Inject constructor(
-    private val getUserTicketsUseCase: GetUserTicketsUseCase
+    private val getUserTicketsUseCase: GetUserTicketsUseCase,
+    private val getEventWeatherUseCase: GetEventWeatherUseCase
 ) : ViewModel() {
 
     // Status Tabs: 0=All, 1=Success, 2=Pending, 3=Cancelled
@@ -100,6 +103,8 @@ class MyTicketViewModel @Inject constructor(
                             _allTickets.value += newTickets
                         }
 
+                        fetchWeatherForUpcomingTickets(newTickets)
+
                         // Reset loading states
                         _isLoading.value = false
                         _isRefreshing.value = false
@@ -114,6 +119,33 @@ class MyTicketViewModel @Inject constructor(
                     is Result.Loading -> { /* Handled by states */ }
                 }
             }
+        }
+    }
+
+    private fun fetchWeatherForUpcomingTickets(tickets: List<MyTicketUiModel>) {
+        val currentTime = System.currentTimeMillis()
+
+        // Chỉ lấy thời tiết cho sự kiện chưa diễn ra (Future)
+        val upcomingTickets = tickets.filter { it.eventTimestamp > currentTime }
+
+        upcomingTickets.forEach { ticket ->
+            viewModelScope.launch {
+                getEventWeatherUseCase(ticket.eventId).collect { weatherResult ->
+                    if (weatherResult is Result.Success) {
+                        updateTicketWeather(ticket.ticketId, weatherResult.data)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateTicketWeather(ticketId: String, weather: Weather) {
+        // Cập nhật list _allTickets với thông tin thời tiết mới
+        val currentList = _allTickets.value.toMutableList()
+        val index = currentList.indexOfFirst { it.ticketId == ticketId }
+        if (index != -1) {
+            currentList[index] = currentList[index].copy(weather = weather)
+            _allTickets.value = currentList
         }
     }
 

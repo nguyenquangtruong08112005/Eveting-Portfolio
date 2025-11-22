@@ -29,11 +29,16 @@ data class JoinedEventDto(
 // 2. DTO gửi dữ liệu lên Server (PUT /users/me)
 // QUAN TRỌNG: Tên trường @SerializedName phải khớp với log backend bạn muốn
 data class UpdateUserRequest(
-    @SerializedName("name") val name: String?, // Server dùng updateData.name
-    @SerializedName("aboutMe") val aboutMe: String?, // Server dùng updateData.aboutMe (lưu vào bio)
-    @SerializedName("profilePicUrl") val profilePicUrl: String?, // Server dùng updateData.profilePicUrl
-    @SerializedName("coverPhotoUrl") val coverPhotoUrl: String?, // Server dùng updateData.coverPhotoUrl
-    @SerializedName("birthDate") val birthDate: Long?,
-    @SerializedName("address") val address: String?,
-    @SerializedName("interests") val interests: List<String>?
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("aboutMe") val aboutMe: String? = null,
+    @SerializedName("profilePicUrl") val profilePicUrl: String? = null,
+    @SerializedName("coverPhotoUrl") val coverPhotoUrl: String? = null,
+    @SerializedName("birthDate") val birthDate: Long? = null,
+    @SerializedName("address") val address: String? = null,
+    @SerializedName("interests") val interests: List<String>? = null,
+    @SerializedName("fcmToken") val fcmToken: String? = null // <-- Đã thêm trường này
+)
+
+data class RemoveTokenRequest(
+    @SerializedName("fcmToken") val fcmToken: String
 )

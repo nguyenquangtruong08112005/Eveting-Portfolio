@@ -13,7 +13,8 @@ data class MyTicketUiModel(
     val ticketType: String,
     val status: TicketStatus,
     val price: Double,
-    val eventTimestamp: Long // <-- THÊM TRƯỜNG NÀY
+    val eventTimestamp: Long,
+    val weather: Weather? = null
 )
 
 enum class TicketStatus(val label: String, val color: Long) {

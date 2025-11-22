@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.tdtuer.eventing.domain.usecase.events.GetAllEventsUseCase
+import com.tdtuer.eventing.domain.usecase.events.GetRecommendationsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -33,6 +34,8 @@ import android.content.pm.PackageManager
 import androidx.annotation.RequiresPermission
 import androidx.compose.material3.Icon
 import androidx.core.content.ContextCompat
+import com.tdtuer.eventing.domain.model.FilterParams
+import com.tdtuer.eventing.domain.usecase.events.SearchEventsUseCase
 import com.tdtuer.eventing.helpers.getAddressFromCoordinates
 import kotlinx.coroutines.Dispatchers
 
@@ -49,11 +52,14 @@ enum class HomeNavEvent {
     NavigateToAuth
 }
 
+data class Destination(val name: String, val imageUrl: String)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth, // Inject FirebaseAuth
     private val getAllEventsUseCase: GetAllEventsUseCase,
-
+    private val searchEventsUseCase: SearchEventsUseCase,
+    private val getRecommendationsUseCase: GetRecommendationsUseCase,
     private val findNearbyEventsUseCase: FindNearbyEventsUseCase,
     private val fusedLocationClient: FusedLocationProviderClient,
     @ApplicationContext private val context: Context
@@ -79,11 +85,88 @@ class HomeViewModel @Inject constructor(
     private val _currentLocationDisplay = mutableStateOf<String?>(null)
     val currentLocationDisplay: State<String?> = _currentLocationDisplay
 
+    private val _videoEvents = mutableStateOf<List<EventCardUiModel>>(emptyList())
+    val videoEvents: State<List<EventCardUiModel>> = _videoEvents
+
+    private val _trendingEvents = mutableStateOf<List<EventCardUiModel>>(emptyList())
+    val trendingEvents: State<List<EventCardUiModel>> = _trendingEvents
+
+    private val _forYouEvents = mutableStateOf<List<EventCardUiModel>>(emptyList())
+    val forYouEvents: State<List<EventCardUiModel>> = _forYouEvents
+
+
+    // Danh sách địa điểm
+    val popularDestinations = listOf(
+        Destination(
+            "Hồ Chí Minh",
+            "https://images.unsplash.com/photo-1583417319070-4a69db38a482?q=80&w=1000&auto=format&fit=crop"
+        ),
+        Destination(
+            "Hà Nội",
+            "https://images.unsplash.com/photo-1616486410185-81af2d32a2af?q=80&w=686&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        ),
+        Destination(
+            "Đà Nẵng",
+            "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=1000&auto=format&fit=crop"
+        ),
+        Destination(
+            "Đà Lạt",
+            "https://images.unsplash.com/photo-1558338475-7ac335028946?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        ),
+        Destination(
+            "Cao Bằng",
+            "https://images.unsplash.com/photo-1650610114362-29af75c44fd7?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        ),
+        Destination(
+            "Ninh Bình",
+            "https://images.unsplash.com/photo-1557750255-c76072a7aad1?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        ),
+        Destination(
+            "Phú Quốc",
+            "https://images.unsplash.com/photo-1730714103959-5d5a30acf547?q=80&w=2061&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        )
+    )
 
     init {
-        loadEvents()
-//        loadNearbyEventsBasedOnLocation()
-        loadCategories()
+        loadAllSections()
+    }
+
+    private fun loadAllSections() {
+        viewModelScope.launch {
+            // 1. Video Highlights: Lấy sự kiện có video
+            launch {
+                searchEventsUseCase(FilterParams(hasVideo = true, limit = 5)).collect { result ->
+                    if (result is Result.Success) {
+                        _videoEvents.value = result.data.map { it.toUiModel() }
+                        Log.d("HomeViewModel", "Video Events: ${_videoEvents.value}")
+                    }
+                }
+            }
+
+            // 2. Trending: Sắp xếp theo hotScore
+            launch {
+                searchEventsUseCase(
+                    FilterParams(
+                        sortBy = "hotScore",
+                        sortOrder = "desc",
+                        limit = 6
+                    )
+                ).collect { result ->
+                    if (result is Result.Success) {
+                        _trendingEvents.value = result.data.map { it.toUiModel() }
+                    }
+                }
+            }
+
+            // 3. For You: Gợi ý cá nhân hóa
+            launch {
+                getRecommendationsUseCase(limit = 10).collect { result ->
+                    if (result is Result.Success) {
+                        _forYouEvents.value = result.data.map { it.toUiModel() }
+                    }
+                }
+            }
+        }
     }
 
     // --- Event Handlers ---
@@ -147,7 +230,7 @@ class HomeViewModel @Inject constructor(
                         _upcomingEvents.value = result.data.map { domainEvent ->
                             domainEvent.toUiModel()
                         } // Cập nhật state với dữ liệu thật
-                        // (Tùy chọn) TODO: set _isLoading = false
+
                     }
 
                     is Result.Failure -> {
@@ -166,16 +249,18 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun Event.toUiModel(): EventCardUiModel {
-        // (Đây là logic "tiền xử lý" bạn muốn)
         return EventCardUiModel(
             id = this.id,
             name = this.name,
-            imageUrl = this.bannerUrl,
+            // Ưu tiên banner, nếu không có thì dùng ảnh thường
+            imageUrl = this.bannerUrl.ifEmpty { this.imageUrl },
+            // Map video URL
+            videoUrl = this.videoUrl,
             displayDate = formatTimestampToDay(this.date),
             displayMonth = formatTimestampToMonth(this.date),
             displayPrice = formatDisplayPrice(this.minPrice),
-            displayLocation = this.location, // (Model "thật" của bạn đã là String)
-            isFavorite = false // (Tạm thời. Sẽ cập nhật sau)
+            displayLocation = this.location,
+            isFavorite = false
         )
     }
 
@@ -242,27 +327,27 @@ class HomeViewModel @Inject constructor(
     private fun loadCategories() {
         _categories.value = listOf(
             Category(
-            "All", Color(0xFF5669FF), Color.White
-        ) {
-            Icon(
-                Icons.Default.Bookmark, contentDescription = null, tint = Color.White
-            )
-        }, Category(
-            "Music", Color.White, Color.Black
-        ) {
-            Icon(
-                Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
-            )
-        }, Category("Sports", Color(0xFFF0635A), Color.White) {
-            Icon(
-                Icons.Default.Sports, contentDescription = null, tint = Color.White
-            )
-        }, Category(
-            "Art", Color(0xFF29D697), Color.White
-        ) {
-            Icon(
-                Icons.Default.Campaign, contentDescription = null, tint = Color.White
-            )
-        })
+                "All", Color(0xFF5669FF), Color.White
+            ) {
+                Icon(
+                    Icons.Default.Bookmark, contentDescription = null, tint = Color.White
+                )
+            }, Category(
+                "Music", Color.White, Color.Black
+            ) {
+                Icon(
+                    Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
+                )
+            }, Category("Sports", Color(0xFFF0635A), Color.White) {
+                Icon(
+                    Icons.Default.Sports, contentDescription = null, tint = Color.White
+                )
+            }, Category(
+                "Art", Color(0xFF29D697), Color.White
+            ) {
+                Icon(
+                    Icons.Default.Campaign, contentDescription = null, tint = Color.White
+                )
+            })
     }
 }

@@ -74,7 +74,7 @@ fun EmptyNotificationScreen() {
             // Box chứa icon chuông và badge số 0
             Box {
                 Image(
-                    painter = painterResource(id = R.drawable.default_pfp), // <-- THAY THẾ BẰNG ICON CỦA BẠN
+                    painter = painterResource(id = R.drawable.error), // <-- THAY THẾ BẰNG ICON CỦA BẠN
                     contentDescription = "No notifications icon",
                     modifier = Modifier.size(120.dp)
                 )

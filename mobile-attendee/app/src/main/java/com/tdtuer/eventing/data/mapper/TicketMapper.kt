@@ -45,6 +45,7 @@ fun UserTicketDto.toMyTicketUiModel(): MyTicketUiModel {
         status = TicketStatus.fromString(this.status),
         price = this.price,
         eventTimestamp = date,
-        eventId = event.id, // <-- Map giá trị timestamp
+        eventId = this.event.id,
+        weather = null
     )
 }
