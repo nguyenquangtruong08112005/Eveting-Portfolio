@@ -14,7 +14,7 @@ const mapUserToMobileProfile = async (userData) => {
         try {
             // Chỉ lấy tối đa 5-10 sự kiện gần nhất để hiển thị trên profile cho nhẹ
             const recentEventIds = userData.historyEventIds;
-            
+
             if (recentEventIds.length > 0) {
                 const eventsSnapshot = await db.collection('Events')
                     .where('id', 'in', recentEventIds)
@@ -27,7 +27,7 @@ const mapUserToMobileProfile = async (userData) => {
                     return {
                         id: ev.id,
                         name: ev.name,
-                        date: ev.date, 
+                        date: ev.date,
                         imageUrl: ev.imageUrl || ev.bannerUrl || ""
                     };
                 });
@@ -44,18 +44,18 @@ const mapUserToMobileProfile = async (userData) => {
         userName: userData.name,
         profilePictureUrl: userData.profilePicUrl || "",
         // Nếu chưa có cover, dùng ảnh mặc định hoặc null
-        coverPhotoUrl: userData.coverPhotoUrl || "https://picsum.photos/800/400", 
-        
+        coverPhotoUrl: userData.coverPhotoUrl || "https://picsum.photos/800/400",
+
         isOrganizer: isOrganizer,
         followingCount: userData.followedProfileIds ? userData.followedProfileIds.length : 0,
         // TODO: Cần logic tính followersCount nếu user là Artist/Organizer (lấy từ collection Follows hoặc count field)
-        followersCount: userData.followersCount || 0, 
-        
+        followersCount: userData.followersCount || 0,
+
         aboutMe: userData.bio || "", // Mapping 'bio' trong DB thành 'aboutMe'
-        
+
         // Trả về mảng string, mobile sẽ tự map sang ProfileInterest với màu sắc
         interests: userData.matchingPreferences?.interests || [],
-        
+
         joinedEvents: joinedEvents
     };
 };
@@ -74,17 +74,17 @@ const createUserProfile = async (userData, profileData) => {
         coverPhotoUrl: profileData.coverPhotoUrl || null, // Thêm trường này
         bio: profileData.bio || '', // Thêm trường này
         birthDate: profileData.birthDate || null,
-        
-        roles: ['attendee'], 
+
+        roles: ['attendee'],
         createdAt: new Date().getTime(),
-        
+
         followedProfileIds: [],
         historyEventIds: [],
         followersCount: 0, // Thêm trường này
-        
+
         points: 0,
         level: 'bronze',
-        
+
         // Lưu interests vào trong matchingPreferences cho gọn
         matchingPreferences: {
             interests: profileData.interests || [],
@@ -94,7 +94,7 @@ const createUserProfile = async (userData, profileData) => {
     };
 
     await db.collection('Users').doc(uid).set(newUserProfile);
-    
+
     // Trả về format mobile cần
     return await mapUserToMobileProfile(newUserProfile);
 };
@@ -117,19 +117,27 @@ const getUserById = async (userId) => {
 const updateUserProfile = async (userId, updateData) => {
     const userRef = db.collection('Users').doc(userId);
     console.log(updateData);
-    
+
     // Chuẩn bị dữ liệu update (mapping từ request body vào DB schema)
     const dataToUpdate = {};
-    
+
     if (updateData.name !== undefined) dataToUpdate.name = updateData.name;
     if (updateData.profilePicUrl !== undefined) dataToUpdate.profilePicUrl = updateData.profilePicUrl;
     if (updateData.coverPhotoUrl !== undefined) dataToUpdate.coverPhotoUrl = updateData.coverPhotoUrl;
     if (updateData.aboutMe !== undefined) dataToUpdate.bio = updateData.aboutMe; // Mobile gửi aboutMe, lưu vào bio
     if (updateData.birthDate !== undefined) dataToUpdate.birthDate = updateData.birthDate;
-    
+
     // Xử lý interests (nằm lồng trong matchingPreferences)
     if (updateData.interests !== undefined) {
         dataToUpdate['matchingPreferences.interests'] = updateData.interests;
+    }
+
+    if (updateData.fcmToken) {
+        // Thêm token mới vào mảng, tự động tránh trùng lặp
+        dataToUpdate.fcmTokens = FieldValue.arrayUnion(updateData.fcmToken);
+
+        // (Tùy chọn) Xóa trường fcmToken cũ (string) nếu có để dọn dẹp DB
+        // dataToUpdate.fcmToken = FieldValue.delete(); 
     }
 
     if (Object.keys(dataToUpdate).length > 0) {
@@ -157,10 +165,21 @@ const unfollowProfile = async (userId, profileId) => {
     return { success: true, message: 'Successfully unfollowed profile.' };
 };
 
+// Hàm này để mobile gọi khi user Đăng xuất (Logout)
+// Cần xóa token của thiết bị đó khỏi mảng để không gửi noti vào máy đã logout
+const removeFcmToken = async (userId, fcmToken) => {
+    const userRef = db.collection('Users').doc(userId);
+    await userRef.update({
+        fcmTokens: FieldValue.arrayRemove(fcmToken)
+    });
+    return { success: true };
+};
+
 module.exports = {
     createUserProfile,
     getUserById,
     updateUserProfile,
     followProfile,
     unfollowProfile,
+    removeFcmToken
 };

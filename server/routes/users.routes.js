@@ -25,4 +25,7 @@ router.post('/me/follow', verifyAuthToken, userController.followProfile);
 // [DELETE] /users/me/follow/:profileId - Bỏ theo dõi một hồ sơ nổi bật
 router.delete('/me/follow/:profileId', verifyAuthToken, userController.unfollowProfile);
 
+// [POST] /users/me/device-token/remove - Gọi khi user Logout
+router.post('/me/device-token/remove', verifyAuthToken, userController.removeDeviceToken);
+
 module.exports = router;

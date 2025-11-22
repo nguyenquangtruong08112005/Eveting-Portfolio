@@ -15,10 +15,16 @@ router.get('/search', publicApiLimiter ,eventController.searchEvents);
 // Middleware verifyAuthToken là tùy chọn ở đây, nếu muốn kết quả cá nhân hóa hơn sau này
 router.get('/nearby', publicApiLimiter, eventController.findNearbyEvents);
 
+// [GET] /events/recommendations - Gợi ý sự kiện (Yêu cầu đăng nhập)
+router.get('/recommendations', verifyAuthToken, eventController.getRecommendations); 
+
 // --- Các route GET công khai ---
 
 // [GET] /events - Lấy danh sách tất cả sự kiện (công khai, có phân trang)
 router.get('/', publicApiLimiter, eventController.getAllEvents);
+
+// [GET] /events/:eventId/weather - Dự báo thời tiết
+router.get('/:eventId/weather', publicApiLimiter, eventController.getEventWeather); 
 
 // [GET] /events/:eventId - Lấy chi tiết một sự kiện (có kiểm tra visibility)
 // Thêm verifyAuthToken một cách tùy chọn để controller có thể nhận req.user

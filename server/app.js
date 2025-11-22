@@ -3,6 +3,8 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 require('dotenv').config();
+const { startReminderJob } = require('./jobs/reminder.job');
+
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users.routes');
@@ -41,6 +43,10 @@ app.use('/payments', paymentsRouter);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server address http://localhost:${PORT}`);
+  // startEventSyncListener();
+  
+  // Kích hoạt Cron Job
+  startReminderJob();
 });
 
 module.exports = app;

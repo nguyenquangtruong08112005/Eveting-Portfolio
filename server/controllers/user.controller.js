@@ -69,10 +69,26 @@ const unfollowProfile = async (req, res) => {
         res.status(500).send({ error: 'Internal Server Error' });
     }
 };
+
+const removeDeviceToken = async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        if (!fcmToken) {
+            return res.status(400).send({ error: 'fcmToken is required' });
+        }
+        await userService.removeFcmToken(req.user.uid, fcmToken);
+        res.status(200).json({ message: 'Device token removed successfully' });
+    } catch (error) {
+        console.error("Error removing device token:", error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     registerUser,
     getCurrentUserProfile,
     updateUserProfile,
     followProfile,
     unfollowProfile,
+    removeDeviceToken,
 };

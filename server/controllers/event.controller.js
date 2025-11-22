@@ -139,13 +139,43 @@ const findNearbyEvents = async (req, res) => {
   }
 };
 
+const getRecommendations = async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const events = await eventService.getRecommendations(userId, limit);
+    res.status(200).json(events);
+  } catch (error) {
+    console.error("Error getting recommendations:", error);
+    res.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+const getEventWeather = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const weather = await eventService.getEventWeather(eventId);
+
+    if (!weather) {
+      // Trả về 200 nhưng body null hoặc message nếu sự kiện không cần thời tiết
+      return res.status(200).json({ message: "Weather forecast not applicable for this event." });
+    }
+    res.status(200).json(weather);
+  } catch (error) {
+    console.error("Error getting weather:", error);
+    res.status(500).send({ error: error.message });
+  }
+};
 
 module.exports = {
   getAllEvents,
   getEventById,
   createEvent,
   updateEvent,
-  cancelEventController, // Đổi tên export cho phù hợp
+  cancelEventController,
   searchEvents,
-  findNearbyEvents, // <-- Export hàm mới
+  findNearbyEvents,
+  getRecommendations, 
+  getEventWeather     
 };
