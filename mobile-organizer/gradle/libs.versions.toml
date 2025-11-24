@@ -38,6 +38,7 @@ playServicesLocation = "21.3.0"
 accompanist = "0.34.0"
 zxingCore = "3.5.3"
 mapboxMaps = "11.16.4"
+androidx-compose-material3-adaptive-navigation-suite = "1.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -58,6 +59,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite", version.ref = "androidx-compose-material3-adaptive-navigation-suite" }
 
 # Quản lí các thư viện firebase đồng bộ
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
@@ -123,4 +125,3 @@ google-services = { id = "com.google.gms.google-services", version = "4.4.3" }
 
 # Plugin Hilt cho Android - giúp tạo component và biding module tự động
 dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt"}
-

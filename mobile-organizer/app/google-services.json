@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:265550348267:android:8f24d48f3bb0333635e3ae",
         "android_client_info": {
-          "package_name": "com.tdtuer.eventing"
+          "package_name": "com.tdtuer.eventing_organizer"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "265550348267-8rhlnu91oburg1oqhcpccdi65udk5bhm.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.tdtuer.eventing",
+            "package_name": "com.tdtuer.eventing_organizer",
             "certificate_hash": "391d30e59e73ffe217d2f94ad58ef811cdef6b6e"
           }
         },
