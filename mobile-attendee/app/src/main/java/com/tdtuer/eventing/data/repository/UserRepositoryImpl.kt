@@ -1,6 +1,7 @@
 package com.tdtuer.eventing.data.repository
 
 import android.net.Uri
+import android.util.Log
 import com.google.firebase.storage.FirebaseStorage
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
@@ -40,6 +41,7 @@ class UserRepositoryImpl @Inject constructor(
         emit(Result.Loading)
         try {
             val response = apiService.updateUserProfile(request)
+            Log.d("UpdateUserProfileUseCase", "Response: $response")
             if (response.isSuccessful && response.body() != null) {
                 val user = response.body()!!.toDomainModel()
                 emit(Result.Success(user))

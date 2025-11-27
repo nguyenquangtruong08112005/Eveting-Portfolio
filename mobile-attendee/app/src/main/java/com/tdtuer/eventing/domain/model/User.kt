@@ -14,7 +14,8 @@ data class User(
     val followersCount: Int = 0,
     val followingCount: Int = 0,
     val joinedEvents: List<JoinedEvent> = emptyList(), // List sự kiện tham gia
-    val role: List<String> = listOf("attendee") // Giữ lại để tương thích ngược nếu cần
+    val role: List<String> = listOf("attendee"), // Giữ lại để tương thích ngược nếu cần
+    val fcmTokens: List<String> = emptyList()
 )
 
 data class JoinedEvent(
