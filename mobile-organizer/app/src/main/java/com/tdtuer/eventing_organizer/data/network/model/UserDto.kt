@@ -10,6 +10,7 @@ data class UserDto(
     @SerializedName("profilePictureUrl") val profilePicUrl: String?,
     @SerializedName("coverPhotoUrl") val coverPhotoUrl: String?, // Đã có trong response
     @SerializedName("isOrganizer") val isOrganizer: Boolean?,
+    @SerializedName("isAdmin") val isAdmin: Boolean?,
     @SerializedName("followingCount") val followingCount: Int?,
     @SerializedName("followersCount") val followersCount: Int?,
     @SerializedName("aboutMe") val aboutMe: String?, // Server trả về aboutMe

@@ -1,16 +1,20 @@
 package com.tdtuer.eventing_organizer.ui.screens.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,21 +40,48 @@ fun OrganizerDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // State cho Pull to Refresh
+    val pullRefreshState = rememberPullToRefreshState()
+
+    // State cho LazyColumn để detect scroll bottom
+    val listState = rememberLazyListState()
+
+    // Logic Load More khi cuộn xuống đáy
+    // Sử dụng derivedStateOf để tối ưu performance, chỉ recompose khi giá trị boolean thay đổi
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems == 0) return@derivedStateOf false
+
+            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+            // Load khi còn 2 item nữa là hết danh sách
+            lastVisibleItemIndex > (totalItems - 2)
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore && !uiState.isLoadingMore && !uiState.isRefreshing && !uiState.isLoading) {
+            viewModel.onLoadMore()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Dashboard", fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = { viewModel.loadDashboardData() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
                     IconButton(onClick = { navController.navigate(Screen.Scanner.route) }) {
                         Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR")
                     }
+                    IconButton(onClick = { navController.navigate(Screen.Profile.route) }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+                    }
+                    IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colorScheme.background
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppTheme.colorScheme.background)
             )
         },
         floatingActionButton = {
@@ -63,60 +94,83 @@ fun OrganizerDashboardScreen(
         },
         containerColor = AppTheme.colorScheme.background
     ) { padding ->
-        if (uiState.isLoading && uiState.myEvents.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 1. Thống kê (Stats Cards)
-                item {
-                    uiState.stats?.let { stats ->
-                        StatsSection(stats)
-                    }
-                }
 
-                // 2. Tiêu đề danh sách
-                item {
-                    Text(
-                        "My Events",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+        // PullToRefreshBox bao bọc nội dung
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.onRefresh() },
+            state = pullRefreshState,
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            if (uiState.isLoading && uiState.myEvents.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-
-                // 3. Danh sách sự kiện
-                if (uiState.myEvents.isEmpty()) {
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // 1. Thống kê (Stats Cards)
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No events found. Create one!", color = Color.Gray)
+                        uiState.stats?.let { stats ->
+                            StatsSection(stats)
                         }
                     }
-                } else {
-                    items(uiState.myEvents) { event ->
-                        OrganizerEventCard(
-                            event = event,
-                            onClick = {
-                                // Điều hướng đến trang quản lý chi tiết sự kiện
-                                // navController.navigate(Screen.EventManagement.createRoute(event.id))
-                            }
+
+                    // 2. Tiêu đề danh sách
+                    item {
+                        Text(
+                            "Sự kiện của tôi",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                }
 
-                // Spacer để không bị FAB che
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+                    // 3. Danh sách sự kiện
+                    if (uiState.myEvents.isEmpty() && !uiState.isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Chưa có sự kiện nào. Hãy tạo ngay!", color = Color.Gray)
+                            }
+                        }
+                    } else {
+                        items(uiState.myEvents) { event ->
+                            OrganizerEventCard(
+                                event = event,
+                                onClick = {
+                                    navController.navigate(Screen.EventManagement.createRoute(event.id))
+                                }
+                            )
+                        }
+                    }
+
+                    // 4. Loading Indicator khi đang load more
+                    if (uiState.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            }
+                        }
+                    }
+
+                    // Spacer dưới cùng để không bị FAB che
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                }
             }
         }
     }
@@ -128,19 +182,17 @@ fun StatsSection(stats: DashboardStatsResponse) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Revenue Card
         StatsCard(
             title = "Revenue",
             value = AppUtils.formatPrice(stats.totalRevenue),
             modifier = Modifier.weight(1f),
-            color = Color(0xFF4CAF50) // Green
+            color = Color(0xFF4CAF50)
         )
-        // Tickets Sold Card
         StatsCard(
             title = "Tickets Sold",
             value = stats.totalTicketsSold.toString(),
             modifier = Modifier.weight(1f),
-            color = Color(0xFF2196F3) // Blue
+            color = Color(0xFF2196F3)
         )
     }
     Spacer(modifier = Modifier.height(12.dp))
@@ -152,13 +204,13 @@ fun StatsSection(stats: DashboardStatsResponse) {
             title = "Total Events",
             value = stats.totalEvents.toString(),
             modifier = Modifier.weight(1f),
-            color = Color(0xFFFF9800) // Orange
+            color = Color(0xFFFF9800)
         )
         StatsCard(
             title = "Upcoming",
             value = stats.upcomingEvents.toString(),
             modifier = Modifier.weight(1f),
-            color = Color(0xFF9C27B0) // Purple
+            color = Color(0xFF9C27B0)
         )
     }
 }
@@ -198,7 +250,6 @@ fun OrganizerEventCard(event: MyEventDto, onClick: () -> Unit) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Date Box
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -228,7 +279,6 @@ fun OrganizerEventCard(event: MyEventDto, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Status Badge
                 val (statusColor, statusText) = when (event.status.lowercase()) {
                     "active" -> Color(0xFF4CAF50) to "Published"
                     "pending" -> Color(0xFFFF9800) to "Pending Review"

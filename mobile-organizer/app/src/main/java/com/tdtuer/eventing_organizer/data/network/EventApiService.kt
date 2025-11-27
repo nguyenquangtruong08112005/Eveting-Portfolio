@@ -1,18 +1,23 @@
 package com.tdtuer.eventing_organizer.data.network
 
 import com.tdtuer.eventing_organizer.data.network.model.BookTicketRequest
+import com.tdtuer.eventing_organizer.data.network.model.BroadcastRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
 import com.tdtuer.eventing_organizer.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing_organizer.data.network.model.CreatePaymentOrderResponse
+import com.tdtuer.eventing_organizer.data.network.model.CreateProfileRequest
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventAttendeesResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventDetailDto
 import com.tdtuer.eventing_organizer.data.network.model.EventDto
 import com.tdtuer.eventing_organizer.data.network.model.EventListResponse
+import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
+import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileListResponse
 import com.tdtuer.eventing_organizer.data.network.model.MediaResponse
+import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.MyEventsResponse
 import com.tdtuer.eventing_organizer.data.network.model.NotificationDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
@@ -29,12 +34,15 @@ import com.tdtuer.eventing_organizer.data.network.model.UserTicketResponse
 import com.tdtuer.eventing_organizer.data.network.model.VenueResponse
 import com.tdtuer.eventing_organizer.data.network.model.WeatherDto
 import com.tdtuer.eventing_organizer.domain.model.Ticket
-import com.tdtuer.eventing_organizer.domain.usecase.payment.CreateZaloPayOrderUseCase
+import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -157,6 +165,7 @@ interface EventApiService {
     @POST("notifications/{id}/read")
     suspend fun markNotificationAsRead(@Path("id") notificationId: String): Response<Unit>
 
+    @POST("organizer/register")
     suspend fun registerOrganizer(@Body request: RegisterOrganizerRequest): Response<Unit>
 
     @GET("organizer/me")
@@ -183,7 +192,7 @@ interface EventApiService {
     suspend fun getPendingEvents(
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 20
-    ): Response<MyEventsResponse> // Tái sử dụng MyEventsResponse vì cấu trúc list giống nhau
+    ): Response<List<MyEventDto>> // Tái sử dụng MyEventsResponse vì cấu trúc list giống nhau
 
     @POST("admin/events/{id}/approve")
     suspend fun approveEvent(@Path("id") eventId: String): Response<Unit>
@@ -213,6 +222,40 @@ interface EventApiService {
     @GET("profiles")
     suspend fun getFeaturedProfiles(
         @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 100 // Lấy nhiều để chọn
-    ): Response<List<FeaturedProfileDto>> // Hoặc Response<FeaturedProfileListResponse> tùy backend
+        @Query("limit") limit: Int = 100
+    ): Response<FeaturedProfileListResponse> // <-- Đã sửa kiểu trả về
+
+    @POST("profiles")
+    suspend fun createFeaturedProfile(
+        @Body request: CreateProfileRequest
+    ): Response<FeaturedProfileDto>
+
+    // 1.5 Thống kê chi tiết 1 sự kiện
+    @GET("organizer/events/{eventId}/stats")
+    suspend fun getEventStats(@Path("eventId") eventId: String): Response<EventStatsResponse>
+
+
+    @PUT("events/{id}")
+    suspend fun updateEvent(
+        @Path("id") eventId: String,
+        @Body request: CreateEventRequest // Tái sử dụng DTO này vì cấu trúc giống hệt
+    ): Response<Unit>
+
+    @Multipart
+    @POST("organizer/events/{eventId}/attendees/import")
+    suspend fun importAttendees(
+        @Path("eventId") eventId: String,
+        @Part file: MultipartBody.Part // Đảm bảo đúng import okhttp3.MultipartBody
+    ): Response<Unit>
+
+    @GET("organizer/events/{eventId}/attendees/export")
+    suspend fun exportAttendees(
+        @Path("eventId") eventId: String
+    ): Response<ResponseBody> // Trả về file stream
+
+    @POST("organizer/events/{eventId}/broadcast")
+    suspend fun broadcastNotification(
+        @Path("eventId") eventId: String,
+        @Body request: BroadcastRequest
+    ): Response<Unit>
 }

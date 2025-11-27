@@ -86,6 +86,18 @@ sealed class Screen(val route: String) {
     data object HelpFaqs : Screen("help_faqs_screen") // Màn hình mới hoặc webview
 
     object LocationPicker : Screen("location_picker") // Màn hình mới
-    // ... thêm các bước tạo sự kiện khác
+
+    data object EventManagement : Screen("event_management/{eventId}") {
+        fun createRoute(eventId: String) = "event_management/$eventId"
+    }
+
+    object AdminDashboard : Screen("admin_dashboard")
+    data object AdminEventDetail : Screen("admin_event_detail/{eventId}") {
+        fun createRoute(eventId: String) = "admin_event_detail/$eventId"
+    }
+
+    data object EditEvent : Screen("edit_event/{eventId}") {
+        fun createRoute(eventId: String) = "edit_event/$eventId"
+    }
 }
 

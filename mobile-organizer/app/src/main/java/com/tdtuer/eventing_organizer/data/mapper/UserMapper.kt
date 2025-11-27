@@ -14,6 +14,7 @@ fun UserDto.toDomainModel(): User {
         profilePicUrl = this.profilePicUrl ?: "",
         coverPhotoUrl = this.coverPhotoUrl ?: "",
         isOrganizer = this.isOrganizer ?: false,
+        isAdmin = this.isAdmin ?: false,
         // Map aboutMe từ server vào bio của domain
         bio = this.aboutMe ?: "",
         birthDate = this.birthDate ?: 0L,

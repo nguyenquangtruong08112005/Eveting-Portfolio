@@ -4,89 +4,52 @@ import com.google.gson.annotations.SerializedName
 
 // DTO này dùng để "hứng" CẤU TRÚC ĐẦY ĐỦ của một sự kiện
 data class EventDetailDto(
-    @SerializedName("id")
-    val id: String?,
+    @SerializedName("id") val id: String?,
+    @SerializedName("name") val name: String?,
+    @SerializedName("description") val description: String?,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("bannerUrl") val bannerUrl: String?,
 
-    @SerializedName("name")
-    val name: String?,
+    // --- SỬA ĐỔI: Server trả về ID list, không phải Object list ---
+    @SerializedName("featuredProfileIds") val featuredProfileIds: List<String>?,
+    // Giữ lại field này phòng trường hợp server update populate data sau này
+    @SerializedName("featuredProfiles") val featuredProfiles: List<FeaturedProfileDto>?,
 
-    @SerializedName("description")
-    val description: String?,
+    @SerializedName("category") val category: List<String>?,
+    @SerializedName("tags") val tags: List<String>?,
 
-    @SerializedName("imageUrl")
-    val imageUrl: String?,
+    @SerializedName("date") val date: Long?,
+    @SerializedName("endDate") val endDate: Long?,
 
-    @SerializedName("bannerUrl")
-    val bannerUrl: String?,
+    @SerializedName("eventType") val eventType: String?,
+    @SerializedName("onlineUrl") val onlineUrl: String?,
 
-    @SerializedName("featuredProfiles")
-    val featuredProfiles: List<FeaturedProfileDto>?, // Sửa thành List<String>
+    @SerializedName("location") val location: LocationDto?,
+    @SerializedName("geohash") val geohash: String?,
+    @SerializedName("city") val city: String?,
+    @SerializedName("venueName") val venueName: String?,
 
-    @SerializedName("category")
-    val category: List<String>?,
-
-    @SerializedName("tags")
-    val tags: List<String>?,
-
-    @SerializedName("date")
-    val date: Long?,
-
-    @SerializedName("endDate")
-    val endDate: Long?,
-
-    @SerializedName("eventType")
-    val eventType: String?,
-
-    @SerializedName("onlineUrl")
-    val onlineUrl: String?,
-
-    @SerializedName("location")
-    val location: LocationDto?,
-
-    @SerializedName("geohash")
-    val geohash: String?,
-
-    @SerializedName("city")
-    val city: String?,
-
-    @SerializedName("venueName")
-    val venueName: String?,
-
-    @SerializedName("videoUrl")
-    val videoUrl: String?,
-
-    @SerializedName("isOutdoor")
-    val isOutdoor: Boolean?,
-
-    @SerializedName("visibility")
-    val visibility: String?,
-
-    @SerializedName("requireAge")
-    val requireAge: Int?,
-
+    @SerializedName("videoUrl") val videoUrl: String?,
+    @SerializedName("isOutdoor") val isOutdoor: Boolean?,
+    @SerializedName("visibility") val visibility: String?,
+    @SerializedName("requireAge") val requireAge: Int?,
     @SerializedName("status")
     val status: String?,
+    @SerializedName("minPrice") val minPrice: Double?,
 
-    @SerializedName("sponsors")
-    val sponsors: List<SponsorDto>?,
-
-    @SerializedName("minPrice")
-    val minPrice: Double?,
+    @SerializedName("sponsors") val sponsors: List<SponsorDto>?,
 
     @SerializedName("ticketTypes")
-    val ticketTypes: Map<String, PublicTicketTypeDto>?,
+    val ticketTypes: Map<String, TicketTypeDetailsDto>?,
 
-    @SerializedName("venue")
-    val venue: VenueDto? // Sửa thành VenueDto
+    @SerializedName("venue") val venue: VenueDto?
 )
 
-data class PublicTicketTypeDto(
-    @SerializedName("quantity")
-    val quantity: Int?,
-
-    @SerializedName("price")
-    val price: Long?,
-
-    @SerializedName("available")
-    val available: Int?,
+// DTO cho Ticket Type trong chi tiết sự kiện
+data class TicketTypeDetailsDto(
+    @SerializedName("name") val name: String?,
+    @SerializedName("price") val price: Double?, // Use Double or Long
+    @SerializedName("quantity") val quantity: Int?,
+    @SerializedName("available") val available: Int?,
+    @SerializedName("description") val description: String?
 )

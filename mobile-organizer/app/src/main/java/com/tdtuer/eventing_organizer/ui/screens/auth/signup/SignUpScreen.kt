@@ -1,19 +1,9 @@
 package com.tdtuer.eventing_organizer.ui.screens.auth.signup
 
-import android.content.Context
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -22,19 +12,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,9 +36,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.facebook.AccessToken
 import com.tdtuer.eventing_organizer.R
-import com.tdtuer.eventing_organizer.ui.components.FacebookLoginButton
 import com.tdtuer.eventing_organizer.ui.components.GradientButton
-//import com.tdtuer.eventing_organizer.ui.components.OrDivider
+import com.tdtuer.eventing_organizer.ui.components.OrDivider
 import com.tdtuer.eventing_organizer.ui.components.SocialLoginButton
 import com.tdtuer.eventing_organizer.ui.screens.auth.AuthState
 
@@ -78,56 +56,28 @@ fun SignUpScreen(
                 Toast.makeText(context, "Sign up successful!", Toast.LENGTH_SHORT).show()
                 onSignUpSuccess()
             }
-
             is AuthState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
             }
-
-            else -> { /* No-op for Idle and Loading */
-            }
+            else -> { }
         }
     }
 
     SignUpContent(
+        viewModel = viewModel,
         authState = authState,
-        fullName = viewModel.fullName,
-        onFullNameChange = viewModel::onFullNameChange,
-        email = viewModel.email,
-        onEmailChange = viewModel::onEmailChange,
-        password = viewModel.password,
-        onPasswordChange = viewModel::onPasswordChange,
-        passwordVisibility = viewModel.passwordVisibility,
-        onPasswordVisibilityToggle = viewModel::onPasswordVisibilityToggle,
-        confirmPassword = viewModel.confirmPassword,
-        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
-        confirmPasswordVisibility = viewModel.confirmPasswordVisibility,
-        onConfirmPasswordVisibilityToggle = viewModel::onConfirmPasswordVisibilityToggle,
         onSignUpClick = viewModel::onSignUpClick,
         onGoogleLoginClick = { viewModel.onGoogleLoginClick(context) },
         onFacebookLoginSuccess = viewModel::onFacebookLoginClick,
-        onFacebookLoginError = { errorMessage ->
-            val message = errorMessage ?: "Facebook Sign-In failed"
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        },
+        onFacebookLoginError = { Toast.makeText(context, it ?: "Error", Toast.LENGTH_SHORT).show() },
         onSignInLinkClick = { onSignInClick() }
     )
 }
 
 @Composable
 private fun SignUpContent(
+    viewModel: SignUpViewModel, // Truyền ViewModel vào để lấy state
     authState: AuthState,
-    fullName: String,
-    onFullNameChange: (String) -> Unit,
-    email: String,
-    onEmailChange: (String) -> Unit,
-    password: String,
-    onPasswordChange: (String) -> Unit,
-    passwordVisibility: Boolean,
-    onPasswordVisibilityToggle: () -> Unit,
-    confirmPassword: String,
-    onConfirmPasswordChange: (String) -> Unit,
-    confirmPasswordVisibility: Boolean,
-    onConfirmPasswordVisibilityToggle: () -> Unit,
     onSignUpClick: () -> Unit,
     onGoogleLoginClick: () -> Unit,
     onFacebookLoginSuccess: (AccessToken) -> Unit,
@@ -139,11 +89,7 @@ private fun SignUpContent(
     Surface(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    focusManager.clearFocus()
-                })
-            },
+            .pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) },
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
@@ -155,30 +101,13 @@ private fun SignUpContent(
         ) {
             SignUpHeader(onSignInLinkClick = onSignInLinkClick)
             Spacer(modifier = Modifier.height(24.dp))
-            SignUpForm(
-                fullName = fullName,
-                onFullNameChange = onFullNameChange,
-                email = email,
-                onEmailChange = onEmailChange,
-                password = password,
-                onPasswordChange = onPasswordChange,
-                passwordVisibility = passwordVisibility,
-                onPasswordVisibilityToggle = onPasswordVisibilityToggle,
-                confirmPassword = confirmPassword,
-                onConfirmPasswordChange = onConfirmPasswordChange,
-                confirmPasswordVisibility = confirmPasswordVisibility,
-                onConfirmPasswordVisibilityToggle = onConfirmPasswordVisibilityToggle,
-                onSignUpClick = onSignUpClick,
-                isLoading = authState is AuthState.Loading
-            )
+
+            SignUpForm(viewModel = viewModel, onSignUpClick = onSignUpClick, isLoading = authState is AuthState.Loading)
+
             Spacer(modifier = Modifier.height(24.dp))
 //            OrDivider("Or continue with")
-            Spacer(modifier = Modifier.height(24.dp))
-//            SocialLogins(
-//                onGoogleLoginClick = onGoogleLoginClick,
-//                onFacebookLoginSuccess = onFacebookLoginSuccess,
-//                onFacebookLoginError = onFacebookLoginError
-//            )
+//            Spacer(modifier = Modifier.height(24.dp))
+//            SocialLogins(onGoogleLoginClick, onFacebookLoginSuccess, onFacebookLoginError)
             Spacer(modifier = Modifier.weight(1f))
             SignInRedirect(onSignInLinkClick = onSignInLinkClick)
         }
@@ -189,137 +118,147 @@ private fun SignUpContent(
 private fun SignUpHeader(onSignInLinkClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
     ) {
         IconButton(onClick = onSignInLinkClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back to Sign In"
-            )
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
-        Text(
-            text = "Sign up",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Text("Sign up", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun SignUpForm(
-    fullName: String,
-    onFullNameChange: (String) -> Unit,
-    email: String,
-    onEmailChange: (String) -> Unit,
-    password: String,
-    onPasswordChange: (String) -> Unit,
-    passwordVisibility: Boolean,
-    onPasswordVisibilityToggle: () -> Unit,
-    confirmPassword: String,
-    onConfirmPasswordChange: (String) -> Unit,
-    confirmPasswordVisibility: Boolean,
-    onConfirmPasswordVisibilityToggle: () -> Unit,
+    viewModel: SignUpViewModel,
     onSignUpClick: () -> Unit,
     isLoading: Boolean
 ) {
-    // 1. Create FocusRequesters
-    val (fullNameFR, emailFR, passwordFR, confirmPasswordFR) = remember { FocusRequester.createRefs() }
-
-    // 2. Auto-focus on the first field
-    LaunchedEffect(Unit) {
-        fullNameFR.requestFocus()
-    }
+    val (nameFR, emailFR, passFR, confirmFR) = remember { FocusRequester.createRefs() }
 
     Column {
+        // Basic Info
         OutlinedTextField(
-            value = fullName,
-            onValueChange = onFullNameChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(fullNameFR),
+            value = viewModel.fullName,
+            onValueChange = viewModel::onFullNameChange,
+            modifier = Modifier.fillMaxWidth().focusRequester(nameFR),
             label = { Text("Full name") },
-            leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Full name Icon") },
+            leadingIcon = { Icon(Icons.Default.Person, null) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { emailFR.requestFocus() })
         )
-
         Spacer(modifier = Modifier.height(16.dp))
-
         OutlinedTextField(
-            value = email,
-            onValueChange = onEmailChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(emailFR),
+            value = viewModel.email,
+            onValueChange = viewModel::onEmailChange,
+            modifier = Modifier.fillMaxWidth().focusRequester(emailFR),
             label = { Text("Email") },
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Icon") },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next
-            ),
+            leadingIcon = { Icon(Icons.Default.Email, null) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
-            keyboardActions = KeyboardActions(onNext = { passwordFR.requestFocus() })
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { passFR.requestFocus() })
         )
-
         Spacer(modifier = Modifier.height(16.dp))
-
         OutlinedTextField(
-            value = password,
-            onValueChange = onPasswordChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(passwordFR),
+            value = viewModel.password,
+            onValueChange = viewModel::onPasswordChange,
+            modifier = Modifier.fillMaxWidth().focusRequester(passFR),
             label = { Text("Password") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
+            leadingIcon = { Icon(Icons.Default.Lock, null) },
             trailingIcon = {
-                val icon =
-                    if (passwordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                IconButton(onClick = onPasswordVisibilityToggle) {
-                    Icon(icon, contentDescription = "Toggle password visibility")
+                IconButton(onClick = viewModel::onPasswordVisibilityToggle) {
+                    Icon(if (viewModel.passwordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null)
                 }
             },
-            visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Next
-            ),
+            visualTransformation = if (viewModel.passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
-            keyboardActions = KeyboardActions(onNext = { confirmPasswordFR.requestFocus() })
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { confirmFR.requestFocus() })
         )
-
         Spacer(modifier = Modifier.height(16.dp))
-
         OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = onConfirmPasswordChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(confirmPasswordFR),
+            value = viewModel.confirmPassword,
+            onValueChange = viewModel::onConfirmPasswordChange,
+            modifier = Modifier.fillMaxWidth().focusRequester(confirmFR),
             label = { Text("Confirm password") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
+            leadingIcon = { Icon(Icons.Default.Lock, null) },
             trailingIcon = {
-                val icon =
-                    if (confirmPasswordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                IconButton(onClick = onConfirmPasswordVisibilityToggle) {
-                    Icon(icon, contentDescription = "Toggle confirm password visibility")
+                IconButton(onClick = viewModel::onConfirmPasswordVisibilityToggle) {
+                    Icon(if (viewModel.confirmPasswordVisibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null)
                 }
             },
-            visualTransformation = if (confirmPasswordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done
-            ),
+            visualTransformation = if (viewModel.confirmPasswordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
-            keyboardActions = KeyboardActions(onDone = { onSignUpClick() })
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done)
         )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // --- ORGANIZER TOGGLE ---
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("Register as Organizer", fontWeight = FontWeight.Bold)
+                Text("Create and manage events", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(
+                checked = viewModel.isOrganizerMode,
+                onCheckedChange = viewModel::onOrganizerModeChange
+            )
+        }
+
+        // --- ORGANIZER FIELDS ---
+        AnimatedVisibility(visible = viewModel.isOrganizerMode) {
+            Column {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = viewModel.companyName,
+                    onValueChange = viewModel::onCompanyNameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Company / Organization Name*") },
+                    leadingIcon = { Icon(Icons.Default.Business, null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = viewModel.taxCode,
+                    onValueChange = viewModel::onTaxCodeChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Tax Code (Optional)") },
+                    leadingIcon = { Icon(Icons.Default.Numbers, null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = viewModel.website,
+                    onValueChange = viewModel::onWebsiteChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Website (Optional)") },
+                    leadingIcon = { Icon(Icons.Default.Language, null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = viewModel.description,
+                    onValueChange = viewModel::onDescriptionChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Description") },
+                    leadingIcon = { Icon(Icons.Default.Description, null) },
+                    minLines = 3,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -329,7 +268,7 @@ private fun SignUpForm(
             }
         } else {
             GradientButton(
-                text = "SIGN UP",
+                text = if (viewModel.isOrganizerMode) "REGISTER ORGANIZER" else "SIGN UP",
                 onClick = onSignUpClick,
                 icon = Icons.AutoMirrored.Default.ArrowForward
             )
@@ -337,6 +276,7 @@ private fun SignUpForm(
     }
 }
 
+// ... (SocialLogins và SignInRedirect giữ nguyên)
 @Composable
 private fun SocialLogins(
     onGoogleLoginClick: () -> Unit,

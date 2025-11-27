@@ -7,6 +7,7 @@ data class User(
     val profilePicUrl: String = "",
     val coverPhotoUrl: String = "",
     val isOrganizer: Boolean = false,
+    val isAdmin: Boolean = false,
     val bio: String = "", // Sẽ map từ aboutMe
     val birthDate: Long = 0L,
     val address: String = "",

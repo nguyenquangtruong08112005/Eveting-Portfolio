@@ -5,157 +5,184 @@ import com.google.gson.annotations.SerializedName
 // --- REQUESTS ---
 
 data class RegisterOrganizerRequest(
-    val companyName: String,
-    val description: String,
-    val taxCode: String? = null,
-    val website: String? = null
+    @SerializedName("companyName") val companyName: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("taxCode") val taxCode: String? = null,
+    @SerializedName("website") val website: String? = null
 )
 
 data class CreateEventRequest(
-    val name: String,
-    val eventType: String = "physical", // 'physical' or 'online'
-    val date: Long,
-    val endDate: Long? = null, // Optional
-    val description: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("eventType") val eventType: String = "physical", // 'physical' or 'online'
+    @SerializedName("date") val date: Long,
+    @SerializedName("endDate") val endDate: Long? = null, // Optional
+    @SerializedName("description") val description: String,
 
-    val bannerUrl: String, // Ảnh ngang
-    val imageUrl: String,  // Ảnh dọc (Thumbnail)
-    val videoUrl: String? = null,
+    @SerializedName("bannerUrl") val bannerUrl: String, // Ảnh ngang
+    @SerializedName("imageUrl") val imageUrl: String,  // Ảnh dọc (Thumbnail)
+    @SerializedName("videoUrl") val videoUrl: String? = null,
 
-    val isOutdoor: Boolean = false,
-    val ticketTypes: List<TicketTypeRequest>,
-    val category: List<String> = emptyList(),
-    val tags: List<String> = emptyList(),
+    @SerializedName("isOutdoor") val isOutdoor: Boolean = false,
+    @SerializedName("ticketTypes") val ticketTypes: List<TicketTypeRequest>,
+    @SerializedName("category") val category: List<String> = emptyList(),
+    @SerializedName("tags") val tags: List<String> = emptyList(),
 
     // --- CASE 1: ONLINE ---
-    val onlineUrl: String? = null,
+    @SerializedName("onlineUrl") val onlineUrl: String? = null,
 
     // --- CASE 2: PHYSICAL (EXISTING VENUE) ---
-    val venueId: String? = null,
+    @SerializedName("venueId") val venueId: String? = null,
 
     // --- CASE 3: PHYSICAL (CUSTOM LOCATION) ---
-    val venueName: String? = null,
-    val location: LocationCoordinates? = null,
-    val addressDetails: AddressDetailsRequest? = null
+    @SerializedName("venueName") val venueName: String? = null,
+    @SerializedName("location") val location: LocationCoordinates? = null,
+    @SerializedName("addressDetails") val addressDetails: AddressDetailsRequest? = null,
+
+    @SerializedName("featuredProfileIds") val featuredProfileIds: List<String>
 )
+
 data class LocationCoordinates(
-    val latitude: Double,
-    val longitude: Double
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double
 )
 
 data class AddressDetailsRequest(
-    val street: String,
-    val ward: String,
-    val district: String,
-    val city: String
+    @SerializedName("street") val street: String,
+    @SerializedName("ward") val ward: String,
+    @SerializedName("district") val district: String,
+    @SerializedName("city") val city: String
 )
 
 data class LocationRequest(
-    val name: String,
-    val address: String,
-    val lat: Double,
-    val lng: Double
+    @SerializedName("name") val name: String,
+    @SerializedName("address") val address: String,
+    @SerializedName("lat") val lat: Double,
+    @SerializedName("lng") val lng: Double
 )
 
 data class TicketTypeRequest(
-    val name: String,
-    val price: Double,
-    val quantity: Int,
-    val description: String? = null
+    @SerializedName("name") val name: String,
+    @SerializedName("price") val price: Double,
+    @SerializedName("quantity") val quantity: Int,
+    @SerializedName("description") val description: String? = null
 )
 
 data class CheckInRequest(
-    val qrToken: String
+    @SerializedName("qrToken") val qrToken: String
 )
 
 // --- RESPONSES ---
 
 data class OrganizerProfileResponse(
-    val id: String,
-    val name: String,
-    val avatarUrl: String?,
-    val followersCount: Int,
-    val rating: Double,
-    val organizerInfo: OrganizerInfo?
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("avatarUrl") val avatarUrl: String?,
+    @SerializedName("followersCount") val followersCount: Int,
+    @SerializedName("rating") val rating: Double,
+    @SerializedName("organizerInfo") val organizerInfo: OrganizerInfo?
 )
 
 data class OrganizerInfo(
-    val companyName: String,
-    val description: String,
-    val taxCode: String?
+    @SerializedName("companyName") val companyName: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("taxCode") val taxCode: String?,
+    @SerializedName("website") val website: String?
 )
 
 data class MyEventsResponse(
-    val data: List<MyEventDto>
+    @SerializedName("data") val data: List<MyEventDto>
 )
 
 data class MyEventDto(
-    val id: String,
-    val name: String,
-    val date: Long,
-    val bannerUrl: String?,
-    val status: String, // pending, active, rejected...
-    val viewCount: Int
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String?,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("bannerUrl") val bannerUrl: String?,
+    @SerializedName("date") val date: Long,
+    @SerializedName("location") val location: LocationDto?,
+    @SerializedName("venueName") val venueName: String?,
+    @SerializedName("city") val city: String?,
+    @SerializedName("status") val status: String,
+    @SerializedName("viewCount") val viewCount: Int,
+    // Thêm các trường khác nếu cần hiển thị chi tiết khi duyệt
+    @SerializedName("minPrice") val minPrice: Double?,
+    @SerializedName("organizerId") val organizerId: String?
 )
 
 data class DashboardStatsResponse(
-    val totalRevenue: Double,
-    val totalTicketsSold: Int,
-    val totalEvents: Int,
-    val upcomingEvents: Int
+    @SerializedName("totalRevenue") val totalRevenue: Double,
+    @SerializedName("totalTicketsSold") val totalTicketsSold: Int,
+    @SerializedName("totalEvents") val totalEvents: Int,
+    @SerializedName("upcomingEvents") val upcomingEvents: Int
 )
 
 data class CheckInResponse(
-    val valid: Boolean,
-    val message: String,
-    val ticketInfo: CheckInTicketInfo?
+    @SerializedName("valid") val valid: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("ticketInfo") val ticketInfo: CheckInTicketInfo?
 )
 
 data class CheckInTicketInfo(
-    val ticketId: String,
-    val userId: String,
-    val ticketType: String,
-    val seat: String?,
-    val status: String,
-    val checkedInAt: Long?
+    @SerializedName("ticketId") val ticketId: String,
+    @SerializedName("userId") val userId: String,
+    @SerializedName("ticketType") val ticketType: String,
+    @SerializedName("seat") val seat: String?,
+    @SerializedName("status") val status: String,
+    @SerializedName("checkedInAt") val checkedInAt: Long?
 )
 
 // 1.7 Update Profile Request
 data class UpdateOrganizerProfileRequest(
-    val companyName: String? = null,
-    val description: String? = null,
-    val website: String? = null,
-    val avatarUrl: String? = null
+    @SerializedName("companyName") val companyName: String? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("website") val website: String? = null,
+    @SerializedName("avatarUrl") val avatarUrl: String? = null,
+    @SerializedName("taxCode") val taxCode: String? = null
 )
 
 // 1.8 Get Attendees Response
 data class EventAttendeesResponse(
-    val attendees: List<AttendeeDto>
+    @SerializedName("attendees") val attendees: List<AttendeeDto>
 )
 
 data class AttendeeDto(
-    val ticket: AttendeeTicketDto,
-    val user: AttendeeUserDto
+    @SerializedName("ticket") val ticket: AttendeeTicketDto,
+    @SerializedName("user") val user: AttendeeUserDto
 )
 
 data class AttendeeTicketDto(
-    val id: String,
-    val type: String,
-    val status: String, // paid, checkedIn
-    val seat: String?
+    @SerializedName("id") val id: String,
+    @SerializedName("type") val type: String,
+    @SerializedName("status") val status: String, // paid, checkedIn
+    @SerializedName("seat") val seat: String?
 )
 
 data class AttendeeUserDto(
-    val id: String,
-    val name: String,
-    val email: String,
-    val profilePicUrl: String?
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("profilePicUrl") val profilePicUrl: String?
 )
 
 // DTO cho danh sách Venue lấy từ API [GET] /venues
 data class VenueResponse(
-    val id: String,
-    val name: String,
-    val addressDetails: AddressDetailsDto?,
-    val location: LocationDto?
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("addressDetails") val addressDetails: AddressDetailsDto?,
+    @SerializedName("location") val location: LocationDto?
+)
+
+data class EventStatsResponse(
+    @SerializedName("eventId") val eventId: String,
+    @SerializedName("totalRevenue") val totalRevenue: Double,
+    @SerializedName("ticketsSold") val ticketsSold: Map<String, Int>?, // VD: {"VIP": 10, "Standard": 50}
+    @SerializedName("checkIns") val checkIns: Int,
+    @SerializedName("views") val views: Int
+)
+
+// Request Body cho Broadcast
+data class BroadcastRequest(
+    val title: String,
+    val message: String
 )

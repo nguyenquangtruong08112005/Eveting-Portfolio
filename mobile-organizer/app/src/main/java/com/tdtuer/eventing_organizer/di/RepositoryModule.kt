@@ -35,15 +35,17 @@ abstract class RepositoryModule {
         @Provides
         @Singleton
         fun provideEventRepository(
-            apiService: EventApiService
+            apiService: EventApiService,
+            @ApplicationContext context: Context // Sửa: Inject thêm context vào đây để dùng cho EventRepositoryImpl nếu cần (hiện tại EventRepositoryImpl đã có constructor nhận context)
         ): EventRepository {
-            return EventRepositoryImpl(apiService)
+            // EventRepositoryImpl constructor: (apiService, context)
+            return EventRepositoryImpl(apiService, context)
         }
 
         @Provides
         @Singleton
         fun provideTicketRepository(
-            @ApplicationContext context: Context,
+            @ApplicationContext context: Context, // Sửa: Thêm tham số context được inject từ Hilt
             apiService: EventApiService
         ): TicketRepository {
             return TicketRepositoryImpl(context, apiService)

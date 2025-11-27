@@ -1,18 +1,10 @@
 package com.tdtuer.eventing_organizer.data.mapper
 
-import com.tdtuer.eventing_organizer.data.network.model.EventDetailDto
-import com.tdtuer.eventing_organizer.data.network.model.EventDto
-import com.tdtuer.eventing_organizer.data.network.model.LocationDto
-import com.tdtuer.eventing_organizer.data.network.model.PublicTicketTypeDto
-import com.tdtuer.eventing_organizer.data.network.model.SponsorDto
-import com.tdtuer.eventing_organizer.data.network.model.TicketTypeDto
-import com.tdtuer.eventing_organizer.data.network.model.VenueDto
-import com.tdtuer.eventing_organizer.data.network.model.WeatherDto
+import com.tdtuer.eventing_organizer.data.network.model.*
 import com.tdtuer.eventing_organizer.domain.model.Event
 import com.tdtuer.eventing_organizer.domain.model.Weather
 
 // --- HÀM MAP CHÍNH ---
-// Đây là hàm "biên dịch" DTO thô thành Domain Model "sạch"
 fun EventDto.toDomainModel(): Event {
     return Event(
         id = this.id ?: "",
@@ -31,13 +23,21 @@ fun EventDto.toDomainModel(): Event {
 }
 
 fun EventDetailDto.toDomainModel(): Event {
+    // Logic xử lý Featured Profiles: Ưu tiên lấy IDs nếu server trả về IDs
+    // Nếu server trả về object thì map sang object, hiện tại server trả về List String ID
+    val profileIds = this.featuredProfileIds ?: this.featuredProfiles?.map { it.id } ?: emptyList()
+
     return Event(
         id = this.id ?: "",
         name = this.name ?: "",
         description = this.description ?: "",
         imageUrl = this.imageUrl ?: "",
         bannerUrl = this.bannerUrl ?: "",
-        featuredProfiles = this.featuredProfiles ?: emptyList(),
+
+        // Lưu List String ID vào đây thay vì List Object (vì Domain đang để List<Any>)
+        // Tốt nhất nên refactor Domain thành List<String> cho featuredProfileIds riêng
+        featuredProfiles = profileIds,
+
         category = this.category ?: emptyList(),
         tags = this.tags ?: emptyList(),
         date = this.date ?: 0L,
@@ -46,7 +46,7 @@ fun EventDetailDto.toDomainModel(): Event {
         onlineUrl = this.onlineUrl ?: "",
         location = this.location?.toLocationString() ?: "",
         geohash = this.geohash ?: "",
-        city = this.city ?: "Viet Nam",
+        city = this.city ?: "Thành phố Hồ Chí Minh",
         venueName = this.venueName ?: "",
         videoUrl = this.videoUrl ?: "",
         isOutdoor = this.isOutdoor ?: false,
@@ -60,7 +60,6 @@ fun EventDetailDto.toDomainModel(): Event {
     )
 }
 
-
 // --- CÁC HÀM HELPER ---
 
 private fun LocationDto.toLocationString(): String {
@@ -71,17 +70,13 @@ private fun SponsorDto.toSponsorString(): String {
     return this.name ?: "Unknown Sponsor"
 }
 
-private fun TicketTypeDto.toMap(): Map<String, Any> {
+// Hàm helper mới để convert Ticket DTO sang Map Properties (cho khớp Domain cũ)
+private fun TicketTypeDetailsDto.toMap(): Map<String, Any> {
     val map = mutableMapOf<String, Any>()
-    this.price?.let { map["price"] = it }
-    this.quantity?.let { map["quantity"] = it }
-    this.available?.let { map["available"] = it }
-    return map
-}
-
-private fun PublicTicketTypeDto.toMap(): Map<String, Any> {
-    val map = mutableMapOf<String, Any>()
-    this.price?.let { map["price"] = it }
+    map["name"] = this.name ?: ""
+    map["price"] = this.price ?: 0.0
+    map["quantity"] = this.quantity ?: 0
+    map["description"] = this.description ?: ""
     return map
 }
 

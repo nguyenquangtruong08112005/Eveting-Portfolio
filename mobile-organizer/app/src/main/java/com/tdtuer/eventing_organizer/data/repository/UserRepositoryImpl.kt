@@ -12,6 +12,7 @@ import com.tdtuer.eventing_organizer.domain.model.success
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import java.util.concurrent.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,6 +33,8 @@ class UserRepositoryImpl @Inject constructor(
                 emit(Result.Failure(Exception("Failed to fetch profile: ${response.code()}")))
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
             emit(Result.Failure(e))
         }
     }
@@ -47,6 +50,7 @@ class UserRepositoryImpl @Inject constructor(
                 emit(Result.Failure(Exception("Failed to update profile: ${response.code()}")))
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emit(Result.Failure(e))
         }
     }
@@ -58,9 +62,9 @@ class UserRepositoryImpl @Inject constructor(
             storageRef.putFile(uri).await()
             // Lấy download URL
             val downloadUrl = storageRef.downloadUrl.await().toString()
-            Result.success(downloadUrl)
+            Result.Success(downloadUrl)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Failure(e)
         }
     }
 }

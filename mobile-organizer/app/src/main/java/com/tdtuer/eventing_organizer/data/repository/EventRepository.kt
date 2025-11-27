@@ -4,6 +4,8 @@ import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
+import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
+import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
@@ -15,6 +17,7 @@ import com.tdtuer.eventing_organizer.domain.model.Weather
 import com.tdtuer.eventing_organizer.ui.model.MediaItem
 import com.tdtuer.eventing_organizer.ui.model.ReviewItem
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 
 interface EventRepository {
     fun getAllEvents(
@@ -63,7 +66,12 @@ interface EventRepository {
 
     suspend fun registerOrganizer(request: RegisterOrganizerRequest): Result<Unit>
     fun getOrganizerProfile(): Flow<Result<OrganizerProfileResponse>>
-    fun getMyEvents(status: String? = null): Flow<Result<List<MyEventDto>>>
+    fun getMyEvents(
+        status: String? = null,
+        page: Int = 1,
+        limit: Int = 20
+    ): Flow<Result<List<MyEventDto>>>
+
     fun getDashboardStats(): Flow<Result<DashboardStatsResponse>>
     suspend fun createEvent(request: CreateEventRequest): Result<Unit>
     suspend fun checkInTicket(qrToken: String): Result<CheckInResponse>
@@ -78,4 +86,21 @@ interface EventRepository {
     fun getEventAttendees(eventId: String): Flow<Result<List<AttendeeDto>>>
 
     fun getVenues(): Flow<Result<List<VenueResponse>>>
+
+    fun getFeaturedProfiles(): Flow<Result<List<FeaturedProfileDto>>>
+    suspend fun createFeaturedProfile(
+        name: String,
+        bio: String,
+        imageUrl: String?,
+        profileType: String,
+        genres: List<String>
+    ): Result<FeaturedProfileDto>
+
+    fun getEventStats(eventId: String): Flow<Result<EventStatsResponse>>
+
+    suspend fun updateEvent(eventId: String, request: CreateEventRequest): Result<Unit>
+
+    suspend fun importAttendees(eventId: String, file: File): Result<Unit>
+    suspend fun exportAttendees(eventId: String): Result<String> // Trả về đường dẫn file
+    suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<Unit>
 }

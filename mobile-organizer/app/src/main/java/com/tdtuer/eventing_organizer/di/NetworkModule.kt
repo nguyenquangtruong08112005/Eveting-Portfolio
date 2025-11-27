@@ -45,7 +45,7 @@ object NetworkModule {
             }
 
             val requestBuilder = chain.request().newBuilder()
-            
+
             token?.let {
                 requestBuilder.addHeader("Authorization", "Bearer $it")
             }
@@ -78,9 +78,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAddressApiService(gson: Gson, okHttpClient: OkHttpClient): AddressApiService {
+        // API Địa chính dùng base URL khác, nên cần tạo Retrofit riêng hoặc override
         return Retrofit.Builder()
-            .baseUrl("https://provinces.open-api.vn/api/") // Base URL public
-            .client(okHttpClient)
+            .baseUrl("https://provinces.open-api.vn/api/") // Base URL của API hành chính
+            .client(okHttpClient) // Có thể dùng chung client hoặc tạo mới nếu không cần Auth
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(AddressApiService::class.java)

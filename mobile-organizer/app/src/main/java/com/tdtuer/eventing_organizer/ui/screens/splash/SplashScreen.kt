@@ -22,7 +22,8 @@ fun SplashScreen(
     viewModel: SplashViewModel = viewModel(), // Thêm giá trị mặc định
     onNavigateToOnboarding: () -> Unit,
     onNavigateToAuth: () -> Unit, // Thêm lambda cho màn hình Auth
-    onNavigateToHome: () -> Unit
+    onNavigateToHome: () -> Unit,
+    onNavigateToAdmin:() -> Unit
 ) {
     val destination by viewModel.destination.collectAsState()
     var startAnimation by remember { mutableStateOf(false) }
@@ -44,6 +45,13 @@ fun SplashScreen(
             is SplashNavDestination.GoToAuth -> onNavigateToAuth() // Gọi lambda tương ứng
             is SplashNavDestination.GoToHome -> onNavigateToHome()
             is SplashNavDestination.Loading -> { /* Do nothing while loading */ }
+            is SplashNavDestination.GoToAdmin -> {
+                // Sử dụng callback onNavigateToHome nhưng truyền route Admin
+                // Hoặc bạn có thể thêm tham số onNavigateToAdmin riêng cho SplashScreen
+                // Ở đây tôi giả định bạn xử lý trong Navigation.kt
+                // Cách đơn giản nhất là sửa lambda ở Navigation.kt
+                onNavigateToAdmin() // <-- Bạn cần thêm tham số này vào SplashScreen
+            }
         }
     }
 

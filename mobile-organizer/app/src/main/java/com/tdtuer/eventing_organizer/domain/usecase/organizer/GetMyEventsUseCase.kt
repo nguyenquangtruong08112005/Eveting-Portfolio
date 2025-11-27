@@ -10,9 +10,11 @@ class GetMyEventsUseCase @Inject constructor(
     private val repository: EventRepository
 ) {
     /**
-     * @param status: Lọc theo trạng thái (pending, active, rejected, v.v.). Null = lấy tất cả.
+     * @param status: Lọc theo trạng thái.
+     * @param page: Trang hiện tại.
+     * @param limit: Số lượng item mỗi trang.
      */
-    operator fun invoke(status: String? = null): Flow<Result<List<MyEventDto>>> {
-        return repository.getMyEvents(status)
+    operator fun invoke(status: String? = null, page: Int = 1, limit: Int = 20): Flow<Result<List<MyEventDto>>> {
+        return repository.getMyEvents(status, page, limit)
     }
 }

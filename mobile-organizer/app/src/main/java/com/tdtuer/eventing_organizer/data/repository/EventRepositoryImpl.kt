@@ -1,12 +1,22 @@
 package com.tdtuer.eventing_organizer.data.repository
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
 import com.tdtuer.eventing_organizer.data.mapper.toDomainModel
 import com.tdtuer.eventing_organizer.data.network.EventApiService
 import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
+import com.tdtuer.eventing_organizer.data.network.model.BroadcastRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
+import com.tdtuer.eventing_organizer.data.network.model.CreateProfileRequest
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
+import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
+import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing_organizer.data.network.model.MediaItemRequest
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
@@ -16,21 +26,30 @@ import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
 import com.tdtuer.eventing_organizer.data.network.model.UpdateOrganizerProfileRequest
 import com.tdtuer.eventing_organizer.data.network.model.VenueResponse
 import com.tdtuer.eventing_organizer.domain.model.Event
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import javax.inject.Inject
-import javax.inject.Singleton
 import com.tdtuer.eventing_organizer.domain.model.Result
 import com.tdtuer.eventing_organizer.domain.model.Weather
 import com.tdtuer.eventing_organizer.domain.model.failure
 import com.tdtuer.eventing_organizer.domain.model.success
 import com.tdtuer.eventing_organizer.ui.model.MediaItem
 import com.tdtuer.eventing_organizer.ui.model.ReviewItem
-
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.ResponseBody
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class EventRepositoryImpl @Inject constructor(
-    private val apiService: EventApiService
+    private val apiService: EventApiService,
+    @ApplicationContext private val context: Context
 ) : EventRepository {
 
     override fun getAllEvents(
@@ -279,10 +298,10 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getMyEvents(status: String?): Flow<Result<List<MyEventDto>>> = flow {
+    override fun getMyEvents(status: String?, page: Int, limit: Int): Flow<Result<List<MyEventDto>>> = flow {
         emit(Result.Loading)
         try {
-            val response = apiService.getMyEvents(status = status)
+            val response = apiService.getMyEvents(status = status, page = page, limit = limit)
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.Success(response.body()!!.data))
             } else {
@@ -323,7 +342,6 @@ class EventRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 Result.Success(response.body()!!)
             } else {
-                // Xử lý lỗi 400/409 từ Backend trả về JSON lỗi
                 val errorMsg = response.errorBody()?.string() ?: "Check-in failed"
                 Result.Failure(Exception(errorMsg))
             }
@@ -338,9 +356,9 @@ class EventRepositoryImpl @Inject constructor(
         try {
             val response = apiService.getPendingEvents()
             if (response.isSuccessful && response.body() != null) {
-                emit(Result.Success(response.body()!!.data))
+                emit(Result.Success(response.body()!!))
             } else {
-                emit(Result.Failure(Exception("Error")))
+                emit(Result.Failure(Exception("Error loading pending events: ${response.code()}")))
             }
         } catch (e: Exception) {
             emit(Result.Failure(e))
@@ -367,7 +385,6 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    // 1.7 Update Profile
     override suspend fun updateOrganizerProfile(request: UpdateOrganizerProfileRequest): Result<OrganizerProfileResponse> {
         return try {
             val response = apiService.updateOrganizerProfile(request)
@@ -396,7 +413,6 @@ class EventRepositoryImpl @Inject constructor(
     }
 
     override fun getVenues(): Flow<Result<List<VenueResponse>>> = flow {
-        // Không emit Loading để tránh block UI nếu gọi ngầm
         try {
             val response = apiService.getVenues()
             if (response.isSuccessful && response.body() != null) {
@@ -409,4 +425,172 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getFeaturedProfiles(): Flow<Result<List<FeaturedProfileDto>>> = flow {
+        try {
+            val response = apiService.getFeaturedProfiles()
+            if (response.isSuccessful && response.body() != null) {
+                val profilesList = response.body()!!.profiles
+                emit(Result.Success(profilesList))
+            } else {
+                emit(Result.Failure(Exception("Failed to load profiles: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.Failure(e))
+        }
+    }
+
+    override suspend fun createFeaturedProfile(
+        name: String,
+        bio: String,
+        imageUrl: String?,
+        profileType: String,
+        genres: List<String>
+    ): Result<FeaturedProfileDto> {
+        return try {
+            val request = CreateProfileRequest(
+                name = name,
+                bio = bio,
+                imageUrl = imageUrl,
+                profileType = profileType,
+                genres = genres
+            )
+            val response = apiService.createFeaturedProfile(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.Success(response.body()!!)
+            } else {
+                Result.Failure(Exception("Create profile failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override fun getEventStats(eventId: String): Flow<Result<EventStatsResponse>> = flow {
+        emit(Result.Loading)
+        try {
+            val response = apiService.getEventStats(eventId)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.Success(response.body()!!))
+            } else {
+                emit(Result.Failure(Exception("Failed to load event stats")))
+            }
+        } catch (e: Exception) {
+            emit(Result.Failure(e))
+        }
+    }
+
+    override suspend fun updateEvent(eventId: String, request: CreateEventRequest): Result<Unit> {
+        return try {
+            val response = apiService.updateEvent(eventId, request)
+            if (response.isSuccessful) {
+                Result.Success(Unit)
+            } else {
+                Result.Failure(Exception("Update failed: ${response.code()} ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override suspend fun importAttendees(eventId: String, file: File): Result<Unit> {
+        return try {
+            val requestFile = file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
+
+            val response = apiService.importAttendees(eventId, body)
+            if (response.isSuccessful) {
+                Result.Success(Unit)
+            } else {
+                Result.Failure(Exception("Import failed: ${response.code()} ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override suspend fun exportAttendees(eventId: String): Result<String> {
+        return try {
+            val response = apiService.exportAttendees(eventId)
+            if (response.isSuccessful && response.body() != null) {
+                val fileName = "Attendees_${eventId}_${System.currentTimeMillis()}.xlsx"
+                // GỌI HÀM LƯU FILE CẢI TIẾN
+                val path = saveFileToDownloads(response.body()!!, fileName)
+                Result.Success(path)
+            } else {
+                Result.Failure(Exception("Export failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<Unit> {
+        return try {
+            val request = BroadcastRequest(title, message)
+            val response = apiService.broadcastNotification(eventId, request)
+            if (response.isSuccessful) {
+                Result.Success(Unit)
+            } else {
+                Result.Failure(Exception("Broadcast failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    /**
+     * Helper: Lưu file vào thư mục Downloads Công khai
+     * - Android 10+ (API 29+): Dùng MediaStore (Không cần quyền WRITE)
+     * - Android < 10: Dùng Environment.getExternalStoragePublicDirectory (Cần quyền WRITE)
+     */
+    private fun saveFileToDownloads(body: ResponseBody, fileName: String): String {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // 1. Dùng MediaStore cho Android 10+
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw Exception("Không thể tạo file trong thư mục Downloads")
+
+                resolver.openOutputStream(uri).use { outputStream ->
+                    if (outputStream == null) throw Exception("Lỗi ghi file")
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                "Downloads/$fileName" // Trả về đường dẫn tương đối dễ hiểu
+            } else {
+                // 2. Dùng File API cũ cho Android < 10
+                val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!path.exists()) path.mkdirs()
+                val file = File(path, fileName)
+
+                var inputStream: InputStream? = null
+                var outputStream: OutputStream? = null
+
+                try {
+                    inputStream = body.byteStream()
+                    outputStream = FileOutputStream(file)
+                    val buffer = ByteArray(4096)
+                    while (true) {
+                        val read = inputStream.read(buffer)
+                        if (read == -1) break
+                        outputStream.write(buffer, 0, read)
+                    }
+                    outputStream.flush()
+                    file.absolutePath // Trả về đường dẫn tuyệt đối
+                } finally {
+                    inputStream?.close()
+                    outputStream?.close()
+                }
+            }
+        } catch (e: Exception) {
+            throw e
+        }
+    }
 }

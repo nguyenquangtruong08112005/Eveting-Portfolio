@@ -147,4 +147,13 @@ dependencies {
     implementation("androidx.media3:media3-common:$media3Version")
 
     implementation("androidx.compose.runtime:runtime-livedata") // Hoặc phiên bản phù hợp với compose của bạn
+
+    // CameraX
+    val cameraxVersion = "1.3.0" // Hoặc phiên bản mới nhất
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+
+    // ML Kit Barcode Scanning
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
 }

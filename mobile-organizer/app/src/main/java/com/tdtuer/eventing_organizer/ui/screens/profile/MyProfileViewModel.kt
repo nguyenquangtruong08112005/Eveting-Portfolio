@@ -2,46 +2,31 @@ package com.tdtuer.eventing_organizer.ui.screens.profile
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
 import com.tdtuer.eventing_organizer.domain.model.Result
-import com.tdtuer.eventing_organizer.domain.model.User
-import com.tdtuer.eventing_organizer.domain.usecase.user.GetUserProfileUseCase
-import com.tdtuer.eventing_organizer.helpers.formatTimestampToDay
-import com.tdtuer.eventing_organizer.helpers.formatTimestampToMonth
-import com.tdtuer.eventing_organizer.helpers.formatTimestampToYear
+import com.tdtuer.eventing_organizer.domain.usecase.organizer.GetOrganizerProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.random.Random
-
-data class ProfileInterest(val name: String, val color: Color, val backgroundColor: Color)
-
-data class JoinedEventItem(
-    val id: String,
-    val title: String,
-    val date: String,
-    val imageUrl: String
-)
 
 data class ProfileData(
     val id: String = "",
-    val profilePictureUrl: String = "",
-    val coverPhotoUrl: String = "",
-    val userName: String = "",
-    val email: String = "",
-    val isOrganizer: Boolean = false,
-    val followingCount: Int = 0,
+    val name: String = "", // Tên Organizer/Company
+    val avatarUrl: String = "",
     val followersCount: Int = 0,
-    val aboutMe: String = "",
-    val interests: List<ProfileInterest> = emptyList(),
-    val joinedEvents: List<JoinedEventItem> = emptyList()
+    val rating: Double = 0.0,
+    // Thông tin doanh nghiệp chi tiết
+    val companyName: String = "",
+    val description: String = "",
+    val taxCode: String = "",
+    val website: String = "" // Nếu có
 )
 
 @HiltViewModel
 class MyProfileViewModel @Inject constructor(
-    private val getUserProfileUseCase: GetUserProfileUseCase
+    private val getOrganizerProfileUseCase: GetOrganizerProfileUseCase
 ) : ViewModel() {
 
     private val _profileData = mutableStateOf(ProfileData())
@@ -50,70 +35,40 @@ class MyProfileViewModel @Inject constructor(
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
-    private val _selectedTabIndex = mutableStateOf(0)
-    val selectedTabIndex: State<Int> = _selectedTabIndex
-
-    init {
-        // loadUserProfile() // Có thể gọi ở đây hoặc gọi từ UI (LifecycleEvent)
-    }
-
-    fun loadUserProfile() {
+    fun loadProfile() {
         viewModelScope.launch {
             _isLoading.value = true
-            getUserProfileUseCase().collect { result ->
+            getOrganizerProfileUseCase().collect { result ->
+                _isLoading.value = false
                 when (result) {
                     is Result.Success -> {
-                        _isLoading.value = false
-                        _profileData.value = result.data.toProfileData()
+                        val data = result.data
+                        _profileData.value = data.toProfileData()
                     }
+
                     is Result.Failure -> {
-                        _isLoading.value = false
-                        println("Error loading profile: ${result.exception.message}")
+                        // Xử lý lỗi (ví dụ: in log)
                     }
-                    is Result.Loading -> _isLoading.value = true
+
+                    is Result.Loading -> {
+                        _isLoading.value = true
+                    }
                 }
             }
         }
     }
 
-    fun onTabSelected(index: Int) {
-        _selectedTabIndex.value = index
-    }
-
-    // Mapper: Domain User -> UI ProfileData
-    private fun User.toProfileData(): ProfileData {
+    private fun OrganizerProfileResponse.toProfileData(): ProfileData {
         return ProfileData(
             id = this.id,
-            profilePictureUrl = this.profilePicUrl,
-            coverPhotoUrl = this.coverPhotoUrl,
-            userName = this.name,
-            email = this.email,
-            isOrganizer = this.isOrganizer,
-            followingCount = this.followingCount,
+            name = this.name,
+            avatarUrl = this.avatarUrl ?: "",
             followersCount = this.followersCount,
-            aboutMe = this.bio.ifEmpty { "No about me info yet." },
-            interests = this.interests.map { interestName ->
-                val color = generateRandomColor()
-                ProfileInterest(interestName, color, color.copy(alpha = 0.1f))
-            },
-            // Map danh sách sự kiện đã tham gia từ Domain
-            joinedEvents = this.joinedEvents.map { event ->
-                val dateStr = "${formatTimestampToDay(event.date)} ${formatTimestampToMonth(event.date)}, ${formatTimestampToYear(event.date)}"
-                JoinedEventItem(
-                    id = event.id,
-                    title = event.name,
-                    date = dateStr,
-                    imageUrl = event.imageUrl
-                )
-            }
+            rating = this.rating,
+            companyName = this.organizerInfo?.companyName ?: "",
+            description = this.organizerInfo?.description ?: "",
+            taxCode = this.organizerInfo?.taxCode ?: "",
+            website = this.organizerInfo?.website ?: ""
         )
-    }
-
-    private fun generateRandomColor(): Color {
-        val colors = listOf(
-            Color(0xFF6A5AE0), Color(0xFFF0635A), Color(0xFFF59762),
-            Color(0xFF8436E0), Color(0xFF29D697), Color(0xFF46CDFB)
-        )
-        return colors.random()
     }
 }

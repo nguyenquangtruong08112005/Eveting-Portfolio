@@ -3,7 +3,6 @@ package com.tdtuer.eventing_organizer.ui.navigation
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.net.toUri
@@ -15,6 +14,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.tdtuer.eventing_organizer.ui.screens.admin.AdminDashboardScreen
+import com.tdtuer.eventing_organizer.ui.screens.admin.AdminEventDetailScreen
 import com.tdtuer.eventing_organizer.ui.screens.auth.forgotpassword.ForgotPasswordScreen
 import com.tdtuer.eventing_organizer.ui.screens.auth.forgotpassword.ForgotPasswordViewModel
 import com.tdtuer.eventing_organizer.ui.screens.auth.resetpassword.ResetPasswordScreen
@@ -26,9 +27,15 @@ import com.tdtuer.eventing_organizer.ui.screens.auth.verification.VerificationSc
 import com.tdtuer.eventing_organizer.ui.screens.auth.verification.VerificationViewModel
 import com.tdtuer.eventing_organizer.ui.screens.createevent.CreateEventScreen
 import com.tdtuer.eventing_organizer.ui.screens.dashboard.OrganizerDashboardScreen
+import com.tdtuer.eventing_organizer.ui.screens.editevent.EditEventScreen
+import com.tdtuer.eventing_organizer.ui.screens.editprofile.EditProfileScreen
+import com.tdtuer.eventing_organizer.ui.screens.eventmanagement.EventManagementScreen
 import com.tdtuer.eventing_organizer.ui.screens.location.LocationPickerScreen
 import com.tdtuer.eventing_organizer.ui.screens.onboarding.OnboardingScreen
 import com.tdtuer.eventing_organizer.ui.screens.onboarding.OnboardingViewModel
+import com.tdtuer.eventing_organizer.ui.screens.profile.MyProfileScreen
+import com.tdtuer.eventing_organizer.ui.screens.scanner.ScannerScreen
+import com.tdtuer.eventing_organizer.ui.screens.settings.SettingsScreen
 import com.tdtuer.eventing_organizer.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing_organizer.ui.screens.splash.SplashViewModel
 
@@ -101,6 +108,11 @@ fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
                             inclusive = true
                         }
                     }
+                },
+                onNavigateToAdmin = {
+                    navController.navigate(Screen.AdminDashboard.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -144,9 +156,53 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
             LocationPickerScreen(navController = navController)
         }
 
-        // ... Giữ lại các route Profile hoặc Auth nếu cần
+        composable(Screen.Profile.route) {
+            MyProfileScreen(navController = navController)
+        }
+
+        composable(Screen.EditProfile.route) {
+            EditProfileScreen(navController = navController)
+        }
+
+        composable(
+            route = Screen.EventManagement.route, // <-- Giờ nó sẽ nhận ra route này
+            arguments = listOf(navArgument("eventId") {
+                type = NavType.StringType
+            })
+        ) {
+            EventManagementScreen(navController = navController)
+        }
+
+        composable(Screen.Scanner.route) {
+            ScannerScreen(navController = navController)
+        }
+
+        composable(Screen.AdminDashboard.route) {
+            AdminDashboardScreen(navController = navController)
+        }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(navController = navController)
+        }
+
+        composable(
+            route = Screen.AdminEventDetail.route,
+            arguments = listOf(navArgument("eventId") {
+                type = NavType.StringType
+            })
+        ) {
+            AdminEventDetailScreen(navController = navController)
+        }
+
+        composable(
+            route = Screen.EditEvent.route,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) {
+            EditEventScreen(navController = navController)
+        }
     }
 }
+
 fun NavGraphBuilder.authGraph(navController: NavHostController, intent: Intent?) {
     navigation(
         route = Graph.AUTHENTICATION,
@@ -171,7 +227,8 @@ fun NavGraphBuilder.authGraph(navController: NavHostController, intent: Intent?)
                 },
                 onForgotPasswordClick = {
                     navController.navigate(Screen.ForgotPassword.route)
-                }
+                },
+//                navController = navController
             )
         }
         composable(Screen.SignUp.route) {

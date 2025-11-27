@@ -7,10 +7,20 @@ data class FeaturedProfileDto(
     @SerializedName("name") val name: String,
     @SerializedName("bio") val bio: String?,
     @SerializedName("imageUrl") val imageUrl: String?,
-    @SerializedName("job") val job: String? // VD: Singer, Speaker
+    @SerializedName("profileType") val profileType: String?, // 'artist', 'speaker'...
+    @SerializedName("followerCount") val followerCount: Int?,
+    @SerializedName("genres") val genres: List<String>? = emptyList() // <-- MỚI
 )
 
-// Response cho list profiles
 data class FeaturedProfileListResponse(
-    val data: List<FeaturedProfileDto> // Tùy backend trả về list trực tiếp hay bọc trong data
+    @SerializedName("profiles") val profiles: List<FeaturedProfileDto>,
+    @SerializedName("pagination") val pagination: PaginationDto?
+)
+
+data class CreateProfileRequest(
+    val name: String,
+    val bio: String? = null,
+    val imageUrl: String? = null,
+    val profileType: String = "artist",
+    val genres: List<String> = emptyList() // <-- MỚI
 )
