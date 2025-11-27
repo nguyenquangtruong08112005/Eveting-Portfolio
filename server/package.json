@@ -12,15 +12,19 @@
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "dotenv": "^17.2.2",
+    "exceljs": "^4.4.0",
     "express": "~4.16.1",
     "express-rate-limit": "^8.2.0",
     "express-validator": "^7.3.0",
-    "firebase-admin": "^13.5.0",
+    "firebase-admin": "^13.6.0",
     "geofire-common": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",
     "morgan": "~1.9.1",
-    "node-cron": "^4.2.1"
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.11",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

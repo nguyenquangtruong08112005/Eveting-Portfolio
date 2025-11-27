@@ -1,5 +1,7 @@
 // services/user.service.js
 const { db, FieldValue } = require('../config/firebase.config');
+require('dotenv').config();
+const ADMIN_UID = process.env.ADMIN_UID;
 
 // --- HÀM HỖ TRỢ: Format dữ liệu trả về cho Mobile ---
 const mapUserToMobileProfile = async (userData) => {
@@ -104,6 +106,9 @@ const createUserProfile = async (userData, profileData) => {
  */
 const getUserById = async (userId) => {
     const userDoc = await db.collection('Users').doc(userId).get();
+
+    if (userId === process.env.ADMIN_UID) return { ...userDoc.data(), isAdmin: true };
+
     if (!userDoc.exists) {
         return null;
     }
@@ -116,7 +121,6 @@ const getUserById = async (userId) => {
  */
 const updateUserProfile = async (userId, updateData) => {
     const userRef = db.collection('Users').doc(userId);
-    console.log(updateData);
 
     // Chuẩn bị dữ liệu update (mapping từ request body vào DB schema)
     const dataToUpdate = {};

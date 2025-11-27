@@ -25,8 +25,8 @@ const getCurrentUserProfile = async (req, res) => {
             // Nếu user đã login (có token) nhưng chưa có profile trong DB
             // Có thể tự động tạo profile rỗng hoặc trả về 404
             return res.status(404).send({ error: 'User profile not found. Please complete registration.' });
-        }
-        
+        }        
+
         res.status(200).json(userProfile);
     } catch (error) {
         console.error("Error in User Controller - getCurrentUserProfile: ", error);

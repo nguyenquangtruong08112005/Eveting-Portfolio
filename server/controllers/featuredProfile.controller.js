@@ -32,8 +32,17 @@ const getProfileById = async (req, res) => {
 
 const createProfile = async (req, res) => {
     try {
-        // TODO: Thêm validation cho req.body
-        const newProfile = await profileService.createFeaturedProfile(req.body);
+        // Lấy ID người tạo (organizer)
+        const creatorId = req.user.uid;
+        
+        // Gộp vào body để service xử lý
+        // Nếu client không gửi ownerUserId, mặc định lấy ID người tạo
+        const profileData = {
+            ...req.body,
+            ownerUserId: req.body.ownerUserId || creatorId 
+        };
+
+        const newProfile = await profileService.createFeaturedProfile(profileData);
         res.status(201).json(newProfile);
     } catch (error) {
         console.error("Error in FeaturedProfile Controller - createProfile: ", error);

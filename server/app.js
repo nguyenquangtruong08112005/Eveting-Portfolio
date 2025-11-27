@@ -17,7 +17,8 @@ var notificationsRouter = require('./routes/notifications.routes');
 var analyticsRouter = require('./routes/analytics.routes');
 var organizerRouter = require('./routes/organizer.routes');
 var paymentsRouter = require('./routes/payments.routes');
-
+var venuesRouter = require('./routes/venues.routes');
+var adminRouter = require('./routes/admin.routes');
 var app = express();
 
 app.use(logger('dev'));
@@ -36,6 +37,8 @@ app.use('/notifications', notificationsRouter);
 app.use('/analytics', analyticsRouter);
 app.use('/organizer', organizerRouter);
 app.use('/payments', paymentsRouter);
+app.use('/venues', venuesRouter);
+app.use('/admin', adminRouter);
 
 // ======================
 // Tạo server trực tiếp ở đây

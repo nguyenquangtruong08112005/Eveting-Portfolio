@@ -259,51 +259,51 @@ const cancelPendingTicket = async (ticketId) => {
  */
 const confirmTicketPayment = async (ticketId) => {
     const ticketRef = db.collection('Tickets').doc(ticketId);
-    const doc = await ticketRef.get();
+    
+    // Bắt đầu Transaction ngay từ đầu
+    return db.runTransaction(async (transaction) => {
+        // 1. Đọc dữ liệu trong transaction
+        const doc = await transaction.get(ticketRef);
 
-    if (!doc.exists) {
-        throw new Error('Ticket not found.');
-    }
+        if (!doc.exists) {
+            throw new Error('Ticket not found.');
+        }
 
-    const ticketData = doc.data(); // Lấy dữ liệu trước khi kiểm tra status
+        const ticketData = doc.data();
 
-    // Nếu vé đã paid hoặc checkedIn rồi thì không cần làm gì nữa
-    if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
-        console.log(`Ticket ${ticketId} is already confirmed (${ticketData.status}).`);
-        return ticketData;
-    }
+        // 2. Kiểm tra trạng thái
+        if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
+            // Nếu đã thanh toán rồi, không làm gì cả, trả về data hiện tại
+            console.log(`Ticket ${ticketId} is already confirmed (${ticketData.status}).`);
+            return ticketData;
+        }
 
-    // Chỉ cập nhật nếu đang là 'pending'
-    if (ticketData.status === 'pending') {
-        await ticketRef.update({ status: 'paid' });
-        console.log(`Ticket ${ticketId} status updated to 'paid'.`);
+        if (ticketData.status !== 'pending') {
+            console.warn(`Attempted to confirm ticket ${ticketId} with status '${ticketData.status}'.`);
+            return ticketData;
+        }
 
-        const eventRef = db.collection('Events').doc(ticketData.eventId);
+        // 3. Thực hiện cập nhật (Vé + Analytics)
         const analyticsRef = db.collection('Analytics').doc(ticketData.eventId);
 
-        await db.runTransaction(async (transaction) => {
-            // 1. Cập nhật trạng thái vé
-            transaction.update(ticketRef, { status: 'paid' });
+        // A. Cập nhật vé
+        transaction.update(ticketRef, { status: 'paid' });
 
-            // 2. Cập nhật Analytics (tăng doanh thu và vé bán)
-            // Dùng FieldValue.increment() để cộng dồn an toàn
-            transaction.set(analyticsRef, {
-                totalRevenue: FieldValue.increment(ticketData.price),
-                ticketsSold: {
-                    [ticketData.type]: FieldValue.increment(1)
-                }
-            }, { merge: true }); // Dùng merge: true để tạo mới nếu chưa có, hoặc gộp nếu đã có
-        });
-        // TODO: Sau khi xác nhận thanh toán, ta có thể:
-        // 1. Gửi email/thông báo xác nhận cho người dùng.
-        // 2. Cập nhật dữ liệu trong collection Analytics (tăng doanh thu, vé bán).
+        // B. Cập nhật Analytics
+        // Dùng set với merge: true để đảm bảo document được tạo nếu chưa có
+        transaction.set(analyticsRef, {
+            eventId: ticketData.eventId, // Đảm bảo có ID
+            totalRevenue: FieldValue.increment(ticketData.price),
+            ticketsSold: {
+                [ticketData.type]: FieldValue.increment(1)
+            }
+        }, { merge: true });
 
-        return { ...ticketData, status: 'paid' }; // Trả về dữ liệu đã cập nhật
-    } else {
-        // Các trạng thái khác (ví dụ: 'cancelled') thì không cập nhật
-        console.warn(`Attempted to confirm payment for ticket ${ticketId} with status '${ticketData.status}'. No update performed.`);
-        return ticketData; // Trả về dữ liệu gốc
-    }
+        console.log(`Ticket ${ticketId} status updated to 'paid'. Analytics updated.`);
+        
+        // Trả về dữ liệu mới (giả lập)
+        return { ...ticketData, status: 'paid' };
+    });
 };
 
 /**

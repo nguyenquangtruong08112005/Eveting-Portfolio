@@ -14,7 +14,7 @@ const sendMulticast = async (tokens, title, body, data = {}) => {
     };
 
     try {
-        const response = await admin.messaging().sendMulticast(message);
+        const response = await admin.messaging().sendEachForMulticast(message);
         console.log(`Creates ${response.successCount} messages successfully.`);
     } catch (error) {
         console.error('Error sending multicast message:', error);

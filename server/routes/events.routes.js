@@ -30,7 +30,7 @@ router.get('/:eventId/weather', publicApiLimiter, eventController.getEventWeathe
 // Thêm verifyAuthToken một cách tùy chọn để controller có thể nhận req.user
 // Middleware này cần được thiết kế lại để không báo lỗi nếu không có token
 // Tạm thời bỏ verifyAuthToken ở đây, controller sẽ tự kiểm tra req.user
-router.get('/:eventId', publicApiLimiter, eventController.getEventById);
+router.get('/:eventId', publicApiLimiter, verifyAuthToken, eventController.getEventById);
 
 // --- Các route yêu cầu xác thực ---
 

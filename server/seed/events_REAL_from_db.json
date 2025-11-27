@@ -1,5 +1,115 @@
 [
   {
+    "id": "evt_43c52e37-b3fc-4b44-b50b-cf8b1ba8247d",
+    "name": "18 20",
+    "description": "đây là sự kiện test",
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764069681118.jpg?alt=media&token=a3b91fd8-c0d6-41a8-afb3-cd29aaa1d823",
+    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764069681081.jpg?alt=media&token=dadaff2b-6bbf-4fe3-bde9-9b09394f1758",
+    "featuredProfileIds": [],
+    "category": [
+      "Food & Drink",
+      "Sports",
+      "Education",
+      "Technology",
+      "Fashion",
+      "Business",
+      "Music",
+      "Art",
+      "Workshop"
+    ],
+    "tags": [
+      "ăn quả nhớ kẻ"
+    ],
+    "date": 1764501396418,
+    "endDate": null,
+    "eventType": "physical",
+    "onlineUrl": null,
+    "location": {
+      "latitude": 10.772009208723974,
+      "longitude": 106.72143620594586
+    },
+    "geohash": "w3gvk8bpt8",
+    "venueId": "venue_thiskyhall_sala",
+    "venueName": "Thiskyhall Sala",
+    "city": "Hồ Chí Minh",
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "vé khứ hồi",
+        "price": 1000000,
+        "quantity": 100000
+      }
+    ],
+    "minPrice": 1000000,
+    "videoUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fvideos%2F1764069681141.mp4?alt=media&token=1969d121-8766-412a-9e77-1043bd84a7d8",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "visibility": "private",
+    "recurringRule": null,
+    "hotScore": 0,
+    "viewCount": 0,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1764069694801,
+    "rejectReason": "",
+    "lastUpdatedAt": 1764099595038,
+    "rejectedAt": 1764099595038,
+    "status": "rejected"
+  },
+  {
+    "id": "evt_5bf97b0f-c2e5-412d-a01b-8f507a0180a3",
+    "name": "Done?",
+    "description": "Done chưa??",
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764076578092.jpg?alt=media&token=946accaf-0e0c-4a80-b6b9-5fbc7c3ad632",
+    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764076578062.jpg?alt=media&token=e56f390b-a08e-44ab-8fc5-903d9a234924",
+    "featuredProfileIds": [
+      "fp_google_experts",
+      "fp_ravolution_djs"
+    ],
+    "category": [
+      "Business",
+      "Technology"
+    ],
+    "tags": [
+      "done",
+      "live"
+    ],
+    "date": 1764161521569,
+    "endDate": null,
+    "eventType": "physical",
+    "onlineUrl": null,
+    "location": {
+      "latitude": 10.776233800000002,
+      "longitude": 106.6993124
+    },
+    "geohash": "w3gvk1b045",
+    "venueId": "venue_b8e138d6-03d9-4235-886f-79934177bd9e",
+    "venueName": null,
+    "city": "Thành phố Hồ Chí Minh",
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Hạng high",
+        "price": 1000000,
+        "quantity": 1000
+      }
+    ],
+    "minPrice": 1000000,
+    "videoUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fvideos%2F1764076578119.mp4?alt=media&token=1c57d8ff-6e69-445a-9a89-3138ff645ac6",
+    "isOutdoor": true,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "recurringRule": null,
+    "hotScore": 0,
+    "viewCount": 0,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1764076603866,
+    "visibility": "public",
+    "lastUpdatedAt": 1764077633942,
+    "approvedAt": 1764077633942,
+    "status": "active"
+  },
+  {
     "id": "evt_art_exhibit_hanoi_2026",
     "name": "Triển lãm nghệ thuật 'Di Sản'",
     "description": "Trưng bày các tác phẩm nghệ thuật đương đại lấy cảm hứng từ di sản văn hóa Việt Nam.",
@@ -25,15 +135,15 @@
     "city": "Hà Nội",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "FreeEntrance": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "FreeEntrance",
         "price": 0,
-        "quantity": 1000,
-        "available": 1000
+        "quantity": 10100000
       }
-    },
+    ],
     "minPrice": 0,
-    "videoUrl": "https://www.youtube.com/watch?v=example10",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -44,9 +154,10 @@
     "requiredAge": 0,
     "sponsors": [],
     "createdAt": 1758700000000,
-    "lastUpdatedAt": 1759900000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/87/af/85/ae568b654b23f01af2812d5ad6a57c84.mp4",
+    "lastUpdatedAt": 1763809840963
   },
   {
     "id": "evt_ballet_hoabattu_2025",
@@ -74,25 +185,26 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "ZoneA": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "ZoneA",
         "price": 1500000,
-        "quantity": 100,
-        "available": 30
+        "quantity": 100
       },
-      "ZoneB": {
+      {
+        "description": "",
+        "name": "ZoneB",
         "price": 900000,
-        "quantity": 200,
-        "available": 80
+        "quantity": 80
       }
-    },
+    ],
     "minPrice": 900000,
     "seatMap": {
       "A10": false,
       "B5": true,
       "C12": false
     },
-    "videoUrl": "https://www.youtube.com/watch?v=example16",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -105,7 +217,8 @@
     "createdAt": 1759300000000,
     "lastUpdatedAt": 1760500000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_bookfair_hcm_2026",
@@ -122,7 +235,6 @@
       "books",
       "family"
     ],
-    "date": 1790408400000,
     "endDate": null,
     "location": {
       "latitude": 10.790167396059529,
@@ -135,7 +247,6 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 0,
-    "videoUrl": "https://www.youtube.com/watch?v=example11",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -155,13 +266,16 @@
     "lastUpdatedAt": 1760000000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "ticketTypes": {
-      "FreeEntrance": {
-        "price": 0,
-        "quantity": 100000,
-        "available": 99998
+    "date": 1764064575000,
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "FreeEntrance",
+        "price": 1500000,
+        "quantity": 100000
       }
-    }
+    ],
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_cancelled_marathon_2025",
@@ -188,15 +302,15 @@
     "city": "Đà Nẵng",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Runner": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Runner",
         "price": 800000,
-        "quantity": 2000,
-        "available": 2000
+        "quantity": 2000
       }
-    },
+    ],
     "minPrice": 800000,
-    "videoUrl": "https://www.youtube.com/watch?v=example7",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "cancelled",
@@ -210,7 +324,8 @@
     "lastUpdatedAt": 1757048400000,
     "cancelledAt": 1757048400000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_cat_show_hcm_2026",
@@ -238,15 +353,15 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Visitor": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Visitor",
         "price": 100000,
-        "quantity": 1000,
-        "available": 500
+        "quantity": 1000
       }
-    },
+    ],
     "minPrice": 100000,
-    "videoUrl": "https://www.youtube.com/watch?v=example9",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -259,7 +374,8 @@
     "createdAt": 1758600000000,
     "lastUpdatedAt": 1759800000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_circus_hcm_2025",
@@ -286,20 +402,21 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Adult": {
-        "price": 300000,
-        "quantity": 500,
-        "available": 200
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Adult",
+        "price": 500,
+        "quantity": 100
       },
-      "Child": {
+      {
+        "description": "",
+        "name": "Child",
         "price": 150000,
-        "quantity": 300,
-        "available": 100
+        "quantity": 300
       }
-    },
+    ],
     "minPrice": 150000,
-    "videoUrl": "https://www.youtube.com/watch?v=example19",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -312,7 +429,8 @@
     "createdAt": 1759600000000,
     "lastUpdatedAt": 1760800000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_coffee_expo_bmt_2026",
@@ -340,15 +458,15 @@
     "city": "Đà Nẵng",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Visitor": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Visitor",
         "price": 80000,
-        "quantity": 3000,
-        "available": 2500
+        "quantity": 3000
       }
-    },
+    ],
     "minPrice": 80000,
-    "videoUrl": "https://www.youtube.com/watch?v=example18",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -367,7 +485,60 @@
     "createdAt": 1759500000000,
     "lastUpdatedAt": 1760700000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
+  },
+  {
+    "id": "evt_d9dcc382-1160-4773-8298-6e5c002fdf93",
+    "name": "Test11",
+    "description": "nannaa",
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764078893180.jpg?alt=media&token=547cb03a-4405-41bc-a924-1bf4bbbe8b08",
+    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764078893137.jpg?alt=media&token=87a65ae6-4ebc-4915-9c83-d1545c7bb6fd",
+    "category": [
+      "Food & Drink"
+    ],
+    "tags": [
+      "hcm"
+    ],
+    "date": 1764164590677,
+    "endDate": null,
+    "eventType": "physical",
+    "onlineUrl": null,
+    "location": {
+      "latitude": 10.781161899999995,
+      "longitude": 106.70269350000001
+    },
+    "geohash": "w3gvk4dsbf",
+    "venueId": "venue_2b8289ae-6274-4b87-9b5f-208bee5f5c33",
+    "venueName": "Địa điểm",
+    "city": "Thành phố Hồ Chí Minh",
+    "videoUrl": "",
+    "isOutdoor": false,
+    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
+    "recurringRule": null,
+    "hotScore": 0,
+    "viewCount": 0,
+    "requiredAge": 0,
+    "sponsors": [],
+    "createdAt": 1764078907490,
+    "visibility": "public",
+    "approvedAt": 1764079007474,
+    "status": "active",
+    "minPrice": 0,
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "01117",
+        "price": 0,
+        "quantity": 0
+      }
+    ],
+    "lastUpdatedAt": 1764270636714,
+    "featuredProfileIds": [
+      "fp_google_experts",
+      "fp_tedx_speakers",
+      "fp_hat"
+    ]
   },
   {
     "id": "evt_fashion_week_hanoi_2026",
@@ -396,20 +567,21 @@
     "city": "Hà Nội",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "FrontRow": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "FrontRow",
         "price": 2500000,
-        "quantity": 100,
-        "available": 20
+        "quantity": 100
       },
-      "Standard": {
+      {
+        "description": "",
+        "name": "Standard",
         "price": 800000,
-        "quantity": 400,
-        "available": 250
+        "quantity": 400
       }
-    },
+    ],
     "minPrice": 800000,
-    "videoUrl": "https://www.youtube.com/watch?v=example20",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -422,13 +594,13 @@
     "createdAt": 1759700000000,
     "lastUpdatedAt": 1760900000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_foodfest_saigon_2025",
     "name": "Saigon International Food Fest",
     "description": "Lễ hội ẩm thực quốc tế lớn nhất Sài Gòn. Thưởng thức hàng trăm món ăn từ khắp nơi trên thế giới.",
-    "featuredProfileIds": [],
     "category": [
       "food",
       "festival",
@@ -438,7 +610,6 @@
       "foodie",
       "saigon"
     ],
-    "date": 1759928400000,
     "endDate": null,
     "location": {
       "latitude": 10.790167396059529,
@@ -451,7 +622,6 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 150000,
-    "videoUrl": "https://www.youtube.com/watch?v=example4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -460,24 +630,30 @@
     "hotScore": 88,
     "viewCount": 15000,
     "requiredAge": 0,
-    "sponsors": [
-      {
-        "name": "Coca-Cola",
-        "logoUrl": "url_to_logo",
-        "level": "gold"
-      }
-    ],
-    "createdAt": 1758300000000,
-    "lastUpdatedAt": 1759300000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "ticketTypes": {
-      "Entrance": {
+    "date": 1763805375000,
+    "createdAt": 1763805375000,
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4",
+    "lastUpdatedAt": 1764236043517,
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Entrance",
         "price": 150000,
-        "quantity": 5000,
-        "available": 1993
+        "quantity": 5000
       }
-    }
+    ],
+    "featuredProfileIds": [
+      "fp_8b8a4d82-a21d-4afa-9ef7-6993d6d054f7"
+    ],
+    "sponsors": [
+      {
+        "level": "gold",
+        "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg",
+        "name": "Coca-Cola"
+      }
+    ]
   },
   {
     "id": "evt_gaming_expo_hanoi_2026",
@@ -508,15 +684,15 @@
     "city": "Hà Nội",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Standard": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Standard",
         "price": 250000,
-        "quantity": 2000,
-        "available": 1200
+        "quantity": 2000
       }
-    },
+    ],
     "minPrice": 250000,
-    "videoUrl": "https://www.youtube.com/watch?v=example14",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -535,7 +711,8 @@
     "createdAt": 1759100000000,
     "lastUpdatedAt": 1760300000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_haanh_show_dalat_2026",
@@ -566,15 +743,15 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Standard": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Standard",
         "price": 1500000,
-        "quantity": 500,
-        "available": 100
+        "quantity": 500
       }
-    },
+    ],
     "minPrice": 1500000,
-    "videoUrl": "https://www.youtube.com/watch?v=example8",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -585,9 +762,10 @@
     "requiredAge": 0,
     "sponsors": [],
     "createdAt": 1758500000000,
-    "lastUpdatedAt": 1759700000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/87/af/85/ae568b654b23f01af2812d5ad6a57c84.mp4",
+    "lastUpdatedAt": 1763809726209
   },
   {
     "id": "evt_lantern_hoian_2026",
@@ -615,15 +793,15 @@
     "city": "Đà Nẵng",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "FreeEntrance": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "FreeEntrance",
         "price": 0,
-        "quantity": 50000,
-        "available": 50000
+        "quantity": 50000
       }
-    },
+    ],
     "minPrice": 0,
-    "videoUrl": "https://www.youtube.com/watch?v=example13",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -636,7 +814,8 @@
     "createdAt": 1759000000000,
     "lastUpdatedAt": 1760200000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_lany_concert_2025_past",
@@ -665,15 +844,15 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Standard": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Standard",
         "price": 1200000,
-        "quantity": 3000,
-        "available": 0
+        "quantity": 3000
       }
-    },
+    ],
     "minPrice": 1200000,
-    "videoUrl": "https://www.youtube.com/watch?v=example6",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "finished",
@@ -686,7 +865,8 @@
     "createdAt": 1728000000000,
     "lastUpdatedAt": 1728666000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_marketing_conf_2026",
@@ -713,15 +893,15 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Standard": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Standard",
         "price": 2000000,
-        "quantity": 400,
-        "available": 150
+        "quantity": 400
       }
-    },
+    ],
     "minPrice": 2000000,
-    "videoUrl": "https://www.youtube.com/watch?v=example17",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -734,7 +914,8 @@
     "createdAt": 1759400000000,
     "lastUpdatedAt": 1760600000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_online_webinar_2026",
@@ -762,15 +943,15 @@
     "city": "Online",
     "eventType": "online",
     "onlineUrl": "https://zoom.us/j/123456789",
-    "ticketTypes": {
-      "Free": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Free",
         "price": 0,
-        "quantity": 1000,
-        "available": 1000
+        "quantity": 1000
       }
-    },
+    ],
     "minPrice": 0,
-    "videoUrl": null,
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -783,7 +964,8 @@
     "createdAt": 1761000000000,
     "lastUpdatedAt": 1761000000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_rapviet_allstar_2025",
@@ -815,7 +997,6 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 1200000,
-    "videoUrl": "https://www.youtube.com/watch?v=example12",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -826,21 +1007,24 @@
     "requiredAge": 16,
     "sponsors": [],
     "createdAt": 1758900000000,
-    "lastUpdatedAt": 1760100000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "ticketTypes": {
-      "VIP": {
-        "price": 3000000,
-        "quantity": 300,
-        "available": 50
-      },
-      "GA": {
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/87/af/85/ae568b654b23f01af2812d5ad6a57c84.mp4",
+    "lastUpdatedAt": 1763809933844,
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "GA",
         "price": 1200000,
-        "quantity": 8000,
-        "available": 1500
+        "quantity": 8000
+      },
+      {
+        "description": "",
+        "name": "VIP",
+        "price": 3000000,
+        "quantity": 300
       }
-    }
+    ]
   },
   {
     "id": "evt_ravolution_hanoi_2026",
@@ -871,20 +1055,21 @@
     "city": "Hà Nội",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "GA": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "GA",
         "price": 950000,
-        "quantity": 10000,
-        "available": 3500
+        "quantity": 10000
       },
-      "VIP": {
+      {
+        "description": "",
+        "name": "VIP",
         "price": 2500000,
-        "quantity": 500,
-        "available": 120
+        "quantity": 500
       }
-    },
+    ],
     "minPrice": 950000,
-    "videoUrl": "https://www.youtube.com/watch?v=example2",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -897,7 +1082,8 @@
     "createdAt": 1758100000000,
     "lastUpdatedAt": 1759100000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_startup_expo_2026",
@@ -925,20 +1111,21 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "Visitor": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Visitor",
         "price": 200000,
-        "quantity": 1000,
-        "available": 800
+        "quantity": 1000
       },
-      "Exhibitor": {
+      {
+        "description": "",
+        "name": "Exhibitor",
         "price": 5000000,
-        "quantity": 100,
-        "available": 30
+        "quantity": 11000
       }
-    },
+    ],
     "minPrice": 200000,
-    "videoUrl": "https://www.youtube.com/watch?v=example5",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -951,7 +1138,8 @@
     "createdAt": 1758400000000,
     "lastUpdatedAt": 1759400000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   },
   {
     "id": "evt_tedx_danang_2025",
@@ -969,7 +1157,6 @@
       "danang",
       "public speaking"
     ],
-    "date": 1762424400000,
     "endDate": null,
     "location": {
       "latitude": 16.068770823875518,
@@ -982,7 +1169,6 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 500000,
-    "videoUrl": "https://www.youtube.com/watch?v=example3",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -996,13 +1182,16 @@
     "lastUpdatedAt": 1759200000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "ticketTypes": {
-      "Standard": {
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4",
+    "date": 1764521736000,
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Standard",
         "price": 500000,
-        "quantity": 300,
-        "available": 19
+        "quantity": 300
       }
-    }
+    ]
   },
   {
     "id": "evt_vdf_hcm_2025",
@@ -1034,13 +1223,11 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 700000,
-    "videoUrl": "https://www.youtube.com/watch?v=example1",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
     "visibility": "public",
     "recurringRule": null,
-    "hotScore": 95,
     "viewCount": 12500,
     "requiredAge": 0,
     "sponsors": [
@@ -1051,21 +1238,25 @@
       }
     ],
     "createdAt": 1758000000000,
-    "lastUpdatedAt": 1759000000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "ticketTypes": {
-      "Standard": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "Standard",
         "price": 1000000,
-        "quantity": 500,
-        "available": 448
+        "quantity": 500
       },
-      "EarlyBird": {
+      {
+        "description": "",
+        "name": "EarlyBird",
         "price": 700000,
-        "quantity": 200,
-        "available": 50
+        "quantity": 200
       }
-    }
+    ],
+    "hotScore": 99,
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4",
+    "lastUpdatedAt": 1763809623220
   },
   {
     "id": "evt_yoga_retreat_dalat_2026",
@@ -1093,15 +1284,15 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "ticketTypes": {
-      "AllInclusive": {
+    "ticketTypes": [
+      {
+        "description": "",
+        "name": "AllInclusive",
         "price": 4500000,
-        "quantity": 50,
-        "available": 15
+        "quantity": 50
       }
-    },
+    ],
     "minPrice": 4500000,
-    "videoUrl": "https://www.youtube.com/watch?v=example15",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1114,6 +1305,7 @@
     "createdAt": 1759200000000,
     "lastUpdatedAt": 1760400000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
-    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
+    "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/3e/9d/4c/f30be04ccdb6057866fa5ac0cf53e048.mp4"
   }
 ]

@@ -22,12 +22,14 @@ const getEventById = async (req, res) => {
     // Middleware verifyAuthToken sẽ tạo req.user nếu có token hợp lệ
     const requestingUser = req.user || null; // Lấy user từ token hoặc null
     const event = await eventService.getEventById(eventId, requestingUser);
-
+    // console.log(requestingUser);
+    
     if (!event) {
       // Service trả về null nếu không tìm thấy hoặc không có quyền xem
       return res.status(404).send({ error: 'Event not found or access denied.' });
     }
-
+    // console.log(event);
+    
     res.status(200).json(event);
   } catch (error) {
     console.error("Error in Event Controller - getEventById: ", error);
@@ -122,7 +124,7 @@ const findNearbyEvents = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10; // Giới hạn, mặc định 10
 
     // Lấy các tham số từ query
-    console.log(lat, lon, radius, page, limit);
+    // console.log(lat, lon, radius, page, limit);
 
     if (isNaN(lat) || isNaN(lon)) {
       return res.status(400).send({ error: 'Bad Request: Valid lat and lon query parameters are required.' });
