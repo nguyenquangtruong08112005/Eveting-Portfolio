@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.data.repository.EventRepository
-import com.tdtuer.eventing.domain.model.Promotion // Import Promotion Domain
+import com.tdtuer.eventing.domain.model.Promotion
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.usecase.payment.BookTicketUseCase
@@ -12,7 +12,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,12 +29,11 @@ data class BuyTicketUiState(
     val isCheckingVoucher: Boolean = false,
     val appliedVoucherCode: String? = null, // Mã đã áp dụng thành công
     val discountAmount: Double = 0.0,       // Số tiền được giảm
-    val voucherMessage: String? = null,     // Thông báo (Lỗi hoặc thành công)
+    val voucherMessage: String? = null,     // Thông báo kết quả
 
-    // --- MỚI: State cho danh sách voucher ---
+    // --- Danh sách voucher khả dụng ---
     val availablePromotions: List<Promotion> = emptyList(),
     val isShowPromoSheet: Boolean = false,
-    // ---------------------------------------
 
     val isLoading: Boolean = false,
     val errorMessage: String? = null
@@ -54,7 +52,7 @@ data class BuyTicketUiState(
 class BuyTicketViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val bookTicketUseCase: BookTicketUseCase,
-    private val eventRepository: EventRepository // Inject Repository
+    private val eventRepository: EventRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuyTicketUiState())
@@ -71,14 +69,13 @@ class BuyTicketViewModel @Inject constructor(
 
     init {
         parseTicketOptions(savedStateHandle.get<String>("ticketTypes"))
-        loadAvailablePromotions() // <-- Load voucher ngay khi vào
+        loadAvailablePromotions()
     }
 
     private fun loadAvailablePromotions() {
         viewModelScope.launch {
-            eventRepository.getPublicPromotions().collectLatest { result ->
+            eventRepository.getPublicPromotions().collect { result ->
                 if (result is Result.Success) {
-                    // Lọc: Chỉ lấy voucher áp dụng cho toàn bộ (eventId=null) hoặc đúng event này
                     val validPromos = result.data.filter {
                         it.eventId == null || it.eventId == eventId
                     }
@@ -88,11 +85,9 @@ class BuyTicketViewModel @Inject constructor(
         }
     }
 
-    // Điều khiển BottomSheet
     fun showPromoSheet() { _uiState.update { it.copy(isShowPromoSheet = true) } }
     fun hidePromoSheet() { _uiState.update { it.copy(isShowPromoSheet = false) } }
 
-    // Khi chọn voucher từ danh sách -> Tự động điền và Apply
     fun onPromotionSelected(promotion: Promotion) {
         _uiState.update { it.copy(voucherCode = promotion.code, isShowPromoSheet = false) }
         onApplyVoucher()
@@ -117,8 +112,6 @@ class BuyTicketViewModel @Inject constructor(
         }
     }
 
-    // --- VOUCHER LOGIC ---
-
     fun onVoucherCodeChange(code: String) {
         _uiState.update { it.copy(voucherCode = code, voucherMessage = null) }
     }
@@ -126,7 +119,6 @@ class BuyTicketViewModel @Inject constructor(
     fun onApplyVoucher() {
         val code = _uiState.value.voucherCode
         val quantity = _uiState.value.quantity
-
         if (code.isBlank()) return
 
         viewModelScope.launch {
@@ -136,7 +128,6 @@ class BuyTicketViewModel @Inject constructor(
 
             if (result is Result.Success) {
                 val promo = result.data
-                // Tính toán giảm giá
                 val currentSubTotal = _uiState.value.subTotal
                 var discount = 0.0
 
@@ -145,6 +136,8 @@ class BuyTicketViewModel @Inject constructor(
                 } else {
                     discount = (promo.discountValue ?: 0.0)
                 }
+
+                discount = discount.coerceAtMost(currentSubTotal)
 
                 _uiState.update {
                     it.copy(
@@ -179,28 +172,38 @@ class BuyTicketViewModel @Inject constructor(
         }
     }
 
-    // --- STANDARD LOGIC ---
-
-    fun onBackClick() { }
-    fun onMoreOptionsClick() { }
-
     fun onTicketTypeSelected(type: TicketType) {
-        // Reset discount khi đổi loại vé để tính lại chính xác
-        _uiState.update {
-            it.copy(selectedTicketType = type, discountAmount = 0.0, appliedVoucherCode = null, voucherMessage = null)
+        _uiState.update { it.copy(selectedTicketType = type) }
+        if (_uiState.value.appliedVoucherCode != null) {
+            onApplyVoucher()
         }
     }
 
+    // --- CẬP NHẬT LOGIC TĂNG/GIẢM SỐ LƯỢNG ---
+
     fun onIncreaseQuantity() {
-        // Logic này đang comment ở code cũ, nếu mở lại, nhớ reset voucher
+        _uiState.update { it.copy(quantity = it.quantity + 1) }
+
+        // Nếu đang có voucher, gọi lại để tính toán discount mới
+        if (_uiState.value.appliedVoucherCode != null) {
+            onApplyVoucher()
+        }
     }
 
     fun onDecreaseQuantity() {
         _uiState.update {
             val newQuantity = (it.quantity - 1).coerceAtLeast(1)
-            it.copy(quantity = newQuantity, discountAmount = 0.0, appliedVoucherCode = null, voucherMessage = null)
+            it.copy(quantity = newQuantity)
+        }
+
+        // Nếu đang có voucher, gọi lại để tính toán discount mới
+        if (_uiState.value.appliedVoucherCode != null) {
+            onApplyVoucher()
         }
     }
+
+    fun onBackClick() { }
+    fun onMoreOptionsClick() { }
 
     fun onContinueClick() {
         val currentState = uiState.value
@@ -221,7 +224,6 @@ class BuyTicketViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 is Result.Failure -> {
-                    // Parse message lỗi để hiển thị thân thiện hơn
                     val msg = result.exception.message
                     val userMsg = if (msg?.contains("expired") == true) "Mã giảm giá đã hết hạn"
                     else if (msg?.contains("limit") == true) "Mã giảm giá đã hết lượt dùng"

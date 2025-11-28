@@ -13,8 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ConfirmationNumber
-import androidx.compose.material.icons.filled.Discount // Icon Mới
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Discount
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
@@ -60,7 +59,7 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
         }
     }
 
-    // --- MỚI: BOTTOM SHEET DANH SÁCH VOUCHER ---
+    // --- BOTTOM SHEET HIỂN THỊ DANH SÁCH VOUCHER ---
     if (uiState.isShowPromoSheet) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.hidePromoSheet() },
@@ -122,7 +121,7 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Voucher Section (ĐÃ CẬP NHẬT)
+            // 3. Voucher Section (UI ĐƯỢC CẬP NHẬT)
             SectionTitle("Promo Code")
             if (uiState.appliedVoucherCode == null) {
                 Row(
@@ -133,13 +132,17 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
                     OutlinedTextField(
                         value = uiState.voucherCode,
                         onValueChange = viewModel::onVoucherCodeChange,
-                        placeholder = { Text("Enter code") },
+                        placeholder = { Text("Enter code or select") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         trailingIcon = {
-                            // Nút mở danh sách voucher
+                            // --- NÚT MỞ DANH SÁCH VOUCHER ---
                             IconButton(onClick = { viewModel.showPromoSheet() }) {
-                                Icon(Icons.Default.Discount, contentDescription = "List", tint = AppTheme.colorScheme.primary)
+                                Icon(
+                                    Icons.Default.Discount, // Icon hình cái thẻ/giảm giá
+                                    contentDescription = "List",
+                                    tint = AppTheme.colorScheme.primary
+                                )
                             }
                         }
                     )
@@ -156,7 +159,7 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
                     }
                 }
             } else {
-                // Voucher đã áp dụng
+                // Voucher đã áp dụng thành công
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
                     border = BorderStroke(1.dp, Color(0xFF4CAF50))
@@ -182,7 +185,8 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
                     }
                 }
             }
-            // Voucher Message
+
+            // Voucher Message (Lỗi hoặc thông báo)
             uiState.voucherMessage?.let { msg ->
                 Text(
                     text = msg,
@@ -215,7 +219,7 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
     }
 }
 
-// --- MỚI: UI CHO BOTTOM SHEET ---
+// --- COMPOSABLE DANH SÁCH VOUCHER ---
 @Composable
 fun PromotionListContent(
     promotions: List<Promotion>,
@@ -225,7 +229,7 @@ fun PromotionListContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .heightIn(max = 500.dp) // Giới hạn chiều cao
+            .heightIn(max = 500.dp)
     ) {
         Text(
             "Available Promotions",
@@ -261,7 +265,7 @@ fun PromotionItemRow(promo: Promotion, onSelect: (Promotion) -> Unit) {
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon Ticket
+            // Icon bên trái
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -318,8 +322,7 @@ private fun formatDate(millis: Long): String {
     return sdf.format(Date(millis))
 }
 
-// ... (Các Composable cũ giữ nguyên: SectionTitle, TicketTypeSelector, QuantitySelector, PriceBreakdown, TicketPurchaseBottomBar) ...
-
+// ... (Các Composable SectionTitle, TicketTypeSelector, QuantitySelector, PriceBreakdown, TicketPurchaseBottomBar giữ nguyên không đổi) ...
 @Composable
 private fun SectionTitle(title: String) {
     Text(
@@ -474,13 +477,5 @@ private fun TicketPurchaseBottomBar(
                 }
             }
         }
-    }
-}
-
-@Preview(showSystemUi = true)
-@Composable
-fun BuyTicketScreenPreview() {
-    EventingTheme {
-        BuyTicketScreen(viewModel = viewModel(), navController = rememberNavController())
     }
 }
