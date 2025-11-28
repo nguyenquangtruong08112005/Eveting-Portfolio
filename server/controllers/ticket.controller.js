@@ -19,13 +19,19 @@ const getCurrentUserTickets = async (req, res) => {
 const bookTicket = async (req, res) => {
     try {
         const userId = req.user.uid;
-        const { eventId, ticketType, promoCode } = req.body;
+        const { eventId, ticketType, promoCode, quantity } = req.body;
 
         if (!eventId || !ticketType) {
             return res.status(400).send({ error: 'Bad Request: eventId and ticketType are required.' });
         }
 
-        const newTicket = await ticketService.bookTicket(userId, eventId, ticketType, promoCode);
+        const newTicket = await ticketService.bookTicket(
+            userId,
+            eventId,
+            ticketType,
+            quantity || 1, // quantity
+            promoCode      // promoCode
+        );
         res.status(201).json(newTicket);
 
     } catch (error) {
@@ -49,11 +55,11 @@ const getTicketDetails = async (req, res) => {
         const userId = req.user.uid; // Lấy từ middleware verifyAuthToken
 
         const ticketDetails = await ticketService.getTicketDetailsById(ticketId, userId);
-        
+
         res.status(200).json(ticketDetails);
     } catch (error) {
         console.error("Error in Ticket Controller - getTicketDetails: ", error);
-        
+
         // Phân loại lỗi từ service
         if (error.message.includes('not found')) {
             return res.status(404).send({ error: error.message });
@@ -61,7 +67,7 @@ const getTicketDetails = async (req, res) => {
         if (error.message.includes('Forbidden')) {
             return res.status(403).send({ error: error.message });
         }
-        
+
         res.status(500).send({ error: 'Internal Server Error' });
     }
 };

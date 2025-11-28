@@ -106,7 +106,7 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
     // 2. Lấy thông tin vé và sự kiện (trong 1 transaction để an toàn)
     const ticketRef = db.collection('Tickets').doc(ticketId);
     const eventRef = db.collection('Events').doc(eventId);
-    const userRef = db.collection('Users').doc(userId); // <-- Tham chiếu đến User
+    const userRef = db.collection('Users').doc(userId);
 
     return db.runTransaction(async (transaction) => {
         const ticketDoc = await transaction.get(ticketRef);
@@ -120,26 +120,60 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
             throw new Error('Forbidden: You do not have permission for this event.');
         }
 
-        // 4. Kiểm tra trạng thái vé
         const ticketData = ticketDoc.data();
-        if (ticketData.status === 'checkedIn') {
-            throw new Error('This ticket has already been checked in.');
-        }
-        if (ticketData.status !== 'paid') {
+
+        // 2. Kiểm tra trạng thái cơ bản
+        if (ticketData.status !== 'paid' && ticketData.status !== 'checkedIn') {
             throw new Error(`Cannot check-in ticket with status '${ticketData.status}'.`);
         }
 
-        // 5. Check-in vé
-        transaction.update(ticketRef, { status: 'checkedIn', checkedInAt: new Date().getTime() });
-        transaction.update(userRef, {
-            historyEventIds: FieldValue.arrayUnion(eventId)
-        });
+        // 3. Logic Check-in Đa số lượng (Incremental Check-in)
+        const quantity = ticketData.quantity || 1;
+        const currentCheckInCount = ticketData.checkInCount || 0;
 
+        // Nếu đã check-in đủ số người -> Báo lỗi đã dùng hết
+        if (currentCheckInCount >= quantity) {
+            throw new Error(`This ticket has been checked in (${currentCheckInCount}/${quantity} times).`);
+        }
+
+        const newCheckInCount = currentCheckInCount + 1;
+
+        const updates = {
+            checkInCount: newCheckInCount,
+            lastCheckInAt: Date.now()
+        };
+
+        // Nếu check-in lượt cuối cùng -> Đổi status thành checkedIn hoàn toàn
+        // (Nếu chưa hết thì vẫn giữ 'paid' hoặc có thể chuyển sang trạng thái 'partial' nếu muốn)
+        // Ở đây ta giữ logic: status='checkedIn' nghĩa là ĐÃ DÙNG HẾT hoặc ĐÃ DÙNG LẦN ĐẦU tùy nghiệp vụ.
+        // Tốt nhất: status='checkedIn' khi check-in >= 1 lần.
+        if (ticketData.status === 'paid') {
+            updates.status = 'checkedIn';
+        }
+
+        transaction.update(ticketRef, updates);
+
+        // Chỉ cộng lượt tham gia cho User ở lần check-in đầu tiên
+        if (currentCheckInCount === 0) {
+            transaction.update(userRef, {
+                historyEventIds: FieldValue.arrayUnion(eventId)
+            });
+        }
+
+        // Cập nhật Analytics (Chỉ cộng 1 lượt check-in thực tế)
         const analyticsRef = db.collection('Analytics').doc(eventId);
         transaction.set(analyticsRef, {
             checkIns: FieldValue.increment(1)
         }, { merge: true });
-        return { ...ticketData, status: 'checkedIn' };
+
+        // Trả về thông tin vé kèm số lượt đã dùng
+        return {
+            ...ticketData,
+            status: 'checkedIn',
+            checkInCount: newCheckInCount,
+            quantity: quantity,
+            remaining: quantity - newCheckInCount
+        };
     });
 };
 
@@ -229,7 +263,7 @@ const getOrganizerStats = async (organizerId) => {
 
     // Map để cộng dồn số vé bán theo ngày từ TẤT CẢ các sự kiện
     // Key: Timestamp (đầu ngày) hoặc String Date ("YYYY-MM-DD"), Value: Số lượng vé
-    const salesMap = {}; 
+    const salesMap = {};
 
     const eventIds = [];
 
@@ -247,14 +281,14 @@ const getOrganizerStats = async (organizerId) => {
         const chunkSize = 10;
         for (let i = 0; i < eventIds.length; i += chunkSize) {
             const chunk = eventIds.slice(i, i + chunkSize);
-            
+
             const analyticsSnapshot = await db.collection('Analytics')
                 .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
                 .get();
 
             analyticsSnapshot.forEach(doc => {
                 const ana = doc.data();
-                
+
                 // a. Cộng dồn doanh thu
                 totalRevenue += ana.totalRevenue || 0;
 

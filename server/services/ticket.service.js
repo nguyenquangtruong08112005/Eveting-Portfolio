@@ -116,15 +116,19 @@ const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
  * @param {string} [promoCode] - (Optional) Mã khuyến mãi người dùng nhập.
  * @returns {Promise<object>} Document vé vừa được tạo.
  */
-const bookTicket = async (userId, eventId, ticketType, promoCode = null) => {
+const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode = null) => {
     const eventRef = db.collection('Events').doc(eventId);
     const ticketId = `tkt_${uuidv4()}`;
     const ticketRef = db.collection('Tickets').doc(ticketId);
     let promotionRef = null;
     let promotionData = null;
 
+    // Validate quantity
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty < 1) throw new Error("Invalid ticket quantity.");
+
     return db.runTransaction(async (transaction) => {
-        // --- 1. Lấy thông tin sự kiện ---
+        // 1. Lấy thông tin sự kiện
         const eventDoc = await transaction.get(eventRef);
         if (!eventDoc.exists) {
             throw new Error("Event not found!");
@@ -132,81 +136,93 @@ const bookTicket = async (userId, eventId, ticketType, promoCode = null) => {
         const eventData = eventDoc.data();
         const ticketTypeData = eventData.ticketTypes[ticketType];
 
-        // --- 2. Kiểm tra loại vé ---
+        // 2. Kiểm tra loại vé & số lượng tồn
         if (!ticketTypeData) {
-            throw new Error(`Ticket type '${ticketType}' does not exist for this event.`);
+            throw new Error(`Ticket type '${ticketType}' does not exist.`);
         }
-        if (ticketTypeData.available <= 0) {
-            throw new Error(`Ticket type '${ticketType}' is sold out.`);
+        if (ticketTypeData.available < qty) {
+            throw new Error(`Not enough tickets available. Only ${ticketTypeData.available} left.`);
         }
-        let finalPrice = ticketTypeData.price;
 
-        // --- 3. Xử lý mã khuyến mãi (nếu có) ---
+        // Tính giá gốc cho TỔNG SỐ VÉ
+        const unitPrice = ticketTypeData.price;
+        let totalPrice = unitPrice * qty;
+        const originalTotalPrice = totalPrice; // Lưu giá gốc tổng
+
+        // 3. Xử lý mã khuyến mãi
         if (promoCode) {
-            // ... (Logic xử lý promo code giữ nguyên)
             const promoQuery = db.collection('Promotions').where('code', '==', promoCode).limit(1);
             const promoSnapshot = await transaction.get(promoQuery);
-            if (promoSnapshot.empty) { throw new Error('Invalid promotion code.'); }
-            promotionRef = promoSnapshot.docs[0].ref;
-            promotionData = promoSnapshot.docs[0].data();
-            const now = new Date().getTime();
-            if (promotionData.validUntil <= now) throw new Error('Promotion has expired.');
-            if (promotionData.usedCount >= promotionData.usageLimit) throw new Error('Promotion has reached its usage limit.');
-            if (promotionData.eventId !== null && promotionData.eventId !== eventId) throw new Error('Promotion not valid for this event.');
-            if (promotionData.discountPercent > 0) {
-                finalPrice = finalPrice * (1 - promotionData.discountPercent);
-            } else if (promotionData.discountAmount > 0) {
-                finalPrice = Math.max(0, finalPrice - promotionData.discountAmount);
+            
+            if (!promoSnapshot.empty) {
+                promotionRef = promoSnapshot.docs[0].ref;
+                promotionData = promoSnapshot.docs[0].data();
+                const now = new Date().getTime();
+
+                // Validate Promo (Logic cũ + Check minQty)
+                if (promotionData.validUntil <= now) throw new Error('Promotion has expired.');
+                if (promotionData.usedCount >= promotionData.usageLimit) throw new Error('Promotion usage limit reached.');
+                if (promotionData.eventId && promotionData.eventId !== eventId) throw new Error('Promotion not valid for this event.');
+                
+                // Check điều kiện số lượng vé tối thiểu
+                if (promotionData.minTicketQuantity && qty < promotionData.minTicketQuantity) {
+                    throw new Error(`Promotion requires minimum ${promotionData.minTicketQuantity} tickets.`);
+                }
+
+                // Tính giảm giá
+                if (promotionData.discountType === 'percent') {
+                    totalPrice = totalPrice * (1 - promotionData.discountValue);
+                } else if (promotionData.discountType === 'amount') {
+                    totalPrice = Math.max(0, totalPrice - promotionData.discountValue);
+                }
             }
         }
 
-        // --- 4. Chuẩn bị dữ liệu vé mới ---
-
-        // --- BẮT ĐẦU SỬA ĐỔI (TẠO QR BẰNG JWT) ---
+        // 4. Tạo JWT cho QR Code
         const qrPayload = {
             ticketId: ticketId,
             userId: userId,
-            eventId: eventId
+            eventId: eventId,
+            quantity: qty // Thêm thông tin số lượng vào QR
         };
-        // Ký (sign) token, không cần đặt hạn (no expiration)
-        const qrCodeJwt = jwt.sign(qrPayload, TICKET_SECRET); 
-        // --- KẾT THÚC SỬA ĐỔI ---
+        const qrCodeJwt = jwt.sign(qrPayload, TICKET_SECRET);
 
+        // 5. Dữ liệu vé mới (Đại diện cho 1 Booking)
         const newTicketData = {
             id: ticketId,
             eventId: eventId,
             userId: userId,
             organizerId: eventData.organizerId,
             type: ticketType,
-            price: finalPrice,
-            originalPrice: ticketTypeData.price,
+            
+            price: totalPrice,           // Giá cuối cùng phải trả (cho cả nhóm)
+            originalPrice: originalTotalPrice, // Giá gốc tổng
+            quantity: qty,               // Số lượng vé trong booking này
+            unitPrice: unitPrice,        // Đơn giá lúc mua
+            
             appliedPromoCode: promoCode,
-            seat: null, 
-            qrCode: qrCodeJwt, // <-- Gán JWT đã ký vào đây
-            status: 'pending', 
+            seat: null,
+            qrCode: qrCodeJwt,
+            status: 'pending',
             purchaseDate: new Date().getTime(),
-            groupId: null,
         };
 
-        // --- 5. Thực hiện các thao tác ghi trong transaction ---
+        // 6. Thực hiện ghi DB
         transaction.set(ticketRef, newTicketData);
-        const newAvailableCount = ticketTypeData.available - 1;
+        
+        // Trừ số lượng vé trong kho
+        const newAvailableCount = ticketTypeData.available - qty;
         transaction.update(eventRef, {
             [`ticketTypes.${ticketType}.available`]: newAvailableCount
         });
-        if (promotionRef && promotionData) {
+
+        if (promotionRef) {
             transaction.update(promotionRef, {
                 usedCount: FieldValue.increment(1)
             });
         }
 
-        // Chỉ trả về thông tin tối thiểu
-        return {
-            id: newTicketData.id,
-            status: newTicketData.status,
-            price: newTicketData.price,
-            originalPrice: newTicketData.originalPrice
-        };
+        return newTicketData;
     });
 };
 
