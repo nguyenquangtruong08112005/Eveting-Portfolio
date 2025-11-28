@@ -1,10 +1,9 @@
 package com.tdtuer.eventing.ui.screens.events
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tdtuer.eventing.R
+import com.tdtuer.eventing.data.repository.EventRepository
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Weather
@@ -21,22 +20,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// 1. Định nghĩa UI State mới để quản lý các trạng thái
+// 1. Cập nhật UI State để chứa danh sách gợi ý
 data class EventDetailsUiState(
     val isLoading: Boolean = true,
     val event: Event? = null,
-    val weather: Weather? = null, // Thêm trường này
+    val weather: Weather? = null,
+    val recommendations: List<Event> = emptyList(), // <-- Thêm trường này
     val error: String? = null
 )
 
 @HiltViewModel
 class EventDetailsViewModel @Inject constructor(
-    private val getEventByIdUseCase: GetEventByIdUseCase, // Tiêm UseCase
-    private val getEventWeatherUseCase: GetEventWeatherUseCase, // Inject thêm
-    savedStateHandle: SavedStateHandle // Tiêm SavedStateHandle
+    private val getEventByIdUseCase: GetEventByIdUseCase,
+    private val getEventWeatherUseCase: GetEventWeatherUseCase,
+    private val eventRepository: EventRepository, // <-- Inject Repository để lấy recommendations
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    // 2. Sử dụng StateFlow cho UI State
     private val _uiState = MutableStateFlow(EventDetailsUiState())
     val uiState: StateFlow<EventDetailsUiState> = _uiState.asStateFlow()
     private val _navChannel = Channel<BuyTicketNavigation>()
@@ -48,13 +48,12 @@ class EventDetailsViewModel @Inject constructor(
     }
 
     init {
-        // 3. Lấy eventId từ navigation arguments
         val eventId: String? = savedStateHandle["eventId"]
-
         this.currentEventId = eventId
 
         if (eventId != null) {
             loadEventDetails(eventId)
+            loadRecommendations(eventId) // <-- Gọi hàm load gợi ý
         } else {
             _uiState.value = EventDetailsUiState(
                 isLoading = false,
@@ -63,30 +62,48 @@ class EventDetailsViewModel @Inject constructor(
         }
     }
 
-    // 4. Hàm gọi UseCase để lấy dữ liệu thật
+    /**
+     * @param eventId: ID của sự kiện hiện tại (để có thể lọc bỏ khỏi danh sách gợi ý nếu cần)
+     * @return: Unit (Cập nhật UI State)
+     */
+    private fun loadRecommendations(eventId: String) {
+        viewModelScope.launch {
+            // Lấy 6 sự kiện gợi ý
+            eventRepository.getRecommendations(limit = 6).collect { result ->
+                if (result is Result.Success) {
+                    // Lọc bỏ sự kiện hiện tại khỏi danh sách gợi ý (nếu API trả về trùng)
+                    val filteredList = result.data.filter { it.id != eventId }.take(6)
+                    _uiState.update { it.copy(recommendations = filteredList) }
+                }
+                // Không cần xử lý lỗi nghiêm ngặt cho phần gợi ý, có thể để trống nếu lỗi
+            }
+        }
+    }
+
     private fun loadEventDetails(eventId: String) {
         viewModelScope.launch {
             getEventByIdUseCase(eventId).collectLatest { result ->
                 when (result) {
                     is Result.Loading -> {
-                        _uiState.value = EventDetailsUiState(isLoading = true)
+                        _uiState.update { it.copy(isLoading = true) }
                     }
 
                     is Result.Success -> {
                         val event = result.data
                         _uiState.update { it.copy(isLoading = false, event = event) }
 
-                        // 2. Nếu là sự kiện ngoài trời -> Load Weather
                         if (event.isOutdoor) {
                             loadWeather(eventId)
                         }
                     }
 
                     is Result.Failure -> {
-                        _uiState.value = EventDetailsUiState(
-                            isLoading = false,
-                            error = result.exception.message ?: "Đã xảy ra lỗi không xác định"
-                        )
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.exception.message ?: "Đã xảy ra lỗi không xác định"
+                            )
+                        }
                     }
                 }
             }
@@ -97,51 +114,39 @@ class EventDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             getEventWeatherUseCase(eventId).collect { result ->
                 if (result is Result.Success) {
-                    Log.d("EventDetailsViewModel", result.data.toString())
                     _uiState.update { it.copy(weather = result.data) }
                 }
             }
         }
     }
 
-    // --- Các trình xử lý sự kiện (Event Handlers) giữ nguyên ---
+    // --- Actions ---
 
     fun onBackNavigationClick() {
-        // TODO: Implement back navigation logic (thường là navController.popBackStack())
-        println("Back navigation clicked")
+        // Handled by UI
     }
 
     fun onBookmarkClick() {
         // TODO: Implement bookmark toggle logic
-        println("Bookmark clicked")
     }
 
     fun onInviteClick() {
         // TODO: Implement invite logic
-        println("Invite clicked")
     }
 
     fun onFollowOrganizerClick() {
         // TODO: Implement follow/unfollow organizer logic
-        println("Follow organizer clicked")
     }
 
     fun onBuyTicketClick() {
         val event = _uiState.value.event ?: return
+        val eventIdToSend = currentEventId ?: return
 
-        val eventIdToSend = currentEventId
-        if (eventIdToSend.isNullOrEmpty()) {
-            Log.e("EventDetailsViewModel", "Không thể điều hướng, eventId gốc bị rỗng!")
-            return // Không làm gì nếu eventId gốc không hợp lệ
-        }
-        // 1. Chuyển đổi Map<String, Map<String, Any>> phức tạp
-        // thành một chuỗi đơn giản: "VIP:50.0|Economy:30.0"
         val ticketDataString = event.ticketTypes.map { (name, details) ->
             val price = (details["price"] as? Number)?.toDouble() ?: 0.0
-            "$name:$price" // Ghép Tên:Giá
-        }.joinToString("|") // Nối các loại vé bằng dấu |
-        Log.d("EventDetailsViewModel", "Ticket Data String: $ticketDataString")
-        // 2. Gửi sự kiện điều hướng chứa ID và chuỗi dữ liệu vé
+            "$name:$price"
+        }.joinToString("|")
+
         viewModelScope.launch {
             _navChannel.send(BuyTicketNavigation.ToBuyTicket(event.id, ticketDataString))
         }

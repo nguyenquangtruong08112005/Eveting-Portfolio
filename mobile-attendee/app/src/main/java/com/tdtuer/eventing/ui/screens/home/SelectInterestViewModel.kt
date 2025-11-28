@@ -64,10 +64,10 @@ class SelectInterestViewModel : ViewModel() {
         // Handle the next step, e.g., save interests and navigate
         if (uiState.value.selectedInterests.isNotEmpty()) {
             println("Next clicked. Selected interests: ${uiState.value.selectedInterests}")
-            Log.d("SelectInterestViewModel", "Next clicked. Selected interests: ${uiState.value.selectedInterests}")
+            //Log.d("SelectInterestViewModel", "Next clicked. Selected interests: ${uiState.value.selectedInterests}")
         } else {
             println("Next clicked. No interests selected.")
-            Log.d("SelectInterestViewModel", "Next clicked. No interests selected.")
+            //Log.d("SelectInterestViewModel", "Next clicked. No interests selected.")
         }
     }
 }

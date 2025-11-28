@@ -11,4 +11,7 @@ interface UserRepository {
     suspend fun updateUserProfile(request: UpdateUserRequest): Flow<Result<User>>
 
     suspend fun uploadImage(uri: Uri, path: String): Result<String>
+
+    suspend fun followProfile(profileId: String): Result<Unit>
+    suspend fun unfollowProfile(profileId: String): Result<Unit>
 }

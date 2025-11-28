@@ -1,11 +1,16 @@
 package com.tdtuer.eventing.data.repository
 
+import com.tdtuer.eventing.data.mapper.toDomain
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
+import com.tdtuer.eventing.data.network.model.ApplyPromotionRequest
+import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing.data.network.model.MediaItemRequest
 import com.tdtuer.eventing.data.network.model.PostMediaRequest
 import com.tdtuer.eventing.data.network.model.PostReviewRequest
+import com.tdtuer.eventing.data.network.model.PromotionResponse
 import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.domain.model.Promotion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -244,5 +249,49 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getFeaturedProfileById(profileId: String): Flow<Result<FeaturedProfileDto>> = flow {
+        emit(Result.Loading)
+        try {
+            val response = apiService.getFeaturedProfileById(profileId)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.Success(response.body()!!))
+            } else {
+                emit(Result.Failure(Exception("Failed to load profile detail: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.Failure(e))
+        }
+    }
+
+    override suspend fun checkPromotion(code: String, eventId: String, quantity: Int): Result<PromotionResponse> {
+        return try {
+            val request = ApplyPromotionRequest(code, eventId, quantity)
+            val response = apiService.checkPromotion(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                // Parse error body nếu cần
+                Result.failure(Exception("Mã giảm giá không hợp lệ hoặc lỗi server."))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun getPublicPromotions(): Flow<Result<List<Promotion>>> = flow {
+        emit(Result.Loading)
+        try {
+            val response = apiService.getPublicPromotions()
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val domainList = dtos.map { it.toDomain() }
+                emit(Result.Success(domainList))
+            } else {
+                emit(Result.Failure(Exception("Failed to load promotions")))
+            }
+        } catch (e: Exception) {
+            emit(Result.Failure(e))
+        }
+    }
 
 }

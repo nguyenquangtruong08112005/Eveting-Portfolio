@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
                 if (auth.currentUser != null) {
                     updateFcmToken(mainViewModel)
                 } else {
-                    Log.d("FCM", "User not logged in. Skipping FCM token update.")
+                    //Log.d("FCM", "User not logged in. Skipping FCM token update.")
                 }
             }
 
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
                 return@addOnCompleteListener
             }
             val token = task.result
-            Log.d("FCM", "Current Token: $token")
+            //Log.d("FCM", "Current Token: $token")
 
             // Gửi token vào ViewModel
             viewModel.updateFcmToken(token)

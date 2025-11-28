@@ -29,8 +29,8 @@ class MainViewModel @Inject constructor(
                 // SỬA LỖI TẠI ĐÂY: Phải gọi .collect() để kích hoạt Flow
                 updateUserProfileUseCase(UpdateUserRequest(fcmToken = token)).collect { result ->
                     when (result) {
-                        is Result.Success -> Log.d("FCM", "Token updated on server successfully")
-                        is Result.Failure -> Log.e("FCM", "Failed to update token: ${result.exception.message}")
+                        is Result.Success -> {} //Log.d("FCM", "Token updated on server successfully")
+                        is Result.Failure -> {}//Log.e("FCM", "Failed to update token: ${result.exception.message}")
                         is Result.Loading -> { /* Do nothing */ }
                     }
                 }

@@ -50,6 +50,8 @@ import com.tdtuer.eventing.ui.screens.payment.PaymentScreen
 import com.tdtuer.eventing.ui.screens.payment.PaymentViewModel
 import com.tdtuer.eventing.ui.screens.postevent.PostEventScreen
 import com.tdtuer.eventing.ui.screens.postevent.PostEventViewModel
+import com.tdtuer.eventing.ui.screens.profile.FeaturedProfileScreen
+import com.tdtuer.eventing.ui.screens.profile.FeaturedProfileViewModel
 import com.tdtuer.eventing.ui.screens.settings.SettingsScreen
 import com.tdtuer.eventing.ui.screens.settings.SettingsViewModel
 import com.tdtuer.eventing.ui.screens.ticket.TicketScreen
@@ -161,26 +163,19 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
                 viewModel = hiltViewModel<MainAppWithDrawerViewModel>(),
                 navController = navController // Dùng navController này để đi đến các màn hình chi tiết
             )
-            // LƯU Ý: HomeScreen của bạn có thể cần chứa một NavHost nội bộ
-            // để quản lý việc chuyển đổi giữa 4 tab (Home, Events, Map, Profile).
-            // HOẶC, bạn có thể triển khai BottomNavBar ở cấp Activity
-            // và dùng navController này để điều hướng 4 tab.
-            // Tệp MainAppWithDrawer.kt của bạn cho thấy bạn đang
-            // đi theo hướng một Scaffold chính.
         }
 
-        composable(Screen.Events.route) {
-            // TODO: Tạo EventsScreen()
-            Text("Events Screen")
-        }
-
-        composable(Screen.Map.route) {
-            // TODO: Tạo MapScreen()
-            Text("Map Screen")
+        composable(
+            route = Screen.FeaturedProfile.route,
+            arguments = listOf(navArgument("profileId") { type = NavType.StringType })
+        ) {
+            FeaturedProfileScreen(
+                viewModel = hiltViewModel<FeaturedProfileViewModel>(),
+                navController = navController
+            )
         }
 
         composable(Screen.Profile.route) {
-
             MyProfileScreen(
                 viewModel = hiltViewModel<MyProfileViewModel>(),
             )

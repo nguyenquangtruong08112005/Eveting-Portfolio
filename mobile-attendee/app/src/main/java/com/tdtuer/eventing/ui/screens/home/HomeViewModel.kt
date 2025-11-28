@@ -100,28 +100,22 @@ class HomeViewModel @Inject constructor(
         Destination(
             "Hồ Chí Minh",
             "https://images.unsplash.com/photo-1583417319070-4a69db38a482?q=80&w=1000&auto=format&fit=crop"
-        ),
-        Destination(
+        ), Destination(
             "Hà Nội",
             "https://images.unsplash.com/photo-1616486410185-81af2d32a2af?q=80&w=686&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-        ),
-        Destination(
+        ), Destination(
             "Đà Nẵng",
             "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=1000&auto=format&fit=crop"
-        ),
-        Destination(
+        ), Destination(
             "Đà Lạt",
             "https://images.unsplash.com/photo-1558338475-7ac335028946?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-        ),
-        Destination(
+        ), Destination(
             "Cao Bằng",
             "https://images.unsplash.com/photo-1650610114362-29af75c44fd7?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-        ),
-        Destination(
+        ), Destination(
             "Ninh Bình",
             "https://images.unsplash.com/photo-1557750255-c76072a7aad1?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-        ),
-        Destination(
+        ), Destination(
             "Phú Quốc",
             "https://images.unsplash.com/photo-1730714103959-5d5a30acf547?q=80&w=2061&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
         )
@@ -138,7 +132,7 @@ class HomeViewModel @Inject constructor(
                 searchEventsUseCase(FilterParams(hasVideo = true, limit = 5)).collect { result ->
                     if (result is Result.Success) {
                         _videoEvents.value = result.data.map { it.toUiModel() }
-                        Log.d("HomeViewModel", "Video Events: ${_videoEvents.value}")
+                        //Log.d("HomeViewModel", "Video Events: ${_videoEvents.value}")
                     }
                 }
             }
@@ -147,9 +141,7 @@ class HomeViewModel @Inject constructor(
             launch {
                 searchEventsUseCase(
                     FilterParams(
-                        sortBy = "hotScore",
-                        sortOrder = "desc",
-                        limit = 6
+                        sortBy = "hotScore", sortOrder = "desc", limit = 6
                     )
                 ).collect { result ->
                     if (result is Result.Success) {
@@ -235,13 +227,13 @@ class HomeViewModel @Inject constructor(
 
                     is Result.Failure -> {
                         // TODO: Tạo một state khác để báo lỗi cho UI
-                        Log.e("HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
+                        //Log.e("HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
                         // (Tùy chọn) TODO: set _isLoading = false
                     }
 
                     is Result.Loading -> {
                         // (Tùy chọn) TODO: set _isLoading = true
-                        Log.d("HomeViewModel", "Đang tải events...")
+                        //Log.d("HomeViewModel", "Đang tải events...")
                     }
                 }
             }
@@ -276,16 +268,14 @@ class HomeViewModel @Inject constructor(
         }
 
         fusedLocationClient.lastLocation.addOnFailureListener { exception ->
-            Log.e(
-                "HomeViewModel", "Lỗi khi lấy vị trí: ${exception.message}"
-            )
+            {}//Log.e("HomeViewModel", "Lỗi khi lấy vị trí: ${exception.message}")
         }.addOnSuccessListener { location ->
             if (location == null) {
                 Log.w("HomeViewModel", "Không thể trí hiện tại (location is null)")
                 return@addOnSuccessListener
             }
 
-            Log.d("HomeViewModel", "Vị trí hiện tại: $location")
+            //Log.d("HomeViewModel", "Vị trí hiện tại: $location")
 
             getAddressFromCoordinates(context, location.latitude, location.longitude)
 
@@ -297,7 +287,7 @@ class HomeViewModel @Inject constructor(
 
                     _currentLocationDisplay.value = addressName
 
-                    Log.d("HomeViewModel", "Địa chỉ hiện tại: $addressName")
+                    //Log.d("HomeViewModel", "Địa chỉ hiện tại: $addressName")
                 }
 
                 findNearbyEventsUseCase(
@@ -308,9 +298,7 @@ class HomeViewModel @Inject constructor(
                     when (result) {
                         is Result.Loading -> {}
                         is Result.Failure -> {
-                            Log.e(
-                                "HomeViewModel", "Lỗi khi tải events: ${result.exception.message}"
-                            )
+                            //Log.e"HomeViewModel", "Lỗi khi tải events: ${result.exception.message}")
                         }
 
                         is Result.Success -> {
@@ -327,27 +315,27 @@ class HomeViewModel @Inject constructor(
     private fun loadCategories() {
         _categories.value = listOf(
             Category(
-                "All", Color(0xFF5669FF), Color.White
-            ) {
-                Icon(
-                    Icons.Default.Bookmark, contentDescription = null, tint = Color.White
-                )
-            }, Category(
-                "Music", Color.White, Color.Black
-            ) {
-                Icon(
-                    Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
-                )
-            }, Category("Sports", Color(0xFFF0635A), Color.White) {
-                Icon(
-                    Icons.Default.Sports, contentDescription = null, tint = Color.White
-                )
-            }, Category(
-                "Art", Color(0xFF29D697), Color.White
-            ) {
-                Icon(
-                    Icons.Default.Campaign, contentDescription = null, tint = Color.White
-                )
-            })
+            "All", Color(0xFF5669FF), Color.White
+        ) {
+            Icon(
+                Icons.Default.Bookmark, contentDescription = null, tint = Color.White
+            )
+        }, Category(
+            "Music", Color.White, Color.Black
+        ) {
+            Icon(
+                Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
+            )
+        }, Category("Sports", Color(0xFFF0635A), Color.White) {
+            Icon(
+                Icons.Default.Sports, contentDescription = null, tint = Color.White
+            )
+        }, Category(
+            "Art", Color(0xFF29D697), Color.White
+        ) {
+            Icon(
+                Icons.Default.Campaign, contentDescription = null, tint = Color.White
+            )
+        })
     }
 }

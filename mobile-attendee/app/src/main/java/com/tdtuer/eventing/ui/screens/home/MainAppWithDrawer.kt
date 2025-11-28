@@ -220,18 +220,19 @@ fun AppDrawerContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.default_pfp),
+                    painter = painterResource(id = R.drawable.logo),
                     contentDescription = "User Avatar",
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape),
+                        .size(120.dp),
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "Ashfak Sayem", fontWeight = FontWeight.Bold, fontSize = 18.sp
+                    "Find it. Book it. Live it.", fontSize = 18.sp
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
             Spacer(modifier = Modifier.height(16.dp))
 
             menuItems.forEach { item ->
@@ -270,29 +271,29 @@ fun AppDrawerContent(
                     unselectedContainerColor = Color.Transparent
                 )
             )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.DarkMode,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Dark Mode", fontWeight = FontWeight.Medium)
-                }
-                Switch(
-                    checked = isSystemInDarkTheme(), // Hoặc lấy từ ViewModel state
-                    onCheckedChange = { /* TODO: Gọi ViewModel đổi theme */ },
-                    modifier = Modifier.scale(0.8f)
-                )
-            }
+//
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 12.dp, vertical = 8.dp),
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//                Row(verticalAlignment = Alignment.CenterVertically) {
+//                    Icon(
+//                        Icons.Default.DarkMode,
+//                        contentDescription = null,
+//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Spacer(modifier = Modifier.width(12.dp))
+//                    Text("Dark Mode", fontWeight = FontWeight.Medium)
+//                }
+//                Switch(
+//                    checked = isSystemInDarkTheme(), // Hoặc lấy từ ViewModel state
+//                    onCheckedChange = { /* TODO: Gọi ViewModel đổi theme */ },
+//                    modifier = Modifier.scale(0.8f)
+//                )
+//            }
 
             Spacer(modifier = Modifier.weight(1f))
 

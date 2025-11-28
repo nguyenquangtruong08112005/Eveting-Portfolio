@@ -33,14 +33,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM", "Refreshed token: $token")
+        //Log.d("FCM", "Refreshed token: $token")
         // Gửi token lên server nếu user đang đăng nhập
         if (auth.currentUser != null) {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     apiService.updateUserProfile(UpdateUserRequest(fcmToken = token))
                 } catch (e: Exception) {
-                    Log.e("FCM", "Failed to send token", e)
+                    {}//Log.e("FCM", "Failed to send token", e)
                 }
             }
         }

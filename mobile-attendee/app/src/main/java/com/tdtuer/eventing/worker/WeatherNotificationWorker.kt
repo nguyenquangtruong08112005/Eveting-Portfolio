@@ -33,13 +33,13 @@ class WeatherNotificationWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        // Log.d("WeatherWorker", "🚀 Worker started...")
+        // //Log.d("WeatherWorker", "🚀 Worker started...")
         return try {
             checkUpcomingEventWeather()
-            // Log.d("WeatherWorker", "✅ Worker finished successfully!")
+            // //Log.d("WeatherWorker", "✅ Worker finished successfully!")
             Result.success()
         } catch (e: Exception) {
-            // Log.e("WeatherWorker", "❌ Worker failed: ${e.message}")
+            // {}//Log.e("WeatherWorker", "❌ Worker failed: ${e.message}")
             Result.failure()
         }
     }
@@ -56,7 +56,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
         }
 
         if (tickets.isEmpty()) {
-            // Log.d("WeatherWorker", "No tickets found.")
+            // //Log.d("WeatherWorker", "No tickets found.")
             return
         }
 
@@ -75,7 +75,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
             val diffMs = ticket.eventTimestamp - currentTime
             val daysLeft = TimeUnit.MILLISECONDS.toDays(diffMs)
 
-            // Log.d("WeatherWorker", "Event: ${ticket.eventName} - Days left: $daysLeft")
+            // //Log.d("WeatherWorker", "Event: ${ticket.eventName} - Days left: $daysLeft")
 
             when (daysLeft) {
                 1L -> { // Còn 1 ngày (Ngày mai) -> Gửi báo cáo thời tiết
@@ -137,7 +137,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
                     android.Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                // Log.e("WeatherWorker", "Missing POST_NOTIFICATIONS permission")
+                // {}//Log.e("WeatherWorker", "Missing POST_NOTIFICATIONS permission")
                 return
             }
         }

@@ -54,13 +54,13 @@ class VerificationViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val result = sendVerificationEmailUseCase()
             if (result.isSuccess) {
-                Log.d("VerificationVM", "Email verification sent successfully.")
+                //Log.d("VerificationVM", "Email verification sent successfully.")
                 _uiState.value = _uiState.value.copy(isLoading = false, isEmailSent = true)
                 // Start the cooldown timer
                 startResendCooldown()
             } else {
                 val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
-                Log.e("VerificationVM", "Failed to send verification email: $errorMessage")
+                {}//Log.e("VerificationVM", "Failed to send verification email: $errorMessage")
                 _uiState.value = _uiState.value.copy(isLoading = false, error = errorMessage)
             }
         }
@@ -85,25 +85,25 @@ class VerificationViewModel @Inject constructor(
             val oobCode = uri.getQueryParameter("oobCode")
 
             if (oobCode != null) {
-                Log.d("VerificationVM", "oobCode found, applying verification...")
+                //Log.d("VerificationVM", "oobCode found, applying verification...")
                 viewModelScope.launch {
                     _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                     val result = applyVerificationCodeUseCase(oobCode)
                     if (result.isSuccess) {
-                        Log.d("VerificationVM", "Verification successful via deep link.")
+                        //Log.d("VerificationVM", "Verification successful via deep link.")
                         _uiState.value =
                             _uiState.value.copy(isLoading = false, isVerified = true)
                     } else {
                         val errorMessage =
                             result.exceptionOrNull()?.message ?: "Invalid verification link"
-                        Log.e("VerificationVM", "Deep link verification failed: $errorMessage")
+                        {}//Log.e("VerificationVM", "Deep link verification failed: $errorMessage")
                         _uiState.value =
                             _uiState.value.copy(isLoading = false, error = errorMessage)
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e("VerificationVM", "Failed to parse deep link: $link", e)
+            {}//Log.e("VerificationVM", "Failed to parse deep link: $link", e)
             _uiState.value = _uiState.value.copy(error = "Invalid link format.")
         }
     }
@@ -114,11 +114,11 @@ class VerificationViewModel @Inject constructor(
             val result = checkVerificationStatusUseCase()
             if (result.isSuccess) {
                 val isVerified = result.getOrNull() ?: false
-                Log.d("VerificationVM", "Email verification status: $isVerified")
+                //Log.d("VerificationVM", "Email verification status: $isVerified")
                 _uiState.value = _uiState.value.copy(isLoading = false, isVerified = isVerified)
             } else {
                 val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
-                Log.e("VerificationVM", "Failed to check verification status: $errorMessage")
+                {}//Log.e("VerificationVM", "Failed to check verification status: $errorMessage")
                 _uiState.value = _uiState.value.copy(isLoading = false, error = errorMessage)
             }
         }

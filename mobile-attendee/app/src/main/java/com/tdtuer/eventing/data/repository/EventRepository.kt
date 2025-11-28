@@ -1,6 +1,9 @@
 package com.tdtuer.eventing.data.repository
 
+import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
+import com.tdtuer.eventing.data.network.model.PromotionResponse
 import com.tdtuer.eventing.domain.model.Event
+import com.tdtuer.eventing.domain.model.Promotion
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.ui.screens.postevent.MediaItem
@@ -45,10 +48,16 @@ interface EventRepository {
 
     suspend fun postEventReview(eventId: String, rating: Int, comment: String): Result<Unit>
 
+    fun getFeaturedProfileById(profileId: String): Flow<Result<FeaturedProfileDto>>
+
     fun getEventMedia(eventId: String): Flow<Result<List<MediaItem>>>
 
     suspend fun postEventMedia(eventId: String, url: String, type: String): Result<Unit>
 
     fun getRecommendations(limit: Int = 10): Flow<Result<List<Event>>>
     fun getEventWeather(eventId: String): Flow<Result<Weather>>
+
+    suspend fun checkPromotion(code: String, eventId: String, quantity: Int): Result<PromotionResponse>
+
+    fun getPublicPromotions(): Flow<Result<List<Promotion>>>
 }

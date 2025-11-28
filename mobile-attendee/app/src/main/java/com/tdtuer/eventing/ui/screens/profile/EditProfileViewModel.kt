@@ -121,12 +121,12 @@ class EditProfileViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> {
                     onSuccess(result.data) // Trả về URL ảnh mới
-                    Log.d("EditProfile", "Upload $type success: ${result.data}")
+                    //Log.d("EditProfile", "Upload $type success: ${result.data}")
                 }
 
                 is Result.Failure -> {
                     _uiState.update { it.copy(errorMessage = "Upload failed: ${result.exception.message}") }
-                    Log.e("EditProfile", "Upload failed", result.exception)
+                    //Log.e("EditProfile", "Upload failed", result.exception)
                 }
 
                 else -> {}

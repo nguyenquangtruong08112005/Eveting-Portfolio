@@ -63,7 +63,7 @@ class EventPreviewViewModel @Inject constructor(
                             isLoading = false,
                             event = result.data // <-- DỮ LIỆU THẬT TỪ API
                         )
-                        Log.d("EventPreviewViewModel", "loadEventDetails: ${result.data}")
+                        //Log.d("EventPreviewViewModel", "loadEventDetails: ${result.data}")
                     }
                     is Result.Failure -> {
                         _uiState.value = EventPreviewUiState(
@@ -88,7 +88,7 @@ class EventPreviewViewModel @Inject constructor(
 
     fun onContinue(navController: NavController, eventId: String) {
         println("Choose Your Seat clicked for event: $eventId")
-        Log.d("EventPreviewViewModel", "onContinue: $eventId")
+        //Log.d("EventPreviewViewModel", "onContinue: $eventId")
         // Điều hướng đến màn hình đặt vé
         navController.navigate(Screen.EventDetails.createRoute(eventId))
     }

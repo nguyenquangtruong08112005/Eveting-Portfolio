@@ -21,6 +21,7 @@ fun UserDto.toDomainModel(): User {
         interests = this.interests ?: emptyList(),
         followersCount = this.followersCount ?: 0,
         followingCount = this.followingCount ?: 0,
+        followedProfileIds = this.followedProfileIds ?: emptyList(),
         joinedEvents = this.joinedEvents?.map { it.toDomainModel() } ?: emptyList(),
         fcmTokens = emptyList()
     )

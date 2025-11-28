@@ -1,15 +1,19 @@
 package com.tdtuer.eventing.data.network
 
+import com.tdtuer.eventing.data.network.model.ApplyPromotionRequest
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.EventDetailDto
 import com.tdtuer.eventing.data.network.model.EventDto
 import com.tdtuer.eventing.data.network.model.EventListResponse
+import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing.data.network.model.MediaResponse
 import com.tdtuer.eventing.data.network.model.NotificationDto
 import com.tdtuer.eventing.data.network.model.PostMediaRequest
 import com.tdtuer.eventing.data.network.model.PostReviewRequest
+import com.tdtuer.eventing.data.network.model.PromotionDto
+import com.tdtuer.eventing.data.network.model.PromotionResponse
 import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing.data.network.model.ReviewResponse
 import com.tdtuer.eventing.data.network.model.TicketDetailResponse
@@ -21,6 +25,7 @@ import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.usecase.payment.CreateZaloPayOrderUseCase
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -146,4 +151,20 @@ interface EventApiService {
     @POST("notifications/{id}/read")
     suspend fun markNotificationAsRead(@Path("id") notificationId: String): Response<Unit>
 
+    @GET("profiles/{id}")
+    suspend fun getFeaturedProfileById(
+        @Path("id") profileId: String
+    ): Response<FeaturedProfileDto>
+
+    @POST("users/me/follow")
+    suspend fun followProfile(@Body body: Map<String, String>): Response<Unit> // body: {"profileId": "..."}
+
+    @DELETE("users/me/follow/{profileId}")
+    suspend fun unfollowProfile(@Path("profileId") profileId: String): Response<Unit>
+
+    @POST("promotions/apply")
+    suspend fun checkPromotion(@Body request: ApplyPromotionRequest): Response<PromotionResponse>
+
+    @GET("promotions")
+    suspend fun getPublicPromotions(): Response<List<PromotionDto>>
 }

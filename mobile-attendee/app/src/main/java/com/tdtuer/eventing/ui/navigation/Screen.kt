@@ -77,5 +77,7 @@ sealed class Screen(val route: String) {
     data object Calendar : Screen("calendar_screen") // Đã có màn hình CalendarScreen
     data object Bookmark : Screen("bookmark_screen") // Map với WishlistScreen
     data object HelpFaqs : Screen("help_faqs_screen") // Màn hình mới hoặc webview
-    // ... thêm các bước tạo sự kiện khác
-}
+
+    data object FeaturedProfile : Screen("featured_profile_screen/{profileId}") {
+        fun createRoute(profileId: String) = "featured_profile_screen/$profileId"
+    }}

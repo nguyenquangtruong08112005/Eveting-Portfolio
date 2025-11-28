@@ -287,12 +287,12 @@ private fun SignInForm(
                     modifier = Modifier.scale(0.8f),
                     checked = rememberMe,
                     onCheckedChange = onRememberMeChange,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.background,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
-                    ),
+//                    colors = SwitchDefaults.colors(
+//                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+//                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+//                        uncheckedThumbColor = MaterialTheme.colorScheme.background,
+//                        uncheckedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+//                    ),
                 )
             }
         }

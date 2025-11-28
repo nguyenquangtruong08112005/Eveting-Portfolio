@@ -41,7 +41,7 @@ class UserRepositoryImpl @Inject constructor(
         emit(Result.Loading)
         try {
             val response = apiService.updateUserProfile(request)
-            Log.d("UpdateUserProfileUseCase", "Response: $response")
+            //Log.d("UpdateUserProfileUseCase", "Response: $response")
             if (response.isSuccessful && response.body() != null) {
                 val user = response.body()!!.toDomainModel()
                 emit(Result.Success(user))
@@ -63,6 +63,26 @@ class UserRepositoryImpl @Inject constructor(
             Result.success(downloadUrl)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun followProfile(profileId: String): Result<Unit> {
+        return try {
+            val response = apiService.followProfile(mapOf("profileId" to profileId))
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Failure(Exception("Follow failed"))
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override suspend fun unfollowProfile(profileId: String): Result<Unit> {
+        return try {
+            val response = apiService.unfollowProfile(profileId)
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Failure(Exception("Unfollow failed"))
+        } catch (e: Exception) {
+            Result.Failure(e)
         }
     }
 }
