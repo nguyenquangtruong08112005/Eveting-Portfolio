@@ -2,8 +2,18 @@ package com.tdtuer.eventing_organizer.ui.screens.promotion
 
 import android.app.DatePickerDialog
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,15 +24,39 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -30,9 +64,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tdtuer.eventing_organizer.domain.model.Promotion
+import com.tdtuer.eventing_organizer.ui.navigation.Graph
+import com.tdtuer.eventing_organizer.ui.navigation.Screen
+import com.tdtuer.eventing_organizer.ui.screens.dashboard.OrganizerBottomBar
+import com.tdtuer.eventing_organizer.ui.screens.dashboard.OrganizerMenuSheetContent
 import com.tdtuer.eventing_organizer.ui.theme.AppTheme
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +84,10 @@ fun PromotionManagementScreen(
     val context = LocalContext.current
     var showCreateDialog by remember { mutableStateOf(false) }
 
-    // Hiển thị Toast khi có thông báo
+    // State cho Menu Bottom Sheet (tái sử dụng từ Dashboard)
+    var showMenuSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
     LaunchedEffect(uiState.successMessage, uiState.error) {
         uiState.successMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -56,23 +99,71 @@ fun PromotionManagementScreen(
         }
     }
 
+    // --- MENU BOTTOM SHEET ---
+    if (showMenuSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showMenuSheet = false },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            OrganizerMenuSheetContent(
+                onProfileClick = {
+                    showMenuSheet = false
+                    navController.navigate(Screen.Profile.route)
+                },
+                onSettingsClick = {
+                    showMenuSheet = false
+                    navController.navigate(Screen.Settings.route)
+                },
+                onLogoutClick = {
+                    showMenuSheet = false
+                    viewModel.onSignOut {
+                        navController.navigate(Graph.AUTHENTICATION) {
+                            popUpTo(Graph.MAIN_APP) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Quản lý Khuyến mãi", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+//                navigationIcon = {
+//                    // Nút Back sẽ điều hướng về Dashboard
+//                    IconButton(onClick = {
+//                        navController.navigate(Screen.Dashboard.route) {
+//                            popUpTo(Screen.Dashboard.route) { inclusive = true }
+//                        }
+//                    }) {
+//                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+//                    }
+//                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppTheme.colorScheme.background)
+            )
+        },
+        bottomBar = {
+            // --- TÍCH HỢP BOTTOM BAR ---
+            OrganizerBottomBar(
+                currentTab = "Voucher", // Đánh dấu tab hiện tại
+                onNavigateToHome = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppTheme.colorScheme.background)
+                onNavigateToPromotions = { /* Đang ở đây */ },
+                onNavigateToScanner = { navController.navigate(Screen.Scanner.route) },
+                onOpenMenu = { showMenuSheet = true }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
                 containerColor = AppTheme.colorScheme.primary,
-                contentColor = Color.White
+                contentColor = Color.White,
+                modifier = Modifier.offset(y = (-10).dp) // Đẩy lên để không dính BottomBar
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
@@ -80,11 +171,11 @@ fun PromotionManagementScreen(
         containerColor = AppTheme.colorScheme.background
     ) { padding ->
         if (uiState.isLoading && uiState.promotions.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (uiState.promotions.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("Chưa có mã giảm giá nào.", color = Color.Gray)
             }
         } else {
@@ -101,6 +192,7 @@ fun PromotionManagementScreen(
                         onDelete = { viewModel.deletePromotion(promo.id) }
                     )
                 }
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
 
@@ -122,7 +214,7 @@ fun PromotionManagementScreen(
 @Composable
 fun PromotionCard(promotion: Promotion, onDelete: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
-    val isActive = promotion.isActive() // Giả sử Domain Model có hàm này
+    val isActive = promotion.isActive()
     val statusColor = if (isActive) Color(0xFF4CAF50) else Color.Gray
 
     Card(
@@ -172,7 +264,7 @@ fun PromotionCard(promotion: Promotion, onDelete: () -> Unit) {
             Text("Hết hạn: ${formatDate(promotion.validUntil)}", fontSize = 14.sp, color = Color.Gray)
 
             if (promotion.description.isNotBlank()) {
-                Text("Mô tả: ${promotion.description}", fontSize = 13.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
+                Text("Mô tả: ${promotion.description}", fontSize = 13.sp, color = Color.Gray, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -198,8 +290,7 @@ fun CreatePromotionDialog(
     var description by remember { mutableStateOf("") }
     var isPercent by remember { mutableStateOf(false) }
 
-    // Date state
-    var validUntil by remember { mutableStateOf(System.currentTimeMillis() + 2592000000L) } // +30 days
+    var validUntil by remember { mutableStateOf(System.currentTimeMillis() + 2592000000L) }
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 

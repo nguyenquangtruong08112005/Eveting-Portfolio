@@ -1,5 +1,6 @@
 package com.tdtuer.eventing_organizer.ui.screens.scanner
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.CheckInTicketInfo
@@ -43,6 +44,7 @@ class ScannerViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             val result = eventRepository.checkInTicket(code)
+            Log.d("", "Result: $result")
 
             _uiState.update { state ->
                 when (result) {
@@ -71,6 +73,8 @@ class ScannerViewModel @Inject constructor(
                                 rawMsg.contains("Event not found", ignoreCase = true) -> "Sự kiện không hợp lệ."
                                 rawMsg.contains("Forbidden", ignoreCase = true) -> "Bạn không có quyền soát vé sự kiện này."
                                 rawMsg.contains("Cannot check-in", ignoreCase = true) -> "Vé chưa thanh toán hoặc bị hủy."
+                                rawMsg.contains("This ticket has been checked in", ignoreCase = true) -> "Vé đã đạt số lượng check in tối đa."
+
                                 else -> "Lỗi: $rawMsg" // Fallback cho lỗi lạ
                             }
 
@@ -97,6 +101,7 @@ class ScannerViewModel @Inject constructor(
                             errorMsg.contains("403") -> "Không có quyền truy cập."
                             errorMsg.contains("404") -> "Không tìm thấy dữ liệu."
                             errorMsg.contains("Unable to resolve host") -> "Vui lòng kiểm tra kết nối mạng."
+                            errorMsg.contains("This ticket has been checked in") -> "Vé đã đạt số lượng check in tối đa."
                             else -> "Có lỗi xảy ra. Vui lòng thử lại."
                         }
 

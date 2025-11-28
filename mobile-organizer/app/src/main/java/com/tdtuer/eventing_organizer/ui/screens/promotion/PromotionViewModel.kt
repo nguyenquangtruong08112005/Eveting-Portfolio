@@ -7,6 +7,7 @@ import com.tdtuer.eventing_organizer.data.network.model.UpdatePromotionRequest
 import com.tdtuer.eventing_organizer.data.repository.EventRepository
 import com.tdtuer.eventing_organizer.domain.model.Promotion
 import com.tdtuer.eventing_organizer.domain.model.Result
+import com.tdtuer.eventing_organizer.domain.usecase.authentication.SignOutUseCase // <-- Import mới
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +25,8 @@ data class PromotionUiState(
 
 @HiltViewModel
 class PromotionViewModel @Inject constructor(
-    private val repository: EventRepository
+    private val repository: EventRepository,
+    private val signOutUseCase: SignOutUseCase // <-- Inject SignOutUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PromotionUiState())
@@ -84,12 +86,19 @@ class PromotionViewModel @Inject constructor(
         }
     }
 
-    // Hàm helper để update nhanh (ví dụ gia hạn ngày)
     fun extendPromotion(id: String, newEndDate: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val result = repository.updatePromotion(id, UpdatePromotionRequest(validUntil = newEndDate))
             handleResult(result, "Đã cập nhật ngày hết hạn.")
+        }
+    }
+
+    // --- HÀM MỚI: Đăng xuất ---
+    fun onSignOut(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            signOutUseCase()
+            onSuccess()
         }
     }
 
