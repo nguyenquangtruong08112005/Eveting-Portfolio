@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import com.tdtuer.eventing_organizer.data.mapper.toDomain
 import com.tdtuer.eventing_organizer.data.mapper.toDomainModel
 import com.tdtuer.eventing_organizer.data.network.EventApiService
 import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
@@ -14,6 +15,7 @@ import com.tdtuer.eventing_organizer.data.network.model.CheckInRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
 import com.tdtuer.eventing_organizer.data.network.model.CreateProfileRequest
+import com.tdtuer.eventing_organizer.data.network.model.CreatePromotionRequest
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
@@ -24,8 +26,10 @@ import com.tdtuer.eventing_organizer.data.network.model.PostMediaRequest
 import com.tdtuer.eventing_organizer.data.network.model.PostReviewRequest
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
 import com.tdtuer.eventing_organizer.data.network.model.UpdateOrganizerProfileRequest
+import com.tdtuer.eventing_organizer.data.network.model.UpdatePromotionRequest
 import com.tdtuer.eventing_organizer.data.network.model.VenueResponse
 import com.tdtuer.eventing_organizer.domain.model.Event
+import com.tdtuer.eventing_organizer.domain.model.Promotion
 import com.tdtuer.eventing_organizer.domain.model.Result
 import com.tdtuer.eventing_organizer.domain.model.Weather
 import com.tdtuer.eventing_organizer.domain.model.failure
@@ -45,7 +49,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class EventRepositoryImpl @Inject constructor(
     private val apiService: EventApiService,
@@ -593,4 +596,54 @@ class EventRepositoryImpl @Inject constructor(
             throw e
         }
     }
+
+    // --- PROMOTION IMPLEMENTATION ---
+
+    override fun getPromotions(): Flow<Result<List<Promotion>>> = flow {
+        emit(Result.Loading)
+        try {
+            val response = apiService.getOrganizerPromotions()
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val domainList = dtos.map { it.toDomain() }
+                emit(Result.Success(domainList))
+            } else {
+                emit(Result.Failure(Exception("Failed to load promotions: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.Failure(e))
+        }
+    }
+
+    override suspend fun createPromotion(request: CreatePromotionRequest): Result<Unit> {
+        return try {
+            val response = apiService.createPromotion(request)
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Failure(Exception("Create failed: ${response.errorBody()?.string()}"))
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override suspend fun updatePromotion(id: String, request: UpdatePromotionRequest): Result<Unit> {
+        return try {
+            val response = apiService.updatePromotion(id, request)
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Failure(Exception("Update failed: ${response.code()}"))
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+    override suspend fun deletePromotion(id: String): Result<Unit> {
+        return try {
+            val response = apiService.deletePromotion(id)
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Failure(Exception("Delete failed: ${response.code()}"))
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
+
+
 }

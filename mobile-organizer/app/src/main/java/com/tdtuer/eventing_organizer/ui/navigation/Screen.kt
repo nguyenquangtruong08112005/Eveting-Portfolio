@@ -99,5 +99,15 @@ sealed class Screen(val route: String) {
     data object EditEvent : Screen("edit_event/{eventId}") {
         fun createRoute(eventId: String) = "edit_event/$eventId"
     }
+
+    data object EventStats : Screen("event_stats/{eventId}") {
+        fun createRoute(eventId: String) = "event_stats/$eventId"
+    }
+
+    data object FeaturedProfile : Screen("featured_profile_screen/{profileId}") {
+        fun createRoute(profileId: String) = "featured_profile_screen/$profileId"
+    }
+
+    object PromotionManagement : Screen("promotion_management")
 }
 

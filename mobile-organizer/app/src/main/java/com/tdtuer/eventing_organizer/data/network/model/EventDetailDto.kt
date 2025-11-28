@@ -1,6 +1,8 @@
 package com.tdtuer.eventing_organizer.data.network.model
 
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
+import com.tdtuer.eventing_organizer.data.network.deserializer.TicketTypesDeserializer
 
 // DTO này dùng để "hứng" CẤU TRÚC ĐẦY ĐỦ của một sự kiện
 data class EventDetailDto(
@@ -39,6 +41,7 @@ data class EventDetailDto(
 
     @SerializedName("sponsors") val sponsors: List<SponsorDto>?,
 
+    @JsonAdapter(TicketTypesDeserializer::class)
     @SerializedName("ticketTypes")
     val ticketTypes: Map<String, TicketTypeDetailsDto>?,
 

@@ -43,6 +43,7 @@ class EditEventViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CreateEventUiState())
     val uiState = _uiState.asStateFlow()
 
+    // Sử dụng mutableStateListOf để Compose theo dõi thay đổi của từng phần tử
     val ticketTypes = mutableStateListOf<TicketTypeState>()
 
     val predefinedCategories = listOf(
@@ -91,14 +92,15 @@ class EditEventViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             eventRepository.getEventById(id).collect { result ->
-                Log.d("EditEventViewModel", "loadEventData: $result")
+                //Log.d("EditEventViewModel", "loadEventData: $result")
 
                 if (result is Result.Success) {
                     val event = result.data
                     mapEventToState(event)
                     _uiState.update { it.copy(isLoading = false) }
                 } else if (result is Result.Failure) {
-                    _uiState.update { it.copy(isLoading = false, error = "Failed to load event") }
+                    val errorMsg = result.exception.message ?: "Failed to load event"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
             }
         }
@@ -108,13 +110,18 @@ class EditEventViewModel @Inject constructor(
         // 1. Map Ticket Types
         // Dữ liệu từ Domain là Map<String, Map<String, Any>>
         ticketTypes.clear()
+        //Log.d("EditEventViewModel", "mapEventToState TicketTypes: ${event.ticketTypes}")
+
         if (event.ticketTypes.isNotEmpty()) {
             event.ticketTypes.forEach { (key, details) ->
-                // Kiểm tra kỹ kiểu dữ liệu khi lấy từ Map<String, Any>
-                val typeName = details["name"] as? String ?: key
+                // --- UPDATE FIX: Xử lý fallback tên vé ---
+                val rawName = details["name"] as? String
+                // Nếu name trong chi tiết là null hoặc chuỗi rỗng "", dùng Key của Map
+                val typeName = if (!rawName.isNullOrBlank()) rawName else key
+
                 // Convert an toàn số sang String
                 val price = when (val p = details["price"]) {
-                    is Number -> p.toLong().toString()
+                    is Number -> p.toLong().toString() // Dùng toLong để bỏ .0 nếu là số nguyên
                     is String -> p
                     else -> "0"
                 }
@@ -124,6 +131,7 @@ class EditEventViewModel @Inject constructor(
                     else -> "0"
                 }
                 val description = details["description"] as? String ?: ""
+
                 ticketTypes.add(TicketTypeState(typeName, price, quantity, description))
             }
         } else {
@@ -131,11 +139,9 @@ class EditEventViewModel @Inject constructor(
         }
 
         // 2. Map Featured Profiles
-        // Logic mới: Server chỉ trả về list String ID trong detail, không phải list Object
         val profileIds = try {
             val rawList = event.featuredProfiles
             if (rawList.isNotEmpty()) {
-                // Kiểm tra xem phần tử đầu tiên là String hay Object để xử lý
                 val firstItem = rawList.firstOrNull()
                 when (firstItem) {
                     is String -> rawList.filterIsInstance<String>().toSet()
@@ -153,7 +159,6 @@ class EditEventViewModel @Inject constructor(
         val lat = (venueDetails["latitude"] as? Number)?.toDouble() ?: 0.0
         val lng = (venueDetails["longitude"] as? Number)?.toDouble() ?: 0.0
 
-        // Xử lý địa chỉ
         val fullAddress = venueDetails["address"] as? String ?: event.location
         val parts = fullAddress.split(",").map { it.trim() }
 
@@ -162,30 +167,24 @@ class EditEventViewModel @Inject constructor(
         var ward = ""
         var street = fullAddress
 
-        // Cố gắng parse ngược địa chỉ nếu có dấu phẩy
+        // Cố gắng parse ngược địa chỉ
         if (parts.size >= 4) {
             city = parts.last()
             district = parts[parts.size - 2]
             ward = parts[parts.size - 3]
             street = parts.take(parts.size - 3).joinToString(", ")
         } else if (parts.isNotEmpty()) {
-            // Fallback nếu format không chuẩn
             street = parts[0]
         }
 
-        // Kiểm tra Location Mode
         val hasVenueId = venueDetails["id"] != null && (venueDetails["id"] as String).isNotEmpty()
         val mode = if (hasVenueId) LocationMode.EXISTING_VENUE else LocationMode.CUSTOM_LOCATION
         val venueName = event.venueName
 
-        // Tìm venue object tương ứng trong danh sách loaded venues nếu ở mode EXISTING
         var selectedVenue: VenueResponse? = null
         if (hasVenueId) {
             val vId = venueDetails["id"] as String
-            // Lưu ý: availableVenues có thể chưa load xong tại thời điểm này,
-            // nhưng UI sẽ update khi list load xong nhờ StateFlow
             selectedVenue = _uiState.value.availableVenues.find { it.id == vId }
-            // Nếu chưa tìm thấy (do list chưa load), ta tạo tạm 1 object để hiển thị
             if (selectedVenue == null) {
                 selectedVenue = VenueResponse(
                     id = vId,
@@ -222,12 +221,16 @@ class EditEventViewModel @Inject constructor(
             )
         }
 
-        // Trigger location logic to pre-select dropdowns (nếu là custom location)
         if (mode == LocationMode.CUSTOM_LOCATION) {
             onLocationSelected(lat, lng, street, ward, district, city)
         }
     }
 
+    /**
+     * @param: None
+     * @return: Unit (Updates UI State and triggers API call)
+     * Updated: Chuyển logic ticketTypes từ List sang Map để fix lỗi crash app do sai cấu trúc dữ liệu
+     */
     fun onSaveChangesClick() {
         val state = _uiState.value
 
@@ -239,7 +242,7 @@ class EditEventViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            // 1. Upload All Media (Parallel)
+            // 1. Upload All Media
             val bannerDef = async {
                 if (state.bannerUri != null) uploadImageUseCase(
                     state.bannerUri,
@@ -257,7 +260,7 @@ class EditEventViewModel @Inject constructor(
                     state.videoUri,
                     "${Constraints.PATH_EVENTS}/videos/${System.currentTimeMillis()}.mp4"
                 )
-                else Result.Success(state.videoUrl) // Keep existing video if not changed
+                else Result.Success(state.videoUrl)
             }
 
             val bannerRes = bannerDef.await()
@@ -274,12 +277,15 @@ class EditEventViewModel @Inject constructor(
             val finalVideoUrl = videoRes.data
 
             // 2. Prepare Request
-            val ticketRequests = ticketTypes.map {
-                TicketTypeRequest(
-                    it.name.ifBlank { "General" },
-                    it.price.toDoubleOrNull() ?: 0.0,
-                    it.quantity.toIntOrNull() ?: 0,
-                    it.description
+            // --- LOGIC MỚI: Dùng associate để tạo Map ---
+            val ticketRequestsMap = ticketTypes.associate { ticketState ->
+                val ticketName = ticketState.name.ifBlank { "General" }
+                // Key của Map là ticketName
+                ticketName to TicketTypeRequest(
+                    name = ticketName,
+                    price = ticketState.price.toDoubleOrNull() ?: 0.0,
+                    quantity = ticketState.quantity.toIntOrNull() ?: 0,
+                    description = ticketState.description
                 )
             }
 
@@ -309,7 +315,11 @@ class EditEventViewModel @Inject constructor(
                 imageUrl = finalThumbUrl,
                 videoUrl = finalVideoUrl,
                 isOutdoor = state.isOutdoor,
-                ticketTypes = ticketRequests,
+
+                // --- UPDATE: Truyền Map vào request ---
+                ticketTypes = ticketRequestsMap,
+                // -------------------------------------
+
                 category = state.selectedCategories.toList(),
                 tags = state.tags,
                 onlineUrl = if (state.eventType == "online") state.onlineUrl else null,
@@ -338,6 +348,7 @@ class EditEventViewModel @Inject constructor(
             .trim()
     }
 
+    // --- Keep simple setters ---
     fun onNameChange(v: String) { _uiState.update { it.copy(name = v) } }
     fun onDescriptionChange(v: String) { _uiState.update { it.copy(description = v) } }
     fun onDateSelected(v: Long) { _uiState.update { it.copy(date = v) } }

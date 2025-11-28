@@ -54,7 +54,7 @@ class VerificationViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val result = sendVerificationEmailUseCase()
             if (result.isSuccess) {
-                Log.d("VerificationVM", "Email verification sent successfully.")
+                //Log.d("VerificationVM", "Email verification sent successfully.")
                 _uiState.value = _uiState.value.copy(isLoading = false, isEmailSent = true)
                 // Start the cooldown timer
                 startResendCooldown()
@@ -85,12 +85,12 @@ class VerificationViewModel @Inject constructor(
             val oobCode = uri.getQueryParameter("oobCode")
 
             if (oobCode != null) {
-                Log.d("VerificationVM", "oobCode found, applying verification...")
+                //Log.d("VerificationVM", "oobCode found, applying verification...")
                 viewModelScope.launch {
                     _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                     val result = applyVerificationCodeUseCase(oobCode)
                     if (result.isSuccess) {
-                        Log.d("VerificationVM", "Verification successful via deep link.")
+                        //Log.d("VerificationVM", "Verification successful via deep link.")
                         _uiState.value =
                             _uiState.value.copy(isLoading = false, isVerified = true)
                     } else {
@@ -114,7 +114,7 @@ class VerificationViewModel @Inject constructor(
             val result = checkVerificationStatusUseCase()
             if (result.isSuccess) {
                 val isVerified = result.getOrNull() ?: false
-                Log.d("VerificationVM", "Email verification status: $isVerified")
+                //Log.d("VerificationVM", "Email verification status: $isVerified")
                 _uiState.value = _uiState.value.copy(isLoading = false, isVerified = isVerified)
             } else {
                 val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"

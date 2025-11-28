@@ -153,7 +153,7 @@ class SignUpViewModel @Inject constructor(
                 // Lỗi API: Vẫn cho user đăng nhập nhưng báo lỗi phần Organizer
                 val errorMsg = (orgResult as Result.Failure).exception.message ?: "Unknown error"
                 _authState.value = AuthState.Error("Account verified but Organizer registration failed: $errorMsg")
-                Log.d("SignUpViewModel", "Organizer registration failed: $errorMsg")
+                //Log.d("SignUpViewModel", "Organizer registration failed: $errorMsg")
             }
         } else {
             // Không phải Organizer -> Login luôn

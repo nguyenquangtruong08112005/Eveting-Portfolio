@@ -8,6 +8,7 @@ import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
 import com.tdtuer.eventing_organizer.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing_organizer.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateProfileRequest
+import com.tdtuer.eventing_organizer.data.network.model.CreatePromotionRequest
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventAttendeesResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventDetailDto
@@ -23,11 +24,13 @@ import com.tdtuer.eventing_organizer.data.network.model.NotificationDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
 import com.tdtuer.eventing_organizer.data.network.model.PostMediaRequest
 import com.tdtuer.eventing_organizer.data.network.model.PostReviewRequest
+import com.tdtuer.eventing_organizer.data.network.model.PromotionDto
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
 import com.tdtuer.eventing_organizer.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing_organizer.data.network.model.ReviewResponse
 import com.tdtuer.eventing_organizer.data.network.model.TicketDetailResponse
 import com.tdtuer.eventing_organizer.data.network.model.UpdateOrganizerProfileRequest
+import com.tdtuer.eventing_organizer.data.network.model.UpdatePromotionRequest
 import com.tdtuer.eventing_organizer.data.network.model.UpdateUserRequest
 import com.tdtuer.eventing_organizer.data.network.model.UserDto
 import com.tdtuer.eventing_organizer.data.network.model.UserTicketResponse
@@ -38,6 +41,7 @@ import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
@@ -258,4 +262,19 @@ interface EventApiService {
         @Path("eventId") eventId: String,
         @Body request: BroadcastRequest
     ): Response<Unit>
+
+    @GET("promotions/organizer")
+    suspend fun getOrganizerPromotions(): Response<List<PromotionDto>>
+
+    @POST("promotions/organizer")
+    suspend fun createPromotion(@Body request: CreatePromotionRequest): Response<PromotionDto>
+
+    @PUT("promotions/organizer/{id}")
+    suspend fun updatePromotion(
+        @Path("id") id: String,
+        @Body request: UpdatePromotionRequest
+    ): Response<PromotionDto>
+
+    @DELETE("promotions/organizer/{id}")
+    suspend fun deletePromotion(@Path("id") id: String): Response<Unit>
 }

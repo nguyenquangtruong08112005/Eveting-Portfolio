@@ -393,13 +393,20 @@ class CreateEventViewModel @Inject constructor(
     }
 
     // Update từ Map (Geocoding)
-    fun onLocationSelected(lat: Double, lng: Double, street: String, ward: String, district: String, city: String) {
+    fun onLocationSelected(
+        lat: Double,
+        lng: Double,
+        street: String,
+        ward: String,
+        district: String,
+        city: String
+    ) {
         // 1. Cập nhật State cơ bản
         _uiState.update {
             val finalStreet = street.ifBlank { it.street }
 
             // Tự động điền Venue Name nếu đang trống
-            val autoVenueName = it.venueName.ifBlank { "$finalStreet, $district".trim(',',' ') }
+            val autoVenueName = it.venueName.ifBlank { "$finalStreet, $district".trim(',', ' ') }
 
             it.copy(
                 lat = lat,
@@ -419,8 +426,14 @@ class CreateEventViewModel @Inject constructor(
 
         val foundProvince = _uiState.value.provinces.find {
             // So sánh tên gần đúng (Bỏ 'Tỉnh', 'Thành phố', case insensitive)
-            it.name.contains(city.replace(Regex("^(Tỉnh|Thành phố|TP\\.)\\s+"), ""), ignoreCase = true)
-                    || city.contains(it.name.replace(Regex("^(Tỉnh|Thành phố|TP\\.)\\s+"), ""), ignoreCase = true)
+            it.name.contains(
+                city.replace(Regex("^(Tỉnh|Thành phố|TP\\.)\\s+"), ""),
+                ignoreCase = true
+            )
+                    || city.contains(
+                it.name.replace(Regex("^(Tỉnh|Thành phố|TP\\.)\\s+"), ""),
+                ignoreCase = true
+            )
         }
 
         if (foundProvince != null) {
@@ -437,8 +450,18 @@ class CreateEventViewModel @Inject constructor(
 
                         // Tìm Quận
                         val foundDistrict = districts.find {
-                            it.name.contains(district.replace(Regex("^(Quận|Huyện|Thị xã|TP\\.)\\s+"), ""), ignoreCase = true)
-                                    || district.contains(it.name.replace(Regex("^(Quận|Huyện|Thị xã|TP\\.)\\s+"), ""), ignoreCase = true)
+                            it.name.contains(
+                                district.replace(
+                                    Regex("^(Quận|Huyện|Thị xã|TP\\.)\\s+"),
+                                    ""
+                                ), ignoreCase = true
+                            )
+                                    || district.contains(
+                                it.name.replace(
+                                    Regex("^(Quận|Huyện|Thị xã|TP\\.)\\s+"),
+                                    ""
+                                ), ignoreCase = true
+                            )
                         }
 
                         if (foundDistrict != null) {
@@ -446,14 +469,25 @@ class CreateEventViewModel @Inject constructor(
 
                             // Tìm Phường/Xã
                             try {
-                                val resWard = addressApiService.getWardsByDistrict(foundDistrict.code)
+                                val resWard =
+                                    addressApiService.getWardsByDistrict(foundDistrict.code)
                                 if (resWard.isSuccessful && resWard.body() != null) {
                                     val wards = resWard.body()!!.wards
                                     _uiState.update { it.copy(wards = wards) }
 
                                     val foundWard = wards.find {
-                                        it.name.contains(ward.replace(Regex("^(Phường|Xã|Thị trấn)\\s+"), ""), ignoreCase = true)
-                                                || ward.contains(it.name.replace(Regex("^(Phường|Xã|Thị trấn)\\s+"), ""), ignoreCase = true)
+                                        it.name.contains(
+                                            ward.replace(
+                                                Regex("^(Phường|Xã|Thị trấn)\\s+"),
+                                                ""
+                                            ), ignoreCase = true
+                                        )
+                                                || ward.contains(
+                                            it.name.replace(
+                                                Regex("^(Phường|Xã|Thị trấn)\\s+"),
+                                                ""
+                                            ), ignoreCase = true
+                                        )
                                     }
 
                                     if (foundWard != null) {
@@ -463,10 +497,12 @@ class CreateEventViewModel @Inject constructor(
                                         // Hoặc set selectedWardObj = null
                                     }
                                 }
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) {
+                            }
                         }
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                }
             }
         }
     }
@@ -536,13 +572,17 @@ class CreateEventViewModel @Inject constructor(
             val finalThumbUrl = (thumbRes as Result.Success).data
             val finalVideoUrl = if (videoRes is Result.Success) videoRes.data else ""
 
-            // 2. Prepare Data
-            val ticketRequests = ticketTypes.map {
-                TicketTypeRequest(
-                    it.name.ifBlank { "General" },
-                    it.price.toDoubleOrNull() ?: 0.0,
-                    it.quantity.toIntOrNull() ?: 0,
-                    it.description
+            // 2. Prepare Request
+            // --- LOGIC MỚI: Convert List -> Map ---
+            // Key là tên vé (hoặc một unique ID nếu có), Value là object TicketTypeRequest
+            val ticketRequestsMap = ticketTypes.associate { ticketState ->
+                val ticketName = ticketState.name.ifBlank { "General" }
+                // Tạo Entry cho Map: key = ticketName, value = TicketTypeRequest
+                ticketName to TicketTypeRequest(
+                    name = ticketName,
+                    price = ticketState.price.toDoubleOrNull() ?: 0.0,
+                    quantity = ticketState.quantity.toIntOrNull() ?: 0,
+                    description = ticketState.description
                 )
             }
 
@@ -571,7 +611,7 @@ class CreateEventViewModel @Inject constructor(
                 imageUrl = finalThumbUrl,
                 videoUrl = finalVideoUrl, // URL video đã upload
                 isOutdoor = state.isOutdoor,
-                ticketTypes = ticketRequests,
+                ticketTypes = ticketRequestsMap,
                 category = state.selectedCategories.toList(), // Gửi list category đã chọn
                 tags = state.tags, // Gửi list tags đã nhập
                 onlineUrl = if (state.eventType == "online") state.onlineUrl else null,

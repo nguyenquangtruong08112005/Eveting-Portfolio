@@ -61,15 +61,15 @@ class SignInViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             val processedEmail = if (email.contains("@")) email else "$email@gmail.com"
 
-//            Log.d("SignInViewModel", "1. Bắt đầu gọi signInUseCase...")
+//            //Log.d("SignInViewModel", "1. Bắt đầu gọi signInUseCase...")
 
             // Bước 1: Đăng nhập Firebase
             val result = signInUseCase(processedEmail, password)
 
-//            Log.d("SignInViewModel", "2. Kết quả signInUseCase: ${result::class.simpleName}")
+//            //Log.d("SignInViewModel", "2. Kết quả signInUseCase: ${result::class.simpleName}")
 
             if (result.isSuccess) {
-//                Log.d("SignInViewModel", "3. Đăng nhập Firebase thành công. Đang lấy Profile từ API...")
+//                //Log.d("SignInViewModel", "3. Đăng nhập Firebase thành công. Đang lấy Profile từ API...")
 
                 // Bước 2: Gọi API Profile để lấy Role (Admin/Organizer)
                 // QUAN TRỌNG: Dùng .filter để bỏ qua Loading, chỉ lấy Success hoặc Failure
@@ -78,11 +78,11 @@ class SignInViewModel @Inject constructor(
                         .filter { it !is Result.Loading } // <-- FIX QUAN TRỌNG
                         .first()
 
-//                    Log.d("SignInViewModel", "4. Kết quả API Profile: $profileResult")
+//                    //Log.d("SignInViewModel", "4. Kết quả API Profile: $profileResult")
 
                     if (profileResult is Result.Success) {
                         val userWithRole = profileResult.data
-//                        Log.d("SignInViewModel", "5. User Role: isAdmin=${userWithRole.isAdmin}, isOrganizer=${userWithRole.isOrganizer}")
+//                        //Log.d("SignInViewModel", "5. User Role: isAdmin=${userWithRole.isAdmin}, isOrganizer=${userWithRole.isOrganizer}")
 
                         _authState.value = AuthState.Success(userWithRole)
                         saveRememberMeStatusUseCase(rememberMe)

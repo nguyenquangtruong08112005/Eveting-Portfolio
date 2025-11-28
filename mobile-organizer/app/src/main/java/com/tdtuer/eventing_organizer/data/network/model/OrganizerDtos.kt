@@ -23,7 +23,7 @@ data class CreateEventRequest(
     @SerializedName("videoUrl") val videoUrl: String? = null,
 
     @SerializedName("isOutdoor") val isOutdoor: Boolean = false,
-    @SerializedName("ticketTypes") val ticketTypes: List<TicketTypeRequest>,
+    @SerializedName("ticketTypes") val ticketTypes: Map<String, TicketTypeRequest>,
     @SerializedName("category") val category: List<String> = emptyList(),
     @SerializedName("tags") val tags: List<String> = emptyList(),
 
@@ -178,7 +178,14 @@ data class EventStatsResponse(
     @SerializedName("totalRevenue") val totalRevenue: Double,
     @SerializedName("ticketsSold") val ticketsSold: Map<String, Int>?, // VD: {"VIP": 10, "Standard": 50}
     @SerializedName("checkIns") val checkIns: Int,
-    @SerializedName("views") val views: Int
+    @SerializedName("views") val views: Int,
+    @SerializedName("dailySales") val dailySales: Map<String, Int>?,
+    @SerializedName("salesOverTime") val salesOverTime: List<TimeSeriesData>?
+)
+
+data class TimeSeriesData(
+    @SerializedName("timestamp") val timestamp: Long,
+    @SerializedName("value") val value: Int
 )
 
 // Request Body cho Broadcast

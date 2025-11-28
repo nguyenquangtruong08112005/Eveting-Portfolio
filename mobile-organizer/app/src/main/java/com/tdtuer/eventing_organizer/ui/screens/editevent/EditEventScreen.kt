@@ -859,8 +859,8 @@ fun ProfileSelectionCard(
     onInfoClick: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) AppTheme.colorScheme.primaryContainer else Color.White),
-        border = if (isSelected) BorderStroke(2.dp, AppTheme.colorScheme.primary) else BorderStroke(
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) AppTheme.extendedColors.onSuccess else Color.White),
+        border = if (isSelected) BorderStroke(2.dp, AppTheme.colorScheme.outline) else BorderStroke(
             1.dp,
             Color.LightGray
         ),

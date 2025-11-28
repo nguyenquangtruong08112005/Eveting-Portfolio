@@ -34,10 +34,12 @@ import com.tdtuer.eventing_organizer.ui.screens.location.LocationPickerScreen
 import com.tdtuer.eventing_organizer.ui.screens.onboarding.OnboardingScreen
 import com.tdtuer.eventing_organizer.ui.screens.onboarding.OnboardingViewModel
 import com.tdtuer.eventing_organizer.ui.screens.profile.MyProfileScreen
+import com.tdtuer.eventing_organizer.ui.screens.promotion.PromotionManagementScreen
 import com.tdtuer.eventing_organizer.ui.screens.scanner.ScannerScreen
 import com.tdtuer.eventing_organizer.ui.screens.settings.SettingsScreen
 import com.tdtuer.eventing_organizer.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing_organizer.ui.screens.splash.SplashViewModel
+import com.tdtuer.eventing_organizer.ui.screens.stats.EventStatsScreen
 
 @Composable
 fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
@@ -199,6 +201,19 @@ fun NavGraphBuilder.mainAppGraph(navController: NavHostController) {
             arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) {
             EditEventScreen(navController = navController)
+        }
+
+        composable(
+            route = Screen.EventStats.route,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) {
+            EventStatsScreen(navController = navController)
+        }
+
+        composable(
+            route = Screen.PromotionManagement.route
+        ) {
+            PromotionManagementScreen(navController = navController)
         }
     }
 }

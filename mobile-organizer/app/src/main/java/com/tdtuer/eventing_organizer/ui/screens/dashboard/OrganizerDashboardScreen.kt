@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -79,6 +80,9 @@ fun OrganizerDashboardScreen(
                     }
                     IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                    IconButton(onClick = { navController.navigate(Screen.PromotionManagement.route) }) {
+                        Icon(Icons.Default.LocalOffer, contentDescription = "Promotions")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = AppTheme.colorScheme.background)

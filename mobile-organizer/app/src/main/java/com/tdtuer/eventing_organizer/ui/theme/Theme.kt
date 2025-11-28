@@ -34,7 +34,7 @@ private val LightColorScheme = lightColorScheme(
     error = RedError,
     onError = WhiteSecondary,
     secondaryContainer =  Grey2Secondary,
-    primaryContainer = GreenSecondary
+    primaryContainer = Grey2Secondary
 
 )
 

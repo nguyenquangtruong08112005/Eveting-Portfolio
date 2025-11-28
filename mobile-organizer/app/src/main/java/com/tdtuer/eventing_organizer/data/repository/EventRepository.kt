@@ -3,6 +3,7 @@ package com.tdtuer.eventing_organizer.data.repository
 import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
+import com.tdtuer.eventing_organizer.data.network.model.CreatePromotionRequest
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
@@ -10,8 +11,10 @@ import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
 import com.tdtuer.eventing_organizer.data.network.model.UpdateOrganizerProfileRequest
+import com.tdtuer.eventing_organizer.data.network.model.UpdatePromotionRequest
 import com.tdtuer.eventing_organizer.data.network.model.VenueResponse
 import com.tdtuer.eventing_organizer.domain.model.Event
+import com.tdtuer.eventing_organizer.domain.model.Promotion
 import com.tdtuer.eventing_organizer.domain.model.Result
 import com.tdtuer.eventing_organizer.domain.model.Weather
 import com.tdtuer.eventing_organizer.ui.model.MediaItem
@@ -103,4 +106,10 @@ interface EventRepository {
     suspend fun importAttendees(eventId: String, file: File): Result<Unit>
     suspend fun exportAttendees(eventId: String): Result<String> // Trả về đường dẫn file
     suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<Unit>
+
+    // Promotions
+    fun getPromotions(): Flow<Result<List<Promotion>>>
+    suspend fun createPromotion(request: CreatePromotionRequest): Result<Unit>
+    suspend fun updatePromotion(id: String, request: UpdatePromotionRequest): Result<Unit>
+    suspend fun deletePromotion(id: String): Result<Unit>
 }

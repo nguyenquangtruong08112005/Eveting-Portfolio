@@ -2,13 +2,14 @@ package com.tdtuer.eventing_organizer.ui.screens.admin
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Logout // <-- IMPORT ICON
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
@@ -27,7 +28,8 @@ import androidx.navigation.NavController
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.helpers.formatTimestampToDay
 import com.tdtuer.eventing_organizer.helpers.formatTimestampToMonth
-import com.tdtuer.eventing_organizer.ui.navigation.Graph // <-- IMPORT GRAPH
+import com.tdtuer.eventing_organizer.ui.navigation.Graph
+import com.tdtuer.eventing_organizer.ui.navigation.Screen // <-- IMPORT Screen
 import com.tdtuer.eventing_organizer.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,14 +44,12 @@ fun AdminDashboardScreen(
     // --- XỬ LÝ ĐIỀU HƯỚNG ĐĂNG XUẤT ---
     LaunchedEffect(uiState.isLoggedOut) {
         if (uiState.isLoggedOut) {
-            // Quay về màn hình Login và xóa toàn bộ backstack
             navController.navigate(Graph.AUTHENTICATION) {
                 popUpTo(Graph.MAIN_APP) { inclusive = true }
             }
         }
     }
 
-    // State cho Dialog từ chối (Giữ nguyên)
     var showRejectDialog by remember { mutableStateOf(false) }
     var selectedEventId by remember { mutableStateOf<String?>(null) }
     var rejectReason by remember { mutableStateOf("") }
@@ -65,7 +65,6 @@ fun AdminDashboardScreen(
         }
     }
 
-    // Dialog Reject (Giữ nguyên)
     if (showRejectDialog) {
         AlertDialog(
             onDismissRequest = { showRejectDialog = false },
@@ -100,11 +99,9 @@ fun AdminDashboardScreen(
             TopAppBar(
                 title = { Text("Admin Panel", fontWeight = FontWeight.Bold) },
                 actions = {
-                    // Nút Refresh
                     IconButton(onClick = { viewModel.loadPendingEvents() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                    // ▼▼▼ NÚT ĐĂNG XUẤT ▼▼▼
                     IconButton(onClick = { viewModel.onSignOut() }) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign Out", tint = Color.Red)
                     }
@@ -131,6 +128,12 @@ fun AdminDashboardScreen(
                     items(uiState.pendingEvents) { event ->
                         PendingEventCard(
                             event = event,
+                            // --- THÊM: SỰ KIỆN CLICK ĐỂ NAVIGATE ---
+                            onClick = {
+                                // Sử dụng Screen.AdminEventDetail.createRoute(id) nếu bạn đã định nghĩa
+                                // Hoặc hardcode route tạm thời nếu chưa có helper method
+                                navController.navigate("admin_event_detail/${event.id}")
+                            },
                             onApprove = { viewModel.approveEvent(event.id) },
                             onReject = {
                                 selectedEventId = event.id
@@ -148,15 +151,15 @@ fun AdminDashboardScreen(
     }
 }
 
-// Composable PendingEventCard giữ nguyên như cũ...
 @Composable
 fun PendingEventCard(
     event: MyEventDto,
+    onClick: () -> Unit, // --- THÊM PARAMETER ---
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
-    // (Code giữ nguyên như phiên bản trước)
     Card(
+        modifier = Modifier.clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(12.dp)

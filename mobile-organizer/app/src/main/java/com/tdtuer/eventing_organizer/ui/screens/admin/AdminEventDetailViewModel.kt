@@ -45,7 +45,7 @@ class AdminEventDetailViewModel @Inject constructor(
     private fun loadEventDetails() {
         viewModelScope.launch {
             eventRepository.getEventById(eventId).collectLatest { result ->
-                Log.d("AdminEventDetailViewModel", "Event ID: $result")
+                //Log.d("AdminEventDetailViewModel", "Event ID: $result")
                 when (result) {
                     is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                     is Result.Success -> _uiState.update { it.copy(isLoading = false, event = result.data) }

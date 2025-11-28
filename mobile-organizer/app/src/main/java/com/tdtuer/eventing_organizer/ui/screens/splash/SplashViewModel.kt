@@ -56,7 +56,7 @@ class SplashViewModel @Inject constructor(
                     if (currentUser != null) {
                         // 2. Gọi API Users/Me để lấy quyền Admin
                         try {
-                            Log.d("SplashViewModel", "Calling /users/me to check admin role...")
+                            //Log.d("SplashViewModel", "Calling /users/me to check admin role...")
 
                             // ▼▼▼ SỬA LỖI TẠI ĐÂY ▼▼▼
                             // Thêm .filter { it !is Result.Loading } để bỏ qua trạng thái Loading ban đầu
@@ -66,7 +66,7 @@ class SplashViewModel @Inject constructor(
 
                             if (result is Result.Success) {
                                 val user = result.data
-                                Log.d("SplashViewModel", "Check success. IsAdmin: ${user.isAdmin}")
+                                //Log.d("SplashViewModel", "Check success. IsAdmin: ${user.isAdmin}")
 
                                 if (user.isAdmin) {
                                     _destination.value = SplashNavDestination.GoToAdmin

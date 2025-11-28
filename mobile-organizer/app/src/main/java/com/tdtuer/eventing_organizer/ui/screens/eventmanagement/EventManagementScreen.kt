@@ -210,7 +210,13 @@ fun EventManagementScreen(
                 }
             } else {
                 when (uiState.selectedTab) {
-                    0 -> OverviewTab(uiState.stats)
+                    0 -> OverviewTab(
+                        stats = uiState.stats,
+                        onViewStatsClick = {
+                            // --- ĐIỀU HƯỚNG ĐẾN TRANG THỐNG KÊ ---
+                            navController.navigate(Screen.EventStats.createRoute(viewModel.eventId))
+                        }
+                    )
                     1 -> GuestListTab(
                         attendees = uiState.attendees,
                         onImportClick = {
@@ -226,9 +232,12 @@ fun EventManagementScreen(
     }
 }
 
-// ... OverviewTab giữ nguyên ...
+// ... OverviewTab cập nhật ...
 @Composable
-fun OverviewTab(stats: EventStatsResponse?) {
+fun OverviewTab(
+    stats: EventStatsResponse?,
+    onViewStatsClick: () -> Unit // <-- THÊM PARAMETER NÀY
+) {
     if (stats == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -278,7 +287,21 @@ fun OverviewTab(stats: EventStatsResponse?) {
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // --- NÚT XEM THỐNG KÊ CHI TIẾT (MỚI) ---
+        OutlinedButton(
+            onClick = onViewStatsClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppTheme.colorScheme.primary),
+            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(AppTheme.colorScheme.primary))
+        ) {
+            Icon(Icons.Default.BarChart, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Xem biểu đồ & Phân tích chi tiết")
+        }
+
+        HorizontalDivider()
+
+        Spacer(modifier = Modifier.height(8.dp))
         Text("Chi tiết loại vé", fontWeight = FontWeight.Bold, fontSize = 18.sp)
 
         val soldMap = stats.ticketsSold ?: emptyMap()
