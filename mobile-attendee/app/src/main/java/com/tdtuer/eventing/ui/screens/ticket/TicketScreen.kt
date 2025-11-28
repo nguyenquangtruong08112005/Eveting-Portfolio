@@ -57,6 +57,7 @@ import com.tdtuer.eventing.helpers.formatTimestampToHour
 import com.tdtuer.eventing.helpers.formatTimestampToMinute
 import com.tdtuer.eventing.helpers.formatTimestampToYear
 import com.tdtuer.eventing.helpers.generateBarCodeBitmap
+import com.tdtuer.eventing.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,7 +87,7 @@ fun TicketScreen(
             TopAppBar(
                 title = { Text("Tickets", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.onBackClick() }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -95,14 +96,10 @@ fun TicketScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.onCartClick() }) {
-                        Icon(
-                            Icons.Default.ShoppingCart,
-                            contentDescription = "Cart",
-                            tint = Color.White
-                        )
-                    }
-                    IconButton(onClick = { viewModel.onMoreOptionsClick() }) {
+                    IconButton(onClick = {
+                        Toast.makeText(context, "Coming soon!", Toast.LENGTH_SHORT).show()
+
+                    }) {
                         Icon(
                             Icons.Default.MoreVert,
                             contentDescription = "More",

@@ -54,12 +54,14 @@ class TicketRepositoryImpl @Inject constructor(
     override suspend fun bookTicket(
         eventId: String,
         ticketType: String,
+        quantity: Int,
         promoCode: String?
     ): Result<Ticket> {
         return try {
             val request = BookTicketRequest(
                 eventId = eventId,
                 ticketType = ticketType,
+                quantity = quantity,
                 promoCode = promoCode
             )
             val response = apiService.bookTicket(request = request)

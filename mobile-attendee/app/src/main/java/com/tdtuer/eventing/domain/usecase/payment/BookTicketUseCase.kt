@@ -11,8 +11,9 @@ class BookTicketUseCase @Inject constructor(
     suspend operator fun invoke(
         eventId: String,
         ticketType: String,
-        promoCode: String? = null
+        promoCode: String? = null,
+        quantity: Int = 1,
     ): Result<Ticket> {
-        return ticketRepository.bookTicket(eventId, ticketType, promoCode)
+        return ticketRepository.bookTicket(eventId, ticketType,quantity, promoCode)
     }
 }

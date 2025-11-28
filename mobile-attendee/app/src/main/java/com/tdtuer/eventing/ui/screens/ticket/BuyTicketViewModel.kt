@@ -207,11 +207,11 @@ class BuyTicketViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
-            // Gửi kèm promoCode khi đặt vé
             val result = bookTicketUseCase(
                 eventId = eventId,
                 ticketType = currentState.selectedTicketType.name,
-                promoCode = currentState.appliedVoucherCode // <--- GỬI CODE Ở ĐÂY
+                quantity = currentState.quantity,
+                promoCode = currentState.appliedVoucherCode
             )
 
             when (result) {
@@ -221,10 +221,16 @@ class BuyTicketViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 is Result.Failure -> {
+                    // Parse message lỗi để hiển thị thân thiện hơn
+                    val msg = result.exception.message
+                    val userMsg = if (msg?.contains("expired") == true) "Mã giảm giá đã hết hạn"
+                    else if (msg?.contains("limit") == true) "Mã giảm giá đã hết lượt dùng"
+                    else "Lỗi đặt vé: $msg"
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = result.exception.message ?: "Lỗi không xác định"
+                            errorMessage = userMsg
                         )
                     }
                 }

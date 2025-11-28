@@ -16,6 +16,7 @@ interface TicketRepository {
     suspend fun bookTicket(
         eventId: String,
         ticketType: String,
+        quantity: Int,
         promoCode: String?
     ): Result<Ticket>
 
