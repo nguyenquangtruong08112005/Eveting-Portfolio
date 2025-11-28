@@ -39,7 +39,43 @@ const sendToTopic = async (topic, title, body, data = {}) => {
     }
 };
 
+/**
+ * Đăng ký một hoặc nhiều token vào một topic.
+ * @param {Array<string>|string} tokens - Danh sách token hoặc 1 token.
+ * @param {string} topic - Tên topic (ví dụ: 'artist_123').
+ */
+const subscribeToTopic = async (tokens, topic) => {
+    if (!tokens) return;
+    const tokenList = Array.isArray(tokens) ? tokens : [tokens];
+    if (tokenList.length === 0) return;
+    
+    try {
+        const response = await admin.messaging().subscribeToTopic(tokenList, topic);
+        console.log(`Successfully subscribed to topic "${topic}":`, response.successCount, 'successes');
+    } catch (error) {
+        console.error(`Error subscribing to topic "${topic}":`, error);
+    }
+};
+
+/**
+ * Hủy đăng ký topic.
+ */
+const unsubscribeFromTopic = async (tokens, topic) => {
+    if (!tokens) return;
+    const tokenList = Array.isArray(tokens) ? tokens : [tokens];
+    if (tokenList.length === 0) return;
+
+    try {
+        const response = await admin.messaging().unsubscribeFromTopic(tokenList, topic);
+        console.log(`Successfully unsubscribed from topic "${topic}":`, response.successCount, 'successes');
+    } catch (error) {
+        console.error(`Error unsubscribing from topic "${topic}":`, error);
+    }
+};
+
 module.exports = {
     sendMulticast, 
-    sendToTopic 
+    sendToTopic ,
+    subscribeToTopic,
+    unsubscribeFromTopic,
 };

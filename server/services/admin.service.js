@@ -2,7 +2,7 @@
 const { db } = require('../config/firebase.config');
 const esClient = require('../config/elasticsearch.config');
 const ELASTIC_INDEX = 'events';
-
+const fcmService = require('./fcm.service');
 /**
  * Helper: Chuẩn bị dữ liệu để đẩy lên Elastic (Giống bên event.service.js)
  */
@@ -42,24 +42,24 @@ const buildElasticData = async (eventData) => {
     };
 
     // Đảm bảo không có undefined
-    Object.keys(data).forEach(key => { 
-        if (data[key] === undefined) data[key] = null; 
+    Object.keys(data).forEach(key => {
+        if (data[key] === undefined) data[key] = null;
     });
-    
+
     return data;
 };
- 
+
 /**
  * Lấy danh sách sự kiện chờ duyệt
  */
 const getPendingEvents = async (page = 1, limit = 20) => {
     const eventsRef = db.collection('Events')
         .where('status', '==', 'pending')
-        .orderBy('createdAt', 'desc'); 
+        .orderBy('createdAt', 'desc');
 
     const offset = (page - 1) * limit;
     const snapshot = await eventsRef.limit(limit).offset(offset).get();
-    
+
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
@@ -75,23 +75,30 @@ const approveEvent = async (eventId) => {
     }
 
     // 1. Cập nhật Firestore
-    const updates = { 
+    const updates = {
         status: 'active',
-        visibility: 'public', 
+        visibility: 'public',
         approvedAt: new Date().getTime(),
         lastUpdatedAt: new Date().getTime()
     };
 
     await eventRef.update(updates);
-    
+
+    const topic = `organizer_${organizerId}`;
+    const title = "Sự kiện mới!";
+    const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
+    const data = { eventId: eventId, type: "new_event" };
+
+    fcmService.sendToTopic(topic, title, body, data);
+
     // 2. Đẩy vào Elasticsearch
     if (esClient) {
         try {
             // Lấy dữ liệu mới nhất đã update (merge data cũ và update mới)
             const fullEventData = { ...eventDoc.data(), ...updates };
-            
+
             const elasticData = await buildElasticData(fullEventData);
-            
+
             await esClient.index({
                 index: ELASTIC_INDEX,
                 id: eventId,
@@ -104,7 +111,7 @@ const approveEvent = async (eventId) => {
             // nhưng nên có cơ chế retry hoặc log để xử lý sau.
         }
     }
-        
+
     return { success: true, message: "Event approved and published." };
 };
 
@@ -113,8 +120,8 @@ const approveEvent = async (eventId) => {
  */
 const rejectEvent = async (eventId, reason) => {
     const eventRef = db.collection('Events').doc(eventId);
-    
-    await eventRef.update({ 
+
+    await eventRef.update({
         status: 'rejected',
         rejectReason: reason,
         rejectedAt: new Date().getTime(),
@@ -124,15 +131,15 @@ const rejectEvent = async (eventId, reason) => {
     // Đảm bảo xóa khỏi Elastic nếu lỡ có (dù pending thường chưa có)
     if (esClient) {
         try {
-            await esClient.delete({ index: ELASTIC_INDEX, id: eventId }).catch(() => {});
-        } catch (e) {}
+            await esClient.delete({ index: ELASTIC_INDEX, id: eventId }).catch(() => { });
+        } catch (e) { }
     }
 
     return { success: true, message: "Event rejected." };
 };
 
-module.exports = { 
-    getPendingEvents, 
-    approveEvent, 
-    rejectEvent 
+module.exports = {
+    getPendingEvents,
+    approveEvent,
+    rejectEvent
 };

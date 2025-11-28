@@ -262,7 +262,7 @@ const confirmTicketPayment = async (ticketId) => {
     
     // Bắt đầu Transaction ngay từ đầu
     return db.runTransaction(async (transaction) => {
-        // 1. Đọc dữ liệu trong transaction
+        // 1. Đọc dữ liệu vé
         const doc = await transaction.get(ticketRef);
 
         if (!doc.exists) {
@@ -271,37 +271,59 @@ const confirmTicketPayment = async (ticketId) => {
 
         const ticketData = doc.data();
 
-        // 2. Kiểm tra trạng thái
+        // 2. Kiểm tra trạng thái (Idempotency check)
         if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
-            // Nếu đã thanh toán rồi, không làm gì cả, trả về data hiện tại
-            console.log(`Ticket ${ticketId} is already confirmed (${ticketData.status}).`);
+            console.log(`Ticket ${ticketId} is already confirmed.`);
             return ticketData;
         }
 
         if (ticketData.status !== 'pending') {
-            console.warn(`Attempted to confirm ticket ${ticketId} with status '${ticketData.status}'.`);
-            return ticketData;
+            // Tùy logic business, có thể throw lỗi hoặc bỏ qua
+            console.warn(`Cannot confirm ticket with status: ${ticketData.status}`);
+            return ticketData; 
         }
 
-        // 3. Thực hiện cập nhật (Vé + Analytics)
+        // 3. Chuẩn bị dữ liệu cập nhật Analytics
         const analyticsRef = db.collection('Analytics').doc(ticketData.eventId);
+        
+        // --- LOGIC MỚI: Tính timestamp đầu ngày hôm nay (00:00:00) ---
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Reset về 0 giờ sáng
+        const todayTimestamp = now.getTime().toString(); // Firestore Map Key phải là String
 
-        // A. Cập nhật vé
-        transaction.update(ticketRef, { status: 'paid' });
+        // 4. Thực hiện Update trong Transaction
+        
+        // A. Cập nhật trạng thái vé
+        transaction.update(ticketRef, { 
+            status: 'paid',
+            updatedAt: Date.now(),
+            paymentTime: Date.now() // Lưu thời điểm thanh toán thực tế
+        });
 
-        // B. Cập nhật Analytics
-        // Dùng set với merge: true để đảm bảo document được tạo nếu chưa có
+        // B. Cập nhật/Tạo Analytics
+        // Sử dụng set({..}, {merge: true}) để tạo doc nếu chưa có
         transaction.set(analyticsRef, {
-            eventId: ticketData.eventId, // Đảm bảo có ID
+            eventId: ticketData.eventId,
+            
+            // Cộng doanh thu
             totalRevenue: FieldValue.increment(ticketData.price),
+            
+            // Cộng số lượng theo loại vé (Map: "VIP": +1)
             ticketsSold: {
                 [ticketData.type]: FieldValue.increment(1)
-            }
+            },
+            
+            // --- QUAN TRỌNG: Cộng số lượng vé bán trong ngày hôm nay ---
+            // Giúp vẽ biểu đồ "Sales Over Time"
+            dailySales: {
+                [todayTimestamp]: FieldValue.increment(1)
+            },
+            
+            lastUpdatedAt: Date.now()
         }, { merge: true });
 
-        console.log(`Ticket ${ticketId} status updated to 'paid'. Analytics updated.`);
+        console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
         
-        // Trả về dữ liệu mới (giả lập)
         return { ...ticketData, status: 'paid' };
     });
 };

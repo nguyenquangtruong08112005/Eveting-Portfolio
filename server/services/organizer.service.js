@@ -52,7 +52,7 @@ const getAttendeesByEventId = async (eventId) => {
     }
 
     const userSnapshots = await Promise.all(userDocsPromises);
-    
+
     // Tạo Map để tra cứu nhanh: userId -> userData
     const usersMap = {};
     userSnapshots.forEach(snap => {
@@ -130,7 +130,7 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
         }
 
         // 5. Check-in vé
-        transaction.update(ticketRef, { status: 'checkedIn' , checkedInAt: new Date().getTime() });
+        transaction.update(ticketRef, { status: 'checkedIn', checkedInAt: new Date().getTime() });
         transaction.update(userRef, {
             historyEventIds: FieldValue.arrayUnion(eventId)
         });
@@ -148,7 +148,7 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
  */
 const registerOrganizer = async (userId, organizerData) => {
     const userRef = db.collection('Users').doc(userId);
-    
+
     // Cập nhật role và thông tin doanh nghiệp
     await userRef.update({
         roles: FieldValue.arrayUnion('organizer'),
@@ -171,7 +171,7 @@ const registerOrganizer = async (userId, organizerData) => {
 const getOrganizerProfile = async (userId) => {
     const userDoc = await db.collection('Users').doc(userId).get();
     if (!userDoc.exists) return null;
-    
+
     const data = userDoc.data();
     return {
         id: data.id,
@@ -179,7 +179,7 @@ const getOrganizerProfile = async (userId) => {
         avatarUrl: data.profilePicUrl,
         website: data.organizerInfo?.website || '',
         organizerInfo: data.organizerInfo,
-        followersCount: 0, 
+        followersCount: 0,
         rating: 5.0 // TODO: Tính từ Reviews
     };
 };
@@ -189,14 +189,14 @@ const getOrganizerProfile = async (userId) => {
  */
 const getMyEvents = async (organizerId, page = 1, limit = 20, status) => {
     let query = db.collection('Events').where('organizerId', '==', organizerId);
-    
+
     if (status) {
         query = query.where('status', '==', status);
     }
 
     const offset = (page - 1) * limit;
     const snapshot = await query.orderBy('createdAt', 'desc').limit(limit).offset(offset).get();
-    
+
     const events = [];
     snapshot.forEach(doc => {
         const d = doc.data();
@@ -210,7 +210,7 @@ const getMyEvents = async (organizerId, page = 1, limit = 20, status) => {
             viewCount: d.viewCount || 0
         });
     });
-    
+
     return events;
 };
 
@@ -218,13 +218,18 @@ const getMyEvents = async (organizerId, page = 1, limit = 20, status) => {
  * Thống kê tổng quan (Stats)
  */
 const getOrganizerStats = async (organizerId) => {
+    // 1. Lấy danh sách Event của Organizer
     const eventsSnapshot = await db.collection('Events').where('organizerId', '==', organizerId).get();
-    
+
     let totalEvents = 0;
     let upcomingEvents = 0;
     let totalRevenue = 0;
     let totalTicketsSold = 0;
     const now = new Date().getTime();
+
+    // Map để cộng dồn số vé bán theo ngày từ TẤT CẢ các sự kiện
+    // Key: Timestamp (đầu ngày) hoặc String Date ("YYYY-MM-DD"), Value: Số lượng vé
+    const salesMap = {}; 
 
     const eventIds = [];
 
@@ -235,30 +240,53 @@ const getOrganizerStats = async (organizerId) => {
         eventIds.push(doc.id);
     });
 
-    // Lấy dữ liệu từ Analytics của từng event
-    // Lưu ý: Nếu quá nhiều event, cần tối ưu lại cách query này
+    // 2. Lấy dữ liệu từ Analytics của từng event
     if (eventIds.length > 0) {
-        // Firestore 'in' limit 10, nên loop hoặc dùng giải pháp khác. 
-        // Ở đây demo loop đơn giản.
-        for (const eid of eventIds) {
-            const analyticsDoc = await db.collection('Analytics').doc(eid).get();
-            if (analyticsDoc.exists) {
-                const ana = analyticsDoc.data();
-                totalRevenue += ana.totalRevenue || 0;
+        // CHÚ Ý: Firestore 'in' query giới hạn 10 item. 
+        // Nếu organizer có > 10 sự kiện, cần chia nhỏ mảng eventIds thành các chunk.
+        const chunkSize = 10;
+        for (let i = 0; i < eventIds.length; i += chunkSize) {
+            const chunk = eventIds.slice(i, i + chunkSize);
+            
+            const analyticsSnapshot = await db.collection('Analytics')
+                .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+                .get();
+
+            analyticsSnapshot.forEach(doc => {
+                const ana = doc.data();
                 
-                // Tính tổng vé bán
+                // a. Cộng dồn doanh thu
+                totalRevenue += ana.totalRevenue || 0;
+
+                // b. Cộng dồn tổng vé bán
                 if (ana.ticketsSold) {
                     Object.values(ana.ticketsSold).forEach(count => totalTicketsSold += count);
                 }
-            }
+
+                // c. [MỚI] Cộng dồn lịch sử bán vé (Sales Over Time)
+                // Giả định: DB có trường `dailySales`: { "1700438400000": 5, "1700524800000": 3 } (Key là timestamp đầu ngày)
+                if (ana.dailySales) {
+                    for (const [timestampStr, count] of Object.entries(ana.dailySales)) {
+                        const ts = parseInt(timestampStr); // Chuyển key thành số
+                        const currentCount = salesMap[ts] || 0;
+                        salesMap[ts] = currentCount + count;
+                    }
+                }
+            });
         }
     }
+
+    // 3. Chuyển đổi salesMap thành mảng TimeSeriesData và sắp xếp
+    const salesOverTime = Object.entries(salesMap).map(([timestamp, value]) => ({
+        timestamp: parseInt(timestamp),
+        value: value
+    })).sort((a, b) => a.timestamp - b.timestamp);
 
     return {
         totalRevenue,
         totalTicketsSold,
         totalEvents,
-        upcomingEvents
+        upcomingEvents,
     };
 };
 
@@ -269,7 +297,7 @@ const getOrganizerStats = async (organizerId) => {
  */
 const updateOrganizerProfile = async (userId, updateData) => {
     const userRef = db.collection('Users').doc(userId);
-    
+
     // Chúng ta chỉ cập nhật các trường trong object organizerInfo
     // Để không ghi đè các trường khác, ta dùng dot notation
     const dataToUpdate = {};
@@ -278,7 +306,7 @@ const updateOrganizerProfile = async (userId, updateData) => {
     if (updateData.taxCode) dataToUpdate['organizerInfo.taxCode'] = updateData.taxCode;
     if (updateData.description) dataToUpdate['organizerInfo.description'] = updateData.description;
     if (updateData.website) dataToUpdate['organizerInfo.website'] = updateData.website;
-    
+
     // Nếu muốn cho phép cập nhật cả avatar/tên hiển thị chung của user từ đây:
     if (updateData.avatarUrl) dataToUpdate['profilePicUrl'] = updateData.avatarUrl;
     if (updateData.name) dataToUpdate['name'] = updateData.name; // Tên hiển thị chung
@@ -322,7 +350,7 @@ const importAttendees = async (eventId, fileBuffer, organizerId) => {
         try {
             // Chấp nhận cả key viết hoa và thường
             const email = row['Email'] || row['email'];
-            const ticketType = row['TicketType'] || row['ticketType'] || 'Standard'; 
+            const ticketType = row['TicketType'] || row['ticketType'] || 'Standard';
 
             if (!email) throw new Error("Missing email.");
 
@@ -341,7 +369,7 @@ const importAttendees = async (eventId, fileBuffer, organizerId) => {
             // Tạo vé (Book -> Confirm Payment luôn vì đây là vé mời/nhập tay)
             // Lưu ý: Cần đảm bảo ticketService.bookTicket hỗ trợ promoCode null
             const newTicket = await ticketService.bookTicket(userId, eventId, ticketType);
-            await ticketService.confirmTicketPayment(newTicket.id); 
+            await ticketService.confirmTicketPayment(newTicket.id);
 
             // TODO: Gửi email vé (QR Code) cho user
             // await sendEmailTicket(email, newTicket); 
@@ -350,9 +378,9 @@ const importAttendees = async (eventId, fileBuffer, organizerId) => {
         } catch (err) {
             failCount++;
             // Ghi lại dòng lỗi và lý do để trả về cho client
-            errors.push({ 
-                row: row, 
-                error: err.message 
+            errors.push({
+                row: row,
+                error: err.message
             });
         }
     }
@@ -368,7 +396,7 @@ const exportAttendees = async (eventId) => {
     // Tái sử dụng hàm lấy danh sách (đã tối ưu ở bước trước)
     // Lưu ý: Cần gọi hàm nội bộ hoặc require lại chính file này nếu cần
     const attendees = await module.exports.getAttendeesByEventId(eventId);
-    
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Attendees');
 
@@ -411,13 +439,13 @@ const broadcastNotification = async (eventId, title, message, organizerId) => {
         .where('status', 'in', ['paid', 'checkedIn'])
         .get();
 
-    console.log(ticketsSnapshot.docs);
-    
+    // console.log(ticketsSnapshot.docs);
+
 
     if (ticketsSnapshot.empty) return { count: 0 };
 
     const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
-    
+
     // 3. Lấy tokens và gửi thông báo
     // Chia batch 10 user/lần để query Firestore 'in'
     let successCount = 0;
@@ -430,22 +458,22 @@ const broadcastNotification = async (eventId, title, message, organizerId) => {
         const userDocs = await db.collection('Users')
             .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
             .get();
-            
+
         const tokens = [];
         for (const doc of userDocs.docs) {
-             const userData = doc.data();
-             
-             // Lưu Notification vào DB
-             notificationService.createNotification(
-                 doc.id, title, message, "system", eventId
-             );
+            const userData = doc.data();
 
-             // Gom token để gửi Push
-             if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-                 tokens.push(...userData.fcmTokens);
-             } else if (userData.fcmToken) {
-                 tokens.push(userData.fcmToken);
-             }
+            // Lưu Notification vào DB
+            notificationService.createNotification(
+                doc.id, title, message, "system", eventId
+            );
+
+            // Gom token để gửi Push
+            if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+                tokens.push(...userData.fcmTokens);
+            } else if (userData.fcmToken) {
+                tokens.push(userData.fcmToken);
+            }
         }
 
         if (tokens.length > 0) {

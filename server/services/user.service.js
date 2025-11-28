@@ -1,5 +1,6 @@
 // services/user.service.js
 const { db, FieldValue } = require('../config/firebase.config');
+const fcmService = require('./fcm.service'); // <-- Import FCM Service
 require('dotenv').config();
 const ADMIN_UID = process.env.ADMIN_UID;
 
@@ -52,7 +53,7 @@ const mapUserToMobileProfile = async (userData) => {
         followingCount: userData.followedProfileIds ? userData.followedProfileIds.length : 0,
         // TODO: Cần logic tính followersCount nếu user là Artist/Organizer (lấy từ collection Follows hoặc count field)
         followersCount: userData.followersCount || 0,
-
+        followedProfileIds: userData.followedProfileIds || [], 
         aboutMe: userData.bio || "", // Mapping 'bio' trong DB thành 'aboutMe'
 
         // Trả về mảng string, mobile sẽ tự map sang ProfileInterest với màu sắc
@@ -140,8 +141,29 @@ const updateUserProfile = async (userId, updateData) => {
         // Thêm token mới vào mảng, tự động tránh trùng lặp
         dataToUpdate.fcmTokens = FieldValue.arrayUnion(updateData.fcmToken);
 
-        // (Tùy chọn) Xóa trường fcmToken cũ (string) nếu có để dọn dẹp DB
-        // dataToUpdate.fcmToken = FieldValue.delete(); 
+        // --- Logic đồng bộ: Subscribe token mới vào các topic đã follow ---
+        try {
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                const followedIds = userData.followedProfileIds || [];
+
+                if (followedIds.length > 0) {
+                    // Duyệt qua tất cả profile đã follow và đăng ký token mới vào topic tương ứng
+                    const promises = followedIds.map(profileId => {
+                        const topicName = `artist_${profileId}`;
+                        return fcmService.subscribeToTopic(updateData.fcmToken, topicName);
+                    });
+                    
+                    // Thực hiện subscribe song song
+                    await Promise.all(promises);
+                    console.log(`[Sync] Subscribed new token to ${followedIds.length} topics.`);
+                }
+            }
+        } catch (error) {
+            console.error("[Sync] Error syncing topics for new token:", error);
+            // Không throw lỗi để đảm bảo quá trình update user profile vẫn thành công
+        }
     }
 
     if (Object.keys(dataToUpdate).length > 0) {
@@ -154,19 +176,139 @@ const updateUserProfile = async (userId, updateData) => {
 
 const followProfile = async (userId, profileId) => {
     const userRef = db.collection('Users').doc(userId);
-    await userRef.update({
-        followedProfileIds: FieldValue.arrayUnion(profileId)
-    });
-    // Tăng followerCount cho Profile kia (nếu cần thiết - TODO)
-    return { success: true, message: `Successfully followed profile.` };
+    
+    // Cần xác định profileId thuộc collection nào (Users hay FeaturedProfiles)
+    // Giả sử FeaturedProfiles trước, nếu không tìm thấy thì tìm trong Users (đối với Organizer)
+    let profileRef = db.collection('FeaturedProfiles').doc(profileId);
+    let profileDoc = await profileRef.get();
+
+    if (!profileDoc.exists) {
+        // Thử tìm trong Users (Organizer)
+        profileRef = db.collection('Users').doc(profileId);
+        profileDoc = await profileRef.get();
+        if (!profileDoc.exists) {
+            throw new Error("Profile not found.");
+        }
+    }
+
+    // Dùng Transaction để đảm bảo tính nhất quán:
+    // 1. Thêm ID vào followedProfileIds của User
+    // 2. Tăng followerCount của Profile
+    try {
+        await db.runTransaction(async (transaction) => {
+            // Đọc dữ liệu User hiện tại trong transaction
+            const userDocTrans = await transaction.get(userRef);
+            if (!userDocTrans.exists) throw new Error("User not found.");
+            
+            const userData = userDocTrans.data();
+            const followedIds = userData.followedProfileIds || [];
+
+            if (followedIds.includes(profileId)) {
+                // Đã follow rồi -> Không làm gì cả (tránh spam tăng count)
+                return; 
+            }
+
+            // 1. Cập nhật User: Thêm vào list follow & Tăng followingCount
+            transaction.update(userRef, {
+                followedProfileIds: FieldValue.arrayUnion(profileId),
+                followingCount: FieldValue.increment(1)
+            });
+
+            // 2. Cập nhật Profile: Tăng followerCount
+            transaction.update(profileRef, {
+                followerCount: FieldValue.increment(1)
+            });
+        });
+
+        // 3. Logic FCM (Thực hiện sau khi DB update thành công)
+        // Lấy lại user data để lấy token mới nhất (không cần trong transaction)
+        const userDocAfter = await userRef.get();
+        const userDataAfter = userDocAfter.data();
+        
+        let tokens = [];
+        if (userDataAfter.fcmTokens && Array.isArray(userDataAfter.fcmTokens)) {
+            tokens = userDataAfter.fcmTokens;
+        } else if (userDataAfter.fcmToken) {
+            tokens.push(userDataAfter.fcmToken);
+        }
+
+        if (tokens.length > 0) {
+            const topicName = `artist_${profileId}`;
+            await fcmService.subscribeToTopic(tokens, topicName);
+        }
+
+        return { success: true, message: `Successfully followed profile.` };
+
+    } catch (error) {
+        console.error("Follow Transaction Error:", error);
+        throw error; // Ném lỗi để controller bắt
+    }
 };
 
 const unfollowProfile = async (userId, profileId) => {
     const userRef = db.collection('Users').doc(userId);
-    await userRef.update({
-        followedProfileIds: FieldValue.arrayRemove(profileId)
-    });
-    return { success: true, message: 'Successfully unfollowed profile.' };
+    
+    // Tương tự, tìm collection đúng
+    let profileRef = db.collection('FeaturedProfiles').doc(profileId);
+    let profileDoc = await profileRef.get();
+
+    if (!profileDoc.exists) {
+        profileRef = db.collection('Users').doc(profileId);
+        profileDoc = await profileRef.get();
+        if (!profileDoc.exists) {
+             // Nếu profile bị xóa rồi, vẫn cho phép user unfollow để dọn dẹp data rác
+             console.warn("Unfollowing a non-existent profile.");
+        }
+    }
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userDocTrans = await transaction.get(userRef);
+            if (!userDocTrans.exists) throw new Error("User not found.");
+            
+            const userData = userDocTrans.data();
+            const followedIds = userData.followedProfileIds || [];
+
+            if (!followedIds.includes(profileId)) {
+                return; // Chưa follow -> Không cần unfollow
+            }
+
+            // 1. Cập nhật User: Xóa khỏi list & Giảm followingCount
+            transaction.update(userRef, {
+                followedProfileIds: FieldValue.arrayRemove(profileId),
+                followingCount: FieldValue.increment(-1)
+            });
+
+            // 2. Cập nhật Profile: Giảm followerCount (nếu profile còn tồn tại)
+            if (profileDoc.exists) {
+                transaction.update(profileRef, {
+                    followerCount: FieldValue.increment(-1)
+                });
+            }
+        });
+
+        // 3. Logic FCM
+        const userDocAfter = await userRef.get();
+        const userDataAfter = userDocAfter.data();
+        
+        let tokens = [];
+        if (userDataAfter.fcmTokens && Array.isArray(userDataAfter.fcmTokens)) {
+            tokens = userDataAfter.fcmTokens;
+        } else if (userDataAfter.fcmToken) {
+            tokens.push(userDataAfter.fcmToken);
+        }
+
+        if (tokens.length > 0) {
+            const topicName = `artist_${profileId}`;
+            await fcmService.unsubscribeFromTopic(tokens, topicName);
+        }
+
+        return { success: true, message: 'Successfully unfollowed profile.' };
+
+    } catch (error) {
+        console.error("Unfollow Transaction Error:", error);
+        throw error;
+    }
 };
 
 // Hàm này để mobile gọi khi user Đăng xuất (Logout)
@@ -183,7 +325,7 @@ module.exports = {
     createUserProfile,
     getUserById,
     updateUserProfile,
-    followProfile,
-    unfollowProfile,
+    followProfile,      // Đã cập nhật
+    unfollowProfile,    // Đã cập nhật
     removeFcmToken
 };

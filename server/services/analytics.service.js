@@ -5,7 +5,7 @@ const getAnalyticsByEventId = async (eventId) => {
     const doc = await db.collection('Analytics').doc(eventId).get();
     if (!doc.exists) {
         return null;
-    }
+    }    
     return doc.data();
 };
 

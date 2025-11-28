@@ -7,7 +7,7 @@ const esClient = require('../config/elasticsearch.config');
 const moment = require('moment');
 const axios = require('axios');
 const fcmService = require('./fcm.service');
-const notificationService = require('./notification.service');
+const notificationService = require('./notification.service'); // Import notification service
 const admin = require('firebase-admin');
 
 const ELASTIC_INDEX = 'events';
@@ -66,6 +66,97 @@ const buildElasticData = async (eventData) => {
     return data;
 };
 
+// --- LOGIC GỬI THÔNG BÁO CẬP NHẬT (MỚI) ---
+
+/**
+ * Kiểm tra xem có thay đổi quan trọng nào không.
+ * Chỉ cần 1 trường thay đổi là trả về true.
+ */
+const hasImportantChanges = (oldData, newData) => {
+    // Các trường quan trọng cần báo cho user nếu thay đổi
+    const criticalFields = [
+        'name',          // Tên sự kiện
+        'date',          // Ngày giờ
+        'venueName',     // Tên địa điểm
+        'eventType',     // Online/Offline
+        'onlineUrl',     // Link online
+        'isOutdoor'      // Trong nhà/Ngoài trời
+    ];
+
+    for (const field of criticalFields) {
+        // So sánh lỏng (loose equality) hoặc JSON stringify để an toàn với null/undefined
+        if (JSON.stringify(oldData[field]) !== JSON.stringify(newData[field])) {
+            console.log(`[EventUpdate] Detected change in field: ${field}`);
+            return true;
+        }
+    }
+
+    // Kiểm tra thay đổi địa chỉ chi tiết (nếu có)
+    // (Cần logic phức tạp hơn nếu structure object khác nhau, nhưng so sánh venueName/city ở trên thường đủ)
+
+    return false;
+};
+
+/**
+ * Gửi thông báo Broadcast cho những người đã mua vé
+ */
+const notifyAttendeesAboutUpdate = async (eventId, eventName) => {
+    try {
+        // 1. Tìm tất cả vé đã bán (Paid hoặc CheckedIn)
+        const ticketsSnapshot = await db.collection('Tickets')
+            .where('eventId', '==', eventId)
+            .where('status', 'in', ['paid', 'checkedIn'])
+            .get();
+
+        if (ticketsSnapshot.empty) return;
+
+        // Lấy danh sách userId duy nhất
+        const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
+        console.log(`[EventUpdate] Found ${userIds.length} users to notify.`);
+
+        // 2. Chuẩn bị nội dung thông báo
+        const title = "⚠️ Cập nhật sự kiện";
+        const body = `Sự kiện "${eventName}" vừa có thay đổi thông tin. Vui lòng kiểm tra lại vé và chi tiết sự kiện.`;
+        const payloadData = {
+            eventId: eventId,
+            type: "event_update"
+        };
+
+        // 3. Lấy token và gửi thông báo (Batching)
+        // (Tái sử dụng logic gom token giống hàm broadcastNotification)
+        const tokens = [];
+
+        // Chia mảng user thành các chunk nhỏ để query Firestore (limit 'in' query is 10/30)
+        const CHUNK_SIZE = 10;
+        for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
+            const chunk = userIds.slice(i, i + CHUNK_SIZE);
+            const userDocs = await db.collection('Users')
+                .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+                .get();
+
+            userDocs.forEach(doc => {
+                const userData = doc.data();
+                // Tạo thông báo trong app
+                notificationService.createNotification(doc.id, title, body, "update", eventId);
+
+                // Gom token
+                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+                    tokens.push(...userData.fcmTokens);
+                } else if (userData.fcmToken) {
+                    tokens.push(userData.fcmToken);
+                }
+            });
+        }
+
+        // Gửi FCM nếu có token
+        if (tokens.length > 0) {
+            await fcmService.sendMulticast(tokens, title, body, payloadData);
+        }
+
+    } catch (error) {
+        console.error("[EventUpdate] Failed to notify attendees:", error);
+    }
+};
 
 
 // --- CÁC HÀM CRUD ---
@@ -118,9 +209,7 @@ const getEventById = async (eventId, requestingUser = null) => {
             .get();
         profilesSnapshot.forEach(doc => { featuredProfilesData.push(doc.data()); });
     }
-    
-    // console.log(requestingUser);
-    
+
     let isOwnerOrAdmin = false;
     if (requestingUser) {
         const isAdmin = requestingUser.roles?.includes('organizer');
@@ -128,7 +217,7 @@ const getEventById = async (eventId, requestingUser = null) => {
         isOwnerOrAdmin = isAdmin || isOwner;
     }
 
-    if (isOwnerOrAdmin) {        
+    if (isOwnerOrAdmin) {
         return { id: eventDoc.id, ...eventData, venue: venueData, featuredProfiles: featuredProfilesData };
     }
 
@@ -148,12 +237,7 @@ const getEventById = async (eventId, requestingUser = null) => {
     if (eventData.visibility === 'unlisted' && requestingUser) return publicEventView;
     return null;
 };
-/**
- * Tạo một sự kiện mới.
- * @param {object} eventData - Dữ liệu sự kiện từ client.
- * @param {string} organizerId - ID của người tạo (từ req.user.uid).
- * @returns {Promise<object>} Document sự kiện vừa tạo.
- */
+
 const createEvent = async (eventData, organizerId) => {
     const eventId = `evt_${uuidv4()}`;
     const eventRef = db.collection('Events').doc(eventId);
@@ -161,43 +245,32 @@ const createEvent = async (eventData, organizerId) => {
     if (!eventData.date || typeof eventData.date !== 'number') {
         throw new Error('Invalid or missing event date (must be a timestamp).');
     }
-    // console.log(eventData);
 
+    if (Array.isArray(eventData.ticketTypes)) {
+        throw new Error("ticketTypes must be a Map (Object), not a List (Array).");
+    }
     let geohash = null;
     let location = eventData.location || null;
     let venueName = null;
     let city = null;
     let onlineUrl = eventData.onlineUrl || null;
     const eventType = eventData.eventType || 'physical';
-
-    // Biến để lưu Venue ID cuối cùng (dù là có sẵn hay mới tạo)
     let finalVenueId = eventData.venueId || null;
 
     if (eventType === 'physical') {
-        // TRƯỜNG HỢP 1: Người dùng chọn Venue có sẵn
         if (finalVenueId) {
             const venueDoc = await db.collection('Venues').doc(finalVenueId).get();
             if (venueDoc.exists) {
                 const venue = venueDoc.data();
                 venueName = venue.name;
-                // Lấy city từ cấu trúc addressDetails mới
-                if (venue.addressDetails) {
-                    city = venue.addressDetails.city || null;
-                }
-                // Tự động lấy location từ Venue nếu client không gửi
-                if (!location && venue.location) {
-                    location = venue.location;
-                }
+                if (venue.addressDetails) city = venue.addressDetails.city || null;
+                if (!location && venue.location) location = venue.location;
             } else {
                 throw new Error(`Venue with ID ${finalVenueId} not found.`);
             }
         }
-        // TRƯỜNG HỢP 2: Người dùng tự nhập địa điểm mới (Chưa có venueId)
         else if (location && eventData.venueName && eventData.addressDetails) {
-            // Tự động tạo Venue mới
             const newVenueId = `venue_${uuidv4()}`;
-
-            // Chuẩn hóa tọa độ (mobile có thể gửi lat/lng hoặc latitude/longitude)
             const lat = location.lat || location.latitude;
             const lng = location.lng || location.longitude;
 
@@ -210,7 +283,6 @@ const createEvent = async (eventData, organizerId) => {
                     city: eventData.addressDetails.city || "Unknown"
                 };
             } else {
-                // Fallback cho trường hợp cũ (nếu mobile gửi string address)
                 finalAddressDetails = {
                     street: eventData.addressDetails || "",
                     city: eventData.addressDetails.city || "Unknown",
@@ -223,37 +295,27 @@ const createEvent = async (eventData, organizerId) => {
                 id: newVenueId,
                 name: eventData.venueName,
                 addressDetails: finalAddressDetails,
-                location: {
-                    latitude: lat,
-                    longitude: lng
-                },
-                seatMapTemplate: { totalSeats: 0, layout: [] } // Venue tự tạo thì chưa có seatmap
+                location: { latitude: lat, longitude: lng },
+                seatMapTemplate: { totalSeats: 0, layout: [] }
             };
 
-            // Lưu Venue mới vào DB
             await db.collection('Venues').doc(newVenueId).set(newVenue);
 
-            // Cập nhật thông tin cho Event
             finalVenueId = newVenueId;
             venueName = newVenue.name;
             city = newVenue.addressDetails.city;
-            // location giữ nguyên từ input của user
         }
-        // TRƯỜNG HỢP 3: Thiếu thông tin
         else {
             throw new Error('Physical event must have either a valid venueId OR full location details (name, address).');
         }
 
-        // Tính geohash từ location
         if (location && (location.latitude || location.lat) && (location.longitude || location.lng)) {
             const lat = location.latitude || location.lat;
             const lng = location.longitude || location.lng;
             geohash = geofire.geohashForLocation([lat, lng]);
-
-            // Chuẩn hóa lại object location trong event để lưu thống nhất
             location = { latitude: lat, longitude: lng };
         }
-        onlineUrl = null; // Sự kiện offline không có onlineUrl
+        onlineUrl = null;
 
     } else if (eventType === 'online') {
         location = null;
@@ -278,16 +340,13 @@ const createEvent = async (eventData, organizerId) => {
         tags: eventData.tags || [],
         date: eventData.date,
         endDate: eventData.endDate || null,
-
-        // Các trường đã xử lý logic ở trên
         eventType: eventType,
         onlineUrl: onlineUrl,
         location: location,
         geohash: geohash,
-        venueId: finalVenueId, // Dùng ID đã xử lý
+        venueId: finalVenueId,
         venueName: venueName,
         city: city,
-
         ticketTypes: eventData.ticketTypes || {},
         minPrice: minPrice,
         videoUrl: eventData.videoUrl || '',
@@ -306,35 +365,26 @@ const createEvent = async (eventData, organizerId) => {
 
     await eventRef.set(newEventData);
 
-    const topic = `organizer_${organizerId}`;
-    const title = "Sự kiện mới!";
-    const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
-    const data = { eventId: eventId, type: "new_event" };
-
-    fcmService.sendToTopic(topic, title, body, data);
-
     if (newEventData.featuredProfileIds) {
         newEventData.featuredProfileIds.forEach(artistId => {
             fcmService.sendToTopic(`artist_${artistId}`, "Idol có show mới!", `${newEventData.name}`, data);
         });
     }
 
-    // if (esClient) {
-    //     try {
-    //         const elasticData = await buildElasticData(newEventData);
-    //         await esClient.index({ index: ELASTIC_INDEX, id: eventId, body: elasticData });
-    //         console.log(`✅ [Elastic] Created event: ${eventId}`);
-    //     } catch (error) {
-    //         console.error(`❌ [Elastic] Failed to create event: ${eventId}`, error);
-    //     }
-    // }
-    // console.log(newEventData);
-
     return newEventData;
 };
 
 const updateEvent = async (eventId, eventData) => {
     const eventRef = db.collection('Events').doc(eventId);
+
+    if (Array.isArray(eventData.ticketTypes)) {
+        throw new Error("ticketTypes must be a Map (Object), not a List (Array).");
+    }
+
+    // 1. Lấy dữ liệu CŨ để so sánh
+    const oldDoc = await eventRef.get();
+    const oldData = oldDoc.exists ? oldDoc.data() : {};
+
     let geohash = undefined;
     if (eventData.location?.latitude && eventData.location?.longitude) {
         geohash = geofire.geohashForLocation([eventData.location.latitude, eventData.location.longitude]);
@@ -369,22 +419,29 @@ const updateEvent = async (eventId, eventData) => {
 
     delete updatePayload.id; delete updatePayload.organizerId; delete updatePayload.createdAt;
 
+    // 2. Thực hiện Update
     await eventRef.update(updatePayload);
     const updatedDoc = await eventRef.get();
-
     const fullEventData = { id: updatedDoc.id, ...updatedDoc.data() };
 
-    // console.log(`[DEBUG] Updated Firestore event: ${eventId}`);
+    // 3. Kiểm tra thay đổi và gửi thông báo (Logic Mới)
+    if (oldDoc.exists) {
+        const shouldNotify = hasImportantChanges(oldData, fullEventData);
+        if (shouldNotify) {
+            // Chạy async không cần await để trả response nhanh cho Organizer
+            notifyAttendeesAboutUpdate(eventId, fullEventData.name).catch(err =>
+                console.error("Background notification failed:", err)
+            );
+        }
+    }
 
     if (esClient) {
         try {
             if (fullEventData.status !== 'active' || fullEventData.visibility === 'private') {
                 await esClient.delete({ index: ELASTIC_INDEX, id: eventId }).catch(() => { });
-                // console.log(`✅ [Elastic] Removed non-public/inactive event: ${eventId}`);
             } else {
                 const elasticData = await buildElasticData(fullEventData);
                 await esClient.index({ index: ELASTIC_INDEX, id: eventId, body: elasticData });
-                // console.log(`✅ [Elastic] Updated event: ${eventId}`);
             }
         } catch (error) {
             console.error(`❌ [Elastic] Failed to update event: ${eventId}`, error);
@@ -404,7 +461,6 @@ const cancelEvent = async (eventId) => {
     if (esClient) {
         try {
             await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
-            // console.log(`✅ [Elastic] Deleted/Cancelled event: ${eventId}`);
         } catch (error) {
             if (error.meta && error.meta.statusCode !== 404) console.error(`❌ [Elastic] Failed to delete event: ${eventId}`, error);
         }
@@ -419,7 +475,6 @@ const cancelEvent = async (eventId) => {
     if (!ticketsSnapshot.empty) {
         const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
 
-        // Xử lý chia batch nếu > 10 user
         const chunks = [];
         for (let i = 0; i < userIds.length; i += 10) {
             chunks.push(userIds.slice(i, i + 10));
