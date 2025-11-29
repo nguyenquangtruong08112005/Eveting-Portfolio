@@ -17,6 +17,8 @@ const approveEvent = async (req, res) => {
         const result = await adminService.approveEvent(id);
         res.status(200).json(result);
     } catch (error) {
+        console.log(error.message);
+        
         res.status(500).send({ error: error.message });
     }
 };

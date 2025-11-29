@@ -83,8 +83,11 @@ const approveEvent = async (eventId) => {
     };
 
     await eventRef.update(updates);
+    const newEventData = { ...eventDoc.data(), ...updates };
 
-    const topic = `organizer_${organizerId}`;
+    // 2. Gửi thông báo FCM đến topic nghệ sĩ
+    const featuredProfileIds = newEventData.featuredProfileIds || [];
+    const topic = `artist_${featuredProfileIds}`;
     const title = "Sự kiện mới!";
     const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
     const data = { eventId: eventId, type: "new_event" };

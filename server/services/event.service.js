@@ -365,6 +365,11 @@ const createEvent = async (eventData, organizerId) => {
 
     await eventRef.set(newEventData);
 
+    const topic = `organizer_${organizerId}`;
+    const title = "Sự kiện mới!";
+    const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
+    const data = { eventId: eventId, type: "new_event" };
+
     if (newEventData.featuredProfileIds) {
         newEventData.featuredProfileIds.forEach(artistId => {
             fcmService.sendToTopic(`artist_${artistId}`, "Idol có show mới!", `${newEventData.name}`, data);
@@ -577,7 +582,7 @@ const searchEvents = async (queryParams) => {
     const mustFilters = [];
     const shouldClauses = [];
 
-    if (queryParams.category) mustFilters.push({ term: { "category.keyword": queryParams.category } });
+    if (queryParams.category) mustFilters.push({ term: { "category.keyword": queryParams.category.toLowerCase() } });
     if (queryParams.location) mustFilters.push({ term: { "city.keyword": queryParams.location } });
 
     const rangeFilters = {};

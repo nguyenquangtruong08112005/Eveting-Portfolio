@@ -67,7 +67,7 @@ const deleteIndexIfExists = async () => {
     console.log(`Đang kiểm tra và xóa index cũ (nếu có): '${ELASTIC_INDEX}'...`);
     try {
         const exists = await esClient.indices.exists({ index: ELASTIC_INDEX });
-        
+
         if (exists) {
             await esClient.indices.delete({ index: ELASTIC_INDEX });
             console.log(`Đã xóa index cũ '${ELASTIC_INDEX}'.`);
@@ -76,10 +76,10 @@ const deleteIndexIfExists = async () => {
         }
     } catch (e) {
         if (e.meta && e.meta.statusCode === 404) {
-             console.log(`Index '${ELASTIC_INDEX}' không tồn tại (lỗi 404), bỏ qua.`);
+            console.log(`Index '${ELASTIC_INDEX}' không tồn tại (lỗi 404), bỏ qua.`);
         } else {
             console.error(`Lỗi khi xóa index:`, e);
-            throw e; 
+            throw e;
         }
     }
 };
@@ -94,7 +94,7 @@ const migrateEventsToElastic = async () => {
     }
 
     console.log('🚀 Bắt đầu đồng bộ Firestore -> Elasticsearch...');
-    
+
     try {
         // 1. XÓA DỮ LIỆU CŨ
         await deleteIndexIfExists();
@@ -102,10 +102,10 @@ const migrateEventsToElastic = async () => {
         // 2. ĐỌC DỮ LIỆU MỚI TỪ FIRESTORE
         console.log('Đang đọc dữ liệu từ Firestore...');
         const snapshot = await db.collection('Events')
-                                 .where('status', '==', 'active')
-                                 .where('visibility', '!=', 'private')
-                                 .get();
-                                 
+            .where('status', '==', 'active')
+            .where('visibility', '!=', 'private')
+            .get();
+
         if (snapshot.empty) {
             console.log('Không tìm thấy sự kiện (active/public) nào trong Firestore.');
             return;
@@ -126,7 +126,7 @@ const migrateEventsToElastic = async () => {
                 body: searchData
             };
         }));
-        
+
         const validDatasource = datasource.filter(Boolean); // Lọc bỏ các document bị null
 
         if (validDatasource.length === 0) {
@@ -135,22 +135,22 @@ const migrateEventsToElastic = async () => {
         }
 
         console.log('Đang đẩy dữ liệu lên Elasticsearch...');
-        
+
         // 4. CẤU HÌNH BULK HELPER (ĐÃ SỬA)
         const bulkResponse = await esClient.helpers.bulk({
             datasource: validDatasource, // <--- Nguồn dữ liệu thô
-            
+
             // onDocument SẼ BIẾN ĐỔI DỮ LIỆU THÔ THÀNH [ACTION, BODY]
-            onDocument (doc) {
+            onDocument(doc) {
                 const { id, body } = doc;
                 return [
                     // Hành động (Action)
                     { index: { _index: ELASTIC_INDEX, _id: id } },
                     // Dữ liệu (Body)
-                    body 
+                    body
                 ];
             },
-            onDrop (doc) {
+            onDrop(doc) {
                 console.warn(`Rớt (drop) document: ${doc.id}`, doc.error);
             }
         });
