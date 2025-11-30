@@ -3,18 +3,21 @@ package com.tdtuer.eventing.data.repository
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas // <-- THÊM
-import android.graphics.Color // <-- THÊM
-import android.graphics.Paint // <-- THÊM
-import android.graphics.Typeface // <-- THÊM
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.core.content.res.ResourcesCompat // <-- THÊM
-import com.tdtuer.eventing.R // <-- THÊM
+import androidx.core.content.res.ResourcesCompat
+import com.tdtuer.eventing.R
+import com.tdtuer.eventing.data.local.dao.TicketDao // Import DAO
+import com.tdtuer.eventing.data.local.entity.toEntity // Import Mapper
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
@@ -43,14 +46,14 @@ import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
 @Singleton
 class TicketRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context, // (1) Inject Context
-    private val apiService: EventApiService // (2) Inject ApiService
-) : TicketRepository { // (3) Implement interface TicketRepository đã hợp nhất
+    @ApplicationContext private val context: Context,
+    private val apiService: EventApiService,
+    private val ticketDao: TicketDao // Inject DAO
+) : TicketRepository {
 
-    // --- CÁC HÀM ĐÃ DI CHUYỂN TỪ EVENTREPOSITORYIMPL ---
+    // ... (Các hàm bookTicket, createZaloPayOrder, getTicketDetails, saveTicketImages GIỮ NGUYÊN VÌ CHỈ CẦN ONLINE) ...
     override suspend fun bookTicket(
         eventId: String,
         ticketType: String,
@@ -108,21 +111,86 @@ class TicketRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * HÀM MỚI: Nhận yêu cầu, tạo 2 ảnh template và lưu
-     */
+    // --- CẬP NHẬT HÀM NÀY: CACHING ---
+    override suspend fun getUserTickets(page: Int, limit: Int): Flow<Result<List<UserTicketDto>>> = flow {
+        emit(Result.Loading)
+
+        // Log.d("TicketRepo", "Fetching tickets...")
+
+        // 1. Thử gọi API trước (Ưu tiên dữ liệu mới nhất cho vé vì trạng thái thay đổi nhanh: paid -> checkedIn)
+        try {
+            val response = apiService.getUserTickets(page, limit)
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!.tickets
+
+                // Lưu vào Cache (Chỉ cache trang 1 hoặc cache tất cả tùy chiến lược, ở đây cache tất cả những gì load được)
+                try {
+                    val entities = dtos.map { it.toEntity() }
+                    // Nếu là trang 1 (làm mới), xóa cũ lưu mới. Nếu load more, chỉ chèn thêm.
+                    if (page == 1) {
+                        ticketDao.updateCache(entities)
+                    } else {
+                        ticketDao.insertAll(entities)
+                    }
+                } catch (e: Exception) {
+                    Log.e("TicketRepo", "Failed to cache tickets", e)
+                }
+
+                emit(Result.success(dtos))
+            } else {
+                throw Exception("Server Error: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            // 2. Nếu lỗi mạng -> Fallback về Local Cache
+            Log.e("TicketRepo", "Network error (${e.message}). Trying offline cache.")
+
+            // Lấy từ DB và map ngược lại DTO (để tương thích với UseCase hiện tại)
+            // Lưu ý: TicketDao trả về TicketEntity, cần map sang UserTicketDto hoặc sửa UseCase để nhận Entity/Domain trực tiếp.
+            // Ở đây để nhanh gọn, ta sửa lại cấu trúc hàm này trả về List<UserTicketDto> giả lập từ Entity.
+            // Tuy nhiên, cách tốt nhất là sửa getUserTicketsUseCase để nhận List<MyTicketUiModel> hoặc Domain Model.
+
+            // Giả sử ta map thủ công ở đây để không phá vỡ flow cũ:
+            val localEntities = ticketDao.getUserTickets()
+            if (localEntities.isNotEmpty()) {
+                val dtos = localEntities.map { entity ->
+                    // Map ngược Entity -> DTO (Hơi ngược nhưng giữ compatible)
+                    // Bạn cần tạo hàm map này hoặc map thủ công
+                    UserTicketDto(
+                        id = entity.id,
+                        status = entity.status,
+                        type = entity.ticketType,
+                        price = entity.price,
+                        seat = entity.seat,
+                        qrCode = entity.qrCode,
+                        purchaseDate = entity.purchaseDate,
+                        event = com.tdtuer.eventing.data.network.model.TicketEventSummaryDto(
+                            id = entity.eventId,
+                            name = entity.eventName,
+                            date = entity.eventDate,
+                            imageUrl = entity.eventImageUrl,
+                            venueName = entity.location.split(",").firstOrNull(),
+                            city = entity.location.split(",").lastOrNull(),
+                            status = "active" // Giả định
+                        )
+                    )
+                }
+                emit(Result.success(dtos))
+            } else {
+                emit(Result.failure(e))
+            }
+        }
+    }
+
+    // ... (saveTicketImages và createTicketTemplate giữ nguyên) ...
     override suspend fun saveTicketImages(request: SaveRequest): Result<Unit> {
         return try {
-            // Logic nghiệp vụ: Quyết định tên file
             val safeName = request.eventName.replace(Regex("[^A-Za-z0-9]"), "_")
             val ticketIdShort = request.ticketId.takeLast(6)
 
-            // 1. TẠO VÀ LƯU ẢNH QR
             val qrBitmap = generateQrCodeBitmap(request.qrCodeData)
             val qrTemplate = createTicketTemplate(context, request, qrBitmap, true)
             saveImageBitmapToMediaStore(context, qrTemplate, "${safeName}_${ticketIdShort}_QR.png")
 
-            // 2. TẠO VÀ LƯU ẢNH BARCODE
             val barBitmap = generateBarCodeBitmap(request.qrCodeData)
             val barTemplate = createTicketTemplate(context, request, barBitmap, false)
             saveImageBitmapToMediaStore(
@@ -137,22 +205,16 @@ class TicketRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * HÀM TẠO TEMPLATE:
-     * Vẽ chữ và mã code lên một Bitmap mới.
-     */
     private fun createTicketTemplate(
         context: Context,
         request: SaveRequest,
         codeBitmap: Bitmap,
         isQrCode: Boolean
     ): Bitmap {
-        // Cấu hình kích thước ảnh
         val templateWidth = 800
         val templateHeight = if (isQrCode) 1000 else 650
         val padding = 40f
 
-        // Tải font Poppins (đảm bảo bạn có R.font.poppins_bold và poppins_regular)
         val boldTypeface = try {
             ResourcesCompat.getFont(context, R.font.poppins_bold) ?: Typeface.DEFAULT_BOLD
         } catch (e: Exception) {
@@ -165,7 +227,6 @@ class TicketRepositoryImpl @Inject constructor(
             Typeface.DEFAULT
         }
 
-        // Cấu hình các loại Paint (cọ vẽ)
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
             textSize = 42f
@@ -183,31 +244,25 @@ class TicketRepositoryImpl @Inject constructor(
         }
         val whiteBgPaint = Paint().apply { color = Color.WHITE }
 
-        // Bắt đầu vẽ
         val finalBitmap =
             Bitmap.createBitmap(templateWidth, templateHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(finalBitmap)
 
-        // 1. Vẽ nền trắng
         canvas.drawRect(0f, 0f, templateWidth.toFloat(), templateHeight.toFloat(), whiteBgPaint)
 
-        // 2. Vẽ thông tin (Tên sự kiện)
         canvas.drawText(request.eventName, padding, padding + 40f, titlePaint)
 
-        // 3. Vẽ thông tin (Mã vé)
         canvas.drawText("Ticket ID:", padding, padding + 120f, labelPaint)
         canvas.drawText(request.ticketId, padding, padding + 160f, dataPaint)
 
-        // 4. Vẽ mã code (Barcode hoặc QR)
         val codeTop = padding + 220f
         val codeWidth = (templateWidth - padding * 2)
-        val codeHeight = if (isQrCode) codeWidth else 200f // Barcode thấp hơn
+        val codeHeight = if (isQrCode) codeWidth else 200f
 
         val scaledCode =
             Bitmap.createScaledBitmap(codeBitmap, codeWidth.toInt(), codeHeight.toInt(), false)
         canvas.drawBitmap(scaledCode, padding, codeTop, null)
 
-        // 5. Thêm logo hoặc text "Mobile Eventing" ở dưới
         canvas.drawText(
             "Generated by Mobile Eventing",
             padding,
@@ -218,19 +273,11 @@ class TicketRepositoryImpl @Inject constructor(
         return finalBitmap
     }
 
-
-    /**
-     * Hàm private (riêng tư) chứa logic lưu file vào MediaStore.
-     * Nó chạy trên IO Dispatcher.
-     */
     private suspend fun saveImageBitmapToMediaStore(
         context: Context,
-        bitmap: Bitmap, // <-- SỬA: Nhận android.graphics.Bitmap
+        bitmap: Bitmap,
         fileName: String
     ) {
-        // KHÔNG CẦN CONVERT (vì đã là Bitmap)
-        // val bitmap = imageBitmap.asAndroidBitmap()
-
         withContext(Dispatchers.IO) {
             val resolver = context.contentResolver
             val imageCollection: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -272,23 +319,8 @@ class TicketRepositoryImpl @Inject constructor(
                 }
             } catch (e: Exception) {
                 uri?.let { resolver.delete(it, null, null) }
-                throw e // Ném lỗi để Result.failure bắt
+                throw e
             }
         }
     }
-
-    override suspend fun getUserTickets(page: Int, limit: Int): Flow<Result<List<UserTicketDto>>> =
-        flow {
-            emit(Result.Loading)
-            try {
-                val response = apiService.getUserTickets(page, limit)
-                if (response.isSuccessful && response.body() != null) {
-                    emit(Result.success(response.body()!!.tickets))
-                } else {
-                    emit(Result.failure(Exception("Lỗi: ${response.code()} ${response.message()}")))
-                }
-            } catch (e: Exception) {
-                emit(Result.failure(e))
-            }
-        }
 }

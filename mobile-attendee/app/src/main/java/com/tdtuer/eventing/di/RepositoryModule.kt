@@ -1,9 +1,7 @@
 package com.tdtuer.eventing.di
 
-import android.content.Context
 import com.tdtuer.eventing.data.auth.AuthRepository
-import com.tdtuer.eventing.data.auth.AuthRepositoryImpl // <-- Đảm bảo import này đúng với vị trí file AuthRepositoryImpl của bạn
-import com.tdtuer.eventing.data.network.EventApiService
+import com.tdtuer.eventing.data.auth.AuthRepositoryImpl
 import com.tdtuer.eventing.data.repository.EventRepository
 import com.tdtuer.eventing.data.repository.EventRepositoryImpl
 import com.tdtuer.eventing.data.repository.NotificationRepository
@@ -14,41 +12,35 @@ import com.tdtuer.eventing.data.repository.UserRepository
 import com.tdtuer.eventing.data.repository.UserRepositoryImpl
 import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
-@InstallIn(SingletonComponent::class) // Cài đặt module này vào SingletonComponent (phạm vi application)
+@InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
 
     @Binds
-    @Singleton // Đảm bảo chỉ có một instance của AuthRepositoryImpl được tạo và sử dụng
+    @Singleton
     abstract fun bindAuthRepository(
-        authRepositoryImpl: AuthRepositoryImpl // Hilt sẽ biết cách tạo AuthRepositoryImpl nếu nó có @Inject constructor
+        authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
 
-    companion object {
+    // --- SỬA ĐỔI: Dùng @Binds thay vì @Provides ---
+    // Hilt sẽ tự động tìm constructor @Inject của EventRepositoryImpl
+    // và cung cấp đủ 3 tham số (apiService, eventDao, userPrefs)
+    @Binds
+    @Singleton
+    abstract fun bindEventRepository(
+        eventRepositoryImpl: EventRepositoryImpl
+    ): EventRepository
 
-        @Provides
-        @Singleton
-        fun provideEventRepository(
-            apiService: EventApiService
-        ): EventRepository {
-            return EventRepositoryImpl(apiService)
-        }
-
-        @Provides
-        @Singleton
-        fun provideTicketRepository(
-            @ApplicationContext context: Context,
-            apiService: EventApiService
-        ): TicketRepository {
-            return TicketRepositoryImpl(context, apiService)
-        }
-    }
+    @Binds
+    @Singleton
+    abstract fun bindTicketRepository(
+        ticketRepositoryImpl: TicketRepositoryImpl
+    ): TicketRepository
+    // -----------------------------------------------
 
     @Binds
     @Singleton
