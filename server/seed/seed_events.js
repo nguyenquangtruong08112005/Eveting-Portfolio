@@ -109,7 +109,7 @@ const importCollection = async (collectionName, dataPath) => {
 const resetEventCollection = async () => {
     const COLLECTION_NAME = 'Events';
     // Lấy đường dẫn từ file config gốc của bạn
-    const DATA_PATH = './events_seed.json'; 
+    const DATA_PATH = './events_REAL_from_db.json'; 
 
     console.log(`🚀 BẮT ĐẦU QUÁ TRÌNH RESET COLLECTION: ${COLLECTION_NAME}...`);
 

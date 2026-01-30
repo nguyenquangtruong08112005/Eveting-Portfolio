@@ -700,31 +700,84 @@ const getRecommendations = async (userId, limit = 10) => {
         return getAllEvents(1, limit).then(res => res.events);
     }
 };
-
 const getEventWeather = async (eventId) => {
-    if (!OPENWEATHER_API_KEY) return null;
+    // console.log(`[WeatherDebug] --- Start fetching for: ${eventId} ---`);
+
+    if (!OPENWEATHER_API_KEY) {
+        // console.error("[WeatherDebug] ❌ Missing OPENWEATHER_API_KEY in environment variables");
+        return null;
+    }
+
     const eventDoc = await db.collection('Events').doc(eventId).get();
-    if (!eventDoc.exists) throw new Error('Event not found');
+    if (!eventDoc.exists) {
+        // console.error("[WeatherDebug] ❌ Event doc not found in Firestore");
+        throw new Error('Event not found');
+    }
+
     const eventData = eventDoc.data();
-    if (eventData.eventType === 'online' || !eventData.isOutdoor) return null;
-    if (!eventData.location || !eventData.location.latitude) throw new Error('Event location is missing');
+    // console.log(`[WeatherDebug] Event Info: Name="${eventData.name}", Type=${eventData.eventType}, IsOutdoor=${eventData.isOutdoor}`);
+
+    // Check 1: Event Type
+    if (eventData.eventType === 'online') {
+        // console.log("[WeatherDebug] ℹ️ Returns NULL because eventType is 'online'");
+        return null;
+    }
+
+    // // Check 2: Is Outdoor
+    // // Lưu ý: Nếu DB lưu là string "true"/"false" hay boolean true/false đều cần check kỹ
+    // if (!eventData.isOutdoor) {
+    //     // console.log(`[WeatherDebug] ℹ️ Returns NULL because isOutdoor is falsy (${eventData.isOutdoor})`);
+    //     return null;
+    // }
+
+    // Check 3: Location
+    if (!eventData.location || !eventData.location.latitude) {
+        // console.error("[WeatherDebug] ❌ Returns Error because Location/Latitude is missing");
+        throw new Error('Event location is missing');
+    }
 
     const eventDate = moment(eventData.date);
     const now = moment();
     const daysDiff = eventDate.diff(now, 'days');
-    if (daysDiff < 0) return { description: "Sự kiện đã kết thúc" };
-    if (daysDiff > 5) return { description: "Dự báo chỉ khả dụng trước sự kiện 5 ngày" };
+    // console.log(`[WeatherDebug] Date Check: EventDate=${eventDate.format()}, Now=${now.format()}, DaysDiff=${daysDiff}`);
+
+    if (daysDiff < 0) {
+        // console.log("[WeatherDebug] ℹ️ Returns Message: Event ended");
+        return { description: "Sự kiện đã kết thúc" };
+    }
+    
+    // OpenWeather Free chỉ dự báo 5 ngày / 3 giờ
+    if (daysDiff > 5) {
+        // console.log("[WeatherDebug] ℹ️ Returns Message: Too far (>5 days)");
+        return { description: "Dự báo chỉ khả dụng trước sự kiện 5 ngày" };
+    }
 
     try {
         const lat = eventData.location.latitude;
         const lon = eventData.location.longitude;
+        // Ẩn bớt key khi log
+        const maskedKey = OPENWEATHER_API_KEY.substring(0, 4) + "***"; 
         const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=vi`;
+        
+        // console.log(`[WeatherDebug] 📡 Calling OpenWeather API... (Lat: ${lat}, Lon: ${lon}, Key: ${maskedKey})`);
+
         const response = await axios.get(url);
         const forecasts = response.data.list;
+        
+        if (!forecasts || forecasts.length === 0) {
+            //  console.error("[WeatherDebug] ❌ OpenWeather returned empty list");
+             return null;
+        }
+
         const targetTime = eventData.date / 1000;
+        
+        // Tìm mốc thời gian dự báo gần nhất với giờ sự kiện
         const bestForecast = forecasts.reduce((prev, curr) => {
             return (Math.abs(curr.dt - targetTime) < Math.abs(prev.dt - targetTime) ? curr : prev);
         });
+
+        // console.log("[WeatherDebug] ✅ Success! Found forecast:", bestForecast.weather[0].description);
+
         return {
             temperature: Math.round(bestForecast.main.temp),
             condition: bestForecast.weather[0].main.toLowerCase(),
@@ -734,7 +787,11 @@ const getEventWeather = async (eventId) => {
             windSpeed: bestForecast.wind.speed
         };
     } catch (error) {
-        console.error("Error fetching weather:", error.response?.data || error.message);
+        console.error("[WeatherDebug] ❌ API Call Failed:", error.response?.data || error.message);
+        // Kiểm tra xem có phải lỗi 401 (sai key) hay 429 (hết lượt) không
+        if (error.response) {
+            console.error("[WeatherDebug] HTTP Status:", error.response.status);
+        }
         return null;
     }
 };

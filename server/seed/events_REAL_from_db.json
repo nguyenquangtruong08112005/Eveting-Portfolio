@@ -1,298 +1,5 @@
 [
   {
-    "id": "evt_10da57ea-1c06-4856-8e09-0a2e267bf950",
-    "name": "test 1233333",
-    "description": "abc",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764398893229.jpg?alt=media&token=003faa02-4002-41aa-a56c-c5e2aa14e13b",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764398893191.jpg?alt=media&token=ec1facd1-0151-4f25-864f-3c6a51101cc7",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "category": [
-      "Art"
-    ],
-    "tags": [],
-    "date": 1764485245521,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 21.0207,
-      "longitude": 105.7623
-    },
-    "geohash": "w7epwdty2n",
-    "venueId": "venue_mydinh_stadium",
-    "venueName": "Sân vận động Quốc gia Mỹ Đình",
-    "city": "Hà Nội",
-    "ticketTypes": {
-      "123": {
-        "description": "",
-        "name": "123",
-        "price": 100000,
-        "quantity": 10
-      }
-    },
-    "minPrice": 100000,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764398904329,
-    "rejectReason": "",
-    "lastUpdatedAt": 1764400992726,
-    "rejectedAt": 1764400992726,
-    "status": "rejected"
-  },
-  {
-    "id": "evt_48843ddf-7b76-4564-bea4-1edfd07b186a",
-    "name": "Test 1",
-    "description": "This is a test.",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764299466842.jpg?alt=media&token=ac269a07-b70c-4c78-920d-fa8b511e841f",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764299466803.jpg?alt=media&token=8f36d541-6477-4dac-aed8-cd4acc74ff9c",
-    "featuredProfileIds": [
-      "fp_google_experts"
-    ],
-    "category": [
-      "Business"
-    ],
-    "tags": [
-      "abc"
-    ],
-    "date": 1764385781965,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.790167396059529,
-      "longitude": 106.70234016637507
-    },
-    "geohash": "w3gvkh6328",
-    "venueId": "venue_gem_center",
-    "venueName": "GEM Center",
-    "city": "Hồ Chí Minh",
-    "ticketTypes": {
-      "123": {
-        "description": "",
-        "name": "123",
-        "price": 10000,
-        "quantity": 100
-      }
-    },
-    "minPrice": 10000,
-    "videoUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fvideos%2F1764299466871.mp4?alt=media&token=f2c4e482-0020-4b14-acfc-204d4f677016",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764299486068,
-    "rejectReason": "",
-    "lastUpdatedAt": 1764300961563,
-    "rejectedAt": 1764300961563,
-    "status": "rejected"
-  },
-  {
-    "id": "evt_50a12abd-4073-4344-ad19-a0dedf76e9d5",
-    "name": "Test 5",
-    "description": "Abc",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764330088332.jpg?alt=media&token=fe1ad0ef-5227-4f41-ae81-6948df6ee1c9",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764330088290.jpg?alt=media&token=a0df6d24-9b0e-4b82-a2f9-cb3df91e152b",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "category": [
-      "Sports"
-    ],
-    "tags": [],
-    "date": 1764502840764,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 16.068770823875518,
-      "longitude": 108.22073695468488
-    },
-    "geohash": "w6ugqt5zmg",
-    "venueId": "venue_trungvuong_theatre",
-    "venueName": "Nhà hát Trưng Vương",
-    "city": "Đà Nẵng",
-    "ticketTypes": {
-      "1": {
-        "description": "",
-        "name": "1",
-        "price": 100000,
-        "quantity": 10
-      }
-    },
-    "minPrice": 100000,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "status": "pending",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764330101289,
-    "lastUpdatedAt": 1764330101289
-  },
-  {
-    "id": "evt_6a995c0a-18d0-4e10-b49d-20978c72928b",
-    "name": "temp",
-    "description": "123",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764397895888.jpg?alt=media&token=50b349f8-7da9-425c-82ab-26c5d530519d",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764397895840.jpg?alt=media&token=849e885e-4648-49da-bf32-5eb51cbdf0c4",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "category": [
-      "Workshop"
-    ],
-    "tags": [
-      "abc"
-    ],
-    "date": 1764484254617,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.790167396059529,
-      "longitude": 106.70234016637507
-    },
-    "geohash": "w3gvkh6328",
-    "venueId": "venue_gem_center",
-    "venueName": "GEM Center",
-    "city": "Hồ Chí Minh",
-    "ticketTypes": {
-      "abc": {
-        "description": "",
-        "name": "abc",
-        "price": 123,
-        "quantity": 123
-      }
-    },
-    "minPrice": 123,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "status": "pending",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764397907526,
-    "lastUpdatedAt": 1764397907526
-  },
-  {
-    "id": "evt_75906be6-8fdc-4cf0-b031-e6705d9d5ce8",
-    "name": "Test 3",
-    "description": "a",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764312190570.jpg?alt=media&token=01bccfcf-684d-425b-b305-2e44666343fd",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764312190529.jpg?alt=media&token=372f9fb4-3fbc-4d00-b724-37bd18e7e109",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "tags": [
-      "abc"
-    ],
-    "date": 1764484502532,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.790167396059529,
-      "longitude": 106.70234016637507
-    },
-    "geohash": "w3gvkh6328",
-    "venueId": "venue_gem_center",
-    "venueName": "GEM Center",
-    "city": "Hồ Chí Minh",
-    "ticketTypes": {
-      "123": {
-        "description": "",
-        "name": "123",
-        "price": 10000,
-        "quantity": 10
-      }
-    },
-    "minPrice": 10000,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764312200396,
-    "rejectReason": "",
-    "lastUpdatedAt": 1764313857271,
-    "rejectedAt": 1764313857271,
-    "status": "rejected",
-    "category": [
-      "Tech"
-    ]
-  },
-  {
-    "id": "evt_a0660507-40cf-4dca-8fa2-148bce8fc102",
-    "name": "test 2",
-    "description": "aaa\n",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764301054061.jpg?alt=media&token=dab53f02-4a6b-450e-8af4-6d9a8e0e6aeb",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764301054027.jpg?alt=media&token=e00f10e0-650b-45ed-b258-50478d4c6beb",
-    "featuredProfileIds": [
-      "fp_google_experts"
-    ],
-    "category": [
-      "Music"
-    ],
-    "tags": [],
-    "date": 1764387389970,
-    "endDate": null,
-    "eventType": "online",
-    "onlineUrl": "https/",
-    "location": null,
-    "geohash": null,
-    "venueId": null,
-    "venueName": "Online",
-    "city": "Online",
-    "ticketTypes": {
-      "111": {
-        "description": "",
-        "name": "111",
-        "price": 1000000,
-        "quantity": 1000
-      }
-    },
-    "minPrice": 1000000,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764301064721,
-    "rejectReason": "",
-    "lastUpdatedAt": 1764313858944,
-    "rejectedAt": 1764313858944,
-    "status": "rejected"
-  },
-  {
     "id": "evt_art_exhibit_hanoi_2026",
     "name": "Triển lãm nghệ thuật 'Di Sản'",
     "description": "Trưng bày các tác phẩm nghệ thuật đương đại lấy cảm hứng từ di sản văn hóa Việt Nam.",
@@ -326,7 +33,7 @@
       }
     },
     "minPrice": 0,
-    "videoUrl": "https://www.youtube.com/watch?v=example10",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -385,7 +92,7 @@
       "B5": true,
       "C12": false
     },
-    "videoUrl": "https://www.youtube.com/watch?v=example16",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -428,7 +135,7 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 0,
-    "videoUrl": "https://www.youtube.com/watch?v=example11",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -489,7 +196,7 @@
       }
     },
     "minPrice": 800000,
-    "videoUrl": "https://www.youtube.com/watch?v=example7",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "cancelled",
@@ -539,7 +246,7 @@
       }
     },
     "minPrice": 100000,
-    "videoUrl": "https://www.youtube.com/watch?v=example9",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -592,7 +299,7 @@
       }
     },
     "minPrice": 150000,
-    "videoUrl": "https://www.youtube.com/watch?v=example19",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -641,7 +348,7 @@
       }
     },
     "minPrice": 80000,
-    "videoUrl": "https://www.youtube.com/watch?v=example18",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -661,159 +368,6 @@
     "lastUpdatedAt": 1760700000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
-  },
-  {
-    "id": "evt_e5674db0-d101-482f-82bd-24d84fcd7f80",
-    "name": "Chức năng 1.2",
-    "description": "Đây là chức năng 1.2",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764400813083.jpg?alt=media&token=77f72eca-abea-4059-840f-d1e3780f3d8e",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764400813032.jpg?alt=media&token=7678fa6c-cd28-43b1-9728-b27ce5d1dcc0",
-    "featuredProfileIds": [
-      "fp_163f4208-0bf9-4dcd-9247-a11418701a47"
-    ],
-    "category": [
-      "Music",
-      "Business",
-      "Technology"
-    ],
-    "tags": [
-      "music"
-    ],
-    "date": 1767165450974,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.776447600000026,
-      "longitude": 106.70324049999999
-    },
-    "geohash": "w3gvk1fcme",
-    "venueId": "venue_62b76339-fcfa-4b64-bd41-78d5e12e1bfd",
-    "venueName": "Opera house",
-    "city": "Thành phố Hồ Chí Minh",
-    "ticketTypes": {
-      "Standard": {
-        "description": "",
-        "name": "Standard",
-        "price": 100000,
-        "quantity": 10
-      }
-    },
-    "minPrice": 100000,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764400824939,
-    "visibility": "public",
-    "status": "active",
-    "lastUpdatedAt": 1764400957186,
-    "approvedAt": 1764400957186
-  },
-  {
-    "id": "evt_ed8fb240-ca8f-4c58-9302-d1a4a834f3e2",
-    "name": "Test 4",
-    "description": "abc",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764313750120.jpg?alt=media&token=aff49cab-0ddf-4d81-bc94-6ccf5bbe6aed",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764313750073.jpg?alt=media&token=d50bea38-ebaf-4844-9379-fc193771c3f1",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "category": [
-      "Food & Drink"
-    ],
-    "tags": [
-      "music"
-    ],
-    "date": 1764486494233,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.790167396059529,
-      "longitude": 106.70234016637507
-    },
-    "geohash": "w3gvkh6328",
-    "venueId": "venue_gem_center",
-    "venueName": "GEM Center",
-    "city": "Hồ Chí Minh",
-    "minPrice": 100000,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764313760650,
-    "visibility": "public",
-    "lastUpdatedAt": 1764313849635,
-    "approvedAt": 1764313849635,
-    "status": "active",
-    "ticketTypes": {
-      "Ve 1": {
-        "description": "",
-        "name": "Ve 1",
-        "price": 100000,
-        "quantity": 100,
-        "available": null
-      }
-    }
-  },
-  {
-    "id": "evt_f3aa64cb-2308-4884-be28-73518c62a294",
-    "name": "temp",
-    "description": "123",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764398020573.jpg?alt=media&token=9d30d1e5-8218-4bcf-9e12-61f7211b1930",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764398020536.jpg?alt=media&token=33ea5d7e-e031-4aff-886a-5a1bde37848e",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "category": [
-      "Workshop"
-    ],
-    "tags": [
-      "abc"
-    ],
-    "date": 1764484254617,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.790167396059529,
-      "longitude": 106.70234016637507
-    },
-    "geohash": "w3gvkh6328",
-    "venueId": "venue_gem_center",
-    "venueName": "GEM Center",
-    "city": "Hồ Chí Minh",
-    "ticketTypes": {
-      "abc": {
-        "description": "",
-        "name": "abc",
-        "price": 123,
-        "quantity": 123
-      }
-    },
-    "minPrice": 123,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764398032512,
-    "lastUpdatedAt": 1764400995326,
-    "approvedAt": 1764400995326,
-    "status": "pending",
-    "visibility": "private"
   },
   {
     "id": "evt_fashion_week_hanoi_2026",
@@ -855,7 +409,7 @@
       }
     },
     "minPrice": 800000,
-    "videoUrl": "https://www.youtube.com/watch?v=example20",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -869,55 +423,6 @@
     "lastUpdatedAt": 1760900000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg"
-  },
-  {
-    "id": "evt_fd2a880c-482a-46a6-b553-303ac32516a1",
-    "name": "123",
-    "description": "123",
-    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fthumbnails%2F1764398264195.jpg?alt=media&token=391bf2ca-7109-4a35-92f8-0b38ec6a03d4",
-    "bannerUrl": "https://firebasestorage.googleapis.com/v0/b/eventing-baa25.firebasestorage.app/o/events%2Fbanners%2F1764398264153.jpg?alt=media&token=8e2fc03e-796c-458e-ad0a-4d240335de53",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
-    "category": [
-      "Art"
-    ],
-    "tags": [
-      "124"
-    ],
-    "date": 1764484628767,
-    "endDate": null,
-    "eventType": "physical",
-    "onlineUrl": null,
-    "location": {
-      "latitude": 10.772009208723974,
-      "longitude": 106.72143620594586
-    },
-    "geohash": "w3gvk8bpt8",
-    "venueId": "venue_thiskyhall_sala",
-    "venueName": "Thiskyhall Sala",
-    "city": "Hồ Chí Minh",
-    "ticketTypes": {
-      "123": {
-        "description": "",
-        "name": "123",
-        "price": 122,
-        "quantity": 123
-      }
-    },
-    "minPrice": 122,
-    "videoUrl": "",
-    "isOutdoor": false,
-    "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
-    "status": "pending",
-    "visibility": "private",
-    "recurringRule": null,
-    "hotScore": 0,
-    "viewCount": 0,
-    "requiredAge": 0,
-    "sponsors": [],
-    "createdAt": 1764398275215,
-    "lastUpdatedAt": 1764398275215
   },
   {
     "id": "evt_foodfest_saigon_2025",
@@ -944,8 +449,7 @@
     "city": "Hồ Chí Minh",
     "eventType": "physical",
     "onlineUrl": null,
-    "minPrice": 150000,
-    "videoUrl": "https://www.youtube.com/watch?v=example4",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -965,13 +469,21 @@
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
     "date": 1766023200000,
-    "lastUpdatedAt": 1764341166724,
+    "lastUpdatedAt": 1764403775288,
+    "minPrice": 10000,
     "ticketTypes": {
       "Entrance": {
         "description": "",
         "name": "Entrance",
         "price": 150000,
         "quantity": 5000
+      },
+      "Standard": {
+        "description": "",
+        "name": "Standard",
+        "price": 10000,
+        "quantity": 1000,
+        "available": null
       }
     }
   },
@@ -1012,7 +524,7 @@
       }
     },
     "minPrice": 250000,
-    "videoUrl": "https://www.youtube.com/watch?v=example14",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1037,9 +549,6 @@
     "id": "evt_haanh_show_dalat_2026",
     "name": "Đêm nhạc Hà Anh Tuấn - Đà Lạt",
     "description": "Thưởng thức giọng ca của Hà Anh Tuấn trong không gian lãng mạn của Đà Lạt.",
-    "featuredProfileIds": [
-      "fp_hat"
-    ],
     "category": [
       "music",
       "concert",
@@ -1062,7 +571,7 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 1500000,
-    "videoUrl": "https://www.youtube.com/watch?v=example8",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1073,17 +582,23 @@
     "requiredAge": 0,
     "sponsors": [],
     "createdAt": 1758500000000,
-    "lastUpdatedAt": 1759700000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
     "date": 1764306225,
+    "lastUpdatedAt": 1765385182673,
     "ticketTypes": {
       "Standard": {
+        "description": "",
+        "name": "Standard",
         "price": 1500000,
-        "quantity": 500,
-        "available": 94
+        "quantity": 500
       }
-    }
+    },
+    "featuredProfileIds": [
+      "fp_hat",
+      "fp_google_experts",
+      "fp_tedx_speakers"
+    ]
   },
   {
     "id": "evt_lantern_hoian_2026",
@@ -1119,7 +634,7 @@
       }
     },
     "minPrice": 0,
-    "videoUrl": "https://www.youtube.com/watch?v=example13",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1169,7 +684,7 @@
       }
     },
     "minPrice": 1200000,
-    "videoUrl": "https://www.youtube.com/watch?v=example6",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "finished",
@@ -1217,7 +732,7 @@
       }
     },
     "minPrice": 2000000,
-    "videoUrl": "https://www.youtube.com/watch?v=example17",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1267,7 +782,7 @@
     "createdAt": 1761000000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "videoUrl": "",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "featuredProfileIds": [
       "fp_google_experts",
       "fp_ravolution_djs"
@@ -1313,7 +828,7 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 1200000,
-    "videoUrl": "https://www.youtube.com/watch?v=example12",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1343,7 +858,6 @@
   {
     "id": "evt_ravolution_hanoi_2026",
     "name": "Ravolution Music Festival - Hanoi",
-    "description": "Đại tiệc âm nhạc điện tử EDM trở lại Hà Nội với dàn DJ quốc tế hàng đầu. Một đêm không ngủ cùng âm thanh và ánh sáng đỉnh cao.",
     "featuredProfileIds": [
       "fp_ravolution_djs"
     ],
@@ -1369,7 +883,7 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 950000,
-    "videoUrl": "https://www.youtube.com/watch?v=example2",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1382,8 +896,6 @@
     "createdAt": 1758100000000,
     "imageUrl": "https://ticketbox.vn/_next/image?url=https%3A%2F%2Fimages.tkbcdn.com%2F2%2F360%2F479%2Fts%2Fds%2Fb9%2Fe6%2F59%2F6ae6456d8f0af13157d00572c153405b.jpg&w=384&q=75",
     "bannerUrl": "https://d3design.vn/uploads/Anh_bia_summer_sale_holiday_podium_display_on_yellow_background.jpg",
-    "date": 1781240400000,
-    "lastUpdatedAt": 1764397247655,
     "ticketTypes": {
       "GA": {
         "description": "",
@@ -1397,7 +909,10 @@
         "price": 2500000,
         "quantity": 500
       }
-    }
+    },
+    "date": 1781326800000,
+    "lastUpdatedAt": 1764402920522,
+    "description": "Đại tiệc âm nhạc điện tử EDM trở lại Hà Nội với dàn DJ quốc tế hàng đầu. Một đêm không ngủ cùng âm thanh và ánh sáng đỉnh cao. neww"
   },
   {
     "id": "evt_startup_expo_2026",
@@ -1438,7 +953,7 @@
       }
     },
     "minPrice": 200000,
-    "videoUrl": "https://www.youtube.com/watch?v=example5",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": false,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
@@ -1478,8 +993,7 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 500000,
-    "videoUrl": "https://www.youtube.com/watch?v=example3",
-    "isOutdoor": false,
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
     "visibility": "public",
@@ -1511,7 +1025,8 @@
         "quantity": 300,
         "available": null
       }
-    }
+    },
+    "isOutdoor": true
   },
   {
     "id": "evt_vdf_hcm_2025",
@@ -1543,8 +1058,7 @@
     "eventType": "physical",
     "onlineUrl": null,
     "minPrice": 700000,
-    "videoUrl": "https://www.youtube.com/watch?v=example1",
-    "isOutdoor": false,
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
     "visibility": "public",
@@ -1574,7 +1088,8 @@
         "quantity": 200,
         "available": 45
       }
-    }
+    },
+    "isOutdoor": false
   },
   {
     "id": "evt_yoga_retreat_dalat_2026",
@@ -1610,7 +1125,7 @@
       }
     },
     "minPrice": 4500000,
-    "videoUrl": "https://www.youtube.com/watch?v=example15",
+    "videoUrl": "https://salt.tkbcdn.com/ts/ds/ee/c4/fc/1ba0aa6072d106b5af39b8682bcda208.mp4",
     "isOutdoor": true,
     "organizerId": "w6ZEeGefVWUBmx418EqTmyQcN503",
     "status": "active",
