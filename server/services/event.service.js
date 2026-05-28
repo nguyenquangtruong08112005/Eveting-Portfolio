@@ -7,8 +7,8 @@ const esClient = require('../config/elasticsearch.config');
 const moment = require('moment');
 const axios = require('axios');
 const fcmService = require('./fcm.service');
-const notificationService = require('./notification.service'); // Import notification service
-const admin = require('firebase-admin');
+const notificationService = require('./notification.service');
+const notifHelper = require('./notification-event.helper');
 
 const ELASTIC_INDEX = 'events';
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
@@ -102,7 +102,6 @@ const hasImportantChanges = (oldData, newData) => {
  */
 const notifyAttendeesAboutUpdate = async (eventId, eventName) => {
     try {
-        // 1. Tìm tất cả vé đã bán (Paid hoặc CheckedIn)
         const ticketsSnapshot = await db.collection('Tickets')
             .where('eventId', '==', eventId)
             .where('status', 'in', ['paid', 'checkedIn'])
@@ -110,49 +109,22 @@ const notifyAttendeesAboutUpdate = async (eventId, eventName) => {
 
         if (ticketsSnapshot.empty) return;
 
-        // Lấy danh sách userId duy nhất
         const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
         console.log(`[EventUpdate] Found ${userIds.length} users to notify.`);
 
-        // 2. Chuẩn bị nội dung thông báo
         const title = "⚠️ Cập nhật sự kiện";
         const body = `Sự kiện "${eventName}" vừa có thay đổi thông tin. Vui lòng kiểm tra lại vé và chi tiết sự kiện.`;
-        const payloadData = {
-            eventId: eventId,
-            type: "event_update"
-        };
+        const payloadData = notifHelper.buildPayloadData("event_update", eventId);
 
-        // 3. Lấy token và gửi thông báo (Batching)
-        // (Tái sử dụng logic gom token giống hàm broadcastNotification)
-        const tokens = [];
+        const { recipientIds, tokens } = await notifHelper.collectMessagingTargets(userIds);
 
-        // Chia mảng user thành các chunk nhỏ để query Firestore (limit 'in' query is 10/30)
-        const CHUNK_SIZE = 10;
-        for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
-            const chunk = userIds.slice(i, i + CHUNK_SIZE);
-            const userDocs = await db.collection('Users')
-                .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
-                .get();
-
-            userDocs.forEach(doc => {
-                const userData = doc.data();
-                // Tạo thông báo trong app
-                notificationService.createNotification(doc.id, title, body, "update", eventId);
-
-                // Gom token
-                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-                    tokens.push(...userData.fcmTokens);
-                } else if (userData.fcmToken) {
-                    tokens.push(userData.fcmToken);
-                }
-            });
+        for (const uid of recipientIds) {
+            await notificationService.createNotification(uid, title, body, "update", eventId);
         }
 
-        // Gửi FCM nếu có token
         if (tokens.length > 0) {
             await fcmService.sendMulticast(tokens, title, body, payloadData);
         }
-
     } catch (error) {
         console.error("[EventUpdate] Failed to notify attendees:", error);
     }
@@ -480,33 +452,21 @@ const cancelEvent = async (eventId) => {
     if (!ticketsSnapshot.empty) {
         const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
 
-        const chunks = [];
-        for (let i = 0; i < userIds.length; i += 10) {
-            chunks.push(userIds.slice(i, i + 10));
+        const { recipientIds, tokens } = await notifHelper.collectMessagingTargets(userIds);
+
+        for (const uid of recipientIds) {
+            await notificationService.createNotification(
+                uid,
+                "⚠️ Sự kiện bị hủy",
+                `Rất tiếc, sự kiện "${eventName}" đã bị hủy.`,
+                "update",
+                eventId
+            );
         }
 
-        for (const chunk of chunks) {
-            const userDocs = await db.collection('Users')
-                .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
-                .get();
-
-            const allTokens = [];
-            for (const doc of userDocs.docs) {
-                const userData = doc.data();
-                notificationService.createNotification(
-                    doc.id,
-                    "⚠️ Sự kiện bị hủy",
-                    `Rất tiếc, sự kiện "${eventName}" đã bị hủy.`,
-                    "update",
-                    eventId
-                );
-                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) allTokens.push(...userData.fcmTokens);
-                else if (userData.fcmToken) allTokens.push(userData.fcmToken);
-            }
-
-            if (allTokens.length > 0) {
-                fcmService.sendMulticast(allTokens, "⚠️ Sự kiện bị hủy", `Sự kiện "${eventName}" đã bị hủy.`, { eventId: eventId, type: "event_cancelled" });
-            }
+        if (tokens.length > 0) {
+            const payloadData = notifHelper.buildPayloadData("event_cancelled", eventId);
+            await fcmService.sendMulticast(tokens, "⚠️ Sự kiện bị hủy", `Sự kiện "${eventName}" đã bị hủy.`, payloadData);
         }
     }
 

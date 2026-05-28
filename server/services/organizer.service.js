@@ -7,7 +7,8 @@ const ticketService = require('./ticket.service');
 const fcmService = require('./fcm.service');
 const xlsx = require('xlsx');           // Cho Import
 const ExcelJS = require('exceljs');     // Cho Export (Tạo file Excel chuyên nghiệp hơn xlsx)
-const notificationService = require('./notification.service'); // Cho Broadcast
+const notificationService = require('./notification.service');
+const notifHelper = require('./notification-event.helper');
 
 
 /**
@@ -481,42 +482,19 @@ const broadcastNotification = async (eventId, title, message, organizerId) => {
     const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
 
     // 3. Lấy tokens và gửi thông báo
-    // Chia batch 10 user/lần để query Firestore 'in'
-    let successCount = 0;
-    const chunks = [];
-    for (let i = 0; i < userIds.length; i += 10) {
-        chunks.push(userIds.slice(i, i + 10));
+    // Tạo Notification doc cho từng user
+    const { recipientIds, tokens } = await notifHelper.collectMessagingTargets(userIds);
+
+    for (const uid of recipientIds) {
+        await notificationService.createNotification(uid, title, message, "system", eventId);
     }
 
-    for (const chunk of chunks) {
-        const userDocs = await db.collection('Users')
-            .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
-            .get();
-
-        const tokens = [];
-        for (const doc of userDocs.docs) {
-            const userData = doc.data();
-
-            // Lưu Notification vào DB
-            notificationService.createNotification(
-                doc.id, title, message, "system", eventId
-            );
-
-            // Gom token để gửi Push
-            if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-                tokens.push(...userData.fcmTokens);
-            } else if (userData.fcmToken) {
-                tokens.push(userData.fcmToken);
-            }
-        }
-
-        if (tokens.length > 0) {
-            await fcmService.sendMulticast(tokens, title, message, { eventId, type: "broadcast" });
-        }
-        successCount += userDocs.size;
+    if (tokens.length > 0) {
+        const payloadData = notifHelper.buildPayloadData("broadcast", eventId);
+        await fcmService.sendMulticast(tokens, title, message, payloadData);
     }
 
-    return { count: successCount };
+    return { count: recipientIds.length };
 };
 
 module.exports = {

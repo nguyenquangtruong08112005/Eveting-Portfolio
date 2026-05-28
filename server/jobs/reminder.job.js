@@ -2,6 +2,7 @@
 const cron = require('node-cron');
 const { db } = require('../config/firebase.config');
 const fcmService = require('../services/fcm.service');
+const notifHelper = require('../services/notification-event.helper');
 const moment = require('moment');
 
 const startReminderJob = () => {
@@ -37,24 +38,16 @@ const startReminderJob = () => {
             const userIds = [...new Set(ticketsSnapshot.docs.map(t => t.data().userId))];
             if (userIds.length === 0) continue;
 
-            // Lấy tokens
-            // Lưu ý: Firestore 'in' query giới hạn 10 items. Nếu userIds đông, phải chia mảng.
-            // Ở đây giả sử project nhỏ < 10 user/lần quét.
-            const userDocs = await db.collection('Users')
-                .where(admin.firestore.FieldPath.documentId(), 'in', userIds)
-                .get();
-
-            const tokens = [];
-            userDocs.forEach(u => {
-                if (u.data().fcmToken) tokens.push(u.data().fcmToken);
-            });
+            // Lấy tokens (xử lý chunk tự động trong helper)
+            const tokens = await notifHelper.collectTokens(userIds);
 
             if (tokens.length > 0) {
+                const payloadData = notifHelper.buildPayloadData("reminder", event.id);
                 await fcmService.sendMulticast(
                     tokens,
                     "Sự kiện sắp diễn ra! ⏰",
                     `${event.name} sẽ bắt đầu vào ngày mai lúc ${moment(event.date).format('HH:mm')}.`,
-                    { eventId: event.id, type: "reminder" }
+                    payloadData
                 );
                 console.log(`Sent reminders for event ${event.name} to ${tokens.length} users.`);
             }

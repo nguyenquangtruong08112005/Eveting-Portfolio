@@ -3,6 +3,7 @@ const { db } = require('../config/firebase.config');
 const esClient = require('../config/elasticsearch.config');
 const ELASTIC_INDEX = 'events';
 const fcmService = require('./fcm.service');
+const notifHelper = require('./notification-event.helper');
 /**
  * Helper: Chuẩn bị dữ liệu để đẩy lên Elastic (Giống bên event.service.js)
  */
@@ -85,14 +86,15 @@ const approveEvent = async (eventId) => {
     await eventRef.update(updates);
     const newEventData = { ...eventDoc.data(), ...updates };
 
-    // 2. Gửi thông báo FCM đến topic nghệ sĩ
+    // 2. Gửi thông báo FCM đến từng topic nghệ sĩ
     const featuredProfileIds = newEventData.featuredProfileIds || [];
-    const topic = `artist_${featuredProfileIds}`;
     const title = "Sự kiện mới!";
     const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
-    const data = { eventId: eventId, type: "new_event" };
+    const payloadData = notifHelper.buildPayloadData("new_event", eventId);
 
-    fcmService.sendToTopic(topic, title, body, data);
+    featuredProfileIds.forEach(artistId => {
+        fcmService.sendToTopic(notifHelper.buildTopicName('artist', artistId), title, body, payloadData);
+    });
 
     // 2. Đẩy vào Elasticsearch
     if (esClient) {
