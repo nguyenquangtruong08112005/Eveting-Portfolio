@@ -1,6 +1,6 @@
 // services/notification.service.js
 const { db } = require('../config/firebase.config');
-const { v4: uuidv4 } = require('uuid'); // Cần import uuid
+const notifHelper = require('./notification-event.helper');
 /**
  * Lấy tất cả thông báo cho một người dùng.
  * @param {string} userId - ID của người dùng.
@@ -48,21 +48,9 @@ const markNotificationAsRead = async (notificationId) => {
  * @param {string} eventId - (Optional) ID sự kiện liên quan.
  */
 const createNotification = async (userId, title, message, type, eventId = null) => {
-    const notificationId = `notif_${uuidv4()}`;
-    const now = new Date().getTime();
+    const newNotification = notifHelper.buildNotificationDoc(userId, title, message, type, eventId);
 
-    const newNotification = {
-        id: notificationId,
-        userId,
-        title,
-        message,
-        type,
-        eventId,
-        isRead: false,
-        createdAt: now
-    };
-
-    await db.collection('Notifications').doc(notificationId).set(newNotification);
+    await db.collection('Notifications').doc(newNotification.id).set(newNotification);
     return newNotification;
 };
 
