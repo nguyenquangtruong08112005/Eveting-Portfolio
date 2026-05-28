@@ -4,21 +4,29 @@ const { admin, db } = require('../config/firebase.config');
 /**
  * Gửi thông báo đến 1 thiết bị hoặc 1 danh sách thiết bị
  */
+const FCM_BATCH_LIMIT = 500;
+
 const sendMulticast = async (tokens, title, body, data = {}) => {
     if (!tokens || tokens.length === 0) return;
 
-    const message = {
-        notification: { title, body },
-        data: data, // Dữ liệu ẩn để App xử lý (ví dụ: mở màn hình nào)
-        tokens: tokens,
-    };
+    let totalSuccess = 0;
+    for (let i = 0; i < tokens.length; i += FCM_BATCH_LIMIT) {
+        const batch = tokens.slice(i, i + FCM_BATCH_LIMIT);
+        const message = {
+            notification: { title, body },
+            data: data,
+            tokens: batch,
+        };
 
-    try {
-        const response = await admin.messaging().sendEachForMulticast(message);
-        console.log(`Creates ${response.successCount} messages successfully.`);
-    } catch (error) {
-        console.error('Error sending multicast message:', error);
+        try {
+            const response = await admin.messaging().sendEachForMulticast(message);
+            totalSuccess += response.successCount;
+        } catch (error) {
+            console.error('Error sending multicast message:', error);
+        }
     }
+
+    console.log(`Creates ${totalSuccess} messages successfully.`);
 };
 
 /**
