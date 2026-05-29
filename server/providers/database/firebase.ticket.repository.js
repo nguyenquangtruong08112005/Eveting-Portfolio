@@ -49,6 +49,18 @@ const updateTicketInTransaction = (transaction, ticketId, updates) => {
     transaction.update(db.collection('Tickets').doc(ticketId), updates);
 };
 
+const getAttendeeTicketsByEventId = async (eventId) => {
+    const snapshot = await db.collection('Tickets')
+        .where('eventId', '==', eventId)
+        .where('status', 'in', ['paid', 'checkedIn'])
+        .get();
+    const tickets = [];
+    snapshot.forEach(doc => {
+        tickets.push(doc.data());
+    });
+    return tickets;
+};
+
 module.exports = {
     getTicketById,
     updateTicket,
@@ -58,4 +70,5 @@ module.exports = {
     getTicketInTransaction,
     createTicketInTransaction,
     updateTicketInTransaction,
+    getAttendeeTicketsByEventId,
 };

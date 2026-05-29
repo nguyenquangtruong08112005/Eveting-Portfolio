@@ -142,6 +142,61 @@ const unfollowProfile = async (userId, profileId) => {
   });
 };
 
+const getUsersByIds = async (userIds) => {
+  if (!userIds || userIds.length === 0) return {};
+  const usersMap = {};
+  const CHUNK_SIZE = 10;
+  for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
+    const chunk = userIds.slice(i, i + CHUNK_SIZE);
+    const snap = await db.collection('Users')
+      .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+      .get();
+    snap.forEach(doc => {
+      usersMap[doc.id] = doc.data();
+    });
+  }
+  return usersMap;
+};
+
+const findUserByEmail = async (email) => {
+  const userSnapshot = await db.collection('Users').where('email', '==', email).limit(1).get();
+  if (userSnapshot.empty) return null;
+  const d = userSnapshot.docs[0];
+  return { ...d.data(), _id: d.id };
+};
+
+const getRawUserDataById = async (userId) => {
+  const doc = await db.collection('Users').doc(userId).get();
+  if (!doc.exists) return null;
+  return doc.data();
+};
+
+const addOrganizerRoleToUser = async (userId, organizerData) => {
+  const userRef = db.collection('Users').doc(userId);
+  await userRef.update({
+    roles: FieldValue.arrayUnion('organizer'),
+    organizerInfo: {
+      companyName: organizerData.companyName,
+      taxCode: organizerData.taxCode || '',
+      description: organizerData.description || '',
+      website: organizerData.website || '',
+      createdAt: new Date().getTime()
+    }
+  });
+  const updatedDoc = await userRef.get();
+  return updatedDoc.data();
+};
+
+const updateUserFields = async (userId, updateData) => {
+  await db.collection('Users').doc(userId).update(updateData);
+};
+
+const addHistoryEventIdInTransaction = (transaction, userId, eventId) => {
+  transaction.update(db.collection('Users').doc(userId), {
+    historyEventIds: FieldValue.arrayUnion(eventId)
+  });
+};
+
 module.exports = {
   getUserRoles,
   getUsersFcmTokens,
@@ -153,4 +208,10 @@ module.exports = {
   getEventsByIds,
   followProfile,
   unfollowProfile,
+  getUsersByIds,
+  findUserByEmail,
+  getRawUserDataById,
+  addOrganizerRoleToUser,
+  updateUserFields,
+  addHistoryEventIdInTransaction,
 };

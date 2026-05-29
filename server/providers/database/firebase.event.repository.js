@@ -41,6 +41,37 @@ const incrementEventTicketTypeAvailableInTransaction = (transaction, eventId, ti
     });
 };
 
+const getEventsByOrganizerId = async (organizerId, { page = 1, limit = 20, status } = {}) => {
+    let query = db.collection('Events').where('organizerId', '==', organizerId);
+    if (status) {
+        query = query.where('status', '==', status);
+    }
+    const offset = (page - 1) * limit;
+    const snapshot = await query.orderBy('createdAt', 'desc').limit(limit).offset(offset).get();
+    const events = [];
+    snapshot.forEach(doc => {
+        const d = doc.data();
+        events.push({
+            id: doc.id,
+            name: d.name,
+            date: d.date,
+            bannerUrl: d.bannerUrl,
+            status: d.status,
+            viewCount: d.viewCount || 0
+        });
+    });
+    return events;
+};
+
+const getEventEntriesByOrganizer = async (organizerId) => {
+    const snapshot = await db.collection('Events').where('organizerId', '==', organizerId).get();
+    const entries = [];
+    snapshot.forEach(doc => {
+        entries.push({ id: doc.id, date: doc.data().date });
+    });
+    return entries;
+};
+
 module.exports = {
     getEventById,
     getEventDataById,
@@ -49,4 +80,6 @@ module.exports = {
     getEventInTransaction,
     updateEventInTransaction,
     incrementEventTicketTypeAvailableInTransaction,
+    getEventsByOrganizerId,
+    getEventEntriesByOrganizer,
 };
