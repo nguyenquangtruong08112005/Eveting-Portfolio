@@ -1,6 +1,5 @@
 // controllers/media.controller.js
 const mediaService = require('../services/media.service');
-const { db } = require('../config/firebase.config');
 
 const getGallery = async (req, res) => {
     try {
@@ -26,22 +25,10 @@ const uploadMedia = async (req, res) => {
             return res.status(400).send({ error: 'No media items provided.' });
         }
 
-        // --- KIỂM TRA QUYỀN THAM GIA ---
-        const ticketSnapshot = await db.collection('Tickets')
-            .where('userId', '==', userId)
-            .where('eventId', '==', eventId)
-            .where('status', 'in', ['paid', 'checkedIn'])
-            .limit(1)
-            .get();
-
-        if (ticketSnapshot.empty) {
-            // Nếu không phải người tham gia, kiểm tra xem có phải Organizer không
-            const eventDoc = await db.collection('Events').doc(eventId).get();
-            if (!eventDoc.exists || eventDoc.data().organizerId !== userId) {
-                 return res.status(403).send({ error: 'Forbidden: Only attendees or organizer can upload media.' });
-            }
+        const canUpload = await mediaService.canUploadEventMedia(userId, eventId);
+        if (!canUpload) {
+            return res.status(403).send({ error: 'Forbidden: Only attendees or organizer can upload media.' });
         }
-        // --- KẾT THÚC KIỂM TRA ---
 
         const result = await mediaService.addEventMedia(userId, eventId, mediaItems);
         res.status(201).json(result);
