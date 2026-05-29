@@ -12,6 +12,7 @@
     "db:sync:venues": "node scripts/sync.venues.firebase-to-postgres.js",
     "db:seed:notifications": "node scripts/seed.notifications.postgres.js",
     "db:smoke:notifications": "node scripts/smoke.notifications.js",
+    "db:smoke:media": "node scripts/smoke.media.js",
     "db:compare:notifications": "node scripts/compare.notifications.firebase-postgres.js",
     "db:sync:notifications": "node scripts/sync.notifications.firebase-to-postgres.js"
   },

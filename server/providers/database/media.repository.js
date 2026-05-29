@@ -1,10 +1,12 @@
 const firebaseMediaRepository = require('./firebase.media.repository');
+const postgresMediaRepository = require('./postgres.media.repository');
 
 const repositories = {
     firebase: firebaseMediaRepository,
+    postgres: postgresMediaRepository,
 };
 
-const providerName = process.env.DATABASE_PROVIDER || 'firebase';
+const providerName = process.env.MEDIA_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
 const activeRepository = repositories[providerName];
 
 if (!activeRepository) {
