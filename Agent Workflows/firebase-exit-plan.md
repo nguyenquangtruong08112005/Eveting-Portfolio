@@ -63,7 +63,14 @@ Current status:
 - Done: notification and review repository boundaries.
 - Done: auth provider and user role repository.
 - Done: promotion repository boundary.
-- Pending verification: ticket/event controller repository extraction from payment/organizer controllers.
+- Done: ticket/event controller repository extraction from payment/organizer controllers.
+- Done: reminder job and notification-event helper repository extraction.
+- Done: admin service repository extraction.
+- Done: user service repository extraction.
+- Done: ticket service repository extraction.
+- Done: organizer service repository extraction.
+- Done: event service repository extraction.
+- Phase status: complete on `Server-2025-Eventing/staging`.
 
 Verification:
 

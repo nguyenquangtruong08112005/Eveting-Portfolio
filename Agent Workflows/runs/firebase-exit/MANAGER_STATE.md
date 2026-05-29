@@ -6,7 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slice A: provider ports/interfaces with no behavior change.
+Slice A is complete on `Server-2025-Eventing/staging`.
+
+Next phase: Slice B, pick one small domain and harden its repository contract for PostgreSQL readiness.
 
 ## Source Of Truth
 
@@ -45,6 +47,12 @@ Slice A: provider ports/interfaces with no behavior change.
 - `c04cd18` - Introduce auth provider and user role repository.
 - `73c9568` - Introduce promotion repository boundary.
 - `6bc6e89` - Introduce ticket and event controller repositories.
+- `f5b9b48` - Extract reminder notification repositories.
+- `7437386` - Extract admin service repositories.
+- `f688130` - Extract user service repository operations.
+- `5e91b1b` - Extract ticket service repository operations.
+- `9dac8c4` - Extract organizer service repository operations.
+- `c255d0b` - Extract event service repository operations.
 
 ## Current Plan Summary
 
@@ -53,6 +61,7 @@ Slice A:
 - Add provider ports/interfaces with Firebase still active.
 - No behavior change.
 - Keep API payloads, routes, event names, notification payload fields, and mobile behavior stable.
+- Status: complete for `services/`, `controllers/`, `jobs/`, and `middleware`.
 
 Slice B:
 
@@ -98,12 +107,33 @@ Then review:
 
 ## Next Exact Step
 
-Assign `opencode` the next bounded Slice A prompt:
+Assign `opencode` the first Slice B prompt:
 
 - server-only
 - no mobile repo edits
 - no package changes
-- reduce remaining direct Firebase usage in one small controller/service/job area
-- keep behavior and payloads stable
+- choose one small domain, recommended `venues` or `notifications`
+- formalize repository method contracts and return shapes
+- keep Firebase adapter as active runtime
+- prepare for PostgreSQL adapter without adding PostgreSQL yet
+- keep API behavior and payloads stable
 - run `git diff --check` and `node --check` on changed JS files
 - return changed files, compatibility notes, verification output, and risks
+
+## Latest Verification
+
+After `c255d0b`:
+
+```cmd
+cd /d D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing
+rg -n config/firebase.config services controllers jobs middleware
+rg -n firebase-admin services controllers jobs middleware
+cmd /c "for /f "delims=" %f in ('rg --files -g "*.js" -g "!node_modules/**"') do @node --check "%f""
+```
+
+Results:
+
+- no direct `config/firebase.config` import in `services`, `controllers`, `jobs`, or `middleware`
+- no direct `firebase-admin` import in `services`, `controllers`, `jobs`, or `middleware`
+- full server JS syntax check outside `node_modules` passed
+- no `npm test` script exists in `Server-2025-Eventing/package.json`
