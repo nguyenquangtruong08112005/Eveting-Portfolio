@@ -1,6 +1,6 @@
 const ticketService = require('../services/ticket.service');
 const paymentService = require('../services/payment.service');
-const { db } = require('../config/firebase.config');
+const ticketRepository = require('../providers/database/ticket.repository');
 
 /**
  * API Endpoint: (POST /payments/create-order)
@@ -13,11 +13,8 @@ const createPaymentOrder = async (req, res) => {
 
         if (!ticketId) return res.status(400).send({ error: 'Bad Request: ticketId is required.' });
 
-        const ticketRef = db.collection('Tickets').doc(ticketId);
-        const ticketDoc = await ticketRef.get();
-        
-        if (!ticketDoc.exists) return res.status(404).send({ error: 'Ticket not found.' });
-        const ticket = ticketDoc.data();
+        const ticket = await ticketRepository.getTicketById(ticketId);
+        if (!ticket) return res.status(404).send({ error: 'Ticket not found.' });
 
         if (ticket.userId !== userId) return res.status(403).send({ error: 'Forbidden.' });
         if (ticket.status !== 'pending' && ticket.status !== 'failed') {
@@ -26,7 +23,7 @@ const createPaymentOrder = async (req, res) => {
 
         const zaloResponse = await paymentService.createZaloPayOrder(ticket);
 
-        await ticketRef.update({
+        await ticketRepository.updateTicket(ticketId, {
             zaloAppTransId: zaloResponse.app_trans_id,
             paymentStatus: 'processing',
             lastPaymentAttempt: new Date().toISOString()
@@ -103,9 +100,8 @@ const manualCheckPaymentStatus = async (req, res) => {
     try {
         const { ticketId } = req.body;
         
-        const ticketDoc = await db.collection('Tickets').doc(ticketId).get();
-        if (!ticketDoc.exists) return res.status(404).json({error: "Not found"});
-        const ticket = ticketDoc.data();
+        const ticket = await ticketRepository.getTicketById(ticketId);
+        if (!ticket) return res.status(404).json({error: "Not found"});
         
         if (ticket.status === 'paid') return res.json({ status: 'paid', message: "Paid confirmed" });
         if (!ticket.zaloAppTransId) return res.status(400).json({ error: "No transaction ID" });

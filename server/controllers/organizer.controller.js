@@ -1,7 +1,7 @@
 // controllers/organizer.controller.js
 const organizerService = require('../services/organizer.service');
 const analyticsService = require('../services/analytics.service');
-const { db } = require('../config/firebase.config');
+const eventRepository = require('../providers/database/event.repository');
 
 // Middleware kiểm tra quyền sở hữu sự kiện
 const verifyEventOwnership = async (req, res, next) => {
@@ -14,16 +14,16 @@ const verifyEventOwnership = async (req, res, next) => {
             return res.status(400).send({ error: 'Bad Request: eventId is missing.' });
         }
 
-        const eventDoc = await db.collection('Events').doc(eventId).get();
-        if (!eventDoc.exists) {
+        const event = await eventRepository.getEventById(eventId);
+        if (!event) {
             return res.status(404).send({ error: 'Event not found.' });
         }
 
-        if (eventDoc.data().organizerId !== organizerId) {
+        if (event.organizerId !== organizerId) {
             return res.status(403).send({ error: 'Forbidden: You are not the owner of this event.' });
         }
 
-        req.event = eventDoc.data(); // Gắn thông tin event vào request
+        req.event = event;
         next();
     } catch (error) {
         console.error("Error in verifyEventOwnership middleware:", error);

@@ -1,5 +1,4 @@
 // controllers/event.controller.js
-const { db } = require('../config/firebase.config'); // Vẫn cần db nếu có logic kiểm tra quyền trong controller (ví dụ: đã comment lại)
 const eventService = require('../services/event.service');
 
 const getAllEvents = async (req, res) => {
