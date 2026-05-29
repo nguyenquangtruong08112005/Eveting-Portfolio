@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C3 expand PostgreSQL domains, next domain `organizer_profiles`.
+Next phase: Phase C3 expand PostgreSQL domains, next domain `analytics_events`.
 
 ## Source Of Truth
 
@@ -24,6 +24,7 @@ Next phase: Phase C3 expand PostgreSQL domains, next domain `organizer_profiles`
 - Events Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-events-postgres-verification.md`
 - Tickets Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-tickets-postgres-verification.md`
 - Featured Profiles Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-featured-profiles-postgres-verification.md`
+- Organizer Profiles Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-organizer-profiles-postgres-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -79,6 +80,7 @@ Next phase: Phase C3 expand PostgreSQL domains, next domain `organizer_profiles`
 - `7bc1b0b` - Add Postgres event adapter.
 - `a3f27e7` - Add Postgres ticket adapter.
 - `704e0b6` - Add Postgres featured profile adapter.
+- `8efc318` - Add Postgres organizer profile adapter.
 
 ## Current Plan Summary
 
@@ -138,14 +140,14 @@ Then review:
 
 ## Next Exact Step
 
-Assign `agy` Phase C3 organizer profiles:
+Assign `agy` Phase C3 analytics events:
 
 - server-only
 - no mobile repo edits
-- add PostgreSQL organizer profile schema/adapter behind existing organizer/admin repository contracts
+- add PostgreSQL analytics schema/adapter behind existing analytics repository contracts
 - keep Firebase default
-- do not change organizer dashboard, approval, or admin route payloads
-- preserve organizer user id, company fields, approval status, profile metadata, and admin-facing fields
+- do not change organizer dashboard stats payloads or analytics route payloads
+- preserve event analytics ids, ticket/revenue counters, daily sales, views, and raw analytics summary shape
 - add smoke/compare script if feasible
 - verify with `git diff --check`, `node --check`, migration on local Postgres, and payload compatibility checks
 
@@ -178,3 +180,4 @@ Results:
 - Phase C3 events verification passed for 23 Firestore events: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 23 with 0 missing and 0 different. Public page projection also matched Firebase selected fields. Ticket coverage is next.
 - Phase C3 tickets verification passed for 23 Firestore tickets: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 23 with 0 missing and 0 different. Paid and attendee method shapes matched Firebase for `evt_haanh_show_dalat_2026`. Featured profile coverage is next.
 - Phase C3 featured profile verification passed for 16 FeaturedProfiles: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 16 with 0 missing and 0 different. Organizer profile coverage is next.
+- Phase C3 organizer profile verification passed for 1 organizer profile: migrations applied, repeated Firebase-to-Postgres sync completed without duplicate organizer roles, users compare still matched 3, organizer compare matched 1. Analytics coverage is next.
