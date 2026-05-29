@@ -1,9 +1,11 @@
 // providers/notification/index.js
 const firebaseProvider = require('./firebase.provider');
+const onesignalProvider = require('./onesignal.provider');
 
 // Supported providers mapping
 const providers = {
     firebase: firebaseProvider,
+    onesignal: onesignalProvider,
 };
 
 const providerName = process.env.NOTIFICATION_PROVIDER || 'firebase';
