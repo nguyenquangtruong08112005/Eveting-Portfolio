@@ -1,5 +1,4 @@
 // services/event.service.js
-const { db, FieldValue } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
 const geofire = require('geofire-common');
 const { calculateMinPrice } = require('../utils/tickets/calculateMinPrice.tickets');
@@ -9,6 +8,12 @@ const axios = require('axios');
 const fcmService = require('./fcm.service');
 const notificationService = require('./notification.service');
 const notifHelper = require('./notification-event.helper');
+
+const eventRepository = require('../providers/database/event.repository');
+const venueRepository = require('../providers/database/venue.repository');
+const ticketRepository = require('../providers/database/ticket.repository');
+const userRepository = require('../providers/database/user.repository');
+const featuredProfileRepository = require('../providers/database/featuredProfile.repository');
 
 const ELASTIC_INDEX = 'events';
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
@@ -35,10 +40,7 @@ const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];
     if (eventData.featuredProfileIds && eventData.featuredProfileIds.length > 0) {
         try {
-            const profilesSnapshot = await db.collection("FeaturedProfiles")
-                .where("id", "in", eventData.featuredProfileIds)
-                .get();
-            featuredProfileNames = profilesSnapshot.docs.map((doc) => doc.data().name);
+            featuredProfileNames = await featuredProfileRepository.getFeaturedProfileNamesByIds(eventData.featuredProfileIds);
         } catch (error) {
             console.error(`Lỗi lấy profile names cho event ${eventData.id}:`, error);
         }
@@ -102,14 +104,11 @@ const hasImportantChanges = (oldData, newData) => {
  */
 const notifyAttendeesAboutUpdate = async (eventId, eventName) => {
     try {
-        const ticketsSnapshot = await db.collection('Tickets')
-            .where('eventId', '==', eventId)
-            .where('status', 'in', ['paid', 'checkedIn'])
-            .get();
+        const tickets = await ticketRepository.getAttendeeTicketsByEventId(eventId);
 
-        if (ticketsSnapshot.empty) return;
+        if (tickets.length === 0) return;
 
-        const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
+        const userIds = [...new Set(tickets.map(t => t.userId))];
         console.log(`[EventUpdate] Found ${userIds.length} users to notify.`);
 
         const title = "⚠️ Cập nhật sự kiện";
@@ -134,52 +133,31 @@ const notifyAttendeesAboutUpdate = async (eventId, eventName) => {
 // --- CÁC HÀM CRUD ---
 
 const getAllEvents = async (page = 1, limit = 10) => {
-    const eventsRef = db.collection('Events')
-        .where('visibility', '==', 'public')
-        .where('status', '==', 'active');
-    const offset = (page - 1) * limit;
+    const { entries, totalItems } = await eventRepository.getPublicEventsPage(page, limit);
 
-    const countSnapshot = await eventsRef.count().get();
-    const totalEvents = countSnapshot.data().count;
+    const events = entries.map(({ id, data }) => ({
+        id, name: data.name, date: data.date, category: data.category,
+        imageUrl: data.imageUrl, bannerUrl: data.bannerUrl, videoUrl: data.videoUrl,
+        location: data.location, city: data.city || null, venueName: data.venueName || null,
+        eventType: data.eventType || 'physical', minPrice: data.minPrice !== undefined ? data.minPrice : null,
+    }));
 
-    const eventsSnapshot = await eventsRef
-        .orderBy('date', 'asc')
-        .limit(limit)
-        .offset(offset)
-        .select("id", "name", "date", "imageUrl", "bannerUrl", "videoUrl", "location", "city", "venueName", "eventType", "minPrice")
-        .get();
-
-    const events = [];
-    eventsSnapshot.forEach((doc) => {
-        const data = doc.data();
-        events.push({
-            id: doc.id, name: data.name, date: data.date, category: data.category,
-            imageUrl: data.imageUrl, bannerUrl: data.bannerUrl, videoUrl: data.videoUrl,
-            location: data.location, city: data.city || null, venueName: data.venueName || null,
-            eventType: data.eventType || 'physical', minPrice: data.minPrice !== undefined ? data.minPrice : null,
-        });
-    });
-
-    return { events, pagination: { currentPage: page, limit: limit, totalPages: Math.ceil(totalEvents / limit), totalItems: totalEvents } };
+    return { events, pagination: { currentPage: page, limit: limit, totalPages: Math.ceil(totalItems / limit), totalItems: totalItems } };
 };
 
 const getEventById = async (eventId, requestingUser = null) => {
-    const eventDoc = await db.collection('Events').doc(eventId).get();
-    if (!eventDoc.exists || eventDoc.data().status === 'cancelled') return null;
+    const { exists, id, data: eventData } = await eventRepository.getEventRawById(eventId);
+    if (!exists || eventData.status === 'cancelled') return null;
 
-    const eventData = eventDoc.data();
     let venueData = null;
     let featuredProfilesData = [];
 
     if (eventData.venueId) {
-        const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
-        if (venueDoc.exists) venueData = venueDoc.data();
+        const venueResult = await venueRepository.getVenueRawById(eventData.venueId);
+        if (venueResult.exists) venueData = venueResult.data;
     }
     if (eventData.featuredProfileIds && eventData.featuredProfileIds.length > 0) {
-        const profilesSnapshot = await db.collection('FeaturedProfiles')
-            .where('id', 'in', eventData.featuredProfileIds)
-            .get();
-        profilesSnapshot.forEach(doc => { featuredProfilesData.push(doc.data()); });
+        featuredProfilesData = await featuredProfileRepository.getFeaturedProfilesDataByIds(eventData.featuredProfileIds);
     }
 
     let isOwnerOrAdmin = false;
@@ -190,11 +168,11 @@ const getEventById = async (eventId, requestingUser = null) => {
     }
 
     if (isOwnerOrAdmin) {
-        return { id: eventDoc.id, ...eventData, venue: venueData, featuredProfiles: featuredProfilesData };
+        return { id, ...eventData, venue: venueData, featuredProfiles: featuredProfilesData };
     }
 
     const publicEventView = {
-        id: eventDoc.id, name: eventData.name, description: eventData.description,
+        id, name: eventData.name, description: eventData.description,
         imageUrl: eventData.imageUrl, bannerUrl: eventData.bannerUrl,
         category: eventData.category, tags: eventData.tags, date: eventData.date, endDate: eventData.endDate,
         eventType: eventData.eventType, onlineUrl: eventData.onlineUrl, location: eventData.location,
@@ -212,7 +190,6 @@ const getEventById = async (eventId, requestingUser = null) => {
 
 const createEvent = async (eventData, organizerId) => {
     const eventId = `evt_${uuidv4()}`;
-    const eventRef = db.collection('Events').doc(eventId);
 
     if (!eventData.date || typeof eventData.date !== 'number') {
         throw new Error('Invalid or missing event date (must be a timestamp).');
@@ -231,9 +208,9 @@ const createEvent = async (eventData, organizerId) => {
 
     if (eventType === 'physical') {
         if (finalVenueId) {
-            const venueDoc = await db.collection('Venues').doc(finalVenueId).get();
-            if (venueDoc.exists) {
-                const venue = venueDoc.data();
+            const venueResult = await venueRepository.getVenueRawById(finalVenueId);
+            if (venueResult.exists) {
+                const venue = venueResult.data;
                 venueName = venue.name;
                 if (venue.addressDetails) city = venue.addressDetails.city || null;
                 if (!location && venue.location) location = venue.location;
@@ -271,7 +248,7 @@ const createEvent = async (eventData, organizerId) => {
                 seatMapTemplate: { totalSeats: 0, layout: [] }
             };
 
-            await db.collection('Venues').doc(newVenueId).set(newVenue);
+            await venueRepository.createVenue(newVenueId, newVenue);
 
             finalVenueId = newVenueId;
             venueName = newVenue.name;
@@ -335,7 +312,7 @@ const createEvent = async (eventData, organizerId) => {
         lastUpdatedAt: now,
     };
 
-    await eventRef.set(newEventData);
+    await eventRepository.createEvent(eventId, newEventData);
 
     const topic = `organizer_${organizerId}`;
     const title = "Sự kiện mới!";
@@ -352,15 +329,12 @@ const createEvent = async (eventData, organizerId) => {
 };
 
 const updateEvent = async (eventId, eventData) => {
-    const eventRef = db.collection('Events').doc(eventId);
-
     if (Array.isArray(eventData.ticketTypes)) {
         throw new Error("ticketTypes must be a Map (Object), not a List (Array).");
     }
 
-    // 1. Lấy dữ liệu CŨ để so sánh
-    const oldDoc = await eventRef.get();
-    const oldData = oldDoc.exists ? oldDoc.data() : {};
+    const { exists, data: oldData } = await eventRepository.getEventRawById(eventId);
+    const oldDataSafe = exists ? oldData : {};
 
     let geohash = undefined;
     if (eventData.location?.latitude && eventData.location?.longitude) {
@@ -374,9 +348,9 @@ const updateEvent = async (eventId, eventData) => {
     };
 
     if (eventData.venueId) {
-        const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
-        if (venueDoc.exists) {
-            const venue = venueDoc.data();
+        const venueResult = await venueRepository.getVenueRawById(eventData.venueId);
+        if (venueResult.exists) {
+            const venue = venueResult.data;
             updatePayload.venueName = venue.name;
             if (venue.addressDetails) updatePayload.city = venue.addressDetails.city || null;
             if (venue.location) {
@@ -396,16 +370,12 @@ const updateEvent = async (eventId, eventData) => {
 
     delete updatePayload.id; delete updatePayload.organizerId; delete updatePayload.createdAt;
 
-    // 2. Thực hiện Update
-    await eventRef.update(updatePayload);
-    const updatedDoc = await eventRef.get();
-    const fullEventData = { id: updatedDoc.id, ...updatedDoc.data() };
+    await eventRepository.updateEvent(eventId, updatePayload);
+    const fullEventData = await eventRepository.getEventById(eventId);
 
-    // 3. Kiểm tra thay đổi và gửi thông báo (Logic Mới)
-    if (oldDoc.exists) {
-        const shouldNotify = hasImportantChanges(oldData, fullEventData);
+    if (exists) {
+        const shouldNotify = hasImportantChanges(oldDataSafe, fullEventData);
         if (shouldNotify) {
-            // Chạy async không cần await để trả response nhanh cho Organizer
             notifyAttendeesAboutUpdate(eventId, fullEventData.name).catch(err =>
                 console.error("Background notification failed:", err)
             );
@@ -428,12 +398,11 @@ const updateEvent = async (eventId, eventData) => {
 };
 
 const cancelEvent = async (eventId) => {
-    const eventRef = db.collection('Events').doc(eventId);
-    const eventDoc = await eventRef.get();
-    const eventName = eventDoc.exists ? eventDoc.data().name : 'Sự kiện';
+    const { exists, data: eventData } = await eventRepository.getEventRawById(eventId);
+    const eventName = exists ? eventData.name : 'Sự kiện';
     const now = new Date().getTime();
 
-    await eventRef.update({ status: 'cancelled', cancelledAt: now, lastUpdatedAt: now });
+    await eventRepository.updateEvent(eventId, { status: 'cancelled', cancelledAt: now, lastUpdatedAt: now });
 
     if (esClient) {
         try {
@@ -443,14 +412,10 @@ const cancelEvent = async (eventId) => {
         }
     }
 
-    // Gửi thông báo hủy
-    const ticketsSnapshot = await db.collection('Tickets')
-        .where('eventId', '==', eventId)
-        .where('status', 'in', ['paid', 'checkedIn'])
-        .get();
+    const tickets = await ticketRepository.getAttendeeTicketsByEventId(eventId);
 
-    if (!ticketsSnapshot.empty) {
-        const userIds = [...new Set(ticketsSnapshot.docs.map(doc => doc.data().userId))];
+    if (tickets.length > 0) {
+        const userIds = [...new Set(tickets.map(t => t.userId))];
 
         const { recipientIds, tokens } = await notifHelper.collectMessagingTargets(userIds);
 
@@ -470,8 +435,8 @@ const cancelEvent = async (eventId) => {
         }
     }
 
-    const updatedDoc = await eventRef.get();
-    return { id: updatedDoc.id, ...updatedDoc.data() };
+    const fullEventData = await eventRepository.getEventById(eventId);
+    return fullEventData;
 };
 
 const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 1, limit = 10) => {
@@ -487,27 +452,15 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
         finalRadiusUsed = currentRadiusKm;
         const radiusInM = currentRadiusKm * 1000;
         const bounds = geofire.geohashQueryBounds(center, radiusInM);
-        const promises = [];
-        for (const b of bounds) {
-            const q = db.collection('Events')
-                .where('status', '==', 'active')
-                .where('visibility', '==', 'public')
-                .orderBy('geohash')
-                .startAt(b[0]).endAt(b[1]);
-            promises.push(q.get());
-        }
-        const snapshots = await Promise.all(promises);
+        const matchingDocsRaw = await eventRepository.queryActivePublicEventsByGeoBounds(bounds);
         const matchingDocs = [];
-        for (const snap of snapshots) {
-            for (const doc of snap.docs) {
-                const eventData = doc.data();
-                if (!eventData.location?.latitude || !eventData.location?.longitude) continue;
-                const lat = eventData.location.latitude;
-                const lon = eventData.location.longitude;
-                const distanceInKm = geofire.distanceBetween([lat, lon], center);
-                if (distanceInKm <= currentRadiusKm) {
-                    matchingDocs.push({ id: doc.id, ...eventData, distanceKm: distanceInKm });
-                }
+        for (const { id, data } of matchingDocsRaw) {
+            if (!data.location?.latitude || !data.location?.longitude) continue;
+            const lat = data.location.latitude;
+            const lon = data.location.longitude;
+            const distanceInKm = geofire.distanceBetween([lat, lon], center);
+            if (distanceInKm <= currentRadiusKm) {
+                matchingDocs.push({ id, ...data, distanceKm: distanceInKm });
             }
         }
         uniqueResults = Array.from(new Map(matchingDocs.map(item => [item.id, item])).values());
@@ -596,9 +549,8 @@ const searchEvents = async (queryParams) => {
 };
 
 const getRecommendations = async (userId, limit = 10) => {
-    const userDoc = await db.collection('Users').doc(userId).get();
-    if (!userDoc.exists) return [];
-    const userData = userDoc.data();
+    const userData = await userRepository.getRawUserDataById(userId);
+    if (!userData) return [];
     const interests = userData.matchingPreferences?.interests || [];
     const historyIds = userData.historyEventIds || [];
 
@@ -668,13 +620,10 @@ const getEventWeather = async (eventId) => {
         return null;
     }
 
-    const eventDoc = await db.collection('Events').doc(eventId).get();
-    if (!eventDoc.exists) {
-        // console.error("[WeatherDebug] ❌ Event doc not found in Firestore");
+    const { exists, data: eventData } = await eventRepository.getEventRawById(eventId);
+    if (!exists) {
         throw new Error('Event not found');
     }
-
-    const eventData = eventDoc.data();
     // console.log(`[WeatherDebug] Event Info: Name="${eventData.name}", Type=${eventData.eventType}, IsOutdoor=${eventData.isOutdoor}`);
 
     // Check 1: Event Type

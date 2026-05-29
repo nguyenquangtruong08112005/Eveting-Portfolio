@@ -19,8 +19,15 @@ const getVenueById = async (venueId) => {
     return { id: doc.id, ...doc.data() };
 };
 
+const getVenueRawById = async (venueId) => {
+    const doc = await db.collection('Venues').doc(venueId).get();
+    if (!doc.exists) return { exists: false, id: null, data: null };
+    return { exists: true, id: doc.id, data: doc.data() };
+};
+
 module.exports = {
     getAllVenues,
     createVenue,
     getVenueById,
+    getVenueRawById,
 };

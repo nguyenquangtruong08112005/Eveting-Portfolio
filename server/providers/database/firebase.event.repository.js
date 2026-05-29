@@ -72,6 +72,60 @@ const getEventEntriesByOrganizer = async (organizerId) => {
     return entries;
 };
 
+const createEvent = async (eventId, eventData) => {
+    await db.collection('Events').doc(eventId).set(eventData);
+};
+
+const getEventRawById = async (eventId) => {
+    const doc = await db.collection('Events').doc(eventId).get();
+    if (!doc.exists) return { exists: false, id: null, data: null };
+    return { exists: true, id: doc.id, data: doc.data() };
+};
+
+const getPublicEventsPage = async (page, limit) => {
+    const eventsRef = db.collection('Events')
+        .where('visibility', '==', 'public')
+        .where('status', '==', 'active');
+    const offset = (page - 1) * limit;
+
+    const countSnapshot = await eventsRef.count().get();
+    const totalItems = countSnapshot.data().count;
+
+    const snapshot = await eventsRef
+        .orderBy('date', 'asc')
+        .limit(limit)
+        .offset(offset)
+        .select("id", "name", "date", "imageUrl", "bannerUrl", "videoUrl", "location", "city", "venueName", "eventType", "minPrice")
+        .get();
+
+    const entries = [];
+    snapshot.forEach((doc) => {
+        entries.push({ id: doc.id, data: doc.data() });
+    });
+
+    return { entries, totalItems };
+};
+
+const queryActivePublicEventsByGeoBounds = async (bounds) => {
+    const promises = [];
+    for (const b of bounds) {
+        const q = db.collection('Events')
+            .where('status', '==', 'active')
+            .where('visibility', '==', 'public')
+            .orderBy('geohash')
+            .startAt(b[0]).endAt(b[1]);
+        promises.push(q.get());
+    }
+    const snapshots = await Promise.all(promises);
+    const docs = [];
+    for (const snap of snapshots) {
+        snap.forEach(doc => {
+            docs.push({ id: doc.id, data: doc.data() });
+        });
+    }
+    return docs;
+};
+
 module.exports = {
     getEventById,
     getEventDataById,
@@ -82,4 +136,8 @@ module.exports = {
     incrementEventTicketTypeAvailableInTransaction,
     getEventsByOrganizerId,
     getEventEntriesByOrganizer,
+    createEvent,
+    getEventRawById,
+    getPublicEventsPage,
+    queryActivePublicEventsByGeoBounds,
 };

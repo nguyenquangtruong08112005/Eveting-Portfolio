@@ -73,6 +73,26 @@ const getFeaturedProfilesByIds = async (ids) => {
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
+const getFeaturedProfileNamesByIds = async (ids) => {
+    if (!ids || ids.length === 0) return [];
+    const snapshot = await db.collection("FeaturedProfiles")
+        .where("id", "in", ids)
+        .get();
+    return snapshot.docs.map((doc) => doc.data().name);
+};
+
+const getFeaturedProfilesDataByIds = async (ids) => {
+    if (!ids || ids.length === 0) return [];
+    const snapshot = await db.collection("FeaturedProfiles")
+        .where("id", "in", ids)
+        .get();
+    const results = [];
+    snapshot.forEach(doc => {
+        results.push(doc.data());
+    });
+    return results;
+};
+
 module.exports = {
     getFeaturedProfilesPage,
     getFeaturedProfileById,
@@ -81,4 +101,6 @@ module.exports = {
     deleteFeaturedProfile,
     userHasOrganizerRole,
     getFeaturedProfilesByIds,
+    getFeaturedProfileNamesByIds,
+    getFeaturedProfilesDataByIds,
 };
