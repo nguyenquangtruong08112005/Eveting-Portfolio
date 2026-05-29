@@ -1,12 +1,8 @@
 // services/analytics.service.js
-const { db } = require('../config/firebase.config');
+const analyticsRepository = require('../providers/database/analytics.repository');
 
 const getAnalyticsByEventId = async (eventId) => {
-    const doc = await db.collection('Analytics').doc(eventId).get();
-    if (!doc.exists) {
-        return null;
-    }    
-    return doc.data();
+    return analyticsRepository.getAnalyticsByEventId(eventId);
 };
 
 module.exports = { getAnalyticsByEventId };

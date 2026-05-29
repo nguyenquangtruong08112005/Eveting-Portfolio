@@ -1,14 +1,9 @@
 // services/venue.service.js
-const { db } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
+const venueRepository = require('../providers/database/venue.repository');
 
 const getAllVenues = async () => {
-    const snapshot = await db.collection('Venues').orderBy('name').get();
-    const venues = [];
-    snapshot.forEach(doc => {
-        venues.push({ id: doc.id, ...doc.data() });
-    });
-    return venues;
+    return venueRepository.getAllVenues();
 };
 
 const createVenue = async (venueData) => {
@@ -23,7 +18,7 @@ const createVenue = async (venueData) => {
         seatMapTemplate: venueData.seatMapTemplate || { totalSeats: 0, layout: [] }
     };
     
-    await db.collection('Venues').doc(venueId).set(newVenue);
+    await venueRepository.createVenue(venueId, newVenue);
     return newVenue;
 };
 
