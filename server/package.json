@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "start": "start cmd /k nodemon app.js && ngrok http 3000",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "db:migrate": "node db/migrate.js",
+    "db:smoke:venues": "node scripts/smoke.venues.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",

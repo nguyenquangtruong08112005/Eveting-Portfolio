@@ -7,7 +7,7 @@ const repositories = {
     postgres: postgresVenueRepository,
 };
 
-const providerName = process.env.DATABASE_PROVIDER || 'firebase';
+const providerName = process.env.VENUE_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
 const activeRepository = repositories[providerName];
 
 if (!activeRepository) {
