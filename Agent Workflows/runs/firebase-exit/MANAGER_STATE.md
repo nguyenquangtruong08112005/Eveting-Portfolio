@@ -8,12 +8,13 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C0 consolidation review, then Phase C1 local PostgreSQL harness.
+Next phase: Phase C1a local PostgreSQL harness and venue-only provider flip support.
 
 ## Source Of Truth
 
 - Plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\firebase-exit-plan.md`
 - Phase C plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c-provider-flip-plan.md`
+- Phase C0 review: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c0-consolidation-review.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -118,15 +119,15 @@ Then review:
 
 ## Next Exact Step
 
-Run Phase C0 consolidation verification:
+Assign `opencode` Phase C1a:
 
-- `git status --short --branch`
-- `git diff --check`
-- full `node --check` for JS files outside `node_modules`
-- direct Firebase import scan outside provider/adapters
-- require-smoke for default providers
-- package dependency review for added `pg` and pinned AWS SDK packages
-- save review artifact under `Agent Workflows/runs/firebase-exit`
+- server-only
+- add `VENUE_DATABASE_PROVIDER` override while keeping global default behavior unchanged
+- add opt-in migration runner for `db/migrations`
+- add minimal venue PostgreSQL smoke/seed script if it can stay non-destructive
+- no mobile repo edits
+- no route or payload changes
+- verify with `git diff --check`, `node --check`, default provider smoke, and require smoke with `VENUE_DATABASE_PROVIDER=postgres`
 
 ## Latest Verification
 
