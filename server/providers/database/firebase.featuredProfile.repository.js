@@ -93,6 +93,15 @@ const getFeaturedProfilesDataByIds = async (ids) => {
     return results;
 };
 
+const getAllFeaturedProfiles = async () => {
+    const snapshot = await db.collection('FeaturedProfiles').orderBy('name').get();
+    const profiles = [];
+    snapshot.forEach(doc => {
+        profiles.push({ id: doc.id, ...doc.data() });
+    });
+    return profiles;
+};
+
 module.exports = {
     getFeaturedProfilesPage,
     getFeaturedProfileById,
@@ -103,4 +112,5 @@ module.exports = {
     getFeaturedProfilesByIds,
     getFeaturedProfileNamesByIds,
     getFeaturedProfilesDataByIds,
+    getAllFeaturedProfiles,
 };

@@ -237,18 +237,31 @@ var followProfile = async function (userId, profileId) {
   if (followed.indexOf(profileId) !== -1) {
     return { alreadyFollowing: true };
   }
-  var profileResult = await query('SELECT id FROM user_profiles WHERE id = $1', [profileId]);
-  if (profileResult.rows.length === 0) {
-    throw new Error('Profile not found.');
+  var isFeatured = false;
+  var profileResult = await query('SELECT id FROM featured_profiles WHERE id = $1', [profileId]);
+  if (profileResult.rows.length > 0) {
+    isFeatured = true;
+  } else {
+    profileResult = await query('SELECT id FROM user_profiles WHERE id = $1', [profileId]);
+    if (profileResult.rows.length === 0) {
+      throw new Error('Profile not found.');
+    }
   }
   await query(
     'UPDATE user_profiles SET followed_profile_ids = array_append(followed_profile_ids, $1), following_count = following_count + 1, updated_at = NOW() WHERE id = $2',
     [profileId, userId]
   );
-  await query(
-    'UPDATE user_profiles SET followers_count = followers_count + 1, updated_at = NOW() WHERE id = $1',
-    [profileId]
-  );
+  if (isFeatured) {
+    await query(
+      'UPDATE featured_profiles SET follower_count = follower_count + 1, updated_at = NOW() WHERE id = $1',
+      [profileId]
+    );
+  } else {
+    await query(
+      'UPDATE user_profiles SET followers_count = followers_count + 1, updated_at = NOW() WHERE id = $1',
+      [profileId]
+    );
+  }
   return { alreadyFollowing: false };
 };
 
@@ -263,10 +276,21 @@ var unfollowProfile = async function (userId, profileId) {
     'UPDATE user_profiles SET followed_profile_ids = array_remove(followed_profile_ids, $1), following_count = GREATEST(following_count - 1, 0), updated_at = NOW() WHERE id = $2',
     [profileId, userId]
   );
-  await query(
-    'UPDATE user_profiles SET followers_count = GREATEST(followers_count - 1, 0), updated_at = NOW() WHERE id = $1',
-    [profileId]
-  );
+  var profileResult = await query('SELECT id FROM featured_profiles WHERE id = $1', [profileId]);
+  if (profileResult.rows.length > 0) {
+    await query(
+      'UPDATE featured_profiles SET follower_count = GREATEST(follower_count - 1, 0), updated_at = NOW() WHERE id = $1',
+      [profileId]
+    );
+  } else {
+    profileResult = await query('SELECT id FROM user_profiles WHERE id = $1', [profileId]);
+    if (profileResult.rows.length > 0) {
+      await query(
+        'UPDATE user_profiles SET followers_count = GREATEST(followers_count - 1, 0), updated_at = NOW() WHERE id = $1',
+        [profileId]
+      );
+    }
+  }
   return { notFollowing: false };
 };
 
