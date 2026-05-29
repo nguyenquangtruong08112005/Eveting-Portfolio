@@ -46,10 +46,13 @@ Phase B planning/first implementation slice.
 - Later AGY output appears to have created a small server notification provider boundary directly in `Server-2025-Eventing` on `staging`: `services/fcm.service.js` plus `providers/notification/*`.
 - `git diff --check` and `node --check` passed for that server notification-provider slice.
 - The server notification-provider slice was committed on `Server-2025-Eventing/staging` as `2849ee7 Introduce notification provider boundary`.
+- The server media database repository slice was committed on `Server-2025-Eventing/staging` as `07807ae Introduce media database repository boundary`.
 
 ## Next Exact Step
 
-Run AGY interactive in the clone:
+Next recommended server slice: audit and extract another small Firebase database repository boundary from a controller/service that directly imports `config/firebase.config`, preferably without changing mobile-facing payloads.
+
+AGY interactive command template if delegating:
 
 ```cmd
 cd /d D:\01_university\year3\semester-5\mobile\final\.agent-workspaces\server-agy-phaseb-provider-ports
