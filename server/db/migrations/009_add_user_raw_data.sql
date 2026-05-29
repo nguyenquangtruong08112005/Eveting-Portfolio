@@ -1,0 +1,2 @@
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS raw_data JSONB DEFAULT NULL;
