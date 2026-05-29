@@ -331,21 +331,64 @@ var getRawUserDataById = async function (userId) {
 };
 
 var addOrganizerRoleToUser = async function (userId, organizerData) {
+  var result = await query('SELECT roles, raw_data, organizer_info FROM user_profiles WHERE id = $1', [userId]);
+  if (result.rows.length === 0) return null;
+  var row = result.rows[0];
+
+  var roles = row.roles || [];
+  if (roles.indexOf('organizer') === -1) {
+    roles.push('organizer');
+  }
+  roles = roles.filter(function (item, pos, self) {
+    return self.indexOf(item) === pos;
+  });
+
+  var existingCreatedAt = (row.organizer_info && row.organizer_info.createdAt) ||
+                          (row.raw_data && row.raw_data.organizerInfo && row.raw_data.organizerInfo.createdAt);
+  var createdAt = organizerData.createdAt || existingCreatedAt;
+
   var organizerInfo = {
     companyName: organizerData.companyName,
     taxCode: organizerData.taxCode || '',
     description: organizerData.description || '',
     website: organizerData.website || '',
-    createdAt: new Date().getTime()
   };
-  await query(
-    `UPDATE user_profiles
-     SET roles = array_append(COALESCE(roles, ARRAY[]::text[]), 'organizer'),
-         organizer_info = $1,
-         updated_at = NOW()
-     WHERE id = $2`,
-    [JSON.stringify(organizerInfo), userId]
-  );
+  if (createdAt !== undefined) {
+    organizerInfo.createdAt = createdAt;
+  }
+
+  if (row.raw_data) {
+    var rawData = { ...row.raw_data };
+    var rawRoles = rawData.roles || [];
+    if (rawRoles.indexOf('organizer') === -1) {
+      rawRoles.push('organizer');
+    }
+    rawRoles = rawRoles.filter(function (item, pos, self) {
+      return self.indexOf(item) === pos;
+    });
+    rawData.roles = rawRoles;
+    rawData.organizerInfo = { ...organizerInfo };
+
+    await query(
+      `UPDATE user_profiles
+       SET roles = $1,
+           organizer_info = $2,
+           raw_data = $3,
+           updated_at = NOW()
+       WHERE id = $4`,
+      [roles, JSON.stringify(organizerInfo), JSON.stringify(rawData), userId]
+    );
+  } else {
+    await query(
+      `UPDATE user_profiles
+       SET roles = $1,
+           organizer_info = $2,
+           updated_at = NOW()
+       WHERE id = $3`,
+      [roles, JSON.stringify(organizerInfo), userId]
+    );
+  }
+
   var updated = await getUserDataById(userId);
   return updated;
 };

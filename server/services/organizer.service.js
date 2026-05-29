@@ -11,6 +11,7 @@ const ticketRepository = require('../providers/database/ticket.repository');
 const userRepository = require('../providers/database/user.repository');
 const eventRepository = require('../providers/database/event.repository');
 const analyticsRepository = require('../providers/database/analytics.repository');
+const organizerRepository = require('../providers/database/organizer.repository');
 
 
 /**
@@ -129,14 +130,14 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
  * Nâng cấp user lên Organizer
  */
 const registerOrganizer = async (userId, organizerData) => {
-    return await userRepository.addOrganizerRoleToUser(userId, organizerData);
+    return await organizerRepository.addOrganizerRoleToUser(userId, organizerData);
 };
 
 /**
  * Lấy thông tin Profile Organizer
  */
 const getOrganizerProfile = async (userId) => {
-    const rawData = await userRepository.getRawUserDataById(userId);
+    const rawData = await organizerRepository.getOrganizerProfile(userId);
     if (!rawData) return null;
 
     return {
@@ -224,7 +225,7 @@ const updateOrganizerProfile = async (userId, updateData) => {
     if (updateData.name) dataToUpdate['name'] = updateData.name;
 
     if (Object.keys(dataToUpdate).length > 0) {
-        await userRepository.updateUserFields(userId, dataToUpdate);
+        await organizerRepository.updateOrganizerProfile(userId, dataToUpdate);
     }
 
     return await module.exports.getOrganizerProfile(userId);

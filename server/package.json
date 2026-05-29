@@ -32,7 +32,10 @@
     "db:compare:tickets": "node scripts/compare.tickets.firebase-postgres.js",
     "db:sync:featured_profiles": "node scripts/sync.featured_profiles.firebase-to-postgres.js",
     "db:smoke:featured_profiles": "node scripts/smoke.featured_profiles.js",
-    "db:compare:featured_profiles": "node scripts/compare.featured_profiles.firebase-postgres.js"
+    "db:compare:featured_profiles": "node scripts/compare.featured_profiles.firebase-postgres.js",
+    "db:sync:organizer_profiles": "node scripts/sync.organizer_profiles.firebase-to-postgres.js",
+    "db:smoke:organizer_profiles": "node scripts/smoke.organizer_profiles.js",
+    "db:compare:organizer_profiles": "node scripts/compare.organizer_profiles.firebase-postgres.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
