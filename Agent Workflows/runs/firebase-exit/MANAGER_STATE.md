@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C3 expand PostgreSQL domains, starting with notifications.
+Next phase: Phase C3 expand PostgreSQL domains, next domain `media`.
 
 ## Source Of Truth
 
@@ -16,6 +16,7 @@ Next phase: Phase C3 expand PostgreSQL domains, starting with notifications.
 - Phase C plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c-provider-flip-plan.md`
 - Phase C0 review: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c0-consolidation-review.md`
 - Venues Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c1-c2-venues-postgres-verification.md`
+- Notifications Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-notifications-postgres-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -122,13 +123,13 @@ Then review:
 
 Assign `opencode` Phase C1a:
 
-Assign `opencode` Phase C3 notifications:
+Assign `opencode` Phase C3 media:
 
 - server-only
 - no mobile repo edits
-- add PostgreSQL notification schema/adapter behind existing repository contract
+- add PostgreSQL media schema/adapter behind existing repository contract
 - keep Firebase default
-- do not change notification route payloads or push payload keys
+- do not change media route payloads
 - add smoke/compare script if feasible
 - verify with `git diff --check`, `node --check`, migration on local Postgres, and payload compatibility checks
 
@@ -153,3 +154,4 @@ Results:
 - Slice E verification passed: storage require-smoke with no env, S3 env validation, and AWS SDK package pin check.
 - Slice F verification passed: OneSignal require-smoke with no env, default Firebase provider check, and mocked payload-shape check for subscription/external-id modes.
 - Phase C1/C2 verification passed for venues: local Postgres container, migrations applied, Firebase-to-Postgres venue sync completed, final comparison matched 9 venues with 0 missing and 0 different.
+- Phase C3 notification verification passed for `user_alice`: migration applied, Firebase-to-Postgres sync completed, final comparison matched 2 notifications with 0 missing and 0 different.
