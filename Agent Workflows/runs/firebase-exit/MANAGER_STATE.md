@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C3 expand PostgreSQL domains, next domain `reviews`.
+Next phase: Phase C3 expand PostgreSQL domains, next domain `users`.
 
 ## Source Of Truth
 
@@ -19,6 +19,7 @@ Next phase: Phase C3 expand PostgreSQL domains, next domain `reviews`.
 - Notifications Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-notifications-postgres-verification.md`
 - Media Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-media-postgres-verification.md`
 - Promotions Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-promotions-postgres-verification.md`
+- Reviews Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-reviews-postgres-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -64,6 +65,12 @@ Next phase: Phase C3 expand PostgreSQL domains, next domain `reviews`.
 - `ed06463` - Add backend auth foundation.
 - `860113e` - Add storage provider boundary.
 - `73ab05f` - Add OneSignal notification provider.
+- `1e3003e` - Add venue Postgres flip harness.
+- `5e8e2af` - Add venue seed and compare scripts.
+- `ea12b69` - Add Postgres notification adapter.
+- `998583b` - Add Postgres media adapter.
+- `0b02a5e` - Add Postgres promotion adapter.
+- `a027202` - Add Postgres review adapter.
 
 ## Current Plan Summary
 
@@ -123,15 +130,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign `opencode` Phase C1a:
-
-Assign `opencode` Phase C3 reviews:
+Assign `opencode` Phase C3 users:
 
 - server-only
 - no mobile repo edits
-- add PostgreSQL review schema/adapter behind existing repository contract
+- add PostgreSQL user schema/adapter behind existing user/auth repository contracts
 - keep Firebase default
-- do not change review route payloads
+- do not change auth/user/profile route payloads
+- include Firebase UID mapping
+- preserve role/organizer/admin semantics
 - add smoke/compare script if feasible
 - verify with `git diff --check`, `node --check`, migration on local Postgres, and payload compatibility checks
 
@@ -159,3 +166,4 @@ Results:
 - Phase C3 notification verification passed for `user_alice`: migration applied, Firebase-to-Postgres sync completed, final comparison matched 2 notifications with 0 missing and 0 different.
 - Phase C3 media verification passed at adapter/schema smoke level: migration applied and `getEventMediaPage` returned valid empty pagination shape. Full media flip is blocked until tickets/events/users PostgreSQL coverage exists.
 - Phase C3 promotions verification passed for organizer read path: migration applied, Firebase-to-Postgres sync completed for 3 organizer promotions, final comparison matched 3 with 0 missing and 0 different. Do not use in ticket/payment flows yet due transaction boundary limitation.
+- Phase C3 reviews verification passed for `evt_vdf_hcm_2025`: migration applied, Firebase-to-Postgres sync completed for 2 reviews, final comparison matched 2 with 0 missing and 0 different. Full review write-path flip is blocked until tickets/events/users PostgreSQL coverage exists.
