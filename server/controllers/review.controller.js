@@ -1,6 +1,4 @@
-// controllers/review.controller.js
 const reviewService = require('../services/review.service');
-const { db } = require('../config/firebase.config');
 
 const getEventReviews = async (req, res) => {
     try {
@@ -26,19 +24,10 @@ const createReview = async (req, res) => {
             return res.status(400).send({ error: 'Invalid rating (1-5).' });
         }
 
-        // --- KIỂM TRA QUYỀN ---
-        // Chỉ cho phép review nếu user có vé với status 'paid' hoặc 'checkedIn' cho sự kiện này
-        const ticketSnapshot = await db.collection('Tickets')
-            .where('userId', '==', userId)
-            .where('eventId', '==', eventId)
-            .where('status', 'in', ['paid', 'checkedIn'])
-            .limit(1)
-            .get();
-
-        if (ticketSnapshot.empty) {
+        const hasTicket = await reviewService.canReviewEvent(userId, eventId);
+        if (!hasTicket) {
             return res.status(403).send({ error: 'Forbidden: You must attend the event to review.' });
         }
-        // --- KẾT THÚC KIỂM TRA ---
 
         const newReview = await reviewService.createReview(userId, eventId, rating, comment);
         res.status(201).json(newReview);
