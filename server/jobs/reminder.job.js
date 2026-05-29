@@ -1,12 +1,12 @@
 // jobs/reminder.job.js
 const cron = require('node-cron');
-const { db } = require('../config/firebase.config');
 const fcmService = require('../services/fcm.service');
 const notifHelper = require('../services/notification-event.helper');
+const eventRepository = require('../providers/database/event.repository');
+const ticketRepository = require('../providers/database/ticket.repository');
 const moment = require('moment');
 
 const startReminderJob = () => {
-    // Chạy mỗi 30 phút: "*/30 * * * *"
     console.log("⏰ Reminder Job started...");
     
     cron.schedule('*/30 * * * *', async () => {
@@ -16,29 +16,16 @@ const startReminderJob = () => {
         const next24h = moment().add(24, 'hours');
         const next24h_plus30m = moment().add(24, 'hours').add(30, 'minutes');
 
-        // 1. Tìm các sự kiện diễn ra trong khoảng 24h tới (trong khe 30 phút quét)
-        const eventsSnapshot = await db.collection('Events')
-            .where('date', '>=', next24h.valueOf())
-            .where('date', '<', next24h_plus30m.valueOf())
-            .where('status', '==', 'active')
-            .get();
+        const events = await eventRepository.getActiveEventsInDateRange(next24h.valueOf(), next24h_plus30m.valueOf());
 
-        if (eventsSnapshot.empty) return;
+        if (events.length === 0) return;
 
-        // 2. Với mỗi sự kiện, tìm vé và gửi thông báo
-        for (const eventDoc of eventsSnapshot.docs) {
-            const event = eventDoc.data();
-            
-            // Tìm vé
-            const ticketsSnapshot = await db.collection('Tickets')
-                .where('eventId', '==', eventDoc.id)
-                .where('status', '==', 'paid')
-                .get();
+        for (const event of events) {
+            const tickets = await ticketRepository.getPaidTicketsByEventId(event._id);
                 
-            const userIds = [...new Set(ticketsSnapshot.docs.map(t => t.data().userId))];
+            const userIds = [...new Set(tickets.map(t => t.userId))];
             if (userIds.length === 0) continue;
 
-            // Lấy tokens (xử lý chunk tự động trong helper)
             const tokens = await notifHelper.collectTokens(userIds);
 
             if (tokens.length > 0) {

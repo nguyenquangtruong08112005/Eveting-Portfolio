@@ -6,6 +6,16 @@ const getEventById = async (eventId) => {
     return { id: eventDoc.id, ...eventDoc.data() };
 };
 
+const getActiveEventsInDateRange = async (startTime, endTime) => {
+    const snapshot = await db.collection('Events')
+        .where('date', '>=', startTime)
+        .where('date', '<', endTime)
+        .where('status', '==', 'active')
+        .get();
+    return snapshot.docs.map(doc => ({ ...doc.data(), _id: doc.id }));
+};
+
 module.exports = {
     getEventById,
+    getActiveEventsInDateRange,
 };

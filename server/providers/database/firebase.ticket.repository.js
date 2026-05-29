@@ -12,7 +12,16 @@ const updateTicket = async (ticketId, updates) => {
     await ticketRef.update(updates);
 };
 
+const getPaidTicketsByEventId = async (eventId) => {
+    const snapshot = await db.collection('Tickets')
+        .where('eventId', '==', eventId)
+        .where('status', '==', 'paid')
+        .get();
+    return snapshot.docs.map(doc => doc.data());
+};
+
 module.exports = {
     getTicketById,
     updateTicket,
+    getPaidTicketsByEventId,
 };

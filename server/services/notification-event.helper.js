@@ -1,6 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { db } = require('../config/firebase.config');
-const admin = require('firebase-admin');
+const userRepository = require('../providers/database/user.repository');
 
 const TOPIC_PREFIX = { artist: 'artist_', organizer: 'organizer_', event: 'event_' };
 
@@ -14,26 +13,11 @@ const buildPayloadData = (type, eventId, extra = {}) => {
 };
 
 const collectMessagingTargets = async (userIds) => {
-  const tokens = [];
-  const recipientIds = [];
-  const CHUNK_SIZE = 10;
-  for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
-    const chunk = userIds.slice(i, i + CHUNK_SIZE);
-    const userDocs = await db.collection('Users')
-      .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
-      .get();
-    userDocs.forEach(doc => {
-      recipientIds.push(doc.id);
-      const d = doc.data();
-      if (d.fcmTokens && Array.isArray(d.fcmTokens)) tokens.push(...d.fcmTokens);
-      else if (d.fcmToken) tokens.push(d.fcmToken);
-    });
-  }
-  return { recipientIds, tokens };
+  return userRepository.getUsersFcmTokens(userIds);
 };
 
 const collectTokens = async (userIds) => {
-  const { tokens } = await collectMessagingTargets(userIds);
+  const { tokens } = await userRepository.getUsersFcmTokens(userIds);
   return tokens;
 };
 
