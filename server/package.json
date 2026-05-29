@@ -6,7 +6,10 @@
     "start": "start cmd /k nodemon app.js && ngrok http 3000",
     "dev": "nodemon app.js",
     "db:migrate": "node db/migrate.js",
-    "db:smoke:venues": "node scripts/smoke.venues.js"
+    "db:smoke:venues": "node scripts/smoke.venues.js",
+    "db:seed:venues": "node scripts/seed.venues.postgres.js",
+    "db:compare:venues": "node scripts/compare.venues.firebase-postgres.js",
+    "db:sync:venues": "node scripts/sync.venues.firebase-to-postgres.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
