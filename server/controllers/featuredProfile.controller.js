@@ -1,6 +1,5 @@
 // controllers/featuredProfile.controller.js
 const profileService = require('../services/featuredProfile.service');
-const { db } = require('../config/firebase.config');
 
 const getAllProfiles = async (req, res) => {
     try {
@@ -54,10 +53,7 @@ const createProfile = async (req, res) => {
  * Tách ra thành hàm riêng để tái sử dụng.
  */
 const hasAdminPrivileges = async (userId) => {
-    if (!userId) return false;
-    const userDoc = await db.collection('Users').doc(userId).get();
-    // TODO: Sau này nên kiểm tra cả role 'admin'
-    return userDoc.exists && userDoc.data().roles?.includes('organizer');
+    return profileService.hasAdminPrivileges(userId);
 };
 
 const updateProfile = async (req, res) => {

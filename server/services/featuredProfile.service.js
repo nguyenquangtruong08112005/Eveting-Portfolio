@@ -1,6 +1,6 @@
 // services/featuredProfile.service.js
-const { db } = require('../config/firebase.config');
 const { v4: uuidv4 } = require('uuid');
+const featuredProfileRepository = require('../providers/database/featuredProfile.repository');
 
 /**
  * Lấy tất cả các Featured Profiles. Có áp dụng phân trang.
@@ -9,35 +9,7 @@ const { v4: uuidv4 } = require('uuid');
  * @returns {Promise<Array<object>>} Mảng các hồ sơ.
  */
 const getAllFeaturedProfiles = async (page = 1, limit = 10) => {
-    const profilesRef = db.collection('FeaturedProfiles');
-    const offset = (page - 1) * limit;
-
-    // Lấy tổng số lượng
-    const countSnapshot = await profilesRef.count().get();
-    const totalProfiles = countSnapshot.data().count;
-
-    // Truy vấn dữ liệu trang hiện tại
-    const snapshot = await profilesRef
-        .orderBy('name') // Sắp xếp theo tên
-        .limit(limit)
-        .offset(offset)
-        .get();
-
-    const profiles = [];
-    snapshot.forEach(doc => {
-        profiles.push(doc.data()); // Giả sử ID đã có trong data
-    });
-
-    // Trả về cấu trúc phân trang
-    return {
-        profiles,
-        pagination: {
-            currentPage: page,
-            limit: limit,
-            totalPages: Math.ceil(totalProfiles / limit),
-            totalItems: totalProfiles // Đổi tên cho rõ ràng hơn
-        }
-    };
+    return featuredProfileRepository.getFeaturedProfilesPage(page, limit);
 };
 
 /**
@@ -46,11 +18,7 @@ const getAllFeaturedProfiles = async (page = 1, limit = 10) => {
  * @returns {Promise<object|null>} Dữ liệu hồ sơ hoặc null nếu không tìm thấy.
  */
 const getFeaturedProfileById = async (profileId) => {
-    const doc = await db.collection('FeaturedProfiles').doc(profileId).get();
-    if (!doc.exists) {
-        return null;
-    }
-    return doc.data();
+    return featuredProfileRepository.getFeaturedProfileById(profileId);
 };
 
 /**
@@ -73,8 +41,7 @@ const createFeaturedProfile = async (profileData) => {
 
     // TODO: Thêm validation cho profileData
 
-    await db.collection('FeaturedProfiles').doc(profileId).set(newProfile);
-    return newProfile;
+    return featuredProfileRepository.createFeaturedProfile(profileId, newProfile);
 };
 
 /**
@@ -84,13 +51,9 @@ const createFeaturedProfile = async (profileData) => {
  * @returns {Promise<object>} Dữ liệu hồ sơ sau khi đã cập nhật.
  */
 const updateFeaturedProfile = async (profileId, updateData) => {
-    const profileRef = db.collection('FeaturedProfiles').doc(profileId);
-
     // TODO: Chỉ cho phép cập nhật các trường hợp lệ
 
-    await profileRef.update(updateData);
-    const updatedDoc = await profileRef.get();
-    return updatedDoc.data();
+    return featuredProfileRepository.updateFeaturedProfile(profileId, updateData);
 };
 
 /**
@@ -99,11 +62,14 @@ const updateFeaturedProfile = async (profileId, updateData) => {
  * @returns {Promise<void>}
  */
 const deleteFeaturedProfile = async (profileId) => {
-    const profileRef = db.collection('FeaturedProfiles').doc(profileId);
-    await profileRef.delete();
+    await featuredProfileRepository.deleteFeaturedProfile(profileId);
     // TODO: Cần xử lý logic liên quan, ví dụ: xóa profileId khỏi các Events, Users...
 };
 
+const hasAdminPrivileges = async (userId) => {
+    // TODO: Sau này nên kiểm tra cả role 'admin'
+    return featuredProfileRepository.userHasOrganizerRole(userId);
+};
 
 module.exports = {
     getAllFeaturedProfiles,
@@ -111,4 +77,5 @@ module.exports = {
     createFeaturedProfile,
     updateFeaturedProfile,
     deleteFeaturedProfile,
+    hasAdminPrivileges,
 };
