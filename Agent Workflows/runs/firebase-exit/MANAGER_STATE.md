@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slice A is complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, and D foundation are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Slice B, pick one small domain and harden its repository contract for PostgreSQL readiness.
+Next phase: Slice E, add an S3-compatible storage port and adapter without changing mobile-facing behavior.
 
 ## Source Of Truth
 
@@ -53,6 +53,9 @@ Next phase: Slice B, pick one small domain and harden its repository contract fo
 - `5e91b1b` - Extract ticket service repository operations.
 - `9dac8c4` - Extract organizer service repository operations.
 - `c255d0b` - Extract event service repository operations.
+- `7efd9f5` - Harden venue repository contract.
+- `866f37b` - Add Postgres venue adapter and schema.
+- `ed06463` - Add backend auth foundation.
 
 ## Current Plan Summary
 
@@ -67,14 +70,17 @@ Slice B:
 
 - Pick one small domain, preferably `venues` or `notifications`.
 - Lock repository contract and make it PostgreSQL-ready.
+- Status: complete for `venues`.
 
 Slice C:
 
 - Add PostgreSQL schema and adapter.
+- Status: complete for `venues`; Firebase remains available and default unless provider config is changed.
 
 Slice D:
 
 - Add backend JWT/session auth with password hashing, refresh tokens, and role model.
+- Status: foundation complete; route/controller switch is deferred.
 
 Slice E:
 
@@ -107,22 +113,21 @@ Then review:
 
 ## Next Exact Step
 
-Assign `opencode` the first Slice B prompt:
+Assign `opencode` the Slice E prompt:
 
 - server-only
 - no mobile repo edits
-- no package changes
-- choose one small domain, recommended `venues` or `notifications`
-- formalize repository method contracts and return shapes
-- keep Firebase adapter as active runtime
-- prepare for PostgreSQL adapter without adding PostgreSQL yet
-- keep API behavior and payloads stable
+- do not change existing upload/media route contracts or payloads
+- add a provider-neutral storage port
+- add one S3-compatible adapter, preferably using `@aws-sdk/client-s3` only if package change is required and justified
+- do not flip runtime behavior unless existing code already has a safe provider selection seam
+- keep canonical object key/provider-neutral metadata separate from provider URLs where possible
 - run `git diff --check` and `node --check` on changed JS files
 - return changed files, compatibility notes, verification output, and risks
 
 ## Latest Verification
 
-After `c255d0b`:
+After `ed06463`:
 
 ```cmd
 cd /d D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing
@@ -137,3 +142,4 @@ Results:
 - no direct `firebase-admin` import in `services`, `controllers`, `jobs`, or `middleware`
 - full server JS syntax check outside `node_modules` passed
 - no `npm test` script exists in `Server-2025-Eventing/package.json`
+- Slice D verification passed: `git diff --check`, `node --check` on changed auth files, and auth provider functional check for password hashing, refresh token boolean verification, and JWT signing/verification.

@@ -70,6 +70,9 @@ Current status:
 - Done: ticket service repository extraction.
 - Done: organizer service repository extraction.
 - Done: event service repository extraction.
+- Done: venue repository contract hardened for PostgreSQL readiness.
+- Done: PostgreSQL venue schema and adapter added behind provider boundary.
+- Done: backend auth foundation added behind provider boundary.
 - Phase status: complete on `Server-2025-Eventing/staging`.
 
 Verification:
@@ -97,6 +100,12 @@ Exit criteria:
 - Return payloads remain compatible with current mobile apps.
 - Repository contract can be implemented by PostgreSQL without exposing Firestore concepts.
 
+Current status:
+
+- Done for `venues`.
+- Firebase adapter remains active by default.
+- PostgreSQL adapter exists but is not flipped on by default.
+
 ### Slice C - PostgreSQL Schema + Adapter
 
 Goal: introduce PostgreSQL as a real target database behind the repository pattern.
@@ -122,6 +131,12 @@ Scope:
 - Add PostgreSQL adapter for the Slice B domain.
 - Keep Firebase adapter available.
 
+Current status:
+
+- Done for `venues`.
+- Added initial PostgreSQL client dependency and venue migration/adapter.
+- Firebase remains available for compatibility.
+
 Migration mode:
 
 - Start with local Postgres or Docker Postgres.
@@ -140,6 +155,14 @@ Scope:
 - Session table with revoke/logout.
 - Role model: user, organizer, admin.
 - Middleware reads backend JWT and loads user/role from repository.
+
+Current status:
+
+- Done as additive backend auth foundation.
+- Added backend auth provider with scrypt password hashing, JWT access token, refresh token hashing, and token verification.
+- Added PostgreSQL auth repository and auth/session migration.
+- Existing Firebase auth remains default via `AUTH_PROVIDER=firebase`.
+- Route/controller switch is intentionally deferred until compatibility testing is planned.
 
 Migration rules:
 
@@ -215,3 +238,8 @@ Codex manager responsibilities:
 - Run verification commands.
 - Commit passing slices to `staging`.
 - Update `Agent Workflows/runs/firebase-exit/MANAGER_STATE.md` after each integrated slice.
+
+Next slice:
+
+- Slice E: S3-compatible storage port and adapter.
+- Keep Firebase/local media behavior stable unless the worker proves an existing storage path can be wrapped safely.
