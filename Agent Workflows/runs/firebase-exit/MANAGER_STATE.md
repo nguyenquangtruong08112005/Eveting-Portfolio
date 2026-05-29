@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C3 expand PostgreSQL domains, next domain `events`.
+Next phase: Phase C3 expand PostgreSQL domains, next domain `tickets`.
 
 ## Source Of Truth
 
@@ -21,6 +21,7 @@ Next phase: Phase C3 expand PostgreSQL domains, next domain `events`.
 - Promotions Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-promotions-postgres-verification.md`
 - Reviews Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-reviews-postgres-verification.md`
 - Users Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-users-postgres-verification.md`
+- Events Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-events-postgres-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -73,6 +74,7 @@ Next phase: Phase C3 expand PostgreSQL domains, next domain `events`.
 - `0b02a5e` - Add Postgres promotion adapter.
 - `a027202` - Add Postgres review adapter.
 - `8177014` - Add Postgres user adapter.
+- `7bc1b0b` - Add Postgres event adapter.
 
 ## Current Plan Summary
 
@@ -132,14 +134,14 @@ Then review:
 
 ## Next Exact Step
 
-Assign `opencode` Phase C3 events:
+Assign `opencode` Phase C3 tickets:
 
 - server-only
 - no mobile repo edits
-- add PostgreSQL event schema/adapter behind existing event repository contracts
+- add PostgreSQL ticket schema/adapter behind existing ticket repository contracts
 - keep Firebase default
-- do not change event route payloads
-- preserve organizer ownership fields, venue references, ticket counters, date/status fields, and search/indexing-facing fields
+- do not change ticket route payloads, QR payloads, payment state behavior, or notification behavior
+- preserve Firebase ticket id, user/event references, ticket type, payment status, check-in state, and issued ticket metadata
 - add smoke/compare script if feasible
 - verify with `git diff --check`, `node --check`, migration on local Postgres, and payload compatibility checks
 
@@ -169,3 +171,4 @@ Results:
 - Phase C3 promotions verification passed for organizer read path: migration applied, Firebase-to-Postgres sync completed for 3 organizer promotions, final comparison matched 3 with 0 missing and 0 different. Do not use in ticket/payment flows yet due transaction boundary limitation.
 - Phase C3 reviews verification passed for `evt_vdf_hcm_2025`: migration applied, Firebase-to-Postgres sync completed for 2 reviews, final comparison matched 2 with 0 missing and 0 different. Full review write-path flip is blocked until tickets/events/users PostgreSQL coverage exists.
 - Phase C3 users verification passed for 3 Firebase Auth users: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 3 with 0 missing and 0 different. Do not globally flip user write paths yet; event coverage is next.
+- Phase C3 events verification passed for 23 Firestore events: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 23 with 0 missing and 0 different. Public page projection also matched Firebase selected fields. Ticket coverage is next.
