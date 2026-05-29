@@ -45,6 +45,7 @@ Phase B planning/first implementation slice.
 - AGY print mode logs showed `Gemini 3.5 Flash (Medium)` selected, but no file changes landed.
 - Later AGY output appears to have created a small server notification provider boundary directly in `Server-2025-Eventing` on `staging`: `services/fcm.service.js` plus `providers/notification/*`.
 - `git diff --check` and `node --check` passed for that server notification-provider slice.
+- The server notification-provider slice was committed on `Server-2025-Eventing/staging` as `2849ee7 Introduce notification provider boundary`.
 
 ## Next Exact Step
 
