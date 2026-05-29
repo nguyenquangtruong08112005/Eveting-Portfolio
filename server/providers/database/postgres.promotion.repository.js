@@ -54,10 +54,46 @@ const findByCode = async (code) => {
     return rowToPromotion(result.rows[0]);
 };
 
-// NOTE: There is no events table in Postgres yet. Returns null.
-// When an events table is added, change this to query it.
-const getEventById = async (_eventId) => {
-    return null;
+const getEventById = async (eventId) => {
+    const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    if (row.raw_data) {
+        return { id: row.id, ...row.raw_data };
+    }
+    return {
+        id: row.id,
+        name: row.name,
+        description: row.description || '',
+        imageUrl: row.image_url || null,
+        bannerUrl: row.banner_url || null,
+        featuredProfileIds: row.featured_profile_ids || [],
+        category: row.category || [],
+        tags: row.tags || [],
+        date: row.date != null ? Number(row.date) : null,
+        endDate: row.end_date != null ? Number(row.end_date) : null,
+        eventType: row.event_type || 'physical',
+        onlineUrl: row.online_url || null,
+        location: row.location || null,
+        geohash: row.geohash || null,
+        venueId: row.venue_id || null,
+        venueName: row.venue_name || null,
+        city: row.city || null,
+        ticketTypes: row.ticket_types || {},
+        minPrice: row.min_price != null ? Number(row.min_price) : 0,
+        videoUrl: row.video_url || '',
+        isOutdoor: row.is_outdoor || false,
+        organizerId: row.organizer_id || null,
+        status: row.status || 'pending',
+        visibility: row.visibility || 'private',
+        recurringRule: row.recurring_rule || null,
+        hotScore: row.hot_score != null ? Number(row.hot_score) : 0,
+        viewCount: row.view_count != null ? Number(row.view_count) : 0,
+        requiredAge: row.required_age != null ? Number(row.required_age) : 0,
+        sponsors: row.sponsors || [],
+        createdAt: row.created_at != null ? Number(row.created_at) : null,
+        lastUpdatedAt: row.last_updated_at != null ? Number(row.last_updated_at) : null,
+    };
 };
 
 const getPromotionById = async (promoId) => {
