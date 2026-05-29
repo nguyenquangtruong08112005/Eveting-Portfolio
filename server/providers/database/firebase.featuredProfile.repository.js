@@ -65,11 +65,20 @@ const userHasOrganizerRole = async (userId) => {
     return userDoc.exists && userDoc.data().roles?.includes('organizer');
 };
 
+const getFeaturedProfilesByIds = async (ids) => {
+    if (!ids || ids.length === 0) return [];
+    const snapshot = await db.collection("FeaturedProfiles")
+        .where("id", "in", ids)
+        .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
+
 module.exports = {
     getFeaturedProfilesPage,
     getFeaturedProfileById,
     createFeaturedProfile,
     updateFeaturedProfile,
     deleteFeaturedProfile,
-    userHasOrganizerRole
+    userHasOrganizerRole,
+    getFeaturedProfilesByIds,
 };

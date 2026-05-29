@@ -1,5 +1,7 @@
 // services/admin.service.js
-const { db } = require('../config/firebase.config');
+const eventRepository = require('../providers/database/event.repository');
+const featuredProfileRepository = require('../providers/database/featuredProfile.repository');
+const adminRepository = require('../providers/database/admin.repository');
 const esClient = require('../config/elasticsearch.config');
 const ELASTIC_INDEX = 'events';
 const fcmService = require('./fcm.service');
@@ -12,10 +14,8 @@ const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];
     if (eventData.featuredProfileIds && eventData.featuredProfileIds.length > 0) {
         try {
-            const profilesSnapshot = await db.collection("FeaturedProfiles")
-                .where("id", "in", eventData.featuredProfileIds)
-                .get();
-            featuredProfileNames = profilesSnapshot.docs.map((doc) => doc.data().name);
+            const profiles = await featuredProfileRepository.getFeaturedProfilesByIds(eventData.featuredProfileIds);
+            featuredProfileNames = profiles.map(p => p.name);
         } catch (error) {
             console.error("Lỗi lấy profile names cho Elastic (Admin):", error);
         }
@@ -54,24 +54,16 @@ const buildElasticData = async (eventData) => {
  * Lấy danh sách sự kiện chờ duyệt
  */
 const getPendingEvents = async (page = 1, limit = 20) => {
-    const eventsRef = db.collection('Events')
-        .where('status', '==', 'pending')
-        .orderBy('createdAt', 'desc');
-
-    const offset = (page - 1) * limit;
-    const snapshot = await eventsRef.limit(limit).offset(offset).get();
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return adminRepository.getPendingEvents(page, limit);
 };
 
 /**
  * Duyệt sự kiện: Pending -> Active & Public -> Index Elastic
  */
 const approveEvent = async (eventId) => {
-    const eventRef = db.collection('Events').doc(eventId);
-    const eventDoc = await eventRef.get();
+    const eventData = await eventRepository.getEventDataById(eventId);
 
-    if (!eventDoc.exists) {
+    if (!eventData) {
         throw new Error('Event not found');
     }
 
@@ -83,8 +75,8 @@ const approveEvent = async (eventId) => {
         lastUpdatedAt: new Date().getTime()
     };
 
-    await eventRef.update(updates);
-    const newEventData = { ...eventDoc.data(), ...updates };
+    await eventRepository.updateEvent(eventId, updates);
+    const newEventData = { ...eventData, ...updates };
 
     // 2. Gửi thông báo FCM đến từng topic nghệ sĩ
     const featuredProfileIds = newEventData.featuredProfileIds || [];
@@ -100,7 +92,7 @@ const approveEvent = async (eventId) => {
     if (esClient) {
         try {
             // Lấy dữ liệu mới nhất đã update (merge data cũ và update mới)
-            const fullEventData = { ...eventDoc.data(), ...updates };
+            const fullEventData = { ...eventData, ...updates };
 
             const elasticData = await buildElasticData(fullEventData);
 
@@ -124,9 +116,7 @@ const approveEvent = async (eventId) => {
  * Từ chối sự kiện
  */
 const rejectEvent = async (eventId, reason) => {
-    const eventRef = db.collection('Events').doc(eventId);
-
-    await eventRef.update({
+    await eventRepository.updateEvent(eventId, {
         status: 'rejected',
         rejectReason: reason,
         rejectedAt: new Date().getTime(),
