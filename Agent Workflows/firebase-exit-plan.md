@@ -188,6 +188,13 @@ Migration rules:
 - Keep old URLs readable during transition or add rewrite/lookup compatibility.
 - Verify media upload, delete, and signed/read URL flows.
 
+Current status:
+
+- Done as additive provider boundary.
+- Added `providers/storage` with local default adapter and S3-compatible adapter for AWS S3, Cloudflare R2, or MinIO.
+- Existing media routes still accept client-supplied URLs; no upload route behavior was changed.
+- S3 SDK dependencies are pinned to `3.800.0` to keep Node `>=18` compatibility.
+
 ### Slice F - Push Provider Switch
 
 Goal: switch backend push delivery from direct FCM to OneSignal facade.
@@ -203,6 +210,14 @@ Important note:
 
 - OneSignal for Android still uses FCM as the underlying transport.
 - This removes direct backend FCM coupling, but Android push still needs FCM credentials configured in OneSignal.
+
+Current status:
+
+- Done as provider switch option.
+- Added OneSignal provider behind `providers/notification`.
+- Firebase remains default via `NOTIFICATION_PROVIDER=firebase`.
+- `NOTIFICATION_PROVIDER=onesignal` enables OneSignal delivery without renaming `fcm.service.js` or changing current route/payload contracts.
+- Current `fcmToken` mobile field is preserved for compatibility, but a future mobile migration must store OneSignal subscription IDs or external IDs.
 
 ## Migration Order
 
@@ -241,5 +256,5 @@ Codex manager responsibilities:
 
 Next slice:
 
-- Slice E: S3-compatible storage port and adapter.
-- Keep Firebase/local media behavior stable unless the worker proves an existing storage path can be wrapped safely.
+- Consolidation/review: verify all server slices together, then plan the first real provider flip in a controlled environment.
+- Do not remove Firebase packages until Firebase auth, database, storage, and push runtime paths are all disabled and migration data is verified.

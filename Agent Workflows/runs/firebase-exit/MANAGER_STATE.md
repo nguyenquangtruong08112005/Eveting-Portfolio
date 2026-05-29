@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, and D foundation are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Slice E, add an S3-compatible storage port and adapter without changing mobile-facing behavior.
+Next phase: consolidation review and controlled provider-flip planning.
 
 ## Source Of Truth
 
@@ -56,6 +56,8 @@ Next phase: Slice E, add an S3-compatible storage port and adapter without chang
 - `7efd9f5` - Harden venue repository contract.
 - `866f37b` - Add Postgres venue adapter and schema.
 - `ed06463` - Add backend auth foundation.
+- `860113e` - Add storage provider boundary.
+- `73ab05f` - Add OneSignal notification provider.
 
 ## Current Plan Summary
 
@@ -85,11 +87,13 @@ Slice D:
 Slice E:
 
 - Add S3-compatible storage port and adapter.
+- Status: complete as additive boundary; no media route behavior changed.
 
 Slice F:
 
 - Switch push provider to OneSignal facade.
 - Note: Android still needs FCM transport configured underneath OneSignal.
+- Status: complete as provider option; Firebase remains default.
 
 ## Verification Baseline
 
@@ -113,21 +117,18 @@ Then review:
 
 ## Next Exact Step
 
-Assign `opencode` the Slice E prompt:
+Run consolidation verification:
 
-- server-only
-- no mobile repo edits
-- do not change existing upload/media route contracts or payloads
-- add a provider-neutral storage port
-- add one S3-compatible adapter, preferably using `@aws-sdk/client-s3` only if package change is required and justified
-- do not flip runtime behavior unless existing code already has a safe provider selection seam
-- keep canonical object key/provider-neutral metadata separate from provider URLs where possible
-- run `git diff --check` and `node --check` on changed JS files
-- return changed files, compatibility notes, verification output, and risks
+- `git status --short --branch`
+- `git diff --check`
+- full `node --check` for JS files outside `node_modules`
+- direct Firebase import scan outside provider/adapters
+- require-smoke for default providers
+- package dependency review for added `pg` and pinned AWS SDK packages
 
 ## Latest Verification
 
-After `ed06463`:
+After `73ab05f`:
 
 ```cmd
 cd /d D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing
@@ -143,3 +144,5 @@ Results:
 - full server JS syntax check outside `node_modules` passed
 - no `npm test` script exists in `Server-2025-Eventing/package.json`
 - Slice D verification passed: `git diff --check`, `node --check` on changed auth files, and auth provider functional check for password hashing, refresh token boolean verification, and JWT signing/verification.
+- Slice E verification passed: storage require-smoke with no env, S3 env validation, and AWS SDK package pin check.
+- Slice F verification passed: OneSignal require-smoke with no env, default Firebase provider check, and mocked payload-shape check for subscription/external-id modes.
