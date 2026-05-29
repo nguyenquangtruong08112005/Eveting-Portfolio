@@ -1,4 +1,4 @@
-const { db } = require('../../config/firebase.config');
+const { db, FieldValue } = require('../../config/firebase.config');
 
 const getActivePromotions = async () => {
     const promotions = [];
@@ -64,6 +64,21 @@ const deletePromotion = async (promoId) => {
     await db.collection('Promotions').doc(promoId).delete();
 };
 
+const findPromoByCodeInTransaction = async (transaction, promoCode) => {
+    const snapshot = await transaction.get(
+        db.collection('Promotions').where('code', '==', promoCode).limit(1)
+    );
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { ...doc.data(), _id: doc.id };
+};
+
+const incrementPromotionUsedCountInTransaction = (transaction, promoId) => {
+    transaction.update(db.collection('Promotions').doc(promoId), {
+        usedCount: FieldValue.increment(1)
+    });
+};
+
 module.exports = {
     getActivePromotions,
     getPromotionsByOrganizer,
@@ -73,4 +88,6 @@ module.exports = {
     createPromotion,
     updatePromotion,
     deletePromotion,
+    findPromoByCodeInTransaction,
+    incrementPromotionUsedCountInTransaction,
 };

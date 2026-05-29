@@ -1,5 +1,9 @@
 // services/ticket.service.js
-const { db, FieldValue } = require('../config/firebase.config');
+const ticketRepository = require('../providers/database/ticket.repository');
+const eventRepository = require('../providers/database/event.repository');
+const promotionRepository = require('../providers/database/promotion.repository');
+const analyticsRepository = require('../providers/database/analytics.repository');
+const venueRepository = require('../providers/database/venue.repository');
 const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 
@@ -13,11 +17,9 @@ const TICKET_SECRET = process.env.JWT_TICKET_SECRET;
  * @returns {Promise<object>} Dữ liệu phân trang + Chi tiết vé.
  */
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
-    // 1. Lấy TOÀN BỘ vé của user (Bỏ limit/offset ở query DB)
-    const ticketsRef = db.collection('Tickets').where('userId', '==', userId);
-    const snapshot = await ticketsRef.get();
+    const allTickets = await ticketRepository.getTicketsByUserId(userId);
 
-    if (snapshot.empty) {
+    if (allTickets.length === 0) {
         return {
             tickets: [],
             pagination: {
@@ -29,61 +31,46 @@ const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
         };
     }
 
-    // Chuyển đổi sang mảng dữ liệu
-    let allTickets = [];
-    snapshot.forEach(doc => {
-        allTickets.push({ id: doc.id, ...doc.data() });
-    });
-
-    // 2. Định nghĩa độ ưu tiên (Số càng nhỏ càng ưu tiên)
     const statusPriority = {
-        'paid': 1,      // Vé đã bán (Quan trọng nhất)
-        'pending': 2,   // Đang xử lý
-        'checkedIn': 3, // Đã check-in (Đã dùng)
-        'cancelled': 4  // Đã hủy (Ít quan trọng nhất)
+        'paid': 1,
+        'pending': 2,
+        'checkedIn': 3,
+        'cancelled': 4
     };
 
-    // 3. Sắp xếp In-Memory
     allTickets.sort((a, b) => {
-        // Lấy độ ưu tiên, mặc định là 99 nếu không khớp
         const priorityA = statusPriority[a.status] || 99;
         const priorityB = statusPriority[b.status] || 99;
 
         if (priorityA !== priorityB) {
-            return priorityA - priorityB; // Sắp xếp theo status trước
+            return priorityA - priorityB;
         }
-        // Nếu cùng status, sắp xếp theo ngày mua giảm dần (mới nhất lên đầu)
         return b.purchaseDate - a.purchaseDate;
     });
 
-    // 4. Phân trang thủ công (Cắt mảng)
     const totalItems = allTickets.length;
     const totalPages = Math.ceil(totalItems / limit);
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
-    
-    // Lấy ra đúng số vé cho trang hiện tại
+
     const paginatedTickets = allTickets.slice(startIndex, endIndex);
 
-    // 5. Gộp thông tin sự kiện (Enrich Data) cho các vé TRÊN TRANG ĐÓ
     const ticketsWithEventDetails = await Promise.all(paginatedTickets.map(async (ticketData) => {
-        // Lấy thông tin Event tương ứng
-        const eventSnapshot = await db.collection('Events').doc(ticketData.eventId).get();
-        let eventData = null;
-        
-        if (eventSnapshot.exists) {
-            const rawEvent = eventSnapshot.data();
-            eventData = {
-                id: rawEvent.id,
-                name: rawEvent.name,
-                date: rawEvent.date,
-                imageUrl: rawEvent.imageUrl,
-                venueName: rawEvent.venueName,
-                city: rawEvent.city,
-                status: rawEvent.status
+        const eventData = await eventRepository.getEventById(ticketData.eventId);
+        let eventInfo = null;
+
+        if (eventData) {
+            eventInfo = {
+                id: eventData.id,
+                name: eventData.name,
+                date: eventData.date,
+                imageUrl: eventData.imageUrl,
+                venueName: eventData.venueName,
+                city: eventData.city,
+                status: eventData.status
             };
         } else {
-            eventData = { id: ticketData.eventId, name: "Unknown Event", status: "deleted" };
+            eventInfo = { id: ticketData.eventId, name: "Unknown Event", status: "deleted" };
         }
 
         return {
@@ -94,7 +81,7 @@ const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
             seat: ticketData.seat,
             qrCode: ticketData.qrCode,
             purchaseDate: ticketData.purchaseDate,
-            event: eventData 
+            event: eventInfo
         };
     }));
 
@@ -117,26 +104,19 @@ const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
  * @returns {Promise<object>} Document vé vừa được tạo.
  */
 const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode = null) => {
-    const eventRef = db.collection('Events').doc(eventId);
     const ticketId = `tkt_${uuidv4()}`;
-    const ticketRef = db.collection('Tickets').doc(ticketId);
-    let promotionRef = null;
-    let promotionData = null;
+    let appliedPromotion = null;
 
-    // Validate quantity
     const qty = parseInt(quantity);
     if (isNaN(qty) || qty < 1) throw new Error("Invalid ticket quantity.");
 
-    return db.runTransaction(async (transaction) => {
-        // 1. Lấy thông tin sự kiện
-        const eventDoc = await transaction.get(eventRef);
-        if (!eventDoc.exists) {
+    return ticketRepository.runTransaction(async (transaction) => {
+        const eventData = await eventRepository.getEventInTransaction(transaction, eventId);
+        if (!eventData) {
             throw new Error("Event not found!");
         }
-        const eventData = eventDoc.data();
         const ticketTypeData = eventData.ticketTypes[ticketType];
 
-        // 2. Kiểm tra loại vé & số lượng tồn
         if (!ticketTypeData) {
             throw new Error(`Ticket type '${ticketType}' does not exist.`);
         }
@@ -144,62 +124,53 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
             throw new Error(`Not enough tickets available. Only ${ticketTypeData.available} left.`);
         }
 
-        // Tính giá gốc cho TỔNG SỐ VÉ
         const unitPrice = ticketTypeData.price;
         let totalPrice = unitPrice * qty;
-        const originalTotalPrice = totalPrice; // Lưu giá gốc tổng
+        const originalTotalPrice = totalPrice;
 
-        // 3. Xử lý mã khuyến mãi
         if (promoCode) {
-            const promoQuery = db.collection('Promotions').where('code', '==', promoCode).limit(1);
-            const promoSnapshot = await transaction.get(promoQuery);
-            
-            if (!promoSnapshot.empty) {
-                promotionRef = promoSnapshot.docs[0].ref;
-                promotionData = promoSnapshot.docs[0].data();
+            const foundPromo = await promotionRepository.findPromoByCodeInTransaction(transaction, promoCode);
+
+            if (foundPromo) {
+                appliedPromotion = foundPromo;
                 const now = new Date().getTime();
 
-                // Validate Promo (Logic cũ + Check minQty)
-                if (promotionData.validUntil <= now) throw new Error('Promotion has expired.');
-                if (promotionData.usedCount >= promotionData.usageLimit) throw new Error('Promotion usage limit reached.');
-                if (promotionData.eventId && promotionData.eventId !== eventId) throw new Error('Promotion not valid for this event.');
-                
-                // Check điều kiện số lượng vé tối thiểu
-                if (promotionData.minTicketQuantity && qty < promotionData.minTicketQuantity) {
-                    throw new Error(`Promotion requires minimum ${promotionData.minTicketQuantity} tickets.`);
+                if (appliedPromotion.validUntil <= now) throw new Error('Promotion has expired.');
+                if (appliedPromotion.usedCount >= appliedPromotion.usageLimit) throw new Error('Promotion usage limit reached.');
+                if (appliedPromotion.eventId && appliedPromotion.eventId !== eventId) throw new Error('Promotion not valid for this event.');
+
+                if (appliedPromotion.minTicketQuantity && qty < appliedPromotion.minTicketQuantity) {
+                    throw new Error(`Promotion requires minimum ${appliedPromotion.minTicketQuantity} tickets.`);
                 }
 
-                // Tính giảm giá
-                if (promotionData.discountType === 'percent') {
-                    totalPrice = totalPrice * (1 - promotionData.discountValue);
-                } else if (promotionData.discountType === 'amount') {
-                    totalPrice = Math.max(0, totalPrice - promotionData.discountValue);
+                if (appliedPromotion.discountType === 'percent') {
+                    totalPrice = totalPrice * (1 - appliedPromotion.discountValue);
+                } else if (appliedPromotion.discountType === 'amount') {
+                    totalPrice = Math.max(0, totalPrice - appliedPromotion.discountValue);
                 }
             }
         }
 
-        // 4. Tạo JWT cho QR Code
         const qrPayload = {
             ticketId: ticketId,
             userId: userId,
             eventId: eventId,
-            quantity: qty // Thêm thông tin số lượng vào QR
+            quantity: qty
         };
         const qrCodeJwt = jwt.sign(qrPayload, TICKET_SECRET);
 
-        // 5. Dữ liệu vé mới (Đại diện cho 1 Booking)
         const newTicketData = {
             id: ticketId,
             eventId: eventId,
             userId: userId,
             organizerId: eventData.organizerId,
             type: ticketType,
-            
-            price: totalPrice,           // Giá cuối cùng phải trả (cho cả nhóm)
-            originalPrice: originalTotalPrice, // Giá gốc tổng
-            quantity: qty,               // Số lượng vé trong booking này
-            unitPrice: unitPrice,        // Đơn giá lúc mua
-            
+
+            price: totalPrice,
+            originalPrice: originalTotalPrice,
+            quantity: qty,
+            unitPrice: unitPrice,
+
             appliedPromoCode: promoCode,
             seat: null,
             qrCode: qrCodeJwt,
@@ -207,19 +178,15 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
             purchaseDate: new Date().getTime(),
         };
 
-        // 6. Thực hiện ghi DB
-        transaction.set(ticketRef, newTicketData);
-        
-        // Trừ số lượng vé trong kho
+        ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
+
         const newAvailableCount = ticketTypeData.available - qty;
-        transaction.update(eventRef, {
+        eventRepository.updateEventInTransaction(transaction, eventId, {
             [`ticketTypes.${ticketType}.available`]: newAvailableCount
         });
 
-        if (promotionRef) {
-            transaction.update(promotionRef, {
-                usedCount: FieldValue.increment(1)
-            });
+        if (appliedPromotion) {
+            promotionRepository.incrementPromotionUsedCountInTransaction(transaction, appliedPromotion._id);
         }
 
         return newTicketData;
@@ -232,36 +199,21 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
  * @returns {Promise<object|null>} Document vé sau khi đã cập nhật, hoặc null nếu không tìm thấy.
  */
 const cancelPendingTicket = async (ticketId) => {
-    const ticketRef = db.collection('Tickets').doc(ticketId);
-    
-    // Dùng transaction để đảm bảo an toàn dữ liệu
-    return db.runTransaction(async (transaction) => {
-        const ticketDoc = await transaction.get(ticketRef);
-        if (!ticketDoc.exists) {
+    return ticketRepository.runTransaction(async (transaction) => {
+        const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
+        if (!ticketData) {
             console.warn(`Attempted to cancel non-existent ticket: ${ticketId}`);
-            return null; // Vé không tồn tại
+            return null;
         }
 
-        const ticketData = ticketDoc.data();
         if (ticketData.status !== 'pending') {
             console.log(`Ticket ${ticketId} is not in 'pending' state (${ticketData.status}), cannot cancel.`);
-            return ticketData; // Trả về trạng thái hiện tại (ví dụ: đã paid, đã checkedIn)
+            return ticketData;
         }
 
-        // --- HOÀN THIỆN TODO ---
-        
-        // 1. Hủy vé
-        transaction.update(ticketRef, { status: 'cancelled' });
+        ticketRepository.updateTicketInTransaction(transaction, ticketId, { status: 'cancelled' });
 
-        // 2. Hoàn trả lại số lượng vé 'available' cho sự kiện
-        const eventRef = db.collection('Events').doc(ticketData.eventId);
-        
-        // Dùng FieldValue.increment(1) để cộng lại 1 vé vào 'available'
-        transaction.update(eventRef, {
-            [`ticketTypes.${ticketData.type}.available`]: FieldValue.increment(1)
-        });
-        
-        // --- KẾT THÚC TODO ---
+        eventRepository.incrementEventTicketTypeAvailableInTransaction(transaction, ticketData.eventId, ticketData.type, 1);
 
         console.log(`Ticket ${ticketId} cancelled, 1 ticket of type ${ticketData.type} returned to event ${ticketData.eventId}.`);
         return { ...ticketData, status: 'cancelled' };
@@ -274,72 +226,42 @@ const cancelPendingTicket = async (ticketId) => {
  * @returns {Promise<object>} Document vé sau khi đã cập nhật.
  */
 const confirmTicketPayment = async (ticketId) => {
-    const ticketRef = db.collection('Tickets').doc(ticketId);
-    
-    // Bắt đầu Transaction ngay từ đầu
-    return db.runTransaction(async (transaction) => {
-        // 1. Đọc dữ liệu vé
-        const doc = await transaction.get(ticketRef);
+    return ticketRepository.runTransaction(async (transaction) => {
+        const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
 
-        if (!doc.exists) {
+        if (!ticketData) {
             throw new Error('Ticket not found.');
         }
 
-        const ticketData = doc.data();
-
-        // 2. Kiểm tra trạng thái (Idempotency check)
         if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
             console.log(`Ticket ${ticketId} is already confirmed.`);
             return ticketData;
         }
 
         if (ticketData.status !== 'pending') {
-            // Tùy logic business, có thể throw lỗi hoặc bỏ qua
             console.warn(`Cannot confirm ticket with status: ${ticketData.status}`);
-            return ticketData; 
+            return ticketData;
         }
 
-        // 3. Chuẩn bị dữ liệu cập nhật Analytics
-        const analyticsRef = db.collection('Analytics').doc(ticketData.eventId);
-        
-        // --- LOGIC MỚI: Tính timestamp đầu ngày hôm nay (00:00:00) ---
         const now = new Date();
-        now.setHours(0, 0, 0, 0); // Reset về 0 giờ sáng
-        const todayTimestamp = now.getTime().toString(); // Firestore Map Key phải là String
+        now.setHours(0, 0, 0, 0);
+        const todayTimestamp = now.getTime().toString();
 
-        // 4. Thực hiện Update trong Transaction
-        
-        // A. Cập nhật trạng thái vé
-        transaction.update(ticketRef, { 
+        ticketRepository.updateTicketInTransaction(transaction, ticketId, {
             status: 'paid',
             updatedAt: Date.now(),
-            paymentTime: Date.now() // Lưu thời điểm thanh toán thực tế
+            paymentTime: Date.now()
         });
 
-        // B. Cập nhật/Tạo Analytics
-        // Sử dụng set({..}, {merge: true}) để tạo doc nếu chưa có
-        transaction.set(analyticsRef, {
-            eventId: ticketData.eventId,
-            
-            // Cộng doanh thu
-            totalRevenue: FieldValue.increment(ticketData.price),
-            
-            // Cộng số lượng theo loại vé (Map: "VIP": +1)
-            ticketsSold: {
-                [ticketData.type]: FieldValue.increment(1)
-            },
-            
-            // --- QUAN TRỌNG: Cộng số lượng vé bán trong ngày hôm nay ---
-            // Giúp vẽ biểu đồ "Sales Over Time"
-            dailySales: {
-                [todayTimestamp]: FieldValue.increment(1)
-            },
-            
-            lastUpdatedAt: Date.now()
-        }, { merge: true });
+        analyticsRepository.updateAnalyticsForConfirmPaymentInTransaction(transaction, ticketData.eventId, {
+            price: ticketData.price,
+            ticketType: ticketData.type,
+            quantity: 1,
+            dailyTimestamp: todayTimestamp
+        });
 
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
-        
+
         return { ...ticketData, status: 'paid' };
     });
 };
@@ -352,45 +274,32 @@ const confirmTicketPayment = async (ticketId) => {
  * @returns {Promise<object>} Dữ liệu gộp của Vé, Sự kiện, và Địa điểm.
  */
 const getTicketDetailsById = async (ticketId, requestingUserId) => {
-    // 1. Lấy thông tin vé
-    const ticketRef = db.collection('Tickets').doc(ticketId);
-    const ticketDoc = await ticketRef.get();
+    const ticketData = await ticketRepository.getTicketById(ticketId);
 
-    if (!ticketDoc.exists) {
+    if (!ticketData) {
         throw new Error('Ticket not found.');
     }
-    const ticketData = ticketDoc.data();
 
-    // 2. Lấy thông tin sự kiện
-    const eventRef = db.collection('Events').doc(ticketData.eventId);
-    const eventDoc = await eventRef.get();
-    if (!eventDoc.exists) {
+    const eventData = await eventRepository.getEventById(ticketData.eventId);
+    if (!eventData) {
         throw new Error('Associated event not found.');
     }
-    const eventData = eventDoc.data();
 
-    // 3. Kiểm tra quyền (Bảo mật quan trọng)
     const isTicketOwner = ticketData.userId === requestingUserId;
     const isEventOrganizer = eventData.organizerId === requestingUserId;
-    
+
     if (!isTicketOwner && !isEventOrganizer) {
-        // Nếu người gọi không phải chủ vé VÀ cũng không phải người tổ chức
         throw new Error('Forbidden: You do not have permission to view this ticket.');
     }
 
-    // 4. Lấy thông tin địa điểm (Venue) (Nếu là sự kiện offline)
     let venueData = null;
     if (eventData.venueId) {
-        const venueDoc = await db.collection('Venues').doc(eventData.venueId).get();
-        if (venueDoc.exists) {
-            venueData = venueDoc.data();
-        }
+        venueData = await venueRepository.getVenueById(eventData.venueId);
     }
 
-    // 5. Trả về đối tượng DTO đã gộp
     return {
-        ticket: ticketData, // Toàn bộ thông tin vé (id, qrCode, seat, price...)
-        event: { // Các thông tin public của sự kiện
+        ticket: ticketData,
+        event: {
             name: eventData.name,
             date: eventData.date,
             endDate: eventData.endDate,
@@ -400,7 +309,7 @@ const getTicketDetailsById = async (ticketId, requestingUserId) => {
             city: eventData.city,
             venueName: eventData.venueName,
         },
-        venue: venueData ? { // Thông tin địa điểm (nếu có)
+        venue: venueData ? {
             name: venueData.name,
             addressDetails: venueData.addressDetails,
             location: venueData.location
