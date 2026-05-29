@@ -47,6 +47,7 @@ Phase B planning/first implementation slice.
 - `git diff --check` and `node --check` passed for that server notification-provider slice.
 - The server notification-provider slice was committed on `Server-2025-Eventing/staging` as `2849ee7 Introduce notification provider boundary`.
 - The server media database repository slice was committed on `Server-2025-Eventing/staging` as `07807ae Introduce media database repository boundary`.
+- The server featured-profile database repository slice was committed on `Server-2025-Eventing/staging` as `394a071 Introduce featured profile repository boundary`.
 
 ## Next Exact Step
 
