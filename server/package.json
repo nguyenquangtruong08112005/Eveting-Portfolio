@@ -17,7 +17,10 @@
     "db:sync:notifications": "node scripts/sync.notifications.firebase-to-postgres.js",
     "db:sync:promotions": "node scripts/sync.promotions.firebase-to-postgres.js",
     "db:smoke:promotions": "node scripts/smoke.promotions.js",
-    "db:compare:promotions": "node scripts/compare.promotions.firebase-postgres.js"
+    "db:compare:promotions": "node scripts/compare.promotions.firebase-postgres.js",
+    "db:sync:reviews": "node scripts/sync.reviews.firebase-to-postgres.js",
+    "db:smoke:reviews": "node scripts/smoke.reviews.js",
+    "db:compare:reviews": "node scripts/compare.reviews.firebase-postgres.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
