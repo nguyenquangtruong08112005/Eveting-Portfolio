@@ -1,316 +1,210 @@
 # Firebase Exit Plan
 
-Status: draft
-Last updated: 2026-05-28
-Scope: Server-2025-Eventing first, then both Android apps.
+Status: active manager plan
+Last updated: 2026-05-29
+Scope: `Server-2025-Eventing` first; mobile contracts change only after backend compatibility is proven.
 
 ## Goal
 
-Remove Firebase as an application dependency and reduce provider lock-in.
+Remove Firebase from backend application logic and later from runtime dependencies, while keeping the current mobile-facing API, event names, notification payload fields, and behavior stable during backend slices.
 
 Target architecture:
 
-- Database: PostgreSQL-compatible provider.
-- Storage: S3-compatible provider.
-- Auth: backend-owned auth.
-- Push: notification provider abstraction, likely OneSignal for first adapter.
-- Background work: local Node jobs first, later separate worker if needed.
+- DB: PostgreSQL schema behind repository ports.
+- Storage: S3-compatible port; first adapter may be AWS S3, Cloudflare R2, or MinIO.
+- Auth: backend-owned JWT/session auth with password hashing, refresh tokens, and role model.
+- Push: OneSignal facade; Android still needs FCM transport configured underneath OneSignal.
+- Migration: backend provider boundaries first, dual-read/write if needed, then mobile contract changes later.
 
-## Current Decision
+## Non-Negotiables
 
-Use Markdown for planning artifacts because it is smaller than HTML, easy to diff, easy for agents to read, and cheap to summarize later.
+- No service/controller should depend directly on Firebase Admin, Firestore `db`, Firebase Storage, or provider SDKs after its slice is migrated.
+- Keep REST payloads, route contracts, event names, queue/topic names, and notification payload fields stable until a planned mobile migration.
+- Keep provider-specific code inside adapters/repositories only.
+- Prefer small commits per slice; verify each slice before assigning the next one.
+- Codex acts as manager/verifier. Local agents implement code; Codex reviews diffs, runs verification, and integrates.
 
-## Provider Direction
+## Target Ports
 
-### Database
+- `providers/database/*.repository.js`
+  - Firebase adapters now.
+  - PostgreSQL adapters later.
+- `providers/storage/*`
+  - S3-compatible interface.
+  - First adapters: MinIO local plus one deploy target, likely Cloudflare R2 or AWS S3.
+- `providers/auth/*`
+  - Password hashing.
+  - Access JWT.
+  - Refresh token/session persistence.
+  - Role checks: user, organizer, admin.
+- `providers/notification/*`
+  - Current Firebase FCM adapter.
+  - Later OneSignal adapter.
 
-Recommended engine: PostgreSQL.
+## Slice Plan
 
-Do not code directly against Supabase, Neon, RDS, or another vendor SDK. Use standard Postgres access through a backend data layer.
+### Slice A - Provider Ports, No Behavior Change
 
-Provider candidates:
+Goal: add provider boundaries while Firebase remains the active implementation.
 
-- Local: Docker Postgres.
-- Managed: Neon, Supabase Postgres, AWS RDS, Render, Railway, Fly Postgres.
+Scope:
 
-Decision rule:
+- Notification provider port around current FCM behavior.
+- Repository ports for low-risk direct Firestore usage.
+- Auth provider port around current Firebase token verification.
+- No PostgreSQL, S3, OneSignal, or backend auth switch yet.
 
-- Prefer plain Postgres features.
-- Avoid provider-only auth/storage/database APIs in application code.
-- Keep connection config in env.
+Current status:
 
-### Storage
+- Done: notification provider boundary.
+- Done: media repository boundary.
+- Done: featured profile repository boundary.
+- Done: analytics and venue repository boundaries.
+- Done: notification and review repository boundaries.
+- Done: auth provider and user role repository.
+- Done: promotion repository boundary.
+- Pending verification: ticket/event controller repository extraction from payment/organizer controllers.
 
-Recommended interface: S3-compatible storage.
+Verification:
 
-Provider candidates:
+- `git diff --check`
+- `node --check` on changed JS files
+- Diff review for payload compatibility and direct Firebase import reduction
 
-- Cloudflare R2.
-- AWS S3.
-- Backblaze B2.
-- Wasabi.
-- MinIO local.
+### Slice B - Repository Layer For One Small Domain
 
-Implementation rule:
+Goal: complete one domain end-to-end with a stable repository contract that can later receive a PostgreSQL adapter.
 
-- Code depends on `storageProvider`, not directly on AWS/R2.
-- Use env for endpoint, bucket, region, access key, secret.
-- Use signed URLs or backend-mediated upload.
+Recommended domain: `venues` or `notifications`.
 
-### Auth
+Scope:
 
-Recommended: backend-owned auth.
+- Define repository method names and return shapes for the chosen domain.
+- Keep Firestore adapter as current runtime.
+- Add mapper helpers only if they prevent response-shape drift.
+- Add focused verification scripts/tests if the repo already has a test pattern.
 
-Initial auth model:
+Exit criteria:
 
-- Email/password.
-- Password hash: argon2.
+- Chosen domain service/controller imports only repository/provider ports.
+- Return payloads remain compatible with current mobile apps.
+- Repository contract can be implemented by PostgreSQL without exposing Firestore concepts.
+
+### Slice C - PostgreSQL Schema + Adapter
+
+Goal: introduce PostgreSQL as a real target database behind the repository pattern.
+
+Scope:
+
+- Add schema/migrations for the chosen Slice B domain first, then expand.
+- Recommended tables:
+  - `users`
+  - `user_sessions`
+  - `organizer_profiles`
+  - `events`
+  - `venues`
+  - `tickets`
+  - `ticket_types`
+  - `notifications`
+  - `reviews`
+  - `promotions`
+  - `media_assets`
+  - `featured_profiles`
+  - `analytics_events`
+- Add indexes for query paths currently used by controllers/services.
+- Add PostgreSQL adapter for the Slice B domain.
+- Keep Firebase adapter available.
+
+Migration mode:
+
+- Start with local Postgres or Docker Postgres.
+- Use dual-read/write only where needed for live migration safety.
+- Do not flip production provider until row-count and sample-flow verification pass.
+
+### Slice D - Backend Auth
+
+Goal: replace FirebaseAuth with backend-owned auth.
+
+Scope:
+
+- Password hashing: argon2 or bcrypt.
 - Access token: short-lived JWT.
-- Refresh token: DB-stored hashed token.
-- Roles: user, organizer, admin.
-- Session table with revoke/logout support.
+- Refresh token: hashed token stored in DB.
+- Session table with revoke/logout.
+- Role model: user, organizer, admin.
+- Middleware reads backend JWT and loads user/role from repository.
 
-Avoid:
+Migration rules:
 
-- FirebaseAuth.
-- Supabase Auth as a hard dependency.
-- Provider-specific claims as the main permission model.
+- Preserve existing user IDs or store Firebase UID as `legacy_firebase_uid` during transition.
+- Do not force mobile auth contract changes until backend endpoints are ready and tested.
+- Add compatibility window where old Firebase auth can still be accepted if needed.
 
-### Push Notifications
+### Slice E - Storage Adapter
 
-Recommended first adapter: OneSignal.
+Goal: replace Firebase Storage with provider-neutral S3-compatible storage.
 
-Important constraint:
+Scope:
 
-- OneSignal Android still uses FCM as the transport layer underneath.
-- This removes Firebase from backend/app business logic, but Android push still requires FCM credentials configured in OneSignal.
-
-Implementation rule:
-
-- Backend code calls `notificationProvider.sendToUsers/sendToTopic`.
-- Adapter can be OneSignal now, another provider later.
-- Keep mobile payload contract stable: `eventId`, `type`.
-
-### Functions / Background Work
-
-Firebase Functions are not required for the next architecture.
-
-Replacement:
-
-- Keep local Node jobs in `jobs/`.
-- Later split to a worker process if needed.
-- Firestore triggers must be replaced by explicit service calls, outbox table, or scheduled jobs.
-
-## Architecture Pattern
-
-Use Ports and Adapters with repositories.
-
-Service layer must not import:
-
-- Firebase Admin.
-- Firestore `db`.
-- Provider SDKs.
-- SQL client directly, except inside adapter/repository modules.
-
-Target structure:
-
-```text
-src/
-  domain/
-    events/
-    tickets/
-    notifications/
-    users/
-  application/
-    services/
-    use-cases/
-  ports/
-    event.repository.js
-    ticket.repository.js
-    user.repository.js
-    notification.repository.js
-    storage.provider.js
-    notification.provider.js
-    auth.token.service.js
-  adapters/
-    postgres/
-    s3/
-    onesignal/
-  infrastructure/
-    db/
-    jobs/
-    config/
-```
-
-This repo may keep the current folder layout at first. The first goal is boundary creation, not a large folder move.
-
-## Phase Plan
-
-### Phase A - Firebase Coupling Audit
-
-Read-only.
-
-Output:
-
-- `Agent Workflows/runs/firebase-exit/phase-a-audit.md`
-
-Checklist:
-
-- Map all backend imports from `config/firebase.config`.
-- Map all `db.collection(...)` usages.
-- Map all `FieldValue` usages.
-- Map all `admin.firestore.FieldPath.documentId()` usages.
-- Map all Firebase Auth usages in backend and mobile.
-- Map all Firebase Storage usages in backend and mobile.
-- Map all Firebase Functions triggers.
-- Map all FCM usages and payload contracts.
-- List Firestore collections and inferred schemas.
-
-Worker split:
-
-- OpenCode: backend Firebase coupling map.
-- Copilot: Android Firebase Auth/Firestore/Storage/FCM usage map.
-- Antigravity: schema and migration risk review.
-- Codex manager: verify outputs, dedupe, produce final audit.
-
-### Phase B - Backend Data Boundary
-
-Goal: service code stops depending directly on Firebase.
-
-Do not change database provider yet.
-
-Checklist:
-
-- Create repository ports for users, events, tickets, notifications, promotions, venues, media, reviews, analytics.
-- Implement Firestore adapters behind these ports.
-- Move Firestore-specific query/chunk/FieldValue logic into adapters.
-- Keep REST response shapes unchanged.
-- Keep mobile contracts unchanged.
-- Add small tests/scripts for pure mappers and payload builders.
-
-Merge rule:
-
-- One module at a time.
-- No broad folder move in the same patch as behavior changes.
-
-### Phase C - Postgres Schema
-
-Goal: define target relational schema before runtime switch.
-
-Checklist:
-
-- Design tables for users, sessions, events, tickets, notifications, promotions, venues, featured_profiles, reviews, event_media, analytics.
-- Define indexes for common queries.
-- Define constraints for status fields.
-- Define JSONB fields only where the shape is naturally flexible.
-- Decide how to model ticket types and event location.
-- Create migration files.
-- Create seed/import script skeleton.
-
-### Phase D - Postgres Adapter
-
-Goal: run backend against Postgres through the same repository ports.
-
-Checklist:
-
-- Add Postgres connection module.
-- Add transaction/unit-of-work helper.
-- Implement repository adapters.
-- Add adapter-level tests or scripts for key flows.
-- Support local Docker Postgres.
-- Keep Firestore adapter available until migration is verified.
-
-### Phase E - Data Migration
-
-Goal: move existing Firebase data into Postgres.
-
-Checklist:
-
-- Export Firestore data.
-- Transform documents into relational rows.
-- Validate row counts per collection/table.
-- Validate sample user, event, ticket, notification flows.
-- Validate ticket inventory and payment state.
-- Validate notification history.
-- Prepare rollback plan.
-
-### Phase F - Backend-Owned Auth
-
-Goal: replace FirebaseAuth.
-
-Checklist:
-
-- Add password hash field.
-- Add sessions/refresh_tokens table.
-- Add register/login/refresh/logout endpoints.
-- Add auth middleware based on backend JWT.
-- Add role checks for user/organizer/admin.
-- Migrate existing Firebase UID references to backend user IDs or keep UID as legacy external ID during transition.
-- Update mobile auth repositories after backend endpoints are ready.
-
-### Phase G - S3-Compatible Storage
-
-Goal: replace Firebase Storage.
-
-Checklist:
-
-- Create storage provider port.
+- Create `storageProvider` port.
 - Implement S3-compatible adapter.
-- Add local MinIO option.
-- Move upload/delete/signed-url logic behind backend API.
-- Migrate existing object paths.
-- Keep stored media references provider-neutral.
+- Prefer MinIO for local verification.
+- Deploy adapter can target Cloudflare R2 or AWS S3.
+- Store provider-neutral object keys in DB, not Firebase URLs as canonical state.
 
-### Phase H - Notification Provider
+Migration rules:
 
-Goal: replace direct FCM backend dependency.
+- Copy existing objects before switching reads.
+- Keep old URLs readable during transition or add rewrite/lookup compatibility.
+- Verify media upload, delete, and signed/read URL flows.
 
-Checklist:
+### Slice F - Push Provider Switch
 
-- Create notification provider port.
-- Implement OneSignal adapter.
-- Map existing topics or user IDs to OneSignal external IDs/tags.
-- Keep payload keys `eventId` and `type`.
-- Preserve notification DB records separately from push delivery.
-- Add provider-independent delivery logs.
+Goal: switch backend push delivery from direct FCM to OneSignal facade.
 
-### Phase I - Remove Firebase
+Scope:
 
-Goal: remove Firebase from runtime code.
+- Keep notification DB records independent from push delivery.
+- Implement OneSignal adapter behind existing notification provider port.
+- Map user IDs/topics to OneSignal external IDs/tags.
+- Preserve payload keys such as `eventId` and `type`.
 
-Checklist:
+Important note:
 
-- Remove backend `firebase-admin` dependency after adapters are no longer used.
-- Remove `config/firebase.config.js` from active imports.
-- Remove Firebase Functions.
-- Remove Android Firebase Auth/Firestore/Storage dependencies.
-- Keep only what is strictly needed for push transport if OneSignal still requires Android FCM credentials.
-- Update docs and env examples.
+- OneSignal for Android still uses FCM as the underlying transport.
+- This removes direct backend FCM coupling, but Android push still needs FCM credentials configured in OneSignal.
 
-## Risk Register
+## Migration Order
 
-- Mobile contract break: keep REST DTOs and notification payloads stable until mobile migration is ready.
-- Auth migration risk: user IDs, roles, and refresh token handling can lock users out.
-- Ticket/payment consistency: payment callback and ticket inventory need transactions/idempotency.
-- Notification duplicate delivery: add outbox/delivery log before high-volume sending.
-- Storage migration risk: broken image/media URLs.
-- Provider lock-in risk: avoid direct Supabase/R2/OneSignal calls outside adapters.
-- Deployment order: backend adapters first, data migration second, mobile auth/storage changes last.
+1. Finish Slice A provider boundaries on server only.
+2. Choose one small domain for Slice B and lock its repository contract.
+3. Add PostgreSQL schema and adapter for that domain.
+4. Run Firebase and PostgreSQL adapters side-by-side in local/dev.
+5. Add dual-read/write only where live migration risk requires it.
+6. Move backend auth behind JWT/session while keeping mobile contract compatibility.
+7. Move storage behind S3-compatible provider.
+8. Switch push delivery to OneSignal facade.
+9. Change mobile contracts only after backend compatibility and migration checks pass.
+10. Remove Firebase runtime dependencies after no active code path uses Firebase except Android FCM transport under OneSignal.
 
-## Current Phase Gate
+## Risk Checklist
 
-Phase 1 eventing helper can remain server-only and should be closed before starting Firebase Exit implementation.
+- Contract drift: compare response payloads before/after each slice.
+- Ordering: ticket/payment/event updates need transaction-aware PostgreSQL design.
+- Duplicate delivery: notification outbox/delivery log needed before OneSignal switch.
+- Idempotency: payment callbacks and push delivery need stable idempotency keys.
+- Auth lockout: keep migration compatibility for existing Firebase users.
+- Storage broken links: migrate object references and keep compatibility for old URLs.
+- Deployment order: backend boundaries first, adapters second, provider flips last, mobile changes after backend is stable.
 
-Do not mix Firebase Exit changes into the current Phase 1 branch unless the change is documentation-only.
+## Current Manager Instruction
 
-## Next Action
+Use local implementation agents for code changes, preferably `opencode` with `cmd /c`.
 
-Run Phase A read-only audit with local agents.
+Codex manager responsibilities:
 
-Manager responsibilities:
-
-- Assign local agents.
-- Review and merge audit outputs.
-- Decide exact DB/storage/provider stack.
-- Create Phase B implementation task split.
-
+- Assign small prompts.
+- Verify diffs and compatibility.
+- Run verification commands.
+- Commit passing slices to `staging`.
+- Update `Agent Workflows/runs/firebase-exit/MANAGER_STATE.md` after each integrated slice.

@@ -2,74 +2,108 @@
 
 ## Objective
 
-Refactor backend eventing and prepare full Firebase exit with provider boundaries before changing infrastructure.
+Execute the Firebase Exit plan with Codex as manager/verifier and local agents as implementers.
 
 ## Current Phase
 
-Phase B planning/first implementation slice.
+Slice A: provider ports/interfaces with no behavior change.
 
-## Scope
+## Source Of Truth
 
-- Server-first.
-- Keep mobile API/event/notification contracts unchanged.
-- Do not migrate PostgreSQL, S3-compatible storage, OneSignal, or backend auth in the first slice.
-- First safe slice: push notification provider boundary around existing FCM behavior.
+- Plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\firebase-exit-plan.md`
+- Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
+- Dev base branch: `staging`
+- `main` is not the integration target; the user will merge manually after the system runs correctly.
+
+## Manager / Worker Rule
+
+- Codex must not directly implement backend source changes unless the user explicitly approves it.
+- Use local agents for implementation, preferably `opencode` via `cmd /c`.
+- Use `agy` only when it is available and producing verifiable diffs.
+- Skip any agent that has no result, quota failure, capacity failure, or no diff.
+- Codex responsibilities: assign bounded prompts, review diffs, run verification, commit passing slices, update this state file.
 
 ## Repos And Branches
 
-- `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
-  - `staging` is the current development base branch.
-  - `main` should not receive merges until the user manually decides the system runs correctly.
-  - `manager/phase1-eventing-integration` exists and is ahead of `main` with Phase 1 eventing helper work.
-- `D:\01_university\year3\semester-5\mobile\final\Mobile-2025-Eventing`
-  - `staging` is checked out.
-  - The working tree has existing uncommitted mobile changes; do not commit or revert without explicit review.
-- `D:\01_university\year3\semester-5\mobile\final\Mobile-2025-Eventing-Organizer`
-  - `staging` is checked out.
-  - The working tree has an existing uncommitted organizer edit; do not commit or revert without explicit review.
-- `D:\01_university\year3\semester-5\mobile\final\.agent-workspaces\server-agy-phaseb-provider-ports`
-  - branch: `agent/agy-phase-b-provider-ports`
-  - clean at last verification.
+- `Server-2025-Eventing`
+  - branch: `staging`
+  - active Firebase Exit integration branch.
+- `Mobile-2025-Eventing`
+  - branch: `staging`
+  - has pre-existing uncommitted mobile changes; do not commit or revert without explicit review.
+- `Mobile-2025-Eventing-Organizer`
+  - branch: `staging`
+  - has pre-existing uncommitted organizer edit; do not commit or revert without explicit review.
 
-## Worker Status
+## Integrated Server Commits
 
-- Use `agy` interactive with `Gemini 3.5 Flash (Medium)`.
-- Avoid `agy -p` for implementation in this workspace: it accepted the selected model and auto-approved edits, but produced no git diff.
-- Avoid Gemini CLI, OpenCode, and GitHub Copilot unless explicitly re-approved.
-- Use only agents that produce verifiable git diffs; skip failing/no-output agents instead of retrying repeatedly.
+- `2849ee7` - Introduce notification provider boundary.
+- `07807ae` - Introduce media database repository boundary.
+- `394a071` - Introduce featured profile repository boundary.
+- `7d4fe6f` - Introduce analytics and venue repository boundaries.
+- `4265f12` - Introduce notification and review repository boundaries.
+- `c04cd18` - Introduce auth provider and user role repository.
+- `73c9568` - Introduce promotion repository boundary.
+- `6bc6e89` - Introduce ticket and event controller repositories.
 
-## Verified Facts
+## Current Plan Summary
 
-- CodeGraph was initialized in the AGY Phase B clone and status was OK.
-- `.codegraph/` is excluded in the clone git info exclude.
-- AGY print mode logs showed `Gemini 3.5 Flash (Medium)` selected, but no file changes landed.
-- Later AGY output appears to have created a small server notification provider boundary directly in `Server-2025-Eventing` on `staging`: `services/fcm.service.js` plus `providers/notification/*`.
-- `git diff --check` and `node --check` passed for that server notification-provider slice.
-- The server notification-provider slice was committed on `Server-2025-Eventing/staging` as `2849ee7 Introduce notification provider boundary`.
-- The server media database repository slice was committed on `Server-2025-Eventing/staging` as `07807ae Introduce media database repository boundary`.
-- The server featured-profile database repository slice was committed on `Server-2025-Eventing/staging` as `394a071 Introduce featured profile repository boundary`.
+Slice A:
 
-## Next Exact Step
+- Add provider ports/interfaces with Firebase still active.
+- No behavior change.
+- Keep API payloads, routes, event names, notification payload fields, and mobile behavior stable.
 
-Next recommended server slice: audit and extract another small Firebase database repository boundary from a controller/service that directly imports `config/firebase.config`, preferably without changing mobile-facing payloads.
+Slice B:
 
-AGY interactive command template if delegating:
+- Pick one small domain, preferably `venues` or `notifications`.
+- Lock repository contract and make it PostgreSQL-ready.
+
+Slice C:
+
+- Add PostgreSQL schema and adapter.
+
+Slice D:
+
+- Add backend JWT/session auth with password hashing, refresh tokens, and role model.
+
+Slice E:
+
+- Add S3-compatible storage port and adapter.
+
+Slice F:
+
+- Switch push provider to OneSignal facade.
+- Note: Android still needs FCM transport configured underneath OneSignal.
+
+## Verification Baseline
+
+For every code slice:
 
 ```cmd
-cd /d D:\01_university\year3\semester-5\mobile\final\.agent-workspaces\server-agy-phaseb-provider-ports
-agy --prompt-interactive "Implement Phase B Slice 1 in the current workspace only. Server-only. Do not touch mobile repos. Do not change API payloads, route contracts, event names, notification payload fields, or mobile-facing behavior. Do not edit package.json unless strictly unavoidable. Use Windows cmd-compatible commands only: dir, type, findstr, git. Do not use grep. Goal: add a tiny push notification provider boundary around existing FCM behavior in CommonJS style. Keep Firebase behavior intact behind the adapter. Verification: run git diff --check and node --check only on changed JS files. Return changed files, compatibility notes, verification results, and risks."
-```
-
-## Manager Verification
-
-After AGY finishes:
-
-```cmd
-cd /d D:\01_university\year3\semester-5\mobile\final\.agent-workspaces\server-agy-phaseb-provider-ports
+cd /d D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing
 git status --short --branch
 git diff --stat
 git diff --check
-git diff
+node --check <changed-js-files>
 ```
 
-Then run `node --check` on changed `.js` files only.
+Then review:
+
+- no mobile-facing payload drift
+- no route contract drift
+- no event/topic/name drift
+- no new direct Firebase import outside adapters/providers unless intentionally deferred
+- no package changes unless explicitly required by the slice
+
+## Next Exact Step
+
+Assign `opencode` the next bounded Slice A prompt:
+
+- server-only
+- no mobile repo edits
+- no package changes
+- reduce remaining direct Firebase usage in one small controller/service/job area
+- keep behavior and payloads stable
+- run `git diff --check` and `node --check` on changed JS files
+- return changed files, compatibility notes, verification output, and risks
