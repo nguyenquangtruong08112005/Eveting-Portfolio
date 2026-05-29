@@ -26,7 +26,10 @@
     "db:compare:users": "node scripts/compare.users.firebase-postgres.js",
     "db:sync:events": "node scripts/sync.events.firebase-to-postgres.js",
     "db:smoke:events": "node scripts/smoke.events.js",
-    "db:compare:events": "node scripts/compare.events.firebase-postgres.js"
+    "db:compare:events": "node scripts/compare.events.firebase-postgres.js",
+    "db:sync:tickets": "node scripts/sync.tickets.firebase-to-postgres.js",
+    "db:smoke:tickets": "node scripts/smoke.tickets.js",
+    "db:compare:tickets": "node scripts/compare.tickets.firebase-postgres.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
