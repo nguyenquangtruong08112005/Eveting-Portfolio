@@ -8,11 +8,12 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: consolidation review and controlled provider-flip planning.
+Next phase: Phase C0 consolidation review, then Phase C1 local PostgreSQL harness.
 
 ## Source Of Truth
 
 - Plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\firebase-exit-plan.md`
+- Phase C plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c-provider-flip-plan.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -117,7 +118,7 @@ Then review:
 
 ## Next Exact Step
 
-Run consolidation verification:
+Run Phase C0 consolidation verification:
 
 - `git status --short --branch`
 - `git diff --check`
@@ -125,6 +126,7 @@ Run consolidation verification:
 - direct Firebase import scan outside provider/adapters
 - require-smoke for default providers
 - package dependency review for added `pg` and pinned AWS SDK packages
+- save review artifact under `Agent Workflows/runs/firebase-exit`
 
 ## Latest Verification
 
