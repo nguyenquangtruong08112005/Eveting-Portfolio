@@ -12,13 +12,27 @@ const buildPayloadData = (type, eventId, extra = {}) => {
   return { eventId, type, ...extra };
 };
 
+const isOneSignalExternalId = () => {
+  return process.env.NOTIFICATION_PROVIDER === 'onesignal' && process.env.ONESIGNAL_TARGET_MODE === 'external_id';
+};
+
 const collectMessagingTargets = async (userIds) => {
-  return userRepository.getUsersFcmTokens(userIds);
+  const result = await userRepository.getUsersFcmTokens(userIds);
+  if (isOneSignalExternalId()) {
+    return {
+      recipientIds: result.recipientIds,
+      tokens: result.recipientIds
+    };
+  }
+  return result;
 };
 
 const collectTokens = async (userIds) => {
-  const { tokens } = await userRepository.getUsersFcmTokens(userIds);
-  return tokens;
+  const result = await userRepository.getUsersFcmTokens(userIds);
+  if (isOneSignalExternalId()) {
+    return result.recipientIds;
+  }
+  return result.tokens;
 };
 
 const buildNotificationDoc = (userId, title, message, type, eventId = null) => ({
