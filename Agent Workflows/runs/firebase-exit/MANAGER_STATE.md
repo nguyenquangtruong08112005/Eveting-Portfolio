@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, and M4 mobile refresh-token handling are complete on `staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, M4 mobile refresh-token handling, and M5 attendee backend media upload are complete on `staging`.
 
-Next phase: Phase M5 mobile storage upload path.
+Next phase: Phase M6 mobile OneSignal subscription id registration.
 
 ## Source Of Truth
 
@@ -41,6 +41,7 @@ Next phase: Phase M5 mobile storage upload path.
 - Phase M2 mobile auth repository wiring verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m2-mobile-auth-repository-wiring-verification.md`
 - Phase M3 backend auth profile and mobile current-user verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m3-backend-auth-profile-and-mobile-current-user-verification.md`
 - Phase M4 mobile refresh-token verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m4-mobile-refresh-token-verification.md`
+- Phase M5 mobile storage upload path verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m5-mobile-storage-upload-path-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -116,6 +117,7 @@ Next phase: Phase M5 mobile storage upload path.
 - Attendee `Mobile-2025-Eventing`: `58cfa30` - Wire attendee auth to backend fallback.
 - Attendee `Mobile-2025-Eventing`: `bbeac36` - Use backend token for attendee current user.
 - Attendee `Mobile-2025-Eventing`: `0c9cb03` - Refresh backend access token on 401.
+- Attendee `Mobile-2025-Eventing`: `07c07d8` - Upload attendee event media through backend.
 - Organizer `Mobile-2025-Eventing-Organizer`: `a05cfc2` - Save organizer pre-refactor work.
 - Organizer `Mobile-2025-Eventing-Organizer`: `4e6e2b3` - Add backend token fallback foundation.
 - Organizer `Mobile-2025-Eventing-Organizer`: `5ed4650` - Wire organizer auth to backend fallback.
@@ -187,11 +189,11 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase M5 mobile storage upload path:
+Assign a local agent Phase M6 mobile OneSignal subscription id registration:
 
-- wire mobile media upload flows to the backend multipart media upload route added in Phase C5
-- preserve existing URL-based media submission behavior as fallback
-- keep Firebase/storage-provider fallback behavior available during migration
+- register OneSignal subscription id or external id with the backend notification/device-token flow
+- keep current FCM token registration/removal behavior available as migration fallback
+- do not remove Firebase Messaging yet because OneSignal Android still uses FCM as transport
 - do not overwrite existing dirty mobile changes
 - use `agy` only when available and producing verifiable diffs; otherwise use `opencode`
 
@@ -241,3 +243,4 @@ Results:
 - Phase M2 mobile auth repository wiring completed: attendee and organizer email/password auth now try backend auth first, save backend tokens, and fall back to Firebase Auth plus Firestore. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M3 backend-auth profile/current-user completed: server auth register/login creates missing Postgres user profiles, `/users/me` smoke passes for backend users, and both mobile apps can resolve current user from backend JWT before Firebase fallback. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M4 mobile refresh-token handling completed: attendee and organizer OkHttp interceptors now refresh expired backend access tokens through `POST /auth/refresh`, save returned backend tokens, retry the original request once, and keep Firebase token fallback available. `git diff --check` passed for both mobile repos. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
+- Phase M5 attendee backend media upload completed: attendee event gallery media upload now tries backend multipart `POST /events/{eventId}/media` first, then falls back to Firebase Storage plus existing JSON media registration. `git diff --check` passed. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
