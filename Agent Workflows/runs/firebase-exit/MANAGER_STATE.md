@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, M4 mobile refresh-token handling, and M5 attendee backend media upload are complete on `staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, M4 mobile refresh-token handling, M5 attendee backend media upload, and M6 OneSignal external id push registration are complete on `staging`.
 
-Next phase: Phase M6 mobile OneSignal subscription id registration.
+Next phase: Phase M7 consolidation and mobile compile unblock.
 
 ## Source Of Truth
 
@@ -42,6 +42,7 @@ Next phase: Phase M6 mobile OneSignal subscription id registration.
 - Phase M3 backend auth profile and mobile current-user verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m3-backend-auth-profile-and-mobile-current-user-verification.md`
 - Phase M4 mobile refresh-token verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m4-mobile-refresh-token-verification.md`
 - Phase M5 mobile storage upload path verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m5-mobile-storage-upload-path-verification.md`
+- Phase M6 OneSignal external id verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m6-onesignal-external-id-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -109,6 +110,7 @@ Next phase: Phase M6 mobile OneSignal subscription id registration.
 - `8e2437c` - Archive Firebase migration tooling.
 - `7427306` - Support backend auth organizer role.
 - `a7c9f1d` - Create profile for backend auth users.
+- `c6fa22a` - Target OneSignal notifications by external id.
 
 ## Integrated Mobile Commits
 
@@ -118,11 +120,13 @@ Next phase: Phase M6 mobile OneSignal subscription id registration.
 - Attendee `Mobile-2025-Eventing`: `bbeac36` - Use backend token for attendee current user.
 - Attendee `Mobile-2025-Eventing`: `0c9cb03` - Refresh backend access token on 401.
 - Attendee `Mobile-2025-Eventing`: `07c07d8` - Upload attendee event media through backend.
+- Attendee `Mobile-2025-Eventing`: `ce6ffd7` - Register attendee push targets with OneSignal.
 - Organizer `Mobile-2025-Eventing-Organizer`: `a05cfc2` - Save organizer pre-refactor work.
 - Organizer `Mobile-2025-Eventing-Organizer`: `4e6e2b3` - Add backend token fallback foundation.
 - Organizer `Mobile-2025-Eventing-Organizer`: `5ed4650` - Wire organizer auth to backend fallback.
 - Organizer `Mobile-2025-Eventing-Organizer`: `2e88509` - Use backend token for organizer current user.
 - Organizer `Mobile-2025-Eventing-Organizer`: `0684fb1` - Refresh backend access token on 401.
+- Organizer `Mobile-2025-Eventing-Organizer`: `54aaece` - Register organizer push targets with OneSignal.
 
 ## Mobile Rewrite Notes
 
@@ -189,11 +193,12 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase M6 mobile OneSignal subscription id registration:
+Assign a local agent Phase M7 consolidation and mobile compile unblock:
 
-- register OneSignal subscription id or external id with the backend notification/device-token flow
-- keep current FCM token registration/removal behavior available as migration fallback
-- do not remove Firebase Messaging yet because OneSignal Android still uses FCM as transport
+- fix Mapbox Maven credential access outside git-tracked source if possible
+- run attendee and organizer Kotlin compile after dependency access is fixed
+- run backend smoke with `NOTIFICATION_PROVIDER=onesignal` and `ONESIGNAL_TARGET_MODE=external_id`
+- review remaining Firebase runtime references and identify next true removal blocker
 - do not overwrite existing dirty mobile changes
 - use `agy` only when available and producing verifiable diffs; otherwise use `opencode`
 
@@ -244,3 +249,4 @@ Results:
 - Phase M3 backend-auth profile/current-user completed: server auth register/login creates missing Postgres user profiles, `/users/me` smoke passes for backend users, and both mobile apps can resolve current user from backend JWT before Firebase fallback. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M4 mobile refresh-token handling completed: attendee and organizer OkHttp interceptors now refresh expired backend access tokens through `POST /auth/refresh`, save returned backend tokens, retry the original request once, and keep Firebase token fallback available. `git diff --check` passed for both mobile repos. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M5 attendee backend media upload completed: attendee event gallery media upload now tries backend multipart `POST /events/{eventId}/media` first, then falls back to Firebase Storage plus existing JSON media registration. `git diff --check` passed. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
+- Phase M6 OneSignal external id registration completed: server direct notification targets can use backend user ids in OneSignal external id mode; attendee and organizer initialize OneSignal behind an app-id guard, call `OneSignal.login(user.id)` at startup for backend-auth users, preserve FCM token registration through existing `fcmToken`, and call `OneSignal.logout()` on sign out. Server syntax check passed. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
