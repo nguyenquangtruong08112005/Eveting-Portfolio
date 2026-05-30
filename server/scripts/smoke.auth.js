@@ -105,6 +105,7 @@ const env = {
   ACCESS_TOKEN_SECRET: 'super_secret_key_at_least_256_bits_for_backend_auth_smoke_testing_1234567890',
   ACCESS_TOKEN_EXPIRES_IN: '5m',
   REFRESH_TOKEN_EXPIRES_IN: '1d',
+  DATABASE_PROVIDER: 'postgres',
 };
 
 let serverProcess = null;
@@ -183,6 +184,22 @@ async function run() {
   }
   console.log('[OK] Register test passed.');
 
+  // 2.1. GET /users/me after register
+  console.log('\nTesting: GET /users/me (after register)');
+  const regMeRes = await axios.get(`${BASE_URL}/users/me`, {
+    headers: { Authorization: `Bearer ${regRes.data.accessToken}` }
+  });
+  if (regMeRes.status !== 200) {
+    throw new Error(`Expected 200 from /users/me, got ${regMeRes.status}`);
+  }
+  if (regMeRes.data.id !== regRes.data.user.id) {
+    throw new Error(`User id mismatch in /users/me after register`);
+  }
+  if (regMeRes.data.email !== email) {
+    throw new Error(`User email mismatch in /users/me after register`);
+  }
+  console.log('[OK] GET /users/me after register test passed.');
+
   // 2.5. Test role-based registration
   const roleTestPassword = 'StrongTestPassword456!';
 
@@ -211,6 +228,22 @@ async function run() {
     throw new Error(`Expected role 'organizer', got ${JSON.stringify(organizerRes.data.user.roles)}`);
   }
   console.log('[OK] Organizer role registration test passed.');
+
+  // 2.5.1. GET /users/me after organizer register (check isOrganizer)
+  console.log('\nTesting: GET /users/me (after organizer register)');
+  const orgMeRes = await axios.get(`${BASE_URL}/users/me`, {
+    headers: { Authorization: `Bearer ${organizerRes.data.accessToken}` }
+  });
+  if (orgMeRes.status !== 200) {
+    throw new Error(`Expected 200 from /users/me for organizer, got ${orgMeRes.status}`);
+  }
+  if (orgMeRes.data.id !== organizerRes.data.user.id) {
+    throw new Error(`Organizer id mismatch in /users/me`);
+  }
+  if (orgMeRes.data.isOrganizer !== true) {
+    throw new Error(`Expected isOrganizer to be true for organizer profile`);
+  }
+  console.log('[OK] GET /users/me after organizer register (isOrganizer) test passed.');
 
   console.log('\nTesting: POST /auth/register (invalid role -> 400)');
   try {
@@ -246,6 +279,22 @@ async function run() {
     throw new Error('Security violation: password hash leaked in login response.');
   }
   console.log('[OK] Login test passed.');
+
+  // 3.1. GET /users/me after login
+  console.log('\nTesting: GET /users/me (after login)');
+  const loginMeRes = await axios.get(`${BASE_URL}/users/me`, {
+    headers: { Authorization: `Bearer ${loginRes.data.accessToken}` }
+  });
+  if (loginMeRes.status !== 200) {
+    throw new Error(`Expected 200 from /users/me after login, got ${loginMeRes.status}`);
+  }
+  if (loginMeRes.data.id !== user.id) {
+    throw new Error(`User id mismatch in /users/me after login`);
+  }
+  if (loginMeRes.data.email !== email) {
+    throw new Error(`User email mismatch in /users/me after login`);
+  }
+  console.log('[OK] GET /users/me after login test passed.');
 
   // 4. Refresh
   console.log('\nTesting: POST /auth/refresh');
