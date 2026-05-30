@@ -1,6 +1,9 @@
 package com.tdtuer.eventing.data.network
 
 import com.tdtuer.eventing.data.network.model.ApplyPromotionRequest
+import com.tdtuer.eventing.data.network.model.AuthLoginRequest
+import com.tdtuer.eventing.data.network.model.AuthRegisterRequest
+import com.tdtuer.eventing.data.network.model.AuthResponse
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
@@ -14,6 +17,7 @@ import com.tdtuer.eventing.data.network.model.PostMediaRequest
 import com.tdtuer.eventing.data.network.model.PostReviewRequest
 import com.tdtuer.eventing.data.network.model.PromotionDto
 import com.tdtuer.eventing.data.network.model.PromotionResponse
+import com.tdtuer.eventing.data.network.model.RefreshTokenRequest
 import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing.data.network.model.ReviewResponse
 import com.tdtuer.eventing.data.network.model.TicketDetailResponse
@@ -167,4 +171,16 @@ interface EventApiService {
 
     @GET("promotions")
     suspend fun getPublicPromotions(): Response<List<PromotionDto>>
+
+    @POST("auth/register")
+    suspend fun register(@Body request: AuthRegisterRequest): Response<AuthResponse>
+
+    @POST("auth/login")
+    suspend fun login(@Body request: AuthLoginRequest): Response<AuthResponse>
+
+    @POST("auth/refresh")
+    suspend fun refreshToken(@Body request: RefreshTokenRequest): Response<AuthResponse>
+
+    @POST("auth/logout")
+    suspend fun logout(@Body request: RefreshTokenRequest): Response<Unit>
 }

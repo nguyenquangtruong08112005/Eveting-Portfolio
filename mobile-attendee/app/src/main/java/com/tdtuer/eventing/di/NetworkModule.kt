@@ -4,6 +4,7 @@ import com.facebook.core.BuildConfig
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.tdtuer.eventing.constants.Constraints.BASE_URL
+import com.tdtuer.eventing.data.auth.TokenStore
 import com.tdtuer.eventing.data.network.EventApiService
 import dagger.Module
 import dagger.Provides
@@ -30,7 +31,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(auth: FirebaseAuth): OkHttpClient {
+    fun provideOkHttpClient(auth: FirebaseAuth, tokenStore: TokenStore): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -38,14 +39,15 @@ object NetworkModule {
         val authInterceptor = Interceptor { chain ->
             val token = try {
                 runBlocking {
-                    auth.currentUser?.getIdToken(false)?.await()?.token
+                    tokenStore.getAccessToken()
+                        ?: auth.currentUser?.getIdToken(false)?.await()?.token
                 }
             } catch (e: Exception) {
                 null
             }
 
             val requestBuilder = chain.request().newBuilder()
-            
+
             token?.let {
                 requestBuilder.addHeader("Authorization", "Bearer $it")
             }
