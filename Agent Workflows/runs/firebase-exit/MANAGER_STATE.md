@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, and C9 Firebase-removal blocker audit are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, and C10 lazy provider loading are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C10 lazy provider loading.
+Next phase: Phase C11 environment cutover template.
 
 ## Source Of Truth
 
@@ -34,6 +34,7 @@ Next phase: Phase C10 lazy provider loading.
 - Phase C7 Postgres provider smoke verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c7-postgres-provider-smoke-verification.md`
 - Phase C8 Postgres write paths verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c8-postgres-write-paths-verification.md`
 - Phase C9 Firebase-removal blocker audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c9-firebase-removal-blocker-audit.md`
+- Phase C10 lazy provider loading verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c10-lazy-provider-loading-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -97,6 +98,7 @@ Next phase: Phase C10 lazy provider loading.
 - `b80667e` - Add Postgres admin repository.
 - `874d8d1` - Add Postgres provider smoke.
 - `8aedc00` - Add Postgres write path smoke.
+- `97c733d` - Lazy load provider selectors.
 
 ## Current Plan Summary
 
@@ -156,16 +158,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase C10 lazy provider loading:
+Assign a local agent Phase C11 environment cutover template:
 
 - server-only
 - no mobile repo edits
-- refactor provider registries to conditionally require only the selected provider
-- target database repository selectors, auth provider selector, and notification provider selector
-- preserve default provider behavior and all env override names
-- prove `DATABASE_PROVIDER=postgres`, `AUTH_PROVIDER=backend`, and `NOTIFICATION_PROVIDER=onesignal` can boot without loading Firebase provider modules
-- keep Firebase adapters/scripts/config files in repo for now
-- do not remove Firebase packages/config until blockers are explicitly resolved
+- create a checked-in example/template or markdown artifact for local/dev env cutover
+- include Postgres/backend auth/storage/OneSignal values and required smoke commands
+- keep production defaults conservative until mobile migration is ready
+- do not commit real secrets
+- do not remove Firebase packages/config yet
 
 ## Latest Verification
 
@@ -206,3 +207,4 @@ Results:
 - Phase C7 Postgres provider smoke passed: server booted with `DATABASE_PROVIDER=postgres`, `AUTH_PROVIDER=backend`, and `STORAGE_PROVIDER=local`; `/`, `/events`, `/profiles`, and `/admin/events/pending` returned expected basic shapes; full server JS syntax scan passed.
 - Phase C8 write-path verification passed: admin approve/reject synthetic Postgres write paths passed, transaction/storage/provider/auth regression smokes passed, events/admin compares still matched Firebase, and full server JS syntax scan passed.
 - Phase C9 audit completed: remaining Firebase runtime blocker is static provider loading; migration/sync/compare scripts and Firebase adapters still intentionally require Firebase; mobile auth/storage/push migration remains outside server-only scope.
+- Phase C10 lazy provider loading passed: provider selectors now lazy-load only active providers; Postgres/backend/OneSignal lazy smoke proved Firebase modules are not loaded for that env; regression smokes and default selector require passed.
