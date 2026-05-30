@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, and C6 admin Postgres coverage are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, and C7 global Postgres boot/read smoke are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C7 global Postgres provider smoke.
+Next phase: Phase C8 controlled write-path/provider-flip verification.
 
 ## Source Of Truth
 
@@ -31,6 +31,7 @@ Next phase: Phase C7 global Postgres provider smoke.
 - Phase C4 backend auth route verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-backend-auth-routes-verification.md`
 - Phase C5 storage media upload verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c5-storage-media-upload-verification.md`
 - Phase C6 admin Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c6-admin-postgres-verification.md`
+- Phase C7 Postgres provider smoke verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c7-postgres-provider-smoke-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -92,6 +93,7 @@ Next phase: Phase C7 global Postgres provider smoke.
 - `ca2ad2e` - Wire backend auth routes.
 - `0f06354` - Wire media storage uploads.
 - `b80667e` - Add Postgres admin repository.
+- `874d8d1` - Add Postgres provider smoke.
 
 ## Current Plan Summary
 
@@ -151,15 +153,16 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase C7 global Postgres provider smoke:
+Assign a local agent Phase C8 controlled write-path/provider-flip verification:
 
 - server-only
 - no mobile repo edits
-- boot server with `DATABASE_PROVIDER=postgres` and local Postgres `DATABASE_URL`
-- run bounded provider/route smoke matrix without changing mobile contracts
-- identify any remaining provider selector missing Postgres support
+- run existing sync/compare scripts for migrated domains
+- add controlled write-path smoke where needed for backend auth, media upload, admin approve/reject, tickets, promotions, notifications
+- use synthetic fixtures and clean them up
+- keep production defaults and mobile contracts unchanged
 - do not remove Firebase packages/config
-- verify with syntax checks, existing compare scripts, and a local boot smoke
+- document remaining blockers before Firebase package/config removal
 
 ## Latest Verification
 
@@ -197,3 +200,4 @@ Results:
 - Phase C4 backend auth route verification passed: register/login/refresh/logout/logout-all smoke passed against local Postgres with `AUTH_PROVIDER=backend`; invalid backend bearer token returns 403; revoked refresh tokens return 401; smoke output redacts database password and access/refresh tokens.
 - Phase C5 storage media upload verification passed: existing JSON media route remains intact, multipart image/video upload path uses storage provider, local storage upload/read smoke passed, unsupported multipart mimetype returns 400, and full server JS syntax scan passed.
 - Phase C6 admin Postgres verification passed: events sync copied 23 events, admin pending compare matched 2 pending Firebase events with 0 missing and 0 different, and full server JS syntax scan passed.
+- Phase C7 Postgres provider smoke passed: server booted with `DATABASE_PROVIDER=postgres`, `AUTH_PROVIDER=backend`, and `STORAGE_PROVIDER=local`; `/`, `/events`, `/profiles`, and `/admin/events/pending` returned expected basic shapes; full server JS syntax scan passed.
