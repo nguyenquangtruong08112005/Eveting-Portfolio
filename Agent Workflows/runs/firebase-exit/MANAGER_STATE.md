@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, and C8 controlled write-path smoke are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, and C9 Firebase-removal blocker audit are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C9 Firebase-removal blocker audit.
+Next phase: Phase C10 lazy provider loading.
 
 ## Source Of Truth
 
@@ -33,6 +33,7 @@ Next phase: Phase C9 Firebase-removal blocker audit.
 - Phase C6 admin Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c6-admin-postgres-verification.md`
 - Phase C7 Postgres provider smoke verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c7-postgres-provider-smoke-verification.md`
 - Phase C8 Postgres write paths verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c8-postgres-write-paths-verification.md`
+- Phase C9 Firebase-removal blocker audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c9-firebase-removal-blocker-audit.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -155,14 +156,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase C9 Firebase-removal blocker audit:
+Assign a local agent Phase C10 lazy provider loading:
 
 - server-only
 - no mobile repo edits
-- enumerate remaining direct Firebase imports and classify them as adapter, migration script, default provider, or runtime blocker
-- identify exact env defaults that can safely flip in local/dev
-- identify mobile-auth/profile-linking blockers before Firebase Auth removal
-- identify push-provider blockers before Firebase Messaging removal
+- refactor provider registries to conditionally require only the selected provider
+- target database repository selectors, auth provider selector, and notification provider selector
+- preserve default provider behavior and all env override names
+- prove `DATABASE_PROVIDER=postgres`, `AUTH_PROVIDER=backend`, and `NOTIFICATION_PROVIDER=onesignal` can boot without loading Firebase provider modules
+- keep Firebase adapters/scripts/config files in repo for now
 - do not remove Firebase packages/config until blockers are explicitly resolved
 
 ## Latest Verification
@@ -203,3 +205,4 @@ Results:
 - Phase C6 admin Postgres verification passed: events sync copied 23 events, admin pending compare matched 2 pending Firebase events with 0 missing and 0 different, and full server JS syntax scan passed.
 - Phase C7 Postgres provider smoke passed: server booted with `DATABASE_PROVIDER=postgres`, `AUTH_PROVIDER=backend`, and `STORAGE_PROVIDER=local`; `/`, `/events`, `/profiles`, and `/admin/events/pending` returned expected basic shapes; full server JS syntax scan passed.
 - Phase C8 write-path verification passed: admin approve/reject synthetic Postgres write paths passed, transaction/storage/provider/auth regression smokes passed, events/admin compares still matched Firebase, and full server JS syntax scan passed.
+- Phase C9 audit completed: remaining Firebase runtime blocker is static provider loading; migration/sync/compare scripts and Firebase adapters still intentionally require Firebase; mobile auth/storage/push migration remains outside server-only scope.
