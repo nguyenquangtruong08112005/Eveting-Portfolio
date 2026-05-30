@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C4 backend auth route wiring.
+Next phase: Phase C5 storage upload/read wiring.
 
 ## Source Of Truth
 
@@ -28,6 +28,7 @@ Next phase: Phase C4 backend auth route wiring.
 - Analytics Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-analytics-postgres-verification.md`
 - Phase C4 consolidation/provider flip matrix: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-consolidation-provider-flip-matrix.md`
 - Phase C4 Postgres transaction support verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-postgres-transaction-support-verification.md`
+- Phase C4 backend auth route verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-backend-auth-routes-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -86,6 +87,7 @@ Next phase: Phase C4 backend auth route wiring.
 - `8efc318` - Add Postgres organizer profile adapter.
 - `0af0740` - Add Postgres analytics adapter.
 - `6448868` - Add Postgres transaction support.
+- `ca2ad2e` - Wire backend auth routes.
 
 ## Current Plan Summary
 
@@ -110,7 +112,7 @@ Slice C:
 Slice D:
 
 - Add backend JWT/session auth with password hashing, refresh tokens, and role model.
-- Status: foundation complete; route/controller switch is deferred.
+- Status: foundation and backend route wiring complete; mobile auth migration/profile linking is deferred.
 
 Slice E:
 
@@ -145,16 +147,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign `agy` Phase C4 backend auth route wiring:
+Assign a local agent Phase C5 storage upload/read wiring:
 
 - server-only
 - no mobile repo edits
-- add backend register/login/refresh/logout routes using existing backend auth provider and Postgres auth repository
-- keep Firebase auth provider/default compatibility
-- do not break existing protected routes or mobile auth assumptions
-- preserve Firebase UID mapping where applicable
-- keep Firebase default and route payloads unchanged
-- verify with syntax checks and local auth smoke tests
+- use existing storage provider boundary
+- wire backend media upload/read path without changing mobile-facing behavior by default
+- keep Firebase/default URL behavior stable unless storage provider env opts in
+- prefer local S3-compatible verification with MinIO or mocked provider before AWS/R2
+- verify with syntax checks and a bounded storage smoke script
 
 ## Latest Verification
 
@@ -189,3 +190,4 @@ Results:
 - Phase C3 analytics verification passed for 8 Analytics documents: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 8 with 0 missing and 0 different. Exact shape check passed for `evt_haanh_show_dalat_2026`.
 - Phase C4 consolidation review completed: provider flip matrix saved, global `DATABASE_PROVIDER=postgres` remains blocked by admin repository, and ticket/event/promotion/analytics transaction shims must be fixed before broad write-path flips.
 - Phase C4 transaction support verification passed: real Postgres transaction helper added, rollback/commit smoke passed, and tickets/events/promotions/analytics compare scripts still pass.
+- Phase C4 backend auth route verification passed: register/login/refresh/logout/logout-all smoke passed against local Postgres with `AUTH_PROVIDER=backend`; invalid backend bearer token returns 403; revoked refresh tokens return 401; smoke output redacts database password and access/refresh tokens.
