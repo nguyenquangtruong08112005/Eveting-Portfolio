@@ -6,7 +6,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, M4 mobile refresh-token handling, M5 attendee backend media upload, M6 OneSignal external id push registration, M7 consolidation/blocker audit, and M8 generic backend storage upload are complete on `staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, M4 mobile refresh-token handling, M5 attendee backend media upload, M6 OneSignal external id push registration, M7 consolidation/blocker audit, M8 generic backend storage upload, and M9 mobile OneSignal Kotlin compatibility are complete on `staging`.
 
 Next phase: wire mobile profile/organizer media upload use cases to backend generic storage upload with Firebase Storage fallback.
 
@@ -45,6 +45,7 @@ Next phase: wire mobile profile/organizer media upload use cases to backend gene
 - Phase M6 OneSignal external id verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m6-onesignal-external-id-verification.md`
 - Phase M7 consolidation and blockers: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m7-consolidation-and-blockers.md`
 - Phase M8 generic storage upload verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m8-generic-storage-upload-verification.md`
+- Phase M9 mobile OneSignal Kotlin compatibility verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m9-mobile-onesignal-kotlin-compatibility-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -124,12 +125,14 @@ Next phase: wire mobile profile/organizer media upload use cases to backend gene
 - Attendee `Mobile-2025-Eventing`: `0c9cb03` - Refresh backend access token on 401.
 - Attendee `Mobile-2025-Eventing`: `07c07d8` - Upload attendee event media through backend.
 - Attendee `Mobile-2025-Eventing`: `ce6ffd7` - Register attendee push targets with OneSignal.
+- Attendee `Mobile-2025-Eventing`: `fdb8226` - Pin OneSignal SDK for Kotlin compatibility.
 - Organizer `Mobile-2025-Eventing-Organizer`: `a05cfc2` - Save organizer pre-refactor work.
 - Organizer `Mobile-2025-Eventing-Organizer`: `4e6e2b3` - Add backend token fallback foundation.
 - Organizer `Mobile-2025-Eventing-Organizer`: `5ed4650` - Wire organizer auth to backend fallback.
 - Organizer `Mobile-2025-Eventing-Organizer`: `2e88509` - Use backend token for organizer current user.
 - Organizer `Mobile-2025-Eventing-Organizer`: `0684fb1` - Refresh backend access token on 401.
 - Organizer `Mobile-2025-Eventing-Organizer`: `54aaece` - Register organizer push targets with OneSignal.
+- Organizer `Mobile-2025-Eventing-Organizer`: `04fe094` - Pin OneSignal SDK for Kotlin compatibility.
 
 ## Mobile Rewrite Notes
 
@@ -196,7 +199,7 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase M9 mobile generic storage upload wiring:
+Assign a local agent Phase M10 mobile generic storage upload wiring:
 
 - add mobile Retrofit multipart client for `POST /storage/upload`
 - wire profile image uploads first, then organizer create/edit event media if scope remains safe
@@ -255,3 +258,4 @@ Results:
 - Phase M6 OneSignal external id registration completed: server direct notification targets can use backend user ids in OneSignal external id mode; attendee and organizer initialize OneSignal behind an app-id guard, call `OneSignal.login(user.id)` at startup for backend-auth users, preserve FCM token registration through existing `fcmToken`, and call `OneSignal.logout()` on sign out. Server syntax check passed. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M7 consolidation completed: Mapbox Maven 401 remains the mobile compile blocker even though both mobile repos contain a hardcoded Mapbox downloads token; token is likely invalid or no longer authorized. Firebase packages/config must not be removed yet because mobile Firebase auth/storage/messaging fallback paths are still active, OneSignal delivery needs a real app id/device smoke, and organizer/profile storage still lacks a generic backend upload replacement.
 - Phase M8 generic backend storage upload completed: server now exposes authenticated `POST /storage/upload` multipart upload through the active storage provider, defaults to local storage for smoke verification, and returns key/url metadata for mobile callers. Node syntax checks and `node scripts\smoke.storage.js` passed.
+- Phase M9 mobile compile unblock completed: both mobile apps now pin OneSignal SDK to `5.6.1` instead of the dynamic `[5.6.1,5.9.99]` range that resolved to Kotlin 2.2 metadata dependencies. Attendee and organizer `gradlew.bat :app:compileDebugKotlin` passed after the change.
