@@ -11,8 +11,10 @@
 ## Integrated Commits
 
 - Server: `a7c9f1d` - `Create profile for backend auth users`
-- Attendee mobile: `9e6837b` - `Use backend token for attendee current user`
-- Organizer mobile: `0c917c4` - `Use backend token for organizer current user`
+- Attendee mobile: `bbeac36` - `Use backend token for attendee current user`
+- Organizer mobile: `2e88509` - `Use backend token for organizer current user`
+
+Note: these hashes replaced earlier M3 mobile hashes after history was rewritten to insert user pre-refactor work before Firebase Exit commits.
 
 ## Implemented Changes
 

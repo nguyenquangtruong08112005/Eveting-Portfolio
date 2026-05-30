@@ -110,12 +110,21 @@ Next phase: Phase M4 mobile refresh-token handling.
 
 ## Integrated Mobile Commits
 
-- Attendee `Mobile-2025-Eventing`: `b1ca179` - Add backend token fallback foundation.
-- Organizer `Mobile-2025-Eventing-Organizer`: `a197660` - Add backend token fallback foundation.
-- Attendee `Mobile-2025-Eventing`: `ef651d8` - Wire attendee auth to backend fallback.
-- Organizer `Mobile-2025-Eventing-Organizer`: `4a42cef` - Wire organizer auth to backend fallback.
-- Attendee `Mobile-2025-Eventing`: `9e6837b` - Use backend token for attendee current user.
-- Organizer `Mobile-2025-Eventing-Organizer`: `0c917c4` - Use backend token for organizer current user.
+- Attendee `Mobile-2025-Eventing`: `95f0f4f` - Save attendee pre-refactor work.
+- Attendee `Mobile-2025-Eventing`: `348744a` - Add backend token fallback foundation.
+- Attendee `Mobile-2025-Eventing`: `58cfa30` - Wire attendee auth to backend fallback.
+- Attendee `Mobile-2025-Eventing`: `bbeac36` - Use backend token for attendee current user.
+- Organizer `Mobile-2025-Eventing-Organizer`: `a05cfc2` - Save organizer pre-refactor work.
+- Organizer `Mobile-2025-Eventing-Organizer`: `4e6e2b3` - Add backend token fallback foundation.
+- Organizer `Mobile-2025-Eventing-Organizer`: `5ed4650` - Wire organizer auth to backend fallback.
+- Organizer `Mobile-2025-Eventing-Organizer`: `2e88509` - Use backend token for organizer current user.
+
+## Mobile Rewrite Notes
+
+- Attendee backup branch before rewrite: `codex/backup-attendee-staging-before-rewrite-20260530`.
+- Organizer backup branch before rewrite: `codex/backup-organizer-staging-before-rewrite-20260530`.
+- Mobile history was rewritten so user pre-refactor work is committed before Firebase Exit mobile commits.
+- Attendee `.kotlin/errors/errors-1764516985770.log` remains untracked and intentionally uncommitted.
 
 ## Current Plan Summary
 

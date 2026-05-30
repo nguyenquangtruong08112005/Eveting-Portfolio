@@ -16,8 +16,10 @@
 ## Integrated Commits
 
 - Server: `7427306` - `Support backend auth organizer role`
-- Attendee mobile: `b1ca179` - `Add backend token fallback foundation`
-- Organizer mobile: `a197660` - `Add backend token fallback foundation`
+- Attendee mobile: `348744a` - `Add backend token fallback foundation`
+- Organizer mobile: `4e6e2b3` - `Add backend token fallback foundation`
+
+Note: these hashes replaced earlier M1 mobile hashes after history was rewritten to insert user pre-refactor work before Firebase Exit commits.
 
 ## Implemented Changes
 

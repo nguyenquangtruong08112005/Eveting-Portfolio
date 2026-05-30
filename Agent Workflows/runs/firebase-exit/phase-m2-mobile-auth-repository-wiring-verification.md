@@ -9,8 +9,10 @@
 
 ## Integrated Commits
 
-- Attendee mobile: `ef651d8` - `Wire attendee auth to backend fallback`
-- Organizer mobile: `4a42cef` - `Wire organizer auth to backend fallback`
+- Attendee mobile: `58cfa30` - `Wire attendee auth to backend fallback`
+- Organizer mobile: `5ed4650` - `Wire organizer auth to backend fallback`
+
+Note: these hashes replaced earlier M2 mobile hashes after history was rewritten to insert user pre-refactor work before Firebase Exit commits.
 
 ## Implemented Changes
 
