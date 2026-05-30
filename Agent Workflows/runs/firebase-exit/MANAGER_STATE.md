@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, and F are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, and C6 admin Postgres coverage are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C6 global provider flip blockers.
+Next phase: Phase C7 global Postgres provider smoke.
 
 ## Source Of Truth
 
@@ -30,6 +30,7 @@ Next phase: Phase C6 global provider flip blockers.
 - Phase C4 Postgres transaction support verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-postgres-transaction-support-verification.md`
 - Phase C4 backend auth route verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-backend-auth-routes-verification.md`
 - Phase C5 storage media upload verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c5-storage-media-upload-verification.md`
+- Phase C6 admin Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c6-admin-postgres-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -90,6 +91,7 @@ Next phase: Phase C6 global provider flip blockers.
 - `6448868` - Add Postgres transaction support.
 - `ca2ad2e` - Wire backend auth routes.
 - `0f06354` - Wire media storage uploads.
+- `b80667e` - Add Postgres admin repository.
 
 ## Current Plan Summary
 
@@ -149,15 +151,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase C6 global provider flip blocker work:
+Assign a local agent Phase C7 global Postgres provider smoke:
 
 - server-only
 - no mobile repo edits
-- identify current blockers to `DATABASE_PROVIDER=postgres`
-- start with admin repository/provider coverage because consolidation marked it as the global flip blocker
-- keep Firebase admin behavior available unless env opts into Postgres
+- boot server with `DATABASE_PROVIDER=postgres` and local Postgres `DATABASE_URL`
+- run bounded provider/route smoke matrix without changing mobile contracts
+- identify any remaining provider selector missing Postgres support
 - do not remove Firebase packages/config
-- verify with syntax checks plus bounded admin smoke/compare where possible
+- verify with syntax checks, existing compare scripts, and a local boot smoke
 
 ## Latest Verification
 
@@ -194,3 +196,4 @@ Results:
 - Phase C4 transaction support verification passed: real Postgres transaction helper added, rollback/commit smoke passed, and tickets/events/promotions/analytics compare scripts still pass.
 - Phase C4 backend auth route verification passed: register/login/refresh/logout/logout-all smoke passed against local Postgres with `AUTH_PROVIDER=backend`; invalid backend bearer token returns 403; revoked refresh tokens return 401; smoke output redacts database password and access/refresh tokens.
 - Phase C5 storage media upload verification passed: existing JSON media route remains intact, multipart image/video upload path uses storage provider, local storage upload/read smoke passed, unsupported multipart mimetype returns 400, and full server JS syntax scan passed.
+- Phase C6 admin Postgres verification passed: events sync copied 23 events, admin pending compare matched 2 pending Firebase events with 0 missing and 0 different, and full server JS syntax scan passed.
