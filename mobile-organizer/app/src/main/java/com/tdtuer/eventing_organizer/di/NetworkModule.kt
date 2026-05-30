@@ -6,6 +6,8 @@ import com.tdtuer.eventing_organizer.constants.Constraints.BASE_URL
 import com.tdtuer.eventing_organizer.data.network.AddressApiService
 import com.tdtuer.eventing_organizer.data.network.AuthApiService
 import com.tdtuer.eventing_organizer.data.network.EventApiService
+import com.tdtuer.eventing_organizer.data.network.model.RefreshRequest
+import com.tdtuer.eventing_organizer.data.network.model.RefreshResponse
 import com.tdtuer.eventing_organizer.data.preferences.TokenStore
 import dagger.Module
 import dagger.Provides
@@ -14,7 +16,10 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -32,12 +37,14 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(auth: FirebaseAuth, tokenStore: TokenStore): OkHttpClient {
+    fun provideOkHttpClient(auth: FirebaseAuth, tokenStore: TokenStore, gson: Gson): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
         val authInterceptor = Interceptor { chain ->
+            val originalRequest = chain.request()
+
             val backendToken = try {
                 runBlocking { tokenStore.getAccessToken() }
             } catch (e: Exception) {
@@ -56,13 +63,86 @@ object NetworkModule {
                 }
             }
 
-            val requestBuilder = chain.request().newBuilder()
+            val requestBuilder = originalRequest.newBuilder()
 
             token?.let {
-                requestBuilder.addHeader("Authorization", "Bearer $it")
+                requestBuilder.header("Authorization", "Bearer $it")
             }
 
-            chain.proceed(requestBuilder.build())
+            val response = chain.proceed(requestBuilder.build())
+
+            val path = originalRequest.url.encodedPath
+            val isAuthRequest = path.endsWith("/auth/refresh") ||
+                    path.endsWith("/auth/login") ||
+                    path.endsWith("/auth/register")
+            val isRetry = originalRequest.tag(TokenRetryTag::class.java) != null
+
+            if (response.code == 401 && !isAuthRequest && !isRetry) {
+                val refreshToken = try {
+                    runBlocking { tokenStore.getRefreshToken() }
+                } catch (e: Exception) {
+                    null
+                }
+
+                if (!refreshToken.isNullOrBlank()) {
+                    val baseUrlWithSlash = if (BASE_URL.endsWith("/")) BASE_URL else "$BASE_URL/"
+                    val refreshUrl = "${baseUrlWithSlash}auth/refresh"
+                    val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                    val requestBodyJson = gson.toJson(RefreshRequest(refreshToken))
+                    val requestBody = requestBodyJson.toRequestBody(mediaType)
+
+                    val refreshRequest = Request.Builder()
+                        .url(refreshUrl)
+                        .post(requestBody)
+                        .build()
+
+                    val bareClient = OkHttpClient()
+                    var newAccessToken: String? = null
+                    var shouldClear = false
+
+                    try {
+                        bareClient.newCall(refreshRequest).execute().use { refreshResponse ->
+                            if (refreshResponse.isSuccessful) {
+                                val bodyString = refreshResponse.body?.string()
+                                if (bodyString != null) {
+                                    val refreshResponseObj = gson.fromJson(bodyString, RefreshResponse::class.java)
+                                    newAccessToken = refreshResponseObj.accessToken
+                                    val newRefreshToken = refreshResponseObj.refreshToken
+                                    val newTokenType = refreshResponseObj.tokenType ?: "Bearer"
+                                    runBlocking {
+                                        tokenStore.saveTokens(newAccessToken!!, newRefreshToken, newTokenType)
+                                    }
+                                }
+                            } else {
+                                if (refreshResponse.code in 400..499) {
+                                    shouldClear = true
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Network error or timeout, do not clear
+                    }
+
+                    if (newAccessToken != null) {
+                        response.close()
+                        val newRequest = originalRequest.newBuilder()
+                            .tag(TokenRetryTag::class.java, TokenRetryTag())
+                            .header("Authorization", "Bearer $newAccessToken")
+                            .build()
+                        return@Interceptor chain.proceed(newRequest)
+                    } else {
+                        if (shouldClear) {
+                            try {
+                                runBlocking { tokenStore.clearTokens() }
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                        }
+                    }
+                }
+            }
+
+            response
         }
 
         return OkHttpClient.Builder()
@@ -105,3 +185,5 @@ object NetworkModule {
             .create(AddressApiService::class.java)
     }
 }
+
+private class TokenRetryTag
