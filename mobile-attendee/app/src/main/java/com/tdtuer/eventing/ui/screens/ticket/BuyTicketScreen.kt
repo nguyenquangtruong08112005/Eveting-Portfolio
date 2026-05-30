@@ -2,7 +2,6 @@ package com.tdtuer.eventing.ui.screens.buyticket
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +13,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Discount
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,17 +26,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.tdtuer.eventing.domain.model.Promotion
 import com.tdtuer.eventing.helpers.formatVNCurrency
 import com.tdtuer.eventing.ui.navigation.Screen
+import com.tdtuer.eventing.ui.screens.ticket.BuyTicketNavigationEvent
+import com.tdtuer.eventing.ui.screens.ticket.BuyTicketViewModel
+import com.tdtuer.eventing.ui.screens.ticket.TicketType
 import com.tdtuer.eventing.ui.theme.AppTheme
-import com.tdtuer.eventing.ui.theme.EventingTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,7 +49,7 @@ fun BuyTicketScreen(viewModel: BuyTicketViewModel, navController: NavHostControl
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
             when (event) {
-                is BuyTicketViewModel.NavigationEvent.GoToPayment -> {
+                is BuyTicketNavigationEvent.GoToPayment -> {
                     navController.navigate(Screen.Payment.createRoute(event.ticketId))
                 }
             }

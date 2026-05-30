@@ -101,10 +101,14 @@ private fun VenueDto.toVenueDetailsMap(): Map<String, Any> {
 }
 
 fun WeatherDto.toDomainModel(): Weather {
+    // API có thể trả về null, dùng ?: "" để tránh crash khi gọi .replace
+    val safeDescription = this.description
+    val safeIconUrl = this.iconUrl
+
     return Weather(
         temperature = this.temperature.toInt(),
         condition = this.condition,
-        description = this.description.replaceFirstChar { it.uppercase() },
-        iconUrl = this.iconUrl.replace("http://", "https://")
+        description = safeDescription.replaceFirstChar { it.uppercase() },
+        iconUrl = safeIconUrl.replace("http://", "https://"),
     )
 }

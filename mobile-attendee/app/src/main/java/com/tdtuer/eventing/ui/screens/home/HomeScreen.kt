@@ -3,6 +3,7 @@ package com.tdtuer.eventing.ui.screens.home
 import TicketShape
 import android.Manifest
 import android.net.Uri
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.BorderStroke
@@ -50,7 +51,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -188,6 +191,7 @@ fun ExploreScreen(
     val forYouEvents by viewModel.forYouEvents
     val nearbyEvents by viewModel.nearbyEvents
 
+    val searchState by sharedViewModel.uiState.collectAsState()
     val locationPermissionsState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION
@@ -226,6 +230,7 @@ fun ExploreScreen(
 
     if (showFilterSheet) {
         FilterBottomSheet(
+            currentFilters = searchState.activeFilters,
             onDismiss = { showFilterSheet = false },
             onApplyFilters = { params ->
                 showFilterSheet = false
@@ -830,7 +835,7 @@ fun HomeHeader(
             keyboardActions = KeyboardActions(
                 onSearch = {
                     focusManager.clearFocus()
-                    sharedViewModel.executeSearchFromQuery()
+                    sharedViewModel.onHomeSearchTriggered()
                     bottomNavController.navigate(Screen.Events.route) {
                         popUpTo(bottomNavController.graph.startDestinationId) { saveState = true }
                         launchSingleTop = true
@@ -932,6 +937,7 @@ fun InviteBanner(onInviteClick: () -> Unit) {
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun AutoLoopVideoPlayer(
     videoUrl: String,
@@ -939,6 +945,8 @@ fun AutoLoopVideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    // Log URL để kiểm tra
+    Log.d("VideoPlayer", "Attempting to play video from URL: $videoUrl")
 
     // 1. Khởi tạo ExoPlayer
     val exoPlayer = remember {
@@ -961,9 +969,19 @@ fun AutoLoopVideoPlayer(
         }
     }
 
-    // 3. Dọn dẹp tài nguyên khi Composable bị hủy
-    DisposableEffect(Unit) {
+    // 3. Thêm listener để bắt lỗi và dọn dẹp tài nguyên
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                super.onPlayerError(error)
+                // Log lỗi ra đây để kiểm tra
+                Log.e("VideoPlayer", "ExoPlayer Error: ", error)
+            }
+        }
+        exoPlayer.addListener(listener)
+
         onDispose {
+            exoPlayer.removeListener(listener)
             exoPlayer.release()
         }
     }

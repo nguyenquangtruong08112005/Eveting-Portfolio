@@ -1,22 +1,16 @@
-// eventing.zip/ui/screens/mapview/MapViewModel.kt (ĐÃ HOÀN THIỆN SEARCH & FILTER)
 package com.tdtuer.eventing.ui.screens.mapview
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
 import android.location.Location
 import androidx.annotation.DrawableRes
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.mapbox.geojson.Point
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.usecase.events.FindNearbyEventsUseCase
+import com.tdtuer.eventing.domain.usecase.location.GetCurrentLocationUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -37,17 +31,14 @@ data class MapUiState(
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val findNearbyEventsUseCase: FindNearbyEventsUseCase,
-    private val fusedLocationClient: FusedLocationProviderClient,
-    @ApplicationContext private val context: Context
+    private val getCurrentLocationUseCase: GetCurrentLocationUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState = _uiState.asStateFlow()
 
-    // Cache danh sách gốc lấy từ API để lọc local mà không cần gọi lại server
     private var allRetrievedEvents: List<Event> = emptyList()
-
-    private var lastFetchedLocation: Location? = null
+    private var lastFetchedLocation: Point? = null
     private var lastFetchedRadius: Double = 0.0
 
     init {
@@ -55,71 +46,62 @@ class MapViewModel @Inject constructor(
         getInitialUserLocation()
     }
 
-    // --- 1. SETUP CATEGORIES ---
     private fun loadCategories() {
-        // Danh sách category khớp với yêu cầu của bạn
         val categories = listOf(
             CategoryItem("All", R.drawable.group_34057),
-            CategoryItem("Music", R.drawable.quaver), // Đảm bảo có icon tương ứng
+            CategoryItem("Music", R.drawable.quaver),
             CategoryItem("Sports", R.drawable.sports),
             CategoryItem("Art", R.drawable.paint_palette),
             CategoryItem("Food", R.drawable.noodles),
-            CategoryItem("Tech", R.drawable.vector), // Icon ví dụ
+            CategoryItem("Tech", R.drawable.vector),
             CategoryItem("Other", R.drawable.ellipsis)
         )
         _uiState.update { it.copy(categories = categories, selectedCategory = "All") }
     }
 
-    // --- 2. XỬ LÝ VỊ TRÍ ---
+    // [REF] Sử dụng UseCase
     private fun getInitialUserLocation() {
-        val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        viewModelScope.launch {
+            val result = getCurrentLocationUseCase(includeAddress = false)
 
-        if (!hasFine && !hasCoarse) {
-            _uiState.update { it.copy(isLocationLoading = false) }
-            fetchEventsSmart(Point.fromLngLat(106.7009, 10.7769), 20.0, force = true)
-            return
-        }
-
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
+            if (result is Result.Success) {
+                val location = result.data
                 val userPoint = Point.fromLngLat(location.longitude, location.latitude)
                 _uiState.update { it.copy(initialCameraPosition = userPoint, isLocationLoading = false) }
                 fetchEventsSmart(userPoint, 20.0, force = true)
             } else {
+                // Fallback nếu không lấy được vị trí
                 _uiState.update { it.copy(isLocationLoading = false) }
                 fetchEventsSmart(_uiState.value.initialCameraPosition, 20.0, force = true)
             }
-        }.addOnFailureListener {
-            _uiState.update { it.copy(isLocationLoading = false) }
         }
     }
 
-    // --- 3. GỌI API (SMART FETCH) ---
+    // [REF] Logic smart fetch giữ nguyên nhưng làm sạch code
     fun fetchEventsSmart(center: Point, rawRadiusKm: Double, force: Boolean = false) {
         val optimizedRadius = rawRadiusKm.coerceAtLeast(5.0).coerceAtMost(100.0)
 
         if (!force && lastFetchedLocation != null) {
-            val newLocation = Location("new").apply {
-                latitude = center.latitude()
-                longitude = center.longitude()
-            }
-            val distanceMeters = newLocation.distanceTo(lastFetchedLocation!!)
+            // Tính khoảng cách đơn giản (gần đúng) để check cache
+            val dist = distanceBetween(lastFetchedLocation!!, center)
             val radiusDiff = Math.abs(optimizedRadius - lastFetchedRadius)
 
-            // Nếu di chuyển ít (<2km) và bán kính không đổi nhiều -> Không gọi API
-            if (distanceMeters < 2000 && radiusDiff < (lastFetchedRadius * 0.2)) {
+            if (dist < 2000 && radiusDiff < (lastFetchedRadius * 0.2)) {
                 return
             }
         }
 
-        lastFetchedLocation = Location("last").apply {
-            latitude = center.latitude()
-            longitude = center.longitude()
-        }
+        lastFetchedLocation = center
         lastFetchedRadius = optimizedRadius
 
         fetchEventsInternal(center, optimizedRadius)
+    }
+
+    // Helper tính khoảng cách (mét) giữa 2 point mapbox
+    private fun distanceBetween(p1: Point, p2: Point): Float {
+        val results = FloatArray(1)
+        Location.distanceBetween(p1.latitude(), p1.longitude(), p2.latitude(), p2.longitude(), results)
+        return results[0]
     }
 
     private fun fetchEventsInternal(center: Point, radiusKm: Double) {
@@ -130,13 +112,11 @@ class MapViewModel @Inject constructor(
                 lat = center.latitude().toString(),
                 lon = center.longitude().toString(),
                 radiusInKm = radiusKm,
-                limit = 100, // Lấy nhiều hơn để lọc client
+                limit = 100,
                 page = 1
             ).collect { result ->
                 if (result is Result.Success) {
-                    // Lưu vào cache
                     allRetrievedEvents = result.data
-                    // Áp dụng bộ lọc ngay lập tức
                     applyFilters()
                 } else {
                     _uiState.update { it.copy(nearbyEventsResult = result) }
@@ -145,48 +125,26 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    // --- 4. LOGIC LỌC & TÌM KIẾM (CORE) ---
     private fun applyFilters() {
         val query = _uiState.value.searchQuery.trim()
         val category = _uiState.value.selectedCategory
 
         val filteredList = allRetrievedEvents.filter { event ->
-            // 1. Lọc theo Category
-            val matchesCategory = if (category == "All") {
-                true
-            } else {
-                // Giả sử event.category là List<String> ["Music", "Live"]
-                // Kiểm tra xem có chứa category đang chọn không (không phân biệt hoa thường)
-                event.category.any { it.equals(category, ignoreCase = true) }
-            }
-
-            // 2. Lọc theo Search Query (Tên sự kiện hoặc Địa điểm)
-            val matchesSearch = if (query.isEmpty()) {
-                true
-            } else {
-                event.name.contains(query, ignoreCase = true) ||
-                        event.location.contains(query, ignoreCase = true) ||
-                        event.venueName.contains(query, ignoreCase = true)
-            }
-
+            val matchesCategory = if (category == "All") true else event.category.any { it.equals(category, ignoreCase = true) }
+            val matchesSearch = if (query.isEmpty()) true else (event.name.contains(query, ignoreCase = true) || event.venueName.contains(query, ignoreCase = true))
             matchesCategory && matchesSearch
         }
 
-        // Cập nhật UI State với danh sách ĐÃ LỌC
-        _uiState.update {
-            it.copy(nearbyEventsResult = Result.Success(filteredList))
-        }
+        _uiState.update { it.copy(nearbyEventsResult = Result.Success(filteredList)) }
     }
 
-    // Sự kiện từ UI: Nhập text tìm kiếm
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        applyFilters() // Lọc lại ngay khi nhập
+        applyFilters()
     }
 
-    // Sự kiện từ UI: Chọn Category Chip
     fun onCategorySelected(categoryName: String) {
         _uiState.update { it.copy(selectedCategory = categoryName) }
-        applyFilters() // Lọc lại ngay khi chọn
+        applyFilters()
     }
 }

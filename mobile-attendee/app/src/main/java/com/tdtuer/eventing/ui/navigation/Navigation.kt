@@ -37,7 +37,7 @@ import com.tdtuer.eventing.ui.screens.splash.SplashScreen
 import com.tdtuer.eventing.ui.screens.splash.SplashViewModel
 import androidx.core.net.toUri
 import com.tdtuer.eventing.ui.screens.buyticket.BuyTicketScreen
-import com.tdtuer.eventing.ui.screens.buyticket.BuyTicketViewModel
+import com.tdtuer.eventing.ui.screens.ticket.BuyTicketViewModel
 import com.tdtuer.eventing.ui.screens.editprofile.EditProfileScreen
 import com.tdtuer.eventing.ui.screens.editprofile.EditProfileViewModel
 import com.tdtuer.eventing.ui.screens.events.EventDetailsScreen

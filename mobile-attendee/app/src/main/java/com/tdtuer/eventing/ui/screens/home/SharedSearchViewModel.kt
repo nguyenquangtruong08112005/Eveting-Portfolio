@@ -1,4 +1,3 @@
-// eventing.zip/ui/screens/home/SharedSearchViewModel.kt (TẠO FILE MỚI)
 package com.tdtuer.eventing.ui.screens.home
 
 import androidx.lifecycle.ViewModel
@@ -37,15 +36,25 @@ class SharedSearchViewModel @Inject constructor(
     }
 
     /**
-     * Được gọi khi người dùng nhấn "Enter" (Search) trên bàn phím.
-     * Nó sẽ lấy `searchQuery` hiện tại và coi đó là bộ lọc `query`.
+     * [REFACTORED] Được gọi khi người dùng nhấn "Enter" (Search) trên bàn phím ở màn hình HOME.
+     * Logic mới: Khi search từ Home, ta coi đây là một tìm kiếm mới -> Reset các filter cũ (category, price...)
+     * để tránh việc user không tìm thấy gì do dính filter cũ.
      */
-    fun executeSearchFromQuery() {
-        val currentQuery = _uiState.value.searchQuery
-        val newFilters = _uiState.value.activeFilters.copy(
+    fun onHomeSearchTriggered() {
+        val currentQuery = _uiState.value.searchQuery.trim()
+
+        // Tạo bộ lọc mới tinh, chỉ giữ lại query
+        val newFilters = FilterParams(
             query = currentQuery.ifBlank { null }
         )
-        _uiState.update { it.copy(activeFilters = newFilters) }
+
+        _uiState.update {
+            it.copy(
+                activeFilters = newFilters,
+                // Giữ nguyên searchQuery trên UI
+                searchQuery = currentQuery
+            )
+        }
         fetchFilteredEvents()
     }
 
@@ -53,12 +62,13 @@ class SharedSearchViewModel @Inject constructor(
      * Được gọi khi người dùng nhấn "Apply" từ Filter Bottom Sheet.
      */
     fun applyFilters(newFilters: FilterParams) {
-        // Ghi đè bộ lọc, nhưng giữ lại `searchQuery` nếu nó được đặt từ Bottom Sheet
-        val query = newFilters.query ?: _uiState.value.searchQuery
+        // Cập nhật cả query trong state để đồng bộ với filter vừa apply
+        val updatedQuery = newFilters.query ?: ""
+
         _uiState.update {
             it.copy(
-                searchQuery = query ?: "",
-                activeFilters = newFilters.copy(query = query)
+                searchQuery = updatedQuery,
+                activeFilters = newFilters
             )
         }
         fetchFilteredEvents()
@@ -68,11 +78,13 @@ class SharedSearchViewModel @Inject constructor(
      * Xóa tất cả tìm kiếm và bộ lọc, quay lại trạng thái ban đầu.
      */
     fun clearSearchAndFilters() {
-        _uiState.value = GlobalSearchState(
-            // Giữ lại kết quả cũ để tránh màn hình nhấp nháy
-            searchResults = _uiState.value.searchResults
-        )
-        // Bạn có thể fetch lại "all events" ở đây nếu muốn
+        _uiState.update {
+            it.copy(
+                searchQuery = "",
+                activeFilters = FilterParams(),
+                searchResults = Result.Success(emptyList())
+            )
+        }
     }
 
     /**

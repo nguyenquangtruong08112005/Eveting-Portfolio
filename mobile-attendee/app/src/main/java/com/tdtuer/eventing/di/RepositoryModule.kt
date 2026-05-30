@@ -4,6 +4,8 @@ import com.tdtuer.eventing.data.auth.AuthRepository
 import com.tdtuer.eventing.data.auth.AuthRepositoryImpl
 import com.tdtuer.eventing.data.repository.EventRepository
 import com.tdtuer.eventing.data.repository.EventRepositoryImpl
+import com.tdtuer.eventing.data.repository.LocationRepository
+import com.tdtuer.eventing.data.repository.LocationRepositoryImpl
 import com.tdtuer.eventing.data.repository.NotificationRepository
 import com.tdtuer.eventing.data.repository.NotificationRepositoryImpl
 import com.tdtuer.eventing.data.repository.TicketRepository
@@ -53,4 +55,10 @@ abstract class RepositoryModule {
     abstract fun bindNotificationRepository(
         notificationRepositoryImpl: NotificationRepositoryImpl
     ): NotificationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationRepository(
+        locationRepositoryImpl: LocationRepositoryImpl
+    ): LocationRepository
 }

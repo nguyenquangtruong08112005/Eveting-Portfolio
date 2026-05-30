@@ -2,7 +2,7 @@ package com.tdtuer.eventing.domain.usecase.tickets
 
 import com.tdtuer.eventing.data.mapper.toMyTicketUiModel
 import com.tdtuer.eventing.data.repository.TicketRepository
-import com.tdtuer.eventing.domain.model.MyTicketUiModel
+import com.tdtuer.eventing.ui.screens.ticket.MyTicketUiModel
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success

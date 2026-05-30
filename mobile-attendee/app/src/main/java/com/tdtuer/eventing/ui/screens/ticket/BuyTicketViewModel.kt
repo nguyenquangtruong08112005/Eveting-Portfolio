@@ -1,12 +1,13 @@
-package com.tdtuer.eventing.ui.screens.buyticket
+package com.tdtuer.eventing.ui.screens.ticket
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tdtuer.eventing.data.repository.EventRepository
 import com.tdtuer.eventing.domain.model.Promotion
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Ticket
+import com.tdtuer.eventing.domain.usecase.events.CheckPromotionUseCase
+import com.tdtuer.eventing.domain.usecase.events.GetPromotionsUseCase
 import com.tdtuer.eventing.domain.usecase.payment.BookTicketUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -17,53 +18,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class TicketType(val name: String, val price: Double)
-
-data class BuyTicketUiState(
-    val ticketTypes: List<TicketType> = emptyList(),
-    val selectedTicketType: TicketType = TicketType("", 0.0),
-    val quantity: Int = 1,
-
-    // --- Promotion State ---
-    val voucherCode: String = "",
-    val isCheckingVoucher: Boolean = false,
-    val appliedVoucherCode: String? = null, // Mã đã áp dụng thành công
-    val discountAmount: Double = 0.0,       // Số tiền được giảm
-    val voucherMessage: String? = null,     // Thông báo kết quả
-
-    // --- Danh sách voucher khả dụng ---
-    val availablePromotions: List<Promotion> = emptyList(),
-    val isShowPromoSheet: Boolean = false,
-
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null
-) {
-    val ticketPrice: Double
-        get() = selectedTicketType.price
-
-    val subTotal: Double
-        get() = selectedTicketType.price * quantity
-
-    val finalTotalPrice: Double
-        get() = (subTotal - discountAmount).coerceAtLeast(0.0)
-}
+// Import UI State từ file mới
 
 @HiltViewModel
 class BuyTicketViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val bookTicketUseCase: BookTicketUseCase,
-    private val eventRepository: EventRepository
+    // Inject UseCases mới
+    private val getPromotionsUseCase: GetPromotionsUseCase,
+    private val checkPromotionUseCase: CheckPromotionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuyTicketUiState())
     val uiState = _uiState.asStateFlow()
 
-    private val _navigationEvent = Channel<NavigationEvent>()
+    private val _navigationEvent = Channel<BuyTicketNavigationEvent>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
-
-    sealed class NavigationEvent {
-        data class GoToPayment(val ticketId: String) : NavigationEvent()
-    }
 
     private val eventId: String = savedStateHandle.get<String>("eventId") ?: ""
 
@@ -74,7 +44,8 @@ class BuyTicketViewModel @Inject constructor(
 
     private fun loadAvailablePromotions() {
         viewModelScope.launch {
-            eventRepository.getPublicPromotions().collect { result ->
+            // Sử dụng UseCase thay vì Repository trực tiếp
+            getPromotionsUseCase().collect { result ->
                 if (result is Result.Success) {
                     val validPromos = result.data.filter {
                         it.eventId == null || it.eventId == eventId
@@ -124,7 +95,8 @@ class BuyTicketViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isCheckingVoucher = true, voucherMessage = null) }
 
-            val result = eventRepository.checkPromotion(code, eventId, quantity)
+            // Sử dụng UseCase
+            val result = checkPromotionUseCase(code, eventId, quantity)
 
             if (result is Result.Success) {
                 val promo = result.data
@@ -179,12 +151,8 @@ class BuyTicketViewModel @Inject constructor(
         }
     }
 
-    // --- CẬP NHẬT LOGIC TĂNG/GIẢM SỐ LƯỢNG ---
-
     fun onIncreaseQuantity() {
         _uiState.update { it.copy(quantity = it.quantity + 1) }
-
-        // Nếu đang có voucher, gọi lại để tính toán discount mới
         if (_uiState.value.appliedVoucherCode != null) {
             onApplyVoucher()
         }
@@ -195,15 +163,10 @@ class BuyTicketViewModel @Inject constructor(
             val newQuantity = (it.quantity - 1).coerceAtLeast(1)
             it.copy(quantity = newQuantity)
         }
-
-        // Nếu đang có voucher, gọi lại để tính toán discount mới
         if (_uiState.value.appliedVoucherCode != null) {
             onApplyVoucher()
         }
     }
-
-    fun onBackClick() { }
-    fun onMoreOptionsClick() { }
 
     fun onContinueClick() {
         val currentState = uiState.value
@@ -220,7 +183,7 @@ class BuyTicketViewModel @Inject constructor(
             when (result) {
                 is Result.Success<Ticket> -> {
                     val ticketId = result.data.id
-                    _navigationEvent.send(NavigationEvent.GoToPayment(ticketId))
+                    _navigationEvent.send(BuyTicketNavigationEvent.GoToPayment(ticketId))
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 is Result.Failure -> {

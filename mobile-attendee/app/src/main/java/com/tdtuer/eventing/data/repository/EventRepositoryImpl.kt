@@ -2,6 +2,7 @@ package com.tdtuer.eventing.data.repository
 
 import android.util.Log
 import com.tdtuer.eventing.data.local.dao.EventDao
+import com.tdtuer.eventing.data.local.dao.WeatherDao
 import com.tdtuer.eventing.data.local.entity.toDomain
 import com.tdtuer.eventing.data.local.entity.toEntity
 import com.tdtuer.eventing.data.mapper.toDomainModel
@@ -28,11 +29,13 @@ import com.tdtuer.eventing.ui.screens.postevent.MediaItem
 import com.tdtuer.eventing.ui.screens.postevent.ReviewItem
 import kotlinx.coroutines.flow.first
 import kotlin.math.*
+import com.tdtuer.eventing.data.local.entity.toDomain as weatherEntityToDomain
 
 @Singleton
 class EventRepositoryImpl @Inject constructor(
     private val apiService: EventApiService,
     private val eventDao: EventDao, // Inject DAO
+    private val weatherDao: WeatherDao, // [NEW]
     private val userPreferencesRepository: UserPreferencesRepository // Inject Prefs để check time
 ) : EventRepository {
 
@@ -98,9 +101,8 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    // --- 2. GET EVENT DETAIL ---
     override fun getEventById(eventId: String): Flow<Result<Event>> = flow {
-        // 1. Emit Local Data trước
+        // 1. Emit Local Data trước (Fast UI)
         var localEvent: Event? = null
         try {
             val entity = eventDao.getAllEvents().find { it.id == eventId }
@@ -112,24 +114,31 @@ class EventRepositoryImpl @Inject constructor(
                 emit(Result.Loading)
             }
         } catch (e: Exception) {
+            // Ignore local error
         }
 
-        // 2. Fetch Remote
+        // 2. Fetch Remote & Update Cache
         try {
             val response = apiService.getEventById(eventId)
             if (response.isSuccessful && response.body() != null) {
                 val domainEvent = response.body()!!.toDomainModel()
 
-                // TODO: Nếu muốn cache chi tiết, cần update lại vào DB tại đây.
-                // Hiện tại ta chỉ hiển thị.
+                // [FIX] Lưu ngược lại vào DB
+                try {
+                    eventDao.insertAll(listOf(domainEvent.toEntity()))
+                } catch (e: Exception) {
+                    Log.e("EventRepo", "Failed to cache event detail", e)
+                }
 
                 emit(Result.success(domainEvent))
             } else {
+                // Chỉ báo lỗi nếu không có dữ liệu local để hiển thị
                 if (localEvent == null) {
                     emit(Result.failure(Exception("Event not found: ${response.code()}")))
                 }
             }
         } catch (e: Exception) {
+            // Mất mạng và không có cache -> Lỗi
             if (localEvent == null) {
                 emit(Result.failure(e))
             }
@@ -373,18 +382,95 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * Lấy thông tin thời tiết cho sự kiện.
+     * Logic: Offline-First (Local -> API -> Save Local -> Emit)
+     * Đã thêm Log để debug.
+     * @param eventId ID của sự kiện.
+     */
     override fun getEventWeather(eventId: String): Flow<Result<Weather>> = flow {
+        Log.d("WeatherDebug", ">>> Bắt đầu getEventWeather cho eventId: $eventId")
+
+        // 1. Kiểm tra Cache Local trước
+        var localWeather: Weather? = null
+        var isCacheValid = false
+
+        try {
+            val entity = weatherDao.getWeatherByEventId(eventId)
+            if (entity != null) {
+                // Kiểm tra TTL (Time To Live) - ví dụ: cache 1 giờ
+                val currentTime = System.currentTimeMillis()
+                val oneHourInMillis = 60 * 60 * 1000
+                val age = currentTime - entity.lastUpdated
+
+                Log.d("WeatherDebug", "Tìm thấy cache. Tuổi: ${age}ms / TTL: ${oneHourInMillis}ms")
+
+                if (age < oneHourInMillis) {
+                    localWeather = entity.weatherEntityToDomain() // Sử dụng import alias
+                    isCacheValid = true
+                    Log.d("WeatherDebug", "✅ Cache còn hạn. Emit dữ liệu local.")
+                    emit(Result.success(localWeather))
+                } else {
+                    Log.d("WeatherDebug", "⚠️ Cache hết hạn. Sẽ gọi API.")
+                }
+            } else {
+                Log.d("WeatherDebug", "❌ Không tìm thấy cache local.")
+            }
+        } catch (e: Exception) {
+            Log.e("WeatherDebug", "Lỗi khi đọc cache thời tiết", e)
+        }
+
+        // --- QUAN TRỌNG ---
+        // Nếu bạn muốn DỪNG gọi API khi cache còn hạn, hãy bỏ comment dòng dưới đây:
+         if (isCacheValid) {
+             Log.d("WeatherDebug", "Cache hợp lệ, DỪNG gọi API (Return).")
+             return@flow
+         }
+        // ------------------
+
+        // 2. Fetch từ API để cập nhật dữ liệu mới nhất
+        Log.d("WeatherDebug", "📡 Đang gọi API lấy thời tiết...")
         try {
             val response = apiService.getWeather(eventId)
             if (response.isSuccessful && response.body() != null) {
-                val weatherData = response.body()!!.toDomainModel()
-                emit(Result.success(weatherData))
+                Log.d("WeatherDebug", "✅ API thành công. Body: ${response.body()}")
+                val weatherDomain = response.body()!!.toDomainModel()
+
+                // 3. Lưu vào Local Cache
+                try {
+                    weatherDao.saveWeather(weatherDomain.toEntity(eventId))
+                    Log.d("WeatherDebug", "💾 Đã lưu vào DB thành công.")
+                } catch (e: Exception) {
+                    Log.e("WeatherDebug", "Lỗi khi lưu cache thời tiết", e)
+                }
+
+                // 4. Emit dữ liệu mới
+                emit(Result.success(weatherDomain))
             } else {
-                emit(Result.failure(Exception("Weather info not available: ${response.code()}")))
+                Log.e("WeatherDebug", "❌ API Lỗi: ${response.code()} - ${response.message()}")
+                // Nếu API lỗi mà chưa có local data (hoặc cache hết hạn mà chưa emit) thì báo lỗi
+                if (localWeather == null) {
+                    emit(Result.failure(Exception("Weather info not available: ${response.code()}")))
+                }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            emit(Result.failure(e))
+            Log.e("WeatherDebug", "❌ Exception khi gọi API", e)
+            // Mất mạng
+            if (localWeather == null) {
+                // Nếu chưa có local data thì báo lỗi
+                emit(Result.failure(e))
+            } else {
+                // Nếu đã có local data (dù hết hạn), có thể vẫn muốn hiển thị nó (fallback)
+                // Ở bước 1 đã emit rồi nếu chưa hết hạn.
+                // Nếu muốn luôn hiển thị cache cũ khi mất mạng:
+                val entity = weatherDao.getWeatherByEventId(eventId)
+                if (entity != null) {
+                    Log.d("WeatherDebug", "⚠️ Mất mạng, emit cache cũ (kể cả hết hạn).")
+                    emit(Result.success(entity.weatherEntityToDomain()))
+                } else {
+                    emit(Result.failure(e))
+                }
+            }
         }
     }
 

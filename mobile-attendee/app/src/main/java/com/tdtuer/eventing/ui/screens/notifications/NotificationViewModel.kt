@@ -2,9 +2,10 @@ package com.tdtuer.eventing.ui.screens.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tdtuer.eventing.data.repository.NotificationRepository
 import com.tdtuer.eventing.domain.model.Notification
 import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.usecase.notifications.GetNotificationsUseCase
+import com.tdtuer.eventing.domain.usecase.notifications.MarkNotificationReadUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
-    private val notificationRepository: NotificationRepository
+    // Inject UseCase thay vì Repository
+    private val getNotificationsUseCase: GetNotificationsUseCase,
+    private val markNotificationReadUseCase: MarkNotificationReadUseCase
 ) : ViewModel() {
 
     private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
@@ -28,7 +31,8 @@ class NotificationViewModel @Inject constructor(
 
     private fun loadNotifications() {
         viewModelScope.launch {
-            notificationRepository.getNotifications().collect { result ->
+            // Sử dụng UseCase
+            getNotificationsUseCase().collect { result ->
                 when (result) {
                     is Result.Loading -> _isLoading.value = true
                     is Result.Success -> {
@@ -38,7 +42,7 @@ class NotificationViewModel @Inject constructor(
 
                     is Result.Failure -> {
                         _isLoading.value = false
-                        // Handle error
+                        // Handle error (ví dụ: log lỗi hoặc show toast qua state)
                     }
                 }
             }
@@ -46,31 +50,17 @@ class NotificationViewModel @Inject constructor(
     }
 
     fun markAsRead(notification: Notification) {
-        viewModelScope.launch {
-            notificationRepository.markAsRead(notification.id)
-            // Có thể reload lại list hoặc update local state
-        }
-    }
+        // Chỉ gọi API nếu chưa đọc để tiết kiệm tài nguyên
+        if (notification.isRead) return
 
-    fun onBackPress() {
-        // TODO: Implement back navigation logic
-        println("Back pressed on Notification Screen")
+        viewModelScope.launch {
+            // Sử dụng UseCase
+            markNotificationReadUseCase(notification.id)
+            // Repository đã handle update local cache, flow getNotificationsUseCase sẽ tự emit data mới
+        }
     }
 
     fun onMoreOptionsClick() {
         // TODO: Implement more options logic
-        println("More options clicked on Notification Screen")
-    }
-
-    fun onAcceptInvite(notificationId: Int) {
-        // TODO: Implement accept invite logic
-        println("Accepted invite for notification ID: $notificationId")
-        // Example: Update notification state or call an API, then refresh _notifications.value
-    }
-
-    fun onRejectInvite(notificationId: Int) {
-        // TODO: Implement reject invite logic
-        println("Rejected invite for notification ID: $notificationId")
-        // Example: Update notification state or call an API, then refresh _notifications.value
     }
 }

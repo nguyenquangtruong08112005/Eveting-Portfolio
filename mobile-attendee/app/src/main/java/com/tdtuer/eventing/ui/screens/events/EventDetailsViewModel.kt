@@ -3,12 +3,12 @@ package com.tdtuer.eventing.ui.screens.events
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tdtuer.eventing.data.repository.EventRepository
 import com.tdtuer.eventing.domain.model.Event
 import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.domain.usecase.events.GetEventByIdUseCase
 import com.tdtuer.eventing.domain.usecase.events.GetEventWeatherUseCase
+import com.tdtuer.eventing.domain.usecase.events.GetRecommendationsUseCase // Import UseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,12 +20,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// 1. Cập nhật UI State để chứa danh sách gợi ý
 data class EventDetailsUiState(
     val isLoading: Boolean = true,
     val event: Event? = null,
     val weather: Weather? = null,
-    val recommendations: List<Event> = emptyList(), // <-- Thêm trường này
+    val recommendations: List<Event> = emptyList(),
     val error: String? = null
 )
 
@@ -33,7 +32,7 @@ data class EventDetailsUiState(
 class EventDetailsViewModel @Inject constructor(
     private val getEventByIdUseCase: GetEventByIdUseCase,
     private val getEventWeatherUseCase: GetEventWeatherUseCase,
-    private val eventRepository: EventRepository, // <-- Inject Repository để lấy recommendations
+    private val getRecommendationsUseCase: GetRecommendationsUseCase, // Inject UseCase thay Repository
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -53,7 +52,7 @@ class EventDetailsViewModel @Inject constructor(
 
         if (eventId != null) {
             loadEventDetails(eventId)
-            loadRecommendations(eventId) // <-- Gọi hàm load gợi ý
+            loadRecommendations(eventId)
         } else {
             _uiState.value = EventDetailsUiState(
                 isLoading = false,
@@ -62,20 +61,14 @@ class EventDetailsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * @param eventId: ID của sự kiện hiện tại (để có thể lọc bỏ khỏi danh sách gợi ý nếu cần)
-     * @return: Unit (Cập nhật UI State)
-     */
     private fun loadRecommendations(eventId: String) {
         viewModelScope.launch {
-            // Lấy 6 sự kiện gợi ý
-            eventRepository.getRecommendations(limit = 6).collect { result ->
+            // Sử dụng UseCase
+            getRecommendationsUseCase(limit = 6).collect { result ->
                 if (result is Result.Success) {
-                    // Lọc bỏ sự kiện hiện tại khỏi danh sách gợi ý (nếu API trả về trùng)
                     val filteredList = result.data.filter { it.id != eventId }.take(6)
                     _uiState.update { it.copy(recommendations = filteredList) }
                 }
-                // Không cần xử lý lỗi nghiêm ngặt cho phần gợi ý, có thể để trống nếu lỗi
             }
         }
     }
@@ -120,27 +113,13 @@ class EventDetailsViewModel @Inject constructor(
         }
     }
 
-    // --- Actions ---
-
-    fun onBackNavigationClick() {
-        // Handled by UI
-    }
-
-    fun onBookmarkClick() {
-        // TODO: Implement bookmark toggle logic
-    }
-
-    fun onInviteClick() {
-        // TODO: Implement invite logic
-    }
-
-    fun onFollowOrganizerClick() {
-        // TODO: Implement follow/unfollow organizer logic
-    }
+    fun onBackNavigationClick() { }
+    fun onBookmarkClick() { }
+    fun onInviteClick() { }
+    fun onFollowOrganizerClick() { }
 
     fun onBuyTicketClick() {
         val event = _uiState.value.event ?: return
-        val eventIdToSend = currentEventId ?: return
 
         val ticketDataString = event.ticketTypes.map { (name, details) ->
             val price = (details["price"] as? Number)?.toDouble() ?: 0.0

@@ -73,6 +73,7 @@ fun AllEventsScreen(
 
     if (showFilterSheet) {
         FilterBottomSheet(
+            currentFilters = searchState.activeFilters,
             onDismiss = { showFilterSheet = false },
             onApplyFilters = { params ->
                 showFilterSheet = false

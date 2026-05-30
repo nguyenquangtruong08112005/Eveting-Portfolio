@@ -23,6 +23,7 @@ class MyApp: Application(), Configuration.Provider {
         FirebaseApp.initializeApp(this) // tạo firebase app
 
         ZaloPaySDK.init(554, Environment.SANDBOX)
+        setupWeatherWorker()
     }
 
     private fun setupWeatherWorker() {

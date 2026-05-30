@@ -1,6 +1,6 @@
-package com.tdtuer.eventing.domain.model
+package com.tdtuer.eventing.ui.screens.ticket
 
-import androidx.compose.ui.graphics.Color
+import com.tdtuer.eventing.domain.model.Weather
 
 data class MyTicketUiModel(
     val ticketId: String,

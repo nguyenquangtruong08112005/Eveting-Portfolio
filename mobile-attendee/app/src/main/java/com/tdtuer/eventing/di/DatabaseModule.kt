@@ -7,6 +7,7 @@ import com.tdtuer.eventing.data.local.dao.EventDao
 import com.tdtuer.eventing.data.local.dao.NotificationDao
 import com.tdtuer.eventing.data.local.dao.TicketDao
 import com.tdtuer.eventing.data.local.dao.UserDao
+import com.tdtuer.eventing.data.local.dao.WeatherDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -48,4 +49,7 @@ object DatabaseModule {
     fun provideUserDao(database: AppDatabase): UserDao {
         return database.userDao()
     }
+
+    @Provides
+    fun provideWeatherDao(database: AppDatabase): WeatherDao = database.weatherDao()
 }

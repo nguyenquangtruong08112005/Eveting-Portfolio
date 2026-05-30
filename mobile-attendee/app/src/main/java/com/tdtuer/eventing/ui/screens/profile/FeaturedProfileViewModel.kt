@@ -4,15 +4,17 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
-import com.tdtuer.eventing.data.repository.EventRepository
-import com.tdtuer.eventing.data.repository.UserRepository
 import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.usecase.user.FollowProfileUseCase
+import com.tdtuer.eventing.domain.usecase.user.GetFeaturedProfileByIdUseCase
+import com.tdtuer.eventing.domain.usecase.user.GetUserProfileUseCase
+import com.tdtuer.eventing.domain.usecase.user.UnfollowProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class FeaturedProfileUiState(
@@ -26,8 +28,10 @@ data class FeaturedProfileUiState(
 @HiltViewModel
 class FeaturedProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val eventRepository: EventRepository,
-    private val userRepository: UserRepository
+    private val getFeaturedProfileByIdUseCase: GetFeaturedProfileByIdUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase, // Đã có sẵn
+    private val followProfileUseCase: FollowProfileUseCase,
+    private val unfollowProfileUseCase: UnfollowProfileUseCase
 ) : ViewModel() {
 
     private val profileId: String = savedStateHandle["profileId"] ?: ""
@@ -48,9 +52,9 @@ class FeaturedProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Gọi song song 2 API: Lấy chi tiết Profile & Lấy User để check follow
+            // Gọi song song 2 UseCase
             val profileJob = launch {
-                eventRepository.getFeaturedProfileById(profileId).collect { result ->
+                getFeaturedProfileByIdUseCase(profileId).collect { result ->
                     if (result is Result.Success) {
                         _uiState.update { it.copy(profile = result.data) }
                     } else if (result is Result.Failure) {
@@ -60,10 +64,9 @@ class FeaturedProfileViewModel @Inject constructor(
             }
 
             val userJob = launch {
-                userRepository.getUserProfile().collect { result ->
+                getUserProfileUseCase().collect { result ->
                     if (result is Result.Success) {
                         val user = result.data
-                        // Kiểm tra xem profileId này có trong danh sách user đã follow không
                         val isFollowing = user.followedProfileIds.contains(profileId)
                         _uiState.update { it.copy(isFollowing = isFollowing) }
                     }
@@ -77,7 +80,7 @@ class FeaturedProfileViewModel @Inject constructor(
 
     fun toggleFollow() {
         val currentState = _uiState.value
-        val currentProfile = currentState.profile ?: return // Nếu chưa load xong profile thì return
+        val currentProfile = currentState.profile ?: return
 
         if (currentState.isFollowProcessing) return
 
@@ -86,31 +89,24 @@ class FeaturedProfileViewModel @Inject constructor(
 
             val isCurrentlyFollowing = currentState.isFollowing
 
-            // Gọi API Follow hoặc Unfollow
+            // Sử dụng Follow/Unfollow UseCase
             val result = if (isCurrentlyFollowing) {
-                userRepository.unfollowProfile(profileId)
+                unfollowProfileUseCase(profileId)
             } else {
-                userRepository.followProfile(profileId)
+                followProfileUseCase(profileId)
             }
 
             if (result is Result.Success) {
-                // --- LOGIC CẬP NHẬT UI LOCAL ---
-
-                // 1. Tính toán số lượng mới
-                // Nếu đang follow -> Unfollow -> Giảm 1
-                // Nếu chưa follow -> Follow -> Tăng 1
                 val change = if (isCurrentlyFollowing) -1 else 1
                 val currentCount = currentProfile.followerCount ?: 0
-                val newCount = (currentCount + change).coerceAtLeast(0) // Đảm bảo không âm
+                val newCount = (currentCount + change).coerceAtLeast(0)
 
-                // 2. Cập nhật object Profile mới
                 val updatedProfile = currentProfile.copy(followerCount = newCount)
 
-                // 3. Cập nhật State
                 _uiState.update {
                     it.copy(
-                        isFollowing = !isCurrentlyFollowing, // Đảo ngược trạng thái nút bấm
-                        profile = updatedProfile,            // Cập nhật số lượng hiển thị
+                        isFollowing = !isCurrentlyFollowing,
+                        profile = updatedProfile,
                         isFollowProcessing = false
                     )
                 }

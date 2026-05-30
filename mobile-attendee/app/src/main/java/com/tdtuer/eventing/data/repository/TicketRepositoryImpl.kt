@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.content.res.ResourcesCompat
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.data.local.dao.TicketDao // Import DAO
+import com.tdtuer.eventing.data.local.entity.toDetailedTicket
 import com.tdtuer.eventing.data.local.entity.toEntity // Import Mapper
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
@@ -53,7 +54,6 @@ class TicketRepositoryImpl @Inject constructor(
     private val ticketDao: TicketDao // Inject DAO
 ) : TicketRepository {
 
-    // ... (Các hàm bookTicket, createZaloPayOrder, getTicketDetails, saveTicketImages GIỮ NGUYÊN VÌ CHỈ CẦN ONLINE) ...
     override suspend fun bookTicket(
         eventId: String,
         ticketType: String,
@@ -98,13 +98,30 @@ class TicketRepositoryImpl @Inject constructor(
         }
     }
 
+    // [REFACTORED] Hỗ trợ Offline cho chi tiết vé
     override suspend fun getTicketDetails(ticketId: String): Result<DetailedTicket> {
-        return try {
+        // 1. Thử gọi API lấy dữ liệu mới nhất
+        try {
             val response = apiService.getTicketDetails(ticketId)
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.toDomainModel())
+                return Result.success(response.body()!!.toDomainModel())
+            }
+        } catch (e: Exception) {
+            // Log lỗi mạng nhưng không return ngay
+            Log.e("TicketRepo", "Failed to fetch remote details: ${e.message}")
+        }
+
+        // 2. Fallback: Nếu API lỗi, tìm trong Cache
+        return try {
+            // Lấy danh sách vé đã cache (getUserTickets đã lưu vào DB)
+            val cachedTicket = ticketDao.getUserTickets().find { it.id == ticketId }
+
+            if (cachedTicket != null) {
+                // Map từ Entity sang DetailedTicket (Domain)
+                // Chúng ta cần tạo hàm mở rộng toDetailedTicket() cho TicketEntity
+                Result.success(cachedTicket.toDetailedTicket())
             } else {
-                Result.failure(Exception("Không thể tải chi tiết vé (Code: ${response.code()})"))
+                Result.failure(Exception("Không thể tải vé (Offline và không có cache)"))
             }
         } catch (e: Exception) {
             Result.failure(e)

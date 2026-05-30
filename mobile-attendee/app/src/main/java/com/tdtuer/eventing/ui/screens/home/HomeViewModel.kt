@@ -315,27 +315,27 @@ class HomeViewModel @Inject constructor(
     private fun loadCategories() {
         _categories.value = listOf(
             Category(
-            "All", Color(0xFF5669FF), Color.White
-        ) {
-            Icon(
-                Icons.Default.Bookmark, contentDescription = null, tint = Color.White
-            )
-        }, Category(
-            "Music", Color.White, Color.Black
-        ) {
-            Icon(
-                Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
-            )
-        }, Category("Sports", Color(0xFFF0635A), Color.White) {
-            Icon(
-                Icons.Default.Sports, contentDescription = null, tint = Color.White
-            )
-        }, Category(
-            "Art", Color(0xFF29D697), Color.White
-        ) {
-            Icon(
-                Icons.Default.Campaign, contentDescription = null, tint = Color.White
-            )
-        })
+                "All", Color(0xFF5669FF), Color.White
+            ) {
+                Icon(
+                    Icons.Default.Bookmark, contentDescription = null, tint = Color.White
+                )
+            }, Category(
+                "Music", Color.White, Color.Black
+            ) {
+                Icon(
+                    Icons.Default.MusicNote, contentDescription = null, tint = Color.Black
+                )
+            }, Category("Sports", Color(0xFFF0635A), Color.White) {
+                Icon(
+                    Icons.Default.Sports, contentDescription = null, tint = Color.White
+                )
+            }, Category(
+                "Art", Color(0xFF29D697), Color.White
+            ) {
+                Icon(
+                    Icons.Default.Campaign, contentDescription = null, tint = Color.White
+                )
+            })
     }
 }

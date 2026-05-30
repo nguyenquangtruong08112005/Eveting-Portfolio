@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
@@ -17,9 +16,10 @@ import com.tdtuer.eventing.MainActivity
 import com.tdtuer.eventing.R
 // Alias để tránh xung đột tên Result
 import com.tdtuer.eventing.domain.model.Result as DomainResult
-import com.tdtuer.eventing.domain.model.TicketStatus
+import com.tdtuer.eventing.ui.screens.ticket.TicketStatus
 import com.tdtuer.eventing.domain.usecase.events.GetEventWeatherUseCase
 import com.tdtuer.eventing.domain.usecase.tickets.GetUserTicketsUseCase
+import com.tdtuer.eventing.ui.screens.ticket.MyTicketUiModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -32,21 +32,30 @@ class WeatherNotificationWorker @AssistedInject constructor(
     private val getEventWeatherUseCase: GetEventWeatherUseCase
 ) : CoroutineWorker(context, params) {
 
+    /**
+     * Hàm chính thực thi tác vụ nền của Worker.
+     * @return [Result] Kết quả thực thi (Success/Failure).
+     */
     override suspend fun doWork(): Result {
-        // //Log.d("WeatherWorker", "🚀 Worker started...")
+        // Log.d("WeatherWorker", "🚀 Worker started...")
         return try {
             checkUpcomingEventWeather()
-            // //Log.d("WeatherWorker", "✅ Worker finished successfully!")
+            // Log.d("WeatherWorker", "✅ Worker finished successfully!")
             Result.success()
         } catch (e: Exception) {
-            // {}//Log.e("WeatherWorker", "❌ Worker failed: ${e.message}")
+            // Log.e("WeatherWorker", "❌ Worker failed: ${e.message}")
             Result.failure()
         }
     }
 
+    /**
+     * Kiểm tra danh sách vé sắp tới và gửi thông báo dựa trên thời gian còn lại.
+     * - 1 ngày: Gửi báo cáo thời tiết (nếu nhiệt độ khác 0).
+     * - 3, 5 ngày: Gửi lời nhắc sự kiện.
+     */
     private suspend fun checkUpcomingEventWeather() {
         // 1. Lấy danh sách vé của user
-        var tickets = listOf<com.tdtuer.eventing.domain.model.MyTicketUiModel>()
+        var tickets = listOf<MyTicketUiModel>()
 
         // Lấy vé (giả sử limit 50 để check)
         getUserTicketsUseCase(1, 50).collect { result ->
@@ -56,7 +65,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
         }
 
         if (tickets.isEmpty()) {
-            // //Log.d("WeatherWorker", "No tickets found.")
+            // Log.d("WeatherWorker", "No tickets found.")
             return
         }
 
@@ -75,13 +84,20 @@ class WeatherNotificationWorker @AssistedInject constructor(
             val diffMs = ticket.eventTimestamp - currentTime
             val daysLeft = TimeUnit.MILLISECONDS.toDays(diffMs)
 
-            // //Log.d("WeatherWorker", "Event: ${ticket.eventName} - Days left: $daysLeft")
+            // Log.d("WeatherWorker", "Event: ${ticket.eventName} - Days left: $daysLeft")
 
             when (daysLeft) {
                 1L -> { // Còn 1 ngày (Ngày mai) -> Gửi báo cáo thời tiết
                     getEventWeatherUseCase(ticket.eventId).collect { weatherResult ->
                         if (weatherResult is DomainResult.Success) {
                             val weather = weatherResult.data
+
+                            // --- LOGIC MỚI: Bỏ qua nếu nhiệt độ bằng 0 ---
+//                            if (weather.temperature.toDouble() == 0.0) {
+//                                // Log.d("WeatherWorker", "Temperature is 0, skipping notification for ${ticket.eventName}")
+//                                return@collect
+//                            }
+                            // ---------------------------------------------
 
                             val advice = getWeatherAdvice(weather.condition)
                             val title = "📅 Tomorrow: ${ticket.eventName}"
@@ -102,6 +118,11 @@ class WeatherNotificationWorker @AssistedInject constructor(
         }
     }
 
+    /**
+     * Đưa ra lời khuyên dựa trên điều kiện thời tiết.
+     * @param condition Chuỗi mô tả trạng thái thời tiết (vd: "Rain", "Clear").
+     * @return [String] Lời khuyên tương ứng.
+     */
     private fun getWeatherAdvice(condition: String): String {
         return when {
             condition.contains("Rain", ignoreCase = true) ||
@@ -129,6 +150,12 @@ class WeatherNotificationWorker @AssistedInject constructor(
         }
     }
 
+    /**
+     * Gửi notification lên thanh trạng thái.
+     * @param title Tiêu đề thông báo.
+     * @param message Nội dung thông báo.
+     * @param notificationId ID định danh để tránh trùng lặp hoặc để cập nhật thông báo cũ.
+     */
     private fun sendNotification(title: String, message: String, notificationId: Int) {
         // 1. Kiểm tra quyền (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -137,7 +164,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
                     android.Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                // {}//Log.e("WeatherWorker", "Missing POST_NOTIFICATIONS permission")
+                // Log.e("WeatherWorker", "Missing POST_NOTIFICATIONS permission")
                 return
             }
         }

@@ -128,6 +128,10 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getCurrentUserId(): String? {
+        return auth.currentUser?.uid
+    }
+
     override suspend fun sendEmailVerification(): Result<Unit> {
         return try {
             val user = auth.currentUser

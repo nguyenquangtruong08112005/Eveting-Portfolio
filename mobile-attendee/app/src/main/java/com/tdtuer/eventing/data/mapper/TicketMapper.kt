@@ -3,8 +3,8 @@ package com.tdtuer.eventing.data.mapper
 import com.tdtuer.eventing.data.network.model.TicketDetailResponse
 import com.tdtuer.eventing.domain.model.DetailedTicket
 import com.tdtuer.eventing.data.network.model.UserTicketDto
-import com.tdtuer.eventing.domain.model.MyTicketUiModel
-import com.tdtuer.eventing.domain.model.TicketStatus
+import com.tdtuer.eventing.ui.screens.ticket.MyTicketUiModel
+import com.tdtuer.eventing.ui.screens.ticket.TicketStatus
 import com.tdtuer.eventing.helpers.formatTimestampToDay
 import com.tdtuer.eventing.helpers.formatTimestampToHour
 import com.tdtuer.eventing.helpers.formatTimestampToMinute

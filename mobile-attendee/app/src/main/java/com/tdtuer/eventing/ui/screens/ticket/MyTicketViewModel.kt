@@ -1,10 +1,9 @@
 package com.tdtuer.eventing.ui.screens.ticket
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tdtuer.eventing.domain.model.MyTicketUiModel
 import com.tdtuer.eventing.domain.model.Result
-import com.tdtuer.eventing.domain.model.TicketStatus
 import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.domain.usecase.events.GetEventWeatherUseCase
 import com.tdtuer.eventing.domain.usecase.tickets.GetUserTicketsUseCase
@@ -132,6 +131,7 @@ class MyTicketViewModel @Inject constructor(
             viewModelScope.launch {
                 getEventWeatherUseCase(ticket.eventId).collect { weatherResult ->
                     if (weatherResult is Result.Success) {
+                        Log.d("MyTicketViewModel", "Fetching weather for ticket ID: ${ticket.ticketId}")
                         updateTicketWeather(ticket.ticketId, weatherResult.data)
                     }
                 }

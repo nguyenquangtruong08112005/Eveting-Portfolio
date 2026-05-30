@@ -29,7 +29,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.tdtuer.eventing.R
-import com.tdtuer.eventing.domain.model.MyTicketUiModel
 import com.tdtuer.eventing.ui.navigation.Screen
 import com.tdtuer.eventing.ui.theme.AppTheme
 
@@ -329,7 +328,7 @@ fun TicketCard(ticket: MyTicketUiModel, onClick: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     )
 
-                    if (ticket.weather != null) {
+                    if (ticket.weather != null && ticket.weather.temperature != 0) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             color = Color(0xFFE3F2FD), // Nền xanh nhạt
