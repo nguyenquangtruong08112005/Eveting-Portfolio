@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A, B, C, D foundation, E, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C4 transaction safety before broad provider flip.
+Next phase: Phase C4 backend auth route wiring.
 
 ## Source Of Truth
 
@@ -27,6 +27,7 @@ Next phase: Phase C4 transaction safety before broad provider flip.
 - Organizer Profiles Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-organizer-profiles-postgres-verification.md`
 - Analytics Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c3-analytics-postgres-verification.md`
 - Phase C4 consolidation/provider flip matrix: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-consolidation-provider-flip-matrix.md`
+- Phase C4 Postgres transaction support verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-postgres-transaction-support-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -84,6 +85,7 @@ Next phase: Phase C4 transaction safety before broad provider flip.
 - `704e0b6` - Add Postgres featured profile adapter.
 - `8efc318` - Add Postgres organizer profile adapter.
 - `0af0740` - Add Postgres analytics adapter.
+- `6448868` - Add Postgres transaction support.
 
 ## Current Plan Summary
 
@@ -143,15 +145,16 @@ Then review:
 
 ## Next Exact Step
 
-Assign `agy` Phase C4 transaction safety:
+Assign `agy` Phase C4 backend auth route wiring:
 
 - server-only
 - no mobile repo edits
-- add real PostgreSQL transaction support before flipping ticket/payment writes
-- update `postgres.client.js` to expose transaction client flow
-- update ticket/event/promotion/analytics Postgres repositories to use transaction-scoped queries when provided
+- add backend register/login/refresh/logout routes using existing backend auth provider and Postgres auth repository
+- keep Firebase auth provider/default compatibility
+- do not break existing protected routes or mobile auth assumptions
+- preserve Firebase UID mapping where applicable
 - keep Firebase default and route payloads unchanged
-- verify booking/payment-related repository syntax and existing compare scripts
+- verify with syntax checks and local auth smoke tests
 
 ## Latest Verification
 
@@ -185,3 +188,4 @@ Results:
 - Phase C3 organizer profile verification passed for 1 organizer profile: migrations applied, repeated Firebase-to-Postgres sync completed without duplicate organizer roles, users compare still matched 3, organizer compare matched 1. Analytics coverage is next.
 - Phase C3 analytics verification passed for 8 Analytics documents: migrations applied, Firebase-to-Postgres sync completed, final comparison matched 8 with 0 missing and 0 different. Exact shape check passed for `evt_haanh_show_dalat_2026`.
 - Phase C4 consolidation review completed: provider flip matrix saved, global `DATABASE_PROVIDER=postgres` remains blocked by admin repository, and ticket/event/promotion/analytics transaction shims must be fixed before broad write-path flips.
+- Phase C4 transaction support verification passed: real Postgres transaction helper added, rollback/commit smoke passed, and tickets/events/promotions/analytics compare scripts still pass.
