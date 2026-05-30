@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, and C7 global Postgres boot/read smoke are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, and C8 controlled write-path smoke are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C8 controlled write-path/provider-flip verification.
+Next phase: Phase C9 Firebase-removal blocker audit.
 
 ## Source Of Truth
 
@@ -32,6 +32,7 @@ Next phase: Phase C8 controlled write-path/provider-flip verification.
 - Phase C5 storage media upload verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c5-storage-media-upload-verification.md`
 - Phase C6 admin Postgres verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c6-admin-postgres-verification.md`
 - Phase C7 Postgres provider smoke verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c7-postgres-provider-smoke-verification.md`
+- Phase C8 Postgres write paths verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c8-postgres-write-paths-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -94,6 +95,7 @@ Next phase: Phase C8 controlled write-path/provider-flip verification.
 - `0f06354` - Wire media storage uploads.
 - `b80667e` - Add Postgres admin repository.
 - `874d8d1` - Add Postgres provider smoke.
+- `8aedc00` - Add Postgres write path smoke.
 
 ## Current Plan Summary
 
@@ -153,16 +155,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase C8 controlled write-path/provider-flip verification:
+Assign a local agent Phase C9 Firebase-removal blocker audit:
 
 - server-only
 - no mobile repo edits
-- run existing sync/compare scripts for migrated domains
-- add controlled write-path smoke where needed for backend auth, media upload, admin approve/reject, tickets, promotions, notifications
-- use synthetic fixtures and clean them up
-- keep production defaults and mobile contracts unchanged
-- do not remove Firebase packages/config
-- document remaining blockers before Firebase package/config removal
+- enumerate remaining direct Firebase imports and classify them as adapter, migration script, default provider, or runtime blocker
+- identify exact env defaults that can safely flip in local/dev
+- identify mobile-auth/profile-linking blockers before Firebase Auth removal
+- identify push-provider blockers before Firebase Messaging removal
+- do not remove Firebase packages/config until blockers are explicitly resolved
 
 ## Latest Verification
 
@@ -201,3 +202,4 @@ Results:
 - Phase C5 storage media upload verification passed: existing JSON media route remains intact, multipart image/video upload path uses storage provider, local storage upload/read smoke passed, unsupported multipart mimetype returns 400, and full server JS syntax scan passed.
 - Phase C6 admin Postgres verification passed: events sync copied 23 events, admin pending compare matched 2 pending Firebase events with 0 missing and 0 different, and full server JS syntax scan passed.
 - Phase C7 Postgres provider smoke passed: server booted with `DATABASE_PROVIDER=postgres`, `AUTH_PROVIDER=backend`, and `STORAGE_PROVIDER=local`; `/`, `/events`, `/profiles`, and `/admin/events/pending` returned expected basic shapes; full server JS syntax scan passed.
+- Phase C8 write-path verification passed: admin approve/reject synthetic Postgres write paths passed, transaction/storage/provider/auth regression smokes passed, events/admin compares still matched Firebase, and full server JS syntax scan passed.
