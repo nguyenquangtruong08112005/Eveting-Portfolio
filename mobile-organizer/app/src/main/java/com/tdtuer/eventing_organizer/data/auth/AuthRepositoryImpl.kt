@@ -15,6 +15,7 @@ import com.tdtuer.eventing_organizer.data.network.model.LoginRequest
 import com.tdtuer.eventing_organizer.data.network.model.RegisterRequest
 import com.tdtuer.eventing_organizer.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing_organizer.data.preferences.TokenStore
+import com.onesignal.OneSignal
 import com.tdtuer.eventing_organizer.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -245,6 +246,11 @@ class AuthRepositoryImpl @Inject constructor(
         try {
             val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
             apiService.removeFcmToken(RemoveTokenRequest(token))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            OneSignal.logout()
         } catch (e: Exception) {
             e.printStackTrace()
         }

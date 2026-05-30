@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,6 +23,11 @@ class MainActivity : ComponentActivity() {
             val mainViewModel: MainViewModel = hiltViewModel()
             val isDarkModePreference by mainViewModel.isDarkMode.collectAsState()
             val useDarkTheme = isDarkModePreference ?: isSystemInDarkTheme()
+
+            // Đăng ký push notification khi startup
+            LaunchedEffect(Unit) {
+                mainViewModel.registerPushAtStartup()
+            }
 
             EventingTheme(darkTheme = useDarkTheme) {
                 val navController = rememberNavController()

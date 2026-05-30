@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.androidx.credentials.playservices)
     implementation(libs.googleid)
     implementation(libs.firebase.messaging)
+    implementation("com.onesignal:OneSignal:[5.6.1,5.9.99]")
 
     //Facebook
     implementation(libs.facebook.login)

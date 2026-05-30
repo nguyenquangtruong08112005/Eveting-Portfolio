@@ -3,6 +3,9 @@ package com.tdtuer.eventing_organizer.constants
 object Constraints {
     const val BASE_URL = "https://uncadenced-unmelancholically-elyse.ngrok-free.dev"
 
+    // Cấu hình OneSignal
+    const val ONESIGNAL_APP_ID = "YOUR_ONESIGNAL_APP_ID"
+
     // Cấu hình Firebase Storage
     const val STORAGE_BUCKET_URL = "gs://eventing-baa25.firebasestorage.app"
 
