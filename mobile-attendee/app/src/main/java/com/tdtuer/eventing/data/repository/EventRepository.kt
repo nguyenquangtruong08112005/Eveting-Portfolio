@@ -1,5 +1,6 @@
 package com.tdtuer.eventing.data.repository
 
+import android.net.Uri
 import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing.data.network.model.PromotionResponse
 import com.tdtuer.eventing.domain.model.Event
@@ -53,6 +54,8 @@ interface EventRepository {
     fun getEventMedia(eventId: String): Flow<Result<List<MediaItem>>>
 
     suspend fun postEventMedia(eventId: String, url: String, type: String): Result<Unit>
+
+    suspend fun uploadEventMediaMultipart(eventId: String, uri: Uri): Result<Unit>
 
     fun getRecommendations(limit: Int = 10): Flow<Result<List<Event>>>
     fun getEventWeather(eventId: String): Flow<Result<Weather>>

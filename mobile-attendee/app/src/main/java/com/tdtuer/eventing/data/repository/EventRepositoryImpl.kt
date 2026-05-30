@@ -1,5 +1,7 @@
 package com.tdtuer.eventing.data.repository
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.tdtuer.eventing.data.local.dao.EventDao
 import com.tdtuer.eventing.data.local.dao.WeatherDao
@@ -27,12 +29,17 @@ import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success
 import com.tdtuer.eventing.ui.screens.postevent.MediaItem
 import com.tdtuer.eventing.ui.screens.postevent.ReviewItem
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlin.math.*
 import com.tdtuer.eventing.data.local.entity.toDomain as weatherEntityToDomain
 
 @Singleton
 class EventRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val apiService: EventApiService,
     private val eventDao: EventDao, // Inject DAO
     private val weatherDao: WeatherDao, // [NEW]
@@ -377,6 +384,35 @@ class EventRepositoryImpl @Inject constructor(
             val response = apiService.postEventMedia(eventId, request)
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception("Failed to upload media info"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun uploadEventMediaMultipart(eventId: String, uri: Uri): Result<Unit> {
+        return try {
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+            val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: throw Exception("Failed to read URI content")
+
+            val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull(), 0, bytes.size)
+
+            val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) {
+                    cursor.getString(nameIndex)
+                } else null
+            } ?: uri.lastPathSegment ?: "file.jpg"
+
+            val filePart = MultipartBody.Part.createFormData("file", fileName, requestBody)
+
+            val response = apiService.uploadEventMediaMultipart(eventId, filePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Multipart upload failed with code: ${response.code()}"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

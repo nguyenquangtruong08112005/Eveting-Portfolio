@@ -31,8 +31,10 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -133,6 +135,13 @@ interface EventApiService {
     suspend fun postEventMedia(
         @Path("eventId") eventId: String,
         @Body request: PostMediaRequest // Gửi dạng Object chứa mảng mediaItems
+    ): Response<Unit>
+
+    @Multipart
+    @POST("events/{eventId}/media")
+    suspend fun uploadEventMediaMultipart(
+        @Path("eventId") eventId: String,
+        @Part file: okhttp3.MultipartBody.Part
     ): Response<Unit>
 
     @GET("events/recommendations")

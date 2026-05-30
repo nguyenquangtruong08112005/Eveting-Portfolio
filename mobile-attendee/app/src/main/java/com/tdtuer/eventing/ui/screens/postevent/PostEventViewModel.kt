@@ -14,6 +14,7 @@ import com.tdtuer.eventing.domain.usecase.events.GetEventMediaUseCase
 import com.tdtuer.eventing.domain.usecase.events.GetEventReviewsUseCase
 import com.tdtuer.eventing.domain.usecase.events.PostEventMediaUseCase
 import com.tdtuer.eventing.domain.usecase.events.PostEventReviewUseCase
+import com.tdtuer.eventing.domain.usecase.events.UploadEventMediaMultipartUseCase
 import com.tdtuer.eventing.domain.usecase.user.UploadImageUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,8 @@ class PostEventViewModel @Inject constructor(
     private val postEventReviewUseCase: PostEventReviewUseCase,
     private val getEventMediaUseCase: GetEventMediaUseCase,
     private val postEventMediaUseCase: PostEventMediaUseCase,
-    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase
+    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase,
+    private val uploadEventMediaMultipartUseCase: UploadEventMediaMultipartUseCase
     ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostEventUiState())
@@ -127,26 +129,33 @@ class PostEventViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isUploading = true, error = null) }
 
-            val fileName = "${System.currentTimeMillis()}.jpg"
-            val storagePath = "${Constraints.PATH_EVENTS}/$eventId/${Constraints.PATH_UPLOADS}/$userId/$fileName"
+            val multipartResult = uploadEventMediaMultipartUseCase(eventId, uri)
 
-            val uploadResult = uploadImageUseCase(uri, storagePath)
-
-            if (uploadResult is Result.Success) {
-                val downloadUrl = uploadResult.data
-
-                // Gọi qua UseCase
-                val postResult = postEventMediaUseCase(eventId, downloadUrl, "image")
-
-                if (postResult is Result.Success) {
-                    loadReviewsAndMedia(eventId)
-                    _uiState.update { it.copy(isUploading = false) }
-                } else if (postResult is Result.Failure) {
-                    _uiState.update { it.copy(isUploading = false) }
-                    handleApiError(postResult.exception)
-                }
+            if (multipartResult is Result.Success) {
+                loadReviewsAndMedia(eventId)
+                _uiState.update { it.copy(isUploading = false) }
             } else {
-                _uiState.update { it.copy(isUploading = false, error = "Failed to upload image.") }
+                val fileName = "${System.currentTimeMillis()}.jpg"
+                val storagePath = "${Constraints.PATH_EVENTS}/$eventId/${Constraints.PATH_UPLOADS}/$userId/$fileName"
+
+                val uploadResult = uploadImageUseCase(uri, storagePath)
+
+                if (uploadResult is Result.Success) {
+                    val downloadUrl = uploadResult.data
+
+                    // Gọi qua UseCase
+                    val postResult = postEventMediaUseCase(eventId, downloadUrl, "image")
+
+                    if (postResult is Result.Success) {
+                        loadReviewsAndMedia(eventId)
+                        _uiState.update { it.copy(isUploading = false) }
+                    } else if (postResult is Result.Failure) {
+                        _uiState.update { it.copy(isUploading = false) }
+                        handleApiError(postResult.exception)
+                    }
+                } else {
+                    _uiState.update { it.copy(isUploading = false, error = "Failed to upload image.") }
+                }
             }
         }
     }
