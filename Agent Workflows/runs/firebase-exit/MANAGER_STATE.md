@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, and M3 backend-auth profile/current-user support are complete on `staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, and M4 mobile refresh-token handling are complete on `staging`.
 
-Next phase: Phase M4 mobile refresh-token handling.
+Next phase: Phase M5 mobile storage upload path.
 
 ## Source Of Truth
 
@@ -40,6 +40,7 @@ Next phase: Phase M4 mobile refresh-token handling.
 - Phase M1 mobile backend token foundation verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m1-mobile-backend-token-foundation-verification.md`
 - Phase M2 mobile auth repository wiring verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m2-mobile-auth-repository-wiring-verification.md`
 - Phase M3 backend auth profile and mobile current-user verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m3-backend-auth-profile-and-mobile-current-user-verification.md`
+- Phase M4 mobile refresh-token verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m4-mobile-refresh-token-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -114,10 +115,12 @@ Next phase: Phase M4 mobile refresh-token handling.
 - Attendee `Mobile-2025-Eventing`: `348744a` - Add backend token fallback foundation.
 - Attendee `Mobile-2025-Eventing`: `58cfa30` - Wire attendee auth to backend fallback.
 - Attendee `Mobile-2025-Eventing`: `bbeac36` - Use backend token for attendee current user.
+- Attendee `Mobile-2025-Eventing`: `0c9cb03` - Refresh backend access token on 401.
 - Organizer `Mobile-2025-Eventing-Organizer`: `a05cfc2` - Save organizer pre-refactor work.
 - Organizer `Mobile-2025-Eventing-Organizer`: `4e6e2b3` - Add backend token fallback foundation.
 - Organizer `Mobile-2025-Eventing-Organizer`: `5ed4650` - Wire organizer auth to backend fallback.
 - Organizer `Mobile-2025-Eventing-Organizer`: `2e88509` - Use backend token for organizer current user.
+- Organizer `Mobile-2025-Eventing-Organizer`: `0684fb1` - Refresh backend access token on 401.
 
 ## Mobile Rewrite Notes
 
@@ -184,13 +187,13 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase M4 mobile refresh-token handling:
+Assign a local agent Phase M5 mobile storage upload path:
 
-- add refresh-token handling for expired backend access tokens
-- backend-auth current-user is now supported, but refresh handling is still missing
-- keep Firebase social login and Firebase token fallback available during migration
+- wire mobile media upload flows to the backend multipart media upload route added in Phase C5
+- preserve existing URL-based media submission behavior as fallback
+- keep Firebase/storage-provider fallback behavior available during migration
 - do not overwrite existing dirty mobile changes
-- use `opencode` instead of `agy` until `agy` quota resets
+- use `agy` only when available and producing verifiable diffs; otherwise use `opencode`
 
 ## Latest Verification
 
@@ -237,3 +240,4 @@ Results:
 - Phase M1 mobile backend token foundation completed: backend auth now supports optional `organizer` registration role; attendee and organizer mobile apps now have backend token stores and interceptors that prefer backend JWT tokens while preserving Firebase ID token fallback. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M2 mobile auth repository wiring completed: attendee and organizer email/password auth now try backend auth first, save backend tokens, and fall back to Firebase Auth plus Firestore. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
 - Phase M3 backend-auth profile/current-user completed: server auth register/login creates missing Postgres user profiles, `/users/me` smoke passes for backend users, and both mobile apps can resolve current user from backend JWT before Firebase fallback. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
+- Phase M4 mobile refresh-token handling completed: attendee and organizer OkHttp interceptors now refresh expired backend access tokens through `POST /auth/refresh`, save returned backend tokens, retry the original request once, and keep Firebase token fallback available. `git diff --check` passed for both mobile repos. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
