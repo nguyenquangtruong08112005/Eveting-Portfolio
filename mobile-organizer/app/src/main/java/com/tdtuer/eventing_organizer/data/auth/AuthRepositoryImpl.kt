@@ -8,8 +8,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tdtuer.eventing_organizer.data.network.AuthApiService
 import com.tdtuer.eventing_organizer.data.network.EventApiService
+import com.tdtuer.eventing_organizer.data.network.model.LoginRequest
+import com.tdtuer.eventing_organizer.data.network.model.RegisterRequest
 import com.tdtuer.eventing_organizer.data.network.model.RemoveTokenRequest
+import com.tdtuer.eventing_organizer.data.preferences.TokenStore
 import com.tdtuer.eventing_organizer.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +24,9 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
-    private val apiService: EventApiService
+    private val apiService: EventApiService,
+    private val authApiService: AuthApiService,
+    private val tokenStore: TokenStore
 ) : AuthRepository {
     override suspend fun signUp(
         name: String,
@@ -28,6 +34,30 @@ class AuthRepositoryImpl @Inject constructor(
         password: String,
         role: String
     ): Result<User> {
+        try {
+            val response = authApiService.register(
+                RegisterRequest(name, email, password, role = "organizer")
+            )
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.accessToken.isNotBlank() && body.refreshToken.isNotBlank()) {
+                    tokenStore.saveTokens(body.accessToken, body.refreshToken, body.tokenType ?: "Bearer")
+                    val userDto = body.user
+                    return Result.success(
+                        User(
+                            id = userDto?.id ?: "",
+                            name = userDto?.name ?: name,
+                            email = userDto?.email ?: email,
+                            profilePicUrl = userDto?.profilePicUrl ?: "",
+                            role = listOf("organizer"),
+                            isOrganizer = true
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            // fall through to Firebase fallback
+        }
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: return Result.failure(Exception("Sign up failed"))
@@ -43,13 +73,34 @@ class AuthRepositoryImpl @Inject constructor(
         email: String,
         password: String
     ): Result<User> {
+        try {
+            val response = authApiService.login(LoginRequest(email, password))
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.accessToken.isNotBlank() && body.refreshToken.isNotBlank()) {
+                    tokenStore.saveTokens(body.accessToken, body.refreshToken, body.tokenType ?: "Bearer")
+                    val userDto = body.user
+                    val roles = userDto?.roles ?: emptyList()
+                    return Result.success(
+                        User(
+                            id = userDto?.id ?: "",
+                            name = userDto?.name ?: "",
+                            email = userDto?.email ?: email,
+                            profilePicUrl = userDto?.profilePicUrl ?: "",
+                            role = roles,
+                            isOrganizer = roles.contains("organizer")
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            // fall through to Firebase fallback
+        }
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: return Result.failure(Exception("Sign in failed"))
             val user = db.collection("Users").document(uid).get().await().toObject(User::class.java)
                 ?: return Result.failure(Exception("User not found"))
-            val idToken = result.user?.getIdToken(false)?.await()?.token
-            //Log.d("Test", "idToken: $idToken")
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -176,6 +227,7 @@ class AuthRepositoryImpl @Inject constructor(
             e.printStackTrace()
         }
         auth.signOut()
+        tokenStore.clearTokens()
     }
 
     // --> ADDED FOR PASSWORD RESET

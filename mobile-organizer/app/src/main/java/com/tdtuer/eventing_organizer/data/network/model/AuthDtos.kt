@@ -42,7 +42,8 @@ data class AuthUserDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String?,
     @SerializedName("email") val email: String?,
-    @SerializedName("profilePicUrl") val profilePicUrl: String? = null
+    @SerializedName("profilePicUrl") val profilePicUrl: String? = null,
+    @SerializedName("roles") val roles: List<String>? = null
 )
 
 data class LogoutRequest(
