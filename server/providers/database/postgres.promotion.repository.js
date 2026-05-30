@@ -170,19 +170,26 @@ const deletePromotion = async (promoId) => {
     await query('DELETE FROM promotions WHERE id = $1', [promoId]);
 };
 
-// NOTE: This ignores the Firestore transaction object and performs a direct Postgres query.
-// When using Postgres for promotions, the promotion lookup DURING a ticket purchase
-// transaction is NOT atomic with the Firestore transaction. This is a known limitation:
-// ticket payment still uses Firestore's runTransaction and the promotion operations
-// execute outside that transaction boundary.
-const findPromoByCodeInTransaction = async (_transaction, promoCode) => {
-    return findByCode(promoCode);
+// NOTE: This uses the passed transaction client when provided,
+// with a global-query fallback only outside a transaction.
+const findPromoByCodeInTransaction = async (transaction, promoCode) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
+    const result = await client.query(
+        `SELECT id, organizer_id, code, event_id, valid_from, valid_until,
+                usage_limit, used_count, is_public, data, created_at
+         FROM promotions WHERE code = $1 LIMIT 1`,
+        [promoCode]
+    );
+    if (result.rows.length === 0) return null;
+    const promo = rowToPromotion(result.rows[0]);
+    return { ...promo, _id: promo.id };
 };
 
-// NOTE: Same limitation as findPromoByCodeInTransaction. The used-count increment
-// is NOT atomic with the enclosing Firestore ticket-purchase transaction.
-const incrementPromotionUsedCountInTransaction = async (_transaction, promoId) => {
-    await query(
+// NOTE: This uses the passed transaction client when provided,
+// with a global-query fallback only outside a transaction.
+const incrementPromotionUsedCountInTransaction = async (transaction, promoId) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
+    await client.query(
         'UPDATE promotions SET used_count = used_count + 1 WHERE id = $1',
         [promoId]
     );

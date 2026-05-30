@@ -1,4 +1,4 @@
-const { query } = require('./postgres.client');
+const { query, transaction } = require('./postgres.client');
 
 const FIELD_MAP = {
     eventId: 'event_id',
@@ -65,7 +65,8 @@ const getTicketById = async (ticketId) => {
     return rowToTicket(result.rows[0], true);
 };
 
-const updateTicket = async (ticketId, updates) => {
+const updateTicket = async (ticketId, updates, transaction = null) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const keys = Object.keys(updates);
     if (keys.length === 0) return;
 
@@ -105,7 +106,7 @@ const updateTicket = async (ticketId, updates) => {
     if (sets.length === 0) return;
 
     params.push(ticketId);
-    await query(
+    await client.query(
         `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx}`,
         params
     );
@@ -120,9 +121,7 @@ const getPaidTicketsByEventId = async (eventId) => {
 };
 
 const runTransaction = async (callback) => {
-    // Other Postgres repositories ignore the transaction object and run queries globally.
-    // We follow that pattern and run the callback on an empty/mock transaction.
-    return callback({});
+    return transaction(callback);
 };
 
 const getTicketsByUserId = async (userId) => {
@@ -133,13 +132,17 @@ const getTicketsByUserId = async (userId) => {
     return result.rows.map(row => rowToTicket(row, true));
 };
 
-const getTicketInTransaction = async (_transaction, ticketId) => {
-    return getTicketById(ticketId);
+const getTicketInTransaction = async (transaction, ticketId) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
+    const result = await client.query('SELECT * FROM tickets WHERE id = $1', [ticketId]);
+    if (result.rows.length === 0) return null;
+    return rowToTicket(result.rows[0], true);
 };
 
-const createTicketInTransaction = async (_transaction, ticketId, ticketData) => {
+const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const rawData = { ...ticketData };
-    await query(
+    await client.query(
         `INSERT INTO tickets (
             id, event_id, user_id, organizer_id, type, price, original_price,
             quantity, unit_price, applied_promo_code, seat, qr_code, status,
@@ -197,8 +200,8 @@ const createTicket = async (ticketId, ticketData) => {
     return createTicketInTransaction(null, ticketId, ticketData);
 };
 
-const updateTicketInTransaction = async (_transaction, ticketId, updates) => {
-    return updateTicket(ticketId, updates);
+const updateTicketInTransaction = async (transaction, ticketId, updates) => {
+    return updateTicket(ticketId, updates, transaction);
 };
 
 const getAttendeeTicketsByEventId = async (eventId) => {

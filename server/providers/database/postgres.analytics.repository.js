@@ -40,7 +40,8 @@ const getAnalyticsByEventId = async (eventId) => {
     return rowToAnalytics(result.rows[0]);
 };
 
-const updateAnalyticsForConfirmPaymentInTransaction = async (_transaction, eventId, { price, ticketType, quantity, dailyTimestamp }) => {
+const updateAnalyticsForConfirmPaymentInTransaction = async (transaction, eventId, { price, ticketType, quantity, dailyTimestamp }) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const qty = quantity || 1;
     const prc = price || 0;
     const now = Date.now();
@@ -72,7 +73,7 @@ const updateAnalyticsForConfirmPaymentInTransaction = async (_transaction, event
             )
     `;
 
-    await query(sql, [
+    await client.query(sql, [
         eventId,
         prc,
         ticketsSoldObj,
@@ -85,7 +86,8 @@ const updateAnalyticsForConfirmPaymentInTransaction = async (_transaction, event
     ]);
 };
 
-const incrementCheckInInTransaction = async (_transaction, eventId) => {
+const incrementCheckInInTransaction = async (transaction, eventId) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const now = Date.now();
     const sql = `
         INSERT INTO analytics (id, event_id, check_ins, last_updated_at, raw_data)
@@ -98,7 +100,7 @@ const incrementCheckInInTransaction = async (_transaction, eventId) => {
                 'lastUpdatedAt', EXCLUDED.last_updated_at
             )
     `;
-    await query(sql, [eventId, now, JSON.stringify({ eventId, checkIns: 1, lastUpdatedAt: now })]);
+    await client.query(sql, [eventId, now, JSON.stringify({ eventId, checkIns: 1, lastUpdatedAt: now })]);
 };
 
 const getAnalyticsByEventIds = async (eventIds) => {

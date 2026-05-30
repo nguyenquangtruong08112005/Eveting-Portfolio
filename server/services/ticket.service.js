@@ -178,15 +178,15 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
             purchaseDate: new Date().getTime(),
         };
 
-        ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
+        await ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
 
         const newAvailableCount = ticketTypeData.available - qty;
-        eventRepository.updateEventInTransaction(transaction, eventId, {
+        await eventRepository.updateEventInTransaction(transaction, eventId, {
             [`ticketTypes.${ticketType}.available`]: newAvailableCount
         });
 
         if (appliedPromotion) {
-            promotionRepository.incrementPromotionUsedCountInTransaction(transaction, appliedPromotion._id);
+            await promotionRepository.incrementPromotionUsedCountInTransaction(transaction, appliedPromotion._id || appliedPromotion.id);
         }
 
         return newTicketData;
@@ -211,9 +211,9 @@ const cancelPendingTicket = async (ticketId) => {
             return ticketData;
         }
 
-        ticketRepository.updateTicketInTransaction(transaction, ticketId, { status: 'cancelled' });
+        await ticketRepository.updateTicketInTransaction(transaction, ticketId, { status: 'cancelled' });
 
-        eventRepository.incrementEventTicketTypeAvailableInTransaction(transaction, ticketData.eventId, ticketData.type, 1);
+        await eventRepository.incrementEventTicketTypeAvailableInTransaction(transaction, ticketData.eventId, ticketData.type, 1);
 
         console.log(`Ticket ${ticketId} cancelled, 1 ticket of type ${ticketData.type} returned to event ${ticketData.eventId}.`);
         return { ...ticketData, status: 'cancelled' };
@@ -247,13 +247,13 @@ const confirmTicketPayment = async (ticketId) => {
         now.setHours(0, 0, 0, 0);
         const todayTimestamp = now.getTime().toString();
 
-        ticketRepository.updateTicketInTransaction(transaction, ticketId, {
+        await ticketRepository.updateTicketInTransaction(transaction, ticketId, {
             status: 'paid',
             updatedAt: Date.now(),
             paymentTime: Date.now()
         });
 
-        analyticsRepository.updateAnalyticsForConfirmPaymentInTransaction(transaction, ticketData.eventId, {
+        await analyticsRepository.updateAnalyticsForConfirmPaymentInTransaction(transaction, ticketData.eventId, {
             price: ticketData.price,
             ticketType: ticketData.type,
             quantity: 1,

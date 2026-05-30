@@ -99,8 +99,9 @@ const getActiveEventsInDateRange = async (startTime, endTime) => {
     return result.rows.map(row => ({ ...rowToFirebaseDoc(row), _id: row.id }));
 };
 
-const updateEvent = async (eventId, updates) => {
+const updateEvent = async (eventId, updates, transaction = null) => {
     if (!updates || Object.keys(updates).length === 0) return;
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const sets = [];
     const params = [];
     let idx = 1;
@@ -168,24 +169,29 @@ const updateEvent = async (eventId, updates) => {
     if (sets.length === 0) return;
 
     params.push(eventId);
-    await query(
+    await client.query(
         `UPDATE events SET ${sets.join(', ')} WHERE id = $${idx}`,
         params
     );
 };
 
-const getEventInTransaction = async (_transaction, eventId) => {
-    return getEventById(eventId);
+const getEventInTransaction = async (transaction, eventId) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
+    const result = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return { id: row.id, ...rowToFirebaseDoc(row) };
 };
 
-const updateEventInTransaction = async (_transaction, eventId, updates) => {
-    return updateEvent(eventId, updates);
+const updateEventInTransaction = async (transaction, eventId, updates) => {
+    return updateEvent(eventId, updates, transaction);
 };
 
-const incrementEventTicketTypeAvailableInTransaction = async (_transaction, eventId, ticketType, incrementBy) => {
+const incrementEventTicketTypeAvailableInTransaction = async (transaction, eventId, ticketType, incrementBy) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const pathTicketTypes = [ticketType, 'available'];
     const pathRawData = ['ticketTypes', ticketType, 'available'];
-    await query(
+    await client.query(
         `UPDATE events
          SET ticket_types = jsonb_set(
                  COALESCE(ticket_types, '{}'::jsonb),

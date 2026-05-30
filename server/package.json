@@ -29,6 +29,7 @@
     "db:compare:events": "node scripts/compare.events.firebase-postgres.js",
     "db:sync:tickets": "node scripts/sync.tickets.firebase-to-postgres.js",
     "db:smoke:tickets": "node scripts/smoke.tickets.js",
+    "db:smoke:transactions": "node scripts/smoke.transactions.js",
     "db:compare:tickets": "node scripts/compare.tickets.firebase-postgres.js",
     "db:sync:analytics": "node scripts/sync.analytics.firebase-to-postgres.js",
     "db:smoke:analytics": "node scripts/smoke.analytics.js",
