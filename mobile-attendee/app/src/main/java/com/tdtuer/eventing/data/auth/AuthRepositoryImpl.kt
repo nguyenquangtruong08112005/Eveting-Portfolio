@@ -17,6 +17,7 @@ import com.tdtuer.eventing.data.network.model.UserDto
 import com.tdtuer.eventing.data.network.model.toDomainUser
 import com.tdtuer.eventing.domain.model.JoinedEvent
 import com.tdtuer.eventing.domain.model.User
+import com.onesignal.OneSignal
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -55,7 +56,8 @@ class AuthRepositoryImpl @Inject constructor(
                 val userDto = body?.user
                 if (accessToken != null && refreshToken != null && userDto != null) {
                     tokenStore.saveTokens(accessToken, refreshToken)
-                    return Result.success(userDto.toDomainUser())
+                    val domainUser = userDto.toDomainUser()
+                    return Result.success(domainUser)
                 }
             }
             throw Exception("Backend register failed, falling back to Firebase")
@@ -86,7 +88,8 @@ class AuthRepositoryImpl @Inject constructor(
                 val userDto = body?.user
                 if (accessToken != null && refreshToken != null && userDto != null) {
                     tokenStore.saveTokens(accessToken, refreshToken)
-                    return Result.success(userDto.toDomainUser())
+                    val domainUser = userDto.toDomainUser()
+                    return Result.success(domainUser)
                 }
             }
             throw Exception("Backend login failed, falling back to Firebase")
@@ -115,7 +118,8 @@ class AuthRepositoryImpl @Inject constructor(
 
             val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
             if (userDoc.exists()) {
-                Result.success(userDoc.toObject(User::class.java)!!)
+                val user = userDoc.toObject(User::class.java)!!
+                Result.success(user)
             } else {
                 val newUser = User(
                     id = firebaseUser.uid,
@@ -141,7 +145,8 @@ class AuthRepositoryImpl @Inject constructor(
             // Logic kiểm tra và tạo user mới
             val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
             if (userDoc.exists()) {
-                Result.success(userDoc.toObject(User::class.java)!!)
+                val user = userDoc.toObject(User::class.java)!!
+                Result.success(user)
             } else {
                 val newUser = User(
                     id = firebaseUser.uid,
@@ -168,7 +173,8 @@ class AuthRepositoryImpl @Inject constructor(
             if (response != null && response.isSuccessful) {
                 val dto = response.body()
                 if (dto != null) {
-                    trySend(toDomainUser(dto))
+                    val user = toDomainUser(dto)
+                    trySend(user)
                     close()
                     awaitClose { }
                     return@callbackFlow
@@ -180,7 +186,8 @@ class AuthRepositoryImpl @Inject constructor(
             if (uid != null) {
                 db.collection("Users").document(uid).get()
                     .addOnSuccessListener { doc ->
-                        trySend(doc.toObject(User::class.java))
+                        val user = doc.toObject(User::class.java)
+                        trySend(user)
                     }
                     .addOnFailureListener {
                         trySend(null)
@@ -246,6 +253,11 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        try {
+            OneSignal.logout()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         tokenStore.clearTokens()
         auth.signOut()
     }
@@ -277,6 +289,7 @@ class AuthRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
 }
 
 private fun toDomainUser(dto: UserDto): User {

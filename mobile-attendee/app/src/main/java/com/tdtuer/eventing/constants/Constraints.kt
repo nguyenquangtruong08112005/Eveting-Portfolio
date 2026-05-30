@@ -6,6 +6,9 @@ object Constraints {
     // Cấu hình Firebase Storage
     const val STORAGE_BUCKET_URL = "gs://eventing-baa25.firebasestorage.app"
 
+    // Cấu hình OneSignal
+    const val ONESIGNAL_APP_ID = "YOUR_ONESIGNAL_APP_ID"
+
     // Định nghĩa cấu trúc thư mục trên Storage để tránh lộn xộn
     const val PATH_USERS = "users"
     const val PATH_EVENTS = "events"
