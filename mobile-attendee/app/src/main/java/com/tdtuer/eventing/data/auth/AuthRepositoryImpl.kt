@@ -8,8 +8,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tdtuer.eventing.data.auth.TokenStore
 import com.tdtuer.eventing.data.network.EventApiService
+import com.tdtuer.eventing.data.network.model.AuthLoginRequest
+import com.tdtuer.eventing.data.network.model.AuthRegisterRequest
 import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
+import com.tdtuer.eventing.data.network.model.toDomainUser
 import com.tdtuer.eventing.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +24,8 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
-    private val apiService: EventApiService
+    private val apiService: EventApiService,
+    private val tokenStore: TokenStore
 ) : AuthRepository {
     override suspend fun signUp(
         name: String,
@@ -29,13 +34,40 @@ class AuthRepositoryImpl @Inject constructor(
         role: String
     ): Result<User> {
         return try {
-            val result = auth.createUserWithEmailAndPassword(email, password).await()
-            val uid = result.user?.uid ?: return Result.failure(Exception("Sign up failed"))
-            val user = User(id = uid, name = name, email = email, role = listOf(role))
-            db.collection("Users").document(uid).set(user).await()
-            Result.success(user)
+            val backendRole = when (role) {
+                "attendee" -> "user"
+                else -> role
+            }
+            val response = apiService.register(
+                AuthRegisterRequest(
+                    name = name,
+                    email = email,
+                    password = password,
+                    role = backendRole
+                )
+            )
+            if (response.isSuccessful) {
+                val body = response.body()
+                val accessToken = body?.accessToken
+                val refreshToken = body?.refreshToken
+                val userDto = body?.user
+                if (accessToken != null && refreshToken != null && userDto != null) {
+                    tokenStore.saveTokens(accessToken, refreshToken)
+                    return Result.success(userDto.toDomainUser())
+                }
+            }
+            throw Exception("Backend register failed, falling back to Firebase")
         } catch (e: Exception) {
-            Result.failure(e)
+            return try {
+                val result = auth.createUserWithEmailAndPassword(email, password).await()
+                val uid = result.user?.uid
+                    ?: return Result.failure(Exception("Sign up failed"))
+                val user = User(id = uid, name = name, email = email, role = listOf(role))
+                db.collection("Users").document(uid).set(user).await()
+                Result.success(user)
+            } catch (e2: Exception) {
+                Result.failure(e2)
+            }
         }
     }
 
@@ -44,15 +76,31 @@ class AuthRepositoryImpl @Inject constructor(
         password: String
     ): Result<User> {
         return try {
-            val result = auth.signInWithEmailAndPassword(email, password).await()
-            val uid = result.user?.uid ?: return Result.failure(Exception("Sign in failed"))
-            val user = db.collection("Users").document(uid).get().await().toObject(User::class.java)
-                ?: return Result.failure(Exception("User not found"))
-            val idToken = result.user?.getIdToken(false)?.await()?.token
-            //Log.d("Test", "idToken: $idToken")
-            Result.success(user)
+            val response = apiService.login(AuthLoginRequest(email = email, password = password))
+            if (response.isSuccessful) {
+                val body = response.body()
+                val accessToken = body?.accessToken
+                val refreshToken = body?.refreshToken
+                val userDto = body?.user
+                if (accessToken != null && refreshToken != null && userDto != null) {
+                    tokenStore.saveTokens(accessToken, refreshToken)
+                    return Result.success(userDto.toDomainUser())
+                }
+            }
+            throw Exception("Backend login failed, falling back to Firebase")
         } catch (e: Exception) {
-            Result.failure(e)
+            return try {
+                val result = auth.signInWithEmailAndPassword(email, password).await()
+                val uid = result.user?.uid
+                    ?: return Result.failure(Exception("Sign in failed"))
+                val user = db.collection("Users").document(uid).get().await()
+                    .toObject(User::class.java)
+                    ?: return Result.failure(Exception("User not found"))
+                val idToken = result.user?.getIdToken(false)?.await()?.token
+                Result.success(user)
+            } catch (e2: Exception) {
+                Result.failure(e2)
+            }
         }
     }
 
@@ -179,6 +227,7 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        tokenStore.clearTokens()
         auth.signOut()
     }
 
