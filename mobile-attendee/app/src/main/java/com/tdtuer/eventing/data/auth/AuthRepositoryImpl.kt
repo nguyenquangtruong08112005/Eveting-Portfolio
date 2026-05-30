@@ -13,7 +13,9 @@ import com.tdtuer.eventing.data.network.EventApiService
 import com.tdtuer.eventing.data.network.model.AuthLoginRequest
 import com.tdtuer.eventing.data.network.model.AuthRegisterRequest
 import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
+import com.tdtuer.eventing.data.network.model.UserDto
 import com.tdtuer.eventing.data.network.model.toDomainUser
+import com.tdtuer.eventing.domain.model.JoinedEvent
 import com.tdtuer.eventing.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -156,6 +158,23 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun getCurrentUser(): Flow<User?> = callbackFlow {
+        val backendAccessToken = runCatching { tokenStore.getAccessToken() }.getOrNull()
+        if (!backendAccessToken.isNullOrBlank()) {
+            val response = try {
+                apiService.getUserProfile()
+            } catch (e: Exception) {
+                null
+            }
+            if (response != null && response.isSuccessful) {
+                val dto = response.body()
+                if (dto != null) {
+                    trySend(toDomainUser(dto))
+                    close()
+                    awaitClose { }
+                    return@callbackFlow
+                }
+            }
+        }
         val authStateListener = FirebaseAuth.AuthStateListener { auth ->
             val uid = auth.currentUser?.uid
             if (uid != null) {
@@ -258,4 +277,31 @@ class AuthRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+}
+
+private fun toDomainUser(dto: UserDto): User {
+    return User(
+        id = dto.id ?: "",
+        email = dto.email ?: "",
+        name = dto.userName ?: "",
+        profilePicUrl = dto.profilePicUrl ?: "",
+        coverPhotoUrl = dto.coverPhotoUrl ?: "",
+        isOrganizer = dto.isOrganizer ?: false,
+        bio = dto.aboutMe ?: "",
+        birthDate = dto.birthDate ?: 0L,
+        address = dto.address ?: "",
+        interests = dto.interests ?: emptyList(),
+        followersCount = dto.followersCount ?: 0,
+        followingCount = dto.followingCount ?: 0,
+        followedProfileIds = dto.followedProfileIds ?: emptyList(),
+        joinedEvents = dto.joinedEvents?.map { je ->
+            JoinedEvent(
+                id = je.id ?: "",
+                name = je.name ?: "",
+                date = je.date ?: 0L,
+                imageUrl = je.imageUrl ?: ""
+            )
+        } ?: emptyList(),
+        role = if (dto.isOrganizer == true) listOf("attendee", "organizer") else listOf("attendee")
+    )
 }
