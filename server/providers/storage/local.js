@@ -12,12 +12,21 @@ const deleteObject = async (key) => {
   store.delete(key);
 };
 
-const getPublicUrl = async (_key) => {
-  return null;
+const getPublicUrl = async (key) => {
+  const baseUrl = process.env.APP_PUBLIC_URL || 'http://localhost:3000';
+  return `${baseUrl.replace(/\/+$/, '')}/public/${key}`;
 };
 
 const getSignedReadUrl = async (_key, _expiresIn) => {
   return null;
 };
 
-module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl };
+const getObjectBuffer = async (key) => {
+  const item = store.get(key);
+  if (!item) {
+    throw new Error(`Object with key "${key}" not found in local storage`);
+  }
+  return item.buffer;
+};
+
+module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl, getObjectBuffer };

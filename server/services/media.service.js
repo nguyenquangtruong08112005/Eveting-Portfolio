@@ -1,6 +1,7 @@
 // services/media.service.js
 const { v4: uuidv4 } = require('uuid');
 const mediaRepository = require('../providers/database/media.repository');
+const activeStorageProvider = require('../providers/storage');
 
 /**
  * Lấy thư viện media của sự kiện
@@ -48,8 +49,54 @@ const addEventMedia = async (userId, eventId, mediaItems) => {
     return createdItems;
 };
 
+/**
+ * Lưu file media người dùng đã upload bằng cách upload lên storage trước
+ */
+const addEventMediaFiles = async (userId, eventId, filesData) => {
+    // filesData là mảng: [{ buffer, originalname, mimetype, caption }]
+    const createdItems = [];
+    const now = new Date().getTime();
+
+    for (const file of filesData) {
+        const fileExt = file.originalname ? file.originalname.split('.').pop() : '';
+        const uniqueId = uuidv4();
+        const key = `event-media/${eventId}/${uniqueId}${fileExt ? '.' + fileExt : ''}`;
+
+        // Upload file buffer
+        await activeStorageProvider.uploadBuffer(key, file.buffer, file.mimetype);
+
+        // Get public URL
+        const url = await activeStorageProvider.getPublicUrl(key);
+        if (!url) {
+            throw new Error(`Storage provider could not generate public URL for key: ${key}`);
+        }
+
+        // Infer media type from mimetype
+        const type = file.mimetype && file.mimetype.startsWith('video/') ? 'video' : 'image';
+
+        const mediaId = `media_${uuidv4()}`;
+        const newMedia = {
+            id: mediaId,
+            userId,
+            eventId,
+            url,
+            type,
+            caption: file.caption || '',
+            createdAt: now
+        };
+        createdItems.push(newMedia);
+    }
+
+    await mediaRepository.createEventMediaBatch(
+        createdItems.map(item => ({ id: item.id, media: item }))
+    );
+
+    return createdItems;
+};
+
 module.exports = {
     getEventMedia,
     canUploadEventMedia,
-    addEventMedia
+    addEventMedia,
+    addEventMediaFiles
 };

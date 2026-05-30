@@ -71,4 +71,15 @@ const getSignedReadUrl = async (key, expiresIn = 900) => {
   return getSignedUrl(getClient(), cmd, { expiresIn });
 };
 
-module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl };
+const getObjectBuffer = async (key) => {
+  requireBucket();
+  const cmd = new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
+  const response = await getClient().send(cmd);
+  const chunks = [];
+  for await (const chunk of response.Body) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+};
+
+module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl, getObjectBuffer };

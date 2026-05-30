@@ -19,15 +19,77 @@ const uploadMedia = async (req, res) => {
     try {
         const userId = req.user.uid;
         const { eventId } = req.params;
-        const { mediaItems } = req.body; // Expect mảng: [{url, type, caption}]
-
-        if (!mediaItems || !Array.isArray(mediaItems) || mediaItems.length === 0) {
-            return res.status(400).send({ error: 'No media items provided.' });
-        }
 
         const canUpload = await mediaService.canUploadEventMedia(userId, eventId);
         if (!canUpload) {
             return res.status(403).send({ error: 'Forbidden: Only attendees or organizer can upload media.' });
+        }
+
+        // Support both req.files (array) and req.file (single) from multer
+        let files = req.files || [];
+        if (!files.length && req.file) {
+            files = [req.file];
+        }
+
+        // Additive multipart support only when files are sent
+        if (files && files.length > 0) {
+            for (const file of files) {
+                if (!file.mimetype || (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/'))) {
+                    return res.status(400).send({ error: 'Unsupported file type. Only image/* and video/* are allowed.' });
+                }
+            }
+            let captions = [];
+            let bodyMediaItems = [];
+
+            if (req.body.captions) {
+                if (Array.isArray(req.body.captions)) {
+                    captions = req.body.captions;
+                } else {
+                    try {
+                        const parsed = JSON.parse(req.body.captions);
+                        if (Array.isArray(parsed)) {
+                            captions = parsed;
+                        } else {
+                            captions = [String(parsed)];
+                        }
+                    } catch (e) {
+                        captions = [req.body.captions];
+                    }
+                }
+            } else if (req.body.caption) {
+                captions = [req.body.caption];
+            }
+
+            if (req.body.mediaItems) {
+                try {
+                    const parsed = typeof req.body.mediaItems === 'string' ? JSON.parse(req.body.mediaItems) : req.body.mediaItems;
+                    if (Array.isArray(parsed)) {
+                        bodyMediaItems = parsed;
+                    }
+                } catch (e) {
+                    // Ignore parsing issues
+                }
+            }
+
+            const filesData = files.map((file, index) => {
+                const caption = (bodyMediaItems[index] && bodyMediaItems[index].caption) || captions[index] || req.body.caption || '';
+                return {
+                    buffer: file.buffer,
+                    originalname: file.originalname,
+                    mimetype: file.mimetype,
+                    caption: caption
+                };
+            });
+
+            const result = await mediaService.addEventMediaFiles(userId, eventId, filesData);
+            return res.status(201).json(result);
+        }
+
+        // Keep existing JSON behavior stable
+        const { mediaItems } = req.body; // Expect mảng: [{url, type, caption}]
+
+        if (!mediaItems || !Array.isArray(mediaItems) || mediaItems.length === 0) {
+            return res.status(400).send({ error: 'No media items provided.' });
         }
 
         const result = await mediaService.addEventMedia(userId, eventId, mediaItems);
@@ -35,7 +97,7 @@ const uploadMedia = async (req, res) => {
 
     } catch (error) {
         console.error("Error adding media:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
+        res.status(500).send({ error: error.message || 'Internal Server Error' });
     }
 };
 
