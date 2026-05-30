@@ -1,15 +1,11 @@
-const firebaseFeaturedProfileRepository = require('./firebase.featuredProfile.repository');
-const postgresFeaturedProfileRepository = require('./postgres.featuredProfile.repository');
-
-const repositories = {
-    firebase: firebaseFeaturedProfileRepository,
-    postgres: postgresFeaturedProfileRepository,
-};
-
 const providerName = process.env.FEATURED_PROFILE_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
-const activeRepository = repositories[providerName];
 
-if (!activeRepository) {
+let activeRepository;
+if (providerName === 'postgres') {
+    activeRepository = require('./postgres.featuredProfile.repository');
+} else if (providerName === 'firebase') {
+    activeRepository = require('./firebase.featuredProfile.repository');
+} else {
     throw new Error(`Database provider "${providerName}" is not supported for featured profiles.`);
 }
 

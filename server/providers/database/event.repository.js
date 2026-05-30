@@ -1,15 +1,11 @@
-const firebaseEventRepository = require('./firebase.event.repository');
-const postgresEventRepository = require('./postgres.event.repository');
-
-const repositories = {
-    firebase: firebaseEventRepository,
-    postgres: postgresEventRepository,
-};
-
 const providerName = process.env.EVENT_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
-const activeRepository = repositories[providerName];
 
-if (!activeRepository) {
+let activeRepository;
+if (providerName === 'postgres') {
+    activeRepository = require('./postgres.event.repository');
+} else if (providerName === 'firebase') {
+    activeRepository = require('./firebase.event.repository');
+} else {
     throw new Error(`Database provider "${providerName}" is not supported for events.`);
 }
 

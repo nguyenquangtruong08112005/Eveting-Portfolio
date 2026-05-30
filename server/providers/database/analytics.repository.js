@@ -1,15 +1,11 @@
-const firebaseAnalyticsRepository = require('./firebase.analytics.repository');
-const postgresAnalyticsRepository = require('./postgres.analytics.repository');
-
-const repositories = {
-    firebase: firebaseAnalyticsRepository,
-    postgres: postgresAnalyticsRepository,
-};
-
 const providerName = process.env.ANALYTICS_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
-const activeRepository = repositories[providerName];
 
-if (!activeRepository) {
+let activeRepository;
+if (providerName === 'postgres') {
+    activeRepository = require('./postgres.analytics.repository');
+} else if (providerName === 'firebase') {
+    activeRepository = require('./firebase.analytics.repository');
+} else {
     throw new Error(`Database provider "${providerName}" is not supported for analytics.`);
 }
 

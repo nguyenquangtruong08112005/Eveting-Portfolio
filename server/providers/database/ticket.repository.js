@@ -1,15 +1,11 @@
-const firebaseTicketRepository = require('./firebase.ticket.repository');
-const postgresTicketRepository = require('./postgres.ticket.repository');
-
-const repositories = {
-    firebase: firebaseTicketRepository,
-    postgres: postgresTicketRepository,
-};
-
 const providerName = process.env.TICKET_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
-const activeRepository = repositories[providerName];
 
-if (!activeRepository) {
+let activeRepository;
+if (providerName === 'postgres') {
+    activeRepository = require('./postgres.ticket.repository');
+} else if (providerName === 'firebase') {
+    activeRepository = require('./firebase.ticket.repository');
+} else {
     throw new Error(`Database provider "${providerName}" is not supported for tickets.`);
 }
 

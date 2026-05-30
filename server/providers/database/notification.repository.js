@@ -1,15 +1,11 @@
-const firebaseNotificationRepository = require('./firebase.notification.repository');
-const postgresNotificationRepository = require('./postgres.notification.repository');
-
-const repositories = {
-    firebase: firebaseNotificationRepository,
-    postgres: postgresNotificationRepository,
-};
-
 const providerName = process.env.NOTIFICATION_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
-const activeRepository = repositories[providerName];
 
-if (!activeRepository) {
+let activeRepository;
+if (providerName === 'postgres') {
+    activeRepository = require('./postgres.notification.repository');
+} else if (providerName === 'firebase') {
+    activeRepository = require('./firebase.notification.repository');
+} else {
     throw new Error(`Database provider "${providerName}" is not supported for notifications.`);
 }
 

@@ -1,15 +1,11 @@
-const firebaseMediaRepository = require('./firebase.media.repository');
-const postgresMediaRepository = require('./postgres.media.repository');
-
-const repositories = {
-    firebase: firebaseMediaRepository,
-    postgres: postgresMediaRepository,
-};
-
 const providerName = process.env.MEDIA_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
-const activeRepository = repositories[providerName];
 
-if (!activeRepository) {
+let activeRepository;
+if (providerName === 'postgres') {
+    activeRepository = require('./postgres.media.repository');
+} else if (providerName === 'firebase') {
+    activeRepository = require('./firebase.media.repository');
+} else {
     throw new Error(`Database provider "${providerName}" is not supported for media.`);
 }
 
