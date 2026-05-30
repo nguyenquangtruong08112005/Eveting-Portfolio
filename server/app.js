@@ -20,6 +20,7 @@ var paymentsRouter = require('./routes/payments.routes');
 var venuesRouter = require('./routes/venues.routes');
 var adminRouter = require('./routes/admin.routes');
 var authRouter = require('./routes/auth.routes');
+var storageRouter = require('./routes/storage.routes');
 var app = express();
 
 app.use(logger('dev'));
@@ -42,6 +43,7 @@ app.use('/venues', venuesRouter);
 app.use('/admin', adminRouter);
 app.use('/auth', authRouter);
 app.use('/api/auth', authRouter);
+app.use('/storage', storageRouter);
 
 // ======================
 // Tạo server trực tiếp ở đây
