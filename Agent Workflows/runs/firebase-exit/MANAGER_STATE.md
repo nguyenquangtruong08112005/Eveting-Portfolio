@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, and F are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, and F are complete on `Server-2025-Eventing/staging`.
 
-Next phase: Phase C5 storage upload/read wiring.
+Next phase: Phase C6 global provider flip blockers.
 
 ## Source Of Truth
 
@@ -29,6 +29,7 @@ Next phase: Phase C5 storage upload/read wiring.
 - Phase C4 consolidation/provider flip matrix: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-consolidation-provider-flip-matrix.md`
 - Phase C4 Postgres transaction support verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-postgres-transaction-support-verification.md`
 - Phase C4 backend auth route verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c4-backend-auth-routes-verification.md`
+- Phase C5 storage media upload verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c5-storage-media-upload-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -88,6 +89,7 @@ Next phase: Phase C5 storage upload/read wiring.
 - `0af0740` - Add Postgres analytics adapter.
 - `6448868` - Add Postgres transaction support.
 - `ca2ad2e` - Wire backend auth routes.
+- `0f06354` - Wire media storage uploads.
 
 ## Current Plan Summary
 
@@ -117,7 +119,7 @@ Slice D:
 Slice E:
 
 - Add S3-compatible storage port and adapter.
-- Status: complete as additive boundary; no media route behavior changed.
+- Status: complete as additive boundary and media multipart upload wiring; existing JSON media upload behavior remains stable.
 
 Slice F:
 
@@ -147,15 +149,15 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase C5 storage upload/read wiring:
+Assign a local agent Phase C6 global provider flip blocker work:
 
 - server-only
 - no mobile repo edits
-- use existing storage provider boundary
-- wire backend media upload/read path without changing mobile-facing behavior by default
-- keep Firebase/default URL behavior stable unless storage provider env opts in
-- prefer local S3-compatible verification with MinIO or mocked provider before AWS/R2
-- verify with syntax checks and a bounded storage smoke script
+- identify current blockers to `DATABASE_PROVIDER=postgres`
+- start with admin repository/provider coverage because consolidation marked it as the global flip blocker
+- keep Firebase admin behavior available unless env opts into Postgres
+- do not remove Firebase packages/config
+- verify with syntax checks plus bounded admin smoke/compare where possible
 
 ## Latest Verification
 
@@ -191,3 +193,4 @@ Results:
 - Phase C4 consolidation review completed: provider flip matrix saved, global `DATABASE_PROVIDER=postgres` remains blocked by admin repository, and ticket/event/promotion/analytics transaction shims must be fixed before broad write-path flips.
 - Phase C4 transaction support verification passed: real Postgres transaction helper added, rollback/commit smoke passed, and tickets/events/promotions/analytics compare scripts still pass.
 - Phase C4 backend auth route verification passed: register/login/refresh/logout/logout-all smoke passed against local Postgres with `AUTH_PROVIDER=backend`; invalid backend bearer token returns 403; revoked refresh tokens return 401; smoke output redacts database password and access/refresh tokens.
+- Phase C5 storage media upload verification passed: existing JSON media route remains intact, multipart image/video upload path uses storage provider, local storage upload/read smoke passed, unsupported multipart mimetype returns 400, and full server JS syntax scan passed.
