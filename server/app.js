@@ -19,6 +19,7 @@ var organizerRouter = require('./routes/organizer.routes');
 var paymentsRouter = require('./routes/payments.routes');
 var venuesRouter = require('./routes/venues.routes');
 var adminRouter = require('./routes/admin.routes');
+var authRouter = require('./routes/auth.routes');
 var app = express();
 
 app.use(logger('dev'));
@@ -39,6 +40,8 @@ app.use('/organizer', organizerRouter);
 app.use('/payments', paymentsRouter);
 app.use('/venues', venuesRouter);
 app.use('/admin', adminRouter);
+app.use('/auth', authRouter);
+app.use('/api/auth', authRouter);
 
 // ======================
 // Tạo server trực tiếp ở đây
