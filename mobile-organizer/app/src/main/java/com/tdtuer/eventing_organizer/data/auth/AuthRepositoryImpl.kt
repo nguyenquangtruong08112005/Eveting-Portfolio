@@ -10,6 +10,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tdtuer.eventing_organizer.data.network.AuthApiService
 import com.tdtuer.eventing_organizer.data.network.EventApiService
+import com.tdtuer.eventing_organizer.data.mapper.toDomainModel
 import com.tdtuer.eventing_organizer.data.network.model.LoginRequest
 import com.tdtuer.eventing_organizer.data.network.model.RegisterRequest
 import com.tdtuer.eventing_organizer.data.network.model.RemoveTokenRequest
@@ -159,23 +160,44 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun getCurrentUser(): Flow<User?> = callbackFlow {
-        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
-            val uid = auth.currentUser?.uid
-            if (uid != null) {
-                db.collection("Users").document(uid).get()
-                    .addOnSuccessListener { doc ->
-                        trySend(doc.toObject(User::class.java))
+        var jwtUser: User? = null
+        try {
+            val token = tokenStore.getAccessToken()
+            if (!token.isNullOrBlank()) {
+                val response = apiService.getUserProfile()
+                if (response.isSuccessful) {
+                    val dto = response.body()
+                    if (dto != null) {
+                        jwtUser = dto.toDomainModel()
                     }
-                    .addOnFailureListener {
-                        trySend(null)
-                    }
-            } else {
-                trySend(null)
+                }
             }
+        } catch (_: Exception) {
+            // fall through to Firebase fallback
         }
-        auth.addAuthStateListener(authStateListener)
-        awaitClose {
-            auth.removeAuthStateListener(authStateListener)
+
+        if (jwtUser != null) {
+            trySend(jwtUser)
+            close()
+        } else {
+            val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+                val uid = auth.currentUser?.uid
+                if (uid != null) {
+                    db.collection("Users").document(uid).get()
+                        .addOnSuccessListener { doc ->
+                            trySend(doc.toObject(User::class.java))
+                        }
+                        .addOnFailureListener {
+                            trySend(null)
+                        }
+                } else {
+                    trySend(null)
+                }
+            }
+            auth.addAuthStateListener(authStateListener)
+            awaitClose {
+                auth.removeAuthStateListener(authStateListener)
+            }
         }
     }
 
