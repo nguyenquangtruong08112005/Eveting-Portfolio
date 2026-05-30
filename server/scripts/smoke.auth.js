@@ -183,6 +183,48 @@ async function run() {
   }
   console.log('[OK] Register test passed.');
 
+  // 2.5. Test role-based registration
+  const roleTestPassword = 'StrongTestPassword456!';
+
+  console.log('\nTesting: POST /auth/register (default role)');
+  const defaultRoleEmail = `synthetic_${Date.now()}_${Math.random().toString(36).substring(7)}@test.com`;
+  const defaultRoleRes = await axios.post(`${BASE_URL}/auth/register`, {
+    email: defaultRoleEmail, password: roleTestPassword, name: 'Default Role User'
+  });
+  if (defaultRoleRes.status !== 201) {
+    throw new Error(`Expected 201 for default role register, got ${defaultRoleRes.status}`);
+  }
+  if (!defaultRoleRes.data.user.roles || defaultRoleRes.data.user.roles[0] !== 'user') {
+    throw new Error(`Expected default role 'user', got ${JSON.stringify(defaultRoleRes.data.user.roles)}`);
+  }
+  console.log('[OK] Default role registration test passed.');
+
+  console.log('\nTesting: POST /auth/register (organizer role)');
+  const organizerEmail = `synthetic_${Date.now()}_${Math.random().toString(36).substring(7)}@test.com`;
+  const organizerRes = await axios.post(`${BASE_URL}/auth/register`, {
+    email: organizerEmail, password: roleTestPassword, name: 'Organizer User', role: 'organizer'
+  });
+  if (organizerRes.status !== 201) {
+    throw new Error(`Expected 201 for organizer register, got ${organizerRes.status}`);
+  }
+  if (!organizerRes.data.user.roles || organizerRes.data.user.roles[0] !== 'organizer') {
+    throw new Error(`Expected role 'organizer', got ${JSON.stringify(organizerRes.data.user.roles)}`);
+  }
+  console.log('[OK] Organizer role registration test passed.');
+
+  console.log('\nTesting: POST /auth/register (invalid role -> 400)');
+  try {
+    await axios.post(`${BASE_URL}/auth/register`, {
+      email: `invalid_${Date.now()}@test.com`, password: roleTestPassword, name: 'Invalid Role', role: 'admin'
+    });
+    throw new Error('Expected 400 for invalid role, but request succeeded.');
+  } catch (err) {
+    if (!err.response || err.response.status !== 400) {
+      throw new Error(`Expected 400 for invalid role, got ${err.response ? err.response.status : 'no response'}`);
+    }
+  }
+  console.log('[OK] Invalid role (admin) rejected with 400 test passed.');
+
   // 3. Login
   console.log('\nTesting: POST /auth/login');
   const loginRes = await axios.post(`${BASE_URL}/auth/login`, { email, password });

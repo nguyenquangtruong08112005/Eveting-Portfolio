@@ -22,7 +22,15 @@ function makeTokens(uid, email, roles) {
   return { accessToken, refreshToken, refreshTokenHash };
 }
 
-async function register({ email, password, name }) {
+async function register({ email, password, name, role }) {
+  const ALLOWED_ROLES = new Set(['user', 'organizer']);
+  const safeRole = role || 'user';
+  if (!ALLOWED_ROLES.has(safeRole)) {
+    const err = new Error(`Invalid role '${role}'. Allowed roles: user, organizer`);
+    err.statusCode = 400;
+    throw err;
+  }
+
   const existing = await authRepository.findUserByEmail(email);
   if (existing) {
     const err = new Error('Email already registered');
@@ -35,7 +43,7 @@ async function register({ email, password, name }) {
     email,
     name: name || '',
     passwordHash,
-    roles: ['user'],
+    roles: [safeRole],
   });
   if (!uid) {
     const err = new Error('Email already registered');
@@ -43,7 +51,7 @@ async function register({ email, password, name }) {
     throw err;
   }
 
-  const { accessToken, refreshToken, refreshTokenHash } = makeTokens(uid, email, ['user']);
+  const { accessToken, refreshToken, refreshTokenHash } = makeTokens(uid, email, [safeRole]);
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
 
   await authRepository.createSession({
@@ -55,7 +63,7 @@ async function register({ email, password, name }) {
   return {
     accessToken,
     refreshToken,
-    user: { id: uid, email, name: name || '', roles: ['user'] },
+    user: { id: uid, email, name: name || '', roles: [safeRole] },
   };
 }
 
