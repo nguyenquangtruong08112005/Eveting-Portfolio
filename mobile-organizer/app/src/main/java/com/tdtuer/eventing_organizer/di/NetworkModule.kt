@@ -4,7 +4,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.tdtuer.eventing_organizer.constants.Constraints.BASE_URL
 import com.tdtuer.eventing_organizer.data.network.AddressApiService
+import com.tdtuer.eventing_organizer.data.network.AuthApiService
 import com.tdtuer.eventing_organizer.data.network.EventApiService
+import com.tdtuer.eventing_organizer.data.preferences.TokenStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,18 +32,28 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(auth: FirebaseAuth): OkHttpClient {
+    fun provideOkHttpClient(auth: FirebaseAuth, tokenStore: TokenStore): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
         val authInterceptor = Interceptor { chain ->
-            val token = try {
-                runBlocking {
-                    auth.currentUser?.getIdToken(false)?.await()?.token
-                }
+            val backendToken = try {
+                runBlocking { tokenStore.getAccessToken() }
             } catch (e: Exception) {
                 null
+            }
+
+            val token = if (!backendToken.isNullOrBlank()) {
+                backendToken
+            } else {
+                try {
+                    runBlocking {
+                        auth.currentUser?.getIdToken(false)?.await()?.token
+                    }
+                } catch (e: Exception) {
+                    null
+                }
             }
 
             val requestBuilder = chain.request().newBuilder()
@@ -73,6 +85,12 @@ object NetworkModule {
     @Singleton
     fun provideEventApiService(retrofit: Retrofit): EventApiService {
         return retrofit.create(EventApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
     }
 
     @Provides
