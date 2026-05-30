@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, and C12 server Firebase tooling archive are complete on `Server-2025-Eventing/staging`.
+Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, and M1 mobile backend token foundation are complete on `staging`.
 
-Next phase: Phase M1 mobile migration audit.
+Next phase: Phase M2 mobile auth repository wiring.
 
 ## Source Of Truth
 
@@ -37,6 +37,7 @@ Next phase: Phase M1 mobile migration audit.
 - Phase C10 lazy provider loading verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c10-lazy-provider-loading-verification.md`
 - Phase C11 environment cutover template: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c11-env-cutover-template.md`
 - Phase C12 server Firebase tooling archive verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-c12-server-firebase-tooling-archive-verification.md`
+- Phase M1 mobile backend token foundation verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m1-mobile-backend-token-foundation-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -102,6 +103,12 @@ Next phase: Phase M1 mobile migration audit.
 - `8aedc00` - Add Postgres write path smoke.
 - `97c733d` - Lazy load provider selectors.
 - `8e2437c` - Archive Firebase migration tooling.
+- `7427306` - Support backend auth organizer role.
+
+## Integrated Mobile Commits
+
+- Attendee `Mobile-2025-Eventing`: `b1ca179` - Add backend token fallback foundation.
+- Organizer `Mobile-2025-Eventing-Organizer`: `a197660` - Add backend token fallback foundation.
 
 ## Current Plan Summary
 
@@ -161,12 +168,11 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase M1 mobile migration audit:
+Assign a local agent Phase M2 mobile auth repository wiring:
 
-- audit both mobile repos before editing because they have existing uncommitted changes
-- map FirebaseAuth, FirebaseStorage, FirebaseMessaging usages
-- map token interceptor and auth repository contracts
-- propose smallest additive backend-auth migration slice
+- attendee: wire email/password login/register to backend auth and save backend tokens
+- organizer: wire email/password login/register to backend auth with `role=organizer` and save backend tokens
+- keep Firebase social login and Firebase token fallback available
 - do not overwrite existing dirty mobile changes
 - use `opencode` instead of `agy` until `agy` quota resets
 
@@ -212,3 +218,4 @@ Results:
 - Phase C10 lazy provider loading passed: provider selectors now lazy-load only active providers; Postgres/backend/OneSignal lazy smoke proved Firebase modules are not loaded for that env; regression smokes and default selector require passed.
 - Phase C11 env cutover template completed: local/dev env values and cmd verification sequence documented without committing real production secrets; S3-compatible env names aligned with current adapter.
 - Phase C12 server archive completed: Firebase sync/compare scripts and legacy Firebase Functions moved under `archive/`; package scripts still work; lazy/provider smoke and archived compare commands passed.
+- Phase M1 mobile backend token foundation completed: backend auth now supports optional `organizer` registration role; attendee and organizer mobile apps now have backend token stores and interceptors that prefer backend JWT tokens while preserving Firebase ID token fallback. Mobile compile remains blocked before Kotlin compilation by Mapbox Maven 401 Unauthorized.
