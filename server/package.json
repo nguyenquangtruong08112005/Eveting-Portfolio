@@ -8,6 +8,7 @@
     "db:migrate": "node db/migrate.js",
     "db:smoke:auth": "node scripts/smoke.auth.js",
     "db:smoke:postgres-provider": "node scripts/smoke.postgres-provider.js",
+    "db:smoke:postgres-write-paths": "node scripts/smoke.postgres-write-paths.js",
     "db:smoke:venues": "node scripts/smoke.venues.js",
     "db:seed:venues": "node scripts/seed.venues.postgres.js",
     "db:compare:venues": "node scripts/compare.venues.firebase-postgres.js",

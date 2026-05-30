@@ -136,11 +136,6 @@ const updateEvent = async (eventId, updates, transaction = null) => {
                 params.push(updates[key]);
             }
             idx++;
-        } else {
-            const snake = key.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
-            sets.push(`${snake} = $${idx}`);
-            params.push(updates[key]);
-            idx++;
         }
     }
 
