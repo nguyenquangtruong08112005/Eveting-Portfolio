@@ -9,8 +9,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const firebaseRepo = require('../providers/database/firebase.admin.repository');
-const postgresRepo = require('../providers/database/postgres.admin.repository');
+const firebaseRepo = require('../../../providers/database/firebase.admin.repository');
+const postgresRepo = require('../../../providers/database/postgres.admin.repository');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {

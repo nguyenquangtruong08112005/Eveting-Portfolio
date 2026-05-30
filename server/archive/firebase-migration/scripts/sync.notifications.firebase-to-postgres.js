@@ -10,8 +10,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.notification.repository');
-var postgresRepo = require('../providers/database/postgres.notification.repository');
+var firebaseRepo = require('../../../providers/database/firebase.notification.repository');
+var postgresRepo = require('../../../providers/database/postgres.notification.repository');
 
 async function main() {
   var userId = process.env.NOTIFICATION_SYNC_USER_ID || 'user_alice';

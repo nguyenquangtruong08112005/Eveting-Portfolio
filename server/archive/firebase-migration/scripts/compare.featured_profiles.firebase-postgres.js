@@ -10,8 +10,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.featuredProfile.repository');
-var postgresRepo = require('../providers/database/postgres.featuredProfile.repository');
+var firebaseRepo = require('../../../providers/database/firebase.featuredProfile.repository');
+var postgresRepo = require('../../../providers/database/postgres.featuredProfile.repository');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {

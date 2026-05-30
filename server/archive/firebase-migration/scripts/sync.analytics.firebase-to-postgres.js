@@ -9,8 +9,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const { db } = require('../config/firebase.config');
-const postgresRepo = require('../providers/database/postgres.analytics.repository');
+const { db } = require('../../../config/firebase.config');
+const postgresRepo = require('../../../providers/database/postgres.analytics.repository');
 
 async function main() {
   const snapshot = await db.collection('Analytics').get();

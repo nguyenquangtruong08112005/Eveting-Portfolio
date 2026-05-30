@@ -1,8 +1,7 @@
-// Compare promotion data between Firebase and Postgres.
-// Compares active public promotions and optionally organizer with PROMOTION_SMOKE_ORGANIZER_ID.
+// Compare venue data between Firebase and Postgres
 // Usage:
-//   DATABASE_URL=postgres://... node scripts/compare.promotions.firebase-postgres.js
-//   DATABASE_URL=postgres://... PROMOTION_SMOKE_ORGANIZER_ID=<id> node scripts/compare.promotions.firebase-postgres.js
+//   DATABASE_URL=postgres://... node scripts/compare.venues.firebase-postgres.js
+//   DATABASE_URL=postgres://... VENUE_SMOKE_ID=<id> node scripts/compare.venues.firebase-postgres.js
 
 require('dotenv').config({ quiet: true });
 
@@ -11,8 +10,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.promotion.repository');
-var postgresRepo = require('../providers/database/postgres.promotion.repository');
+var firebaseRepo = require('../../../providers/database/firebase.venue.repository');
+var postgresRepo = require('../../../providers/database/postgres.venue.repository');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {
@@ -26,8 +25,8 @@ function stableStringify(obj) {
   });
 }
 
-function sortById(promos) {
-  return promos.slice().sort(function(a, b) {
+function sortById(venues) {
+  return venues.slice().sort(function(a, b) {
     if (a.id < b.id) return -1;
     if (a.id > b.id) return 1;
     return 0;
@@ -39,23 +38,14 @@ var missingInPostgres = [];
 var missingInFirebase = [];
 var different = [];
 
-async function getAllPromotionsForCompare(repo) {
-  var active = await repo.getActivePromotions();
-  var map = {};
-  active.forEach(function(p) { map[p.id] = p; });
-
-  var smokeId = process.env.PROMOTION_SMOKE_ORGANIZER_ID;
-  if (smokeId) {
-    var orgPromos = await repo.getPromotionsByOrganizer(smokeId);
-    orgPromos.forEach(function(p) { map[p.id] = p; });
-  }
-
-  return map;
-}
-
 async function compare() {
-  var fbMap = await getAllPromotionsForCompare(firebaseRepo);
-  var pgMap = await getAllPromotionsForCompare(postgresRepo);
+  var firebaseVenues = await firebaseRepo.getAllVenues();
+  var postgresVenues = await postgresRepo.getAllVenues();
+
+  var fbMap = {};
+  firebaseVenues.forEach(function(v) { fbMap[v.id] = v; });
+  var pgMap = {};
+  postgresVenues.forEach(function(v) { pgMap[v.id] = v; });
 
   var allIds = Object.keys(fbMap).concat(Object.keys(pgMap)).filter(function(id, idx, arr) {
     return arr.indexOf(id) === idx;
@@ -94,13 +84,24 @@ async function compare() {
     console.log('  DIFFERENT: ' + d.id);
   });
 
-  var smokeId = process.env.PROMOTION_SMOKE_ORGANIZER_ID;
+  var smokeId = process.env.VENUE_SMOKE_ID;
   if (smokeId) {
-    console.log('\nPROMOTION_SMOKE_ORGANIZER_ID=' + smokeId);
-    var fbPromos = await firebaseRepo.getPromotionsByOrganizer(smokeId);
-    var pgPromos = await postgresRepo.getPromotionsByOrganizer(smokeId);
-    console.log('  firebase: ' + fbPromos.length + ' promotions');
-    console.log('  postgres: ' + pgPromos.length + ' promotions');
+    console.log('\nVENUE_SMOKE_ID=' + smokeId);
+    var fbVenue = await firebaseRepo.getVenueById(smokeId);
+    var pgVenue = await postgresRepo.getVenueById(smokeId);
+    var fbFound = fbVenue !== null;
+    var pgFound = pgVenue !== null;
+    console.log('  firebase: ' + (fbFound ? 'found' : 'not found'));
+    console.log('  postgres: ' + (pgFound ? 'found' : 'not found'));
+    if (fbFound && pgFound) {
+      var fbStr = stableStringify(fbVenue);
+      var pgStr = stableStringify(pgVenue);
+      if (fbStr === pgStr) {
+        console.log('  getVenueById: MATCH');
+      } else {
+        console.log('  getVenueById: DIFFERENT');
+      }
+    }
   }
 
   var hasDiff = missingInPostgres.length > 0 || missingInFirebase.length > 0 || different.length > 0;

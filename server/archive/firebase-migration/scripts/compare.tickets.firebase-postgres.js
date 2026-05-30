@@ -10,10 +10,10 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const { db } = require('../config/firebase.config');
-const firebaseRepo = require('../providers/database/firebase.ticket.repository');
-const postgresRepo = require('../providers/database/postgres.ticket.repository');
-const { query } = require('../providers/database/postgres.client');
+const { db } = require('../../../config/firebase.config');
+const firebaseRepo = require('../../../providers/database/firebase.ticket.repository');
+const postgresRepo = require('../../../providers/database/postgres.ticket.repository');
+const { query } = require('../../../providers/database/postgres.client');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {

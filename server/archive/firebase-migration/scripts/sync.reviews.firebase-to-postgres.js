@@ -10,8 +10,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.review.repository');
-var postgresRepo = require('../providers/database/postgres.review.repository');
+var firebaseRepo = require('../../../providers/database/firebase.review.repository');
+var postgresRepo = require('../../../providers/database/postgres.review.repository');
 
 async function main() {
   var eventId = process.env.REVIEW_SYNC_EVENT_ID || 'evt_vdf_hcm_2025';

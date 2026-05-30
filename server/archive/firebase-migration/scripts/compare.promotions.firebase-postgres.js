@@ -1,7 +1,8 @@
-// Compare notification data between Firebase and Postgres
+// Compare promotion data between Firebase and Postgres.
+// Compares active public promotions and optionally organizer with PROMOTION_SMOKE_ORGANIZER_ID.
 // Usage:
-//   DATABASE_URL=postgres://... node scripts/compare.notifications.firebase-postgres.js
-//   DATABASE_URL=postgres://... NOTIFICATION_SMOKE_USER_ID=<id> node scripts/compare.notifications.firebase-postgres.js
+//   DATABASE_URL=postgres://... node scripts/compare.promotions.firebase-postgres.js
+//   DATABASE_URL=postgres://... PROMOTION_SMOKE_ORGANIZER_ID=<id> node scripts/compare.promotions.firebase-postgres.js
 
 require('dotenv').config({ quiet: true });
 
@@ -10,8 +11,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.notification.repository');
-var postgresRepo = require('../providers/database/postgres.notification.repository');
+var firebaseRepo = require('../../../providers/database/firebase.promotion.repository');
+var postgresRepo = require('../../../providers/database/postgres.promotion.repository');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {
@@ -25,21 +26,36 @@ function stableStringify(obj) {
   });
 }
 
+function sortById(promos) {
+  return promos.slice().sort(function(a, b) {
+    if (a.id < b.id) return -1;
+    if (a.id > b.id) return 1;
+    return 0;
+  });
+}
+
 var matched = 0;
 var missingInPostgres = [];
 var missingInFirebase = [];
 var different = [];
 
+async function getAllPromotionsForCompare(repo) {
+  var active = await repo.getActivePromotions();
+  var map = {};
+  active.forEach(function(p) { map[p.id] = p; });
+
+  var smokeId = process.env.PROMOTION_SMOKE_ORGANIZER_ID;
+  if (smokeId) {
+    var orgPromos = await repo.getPromotionsByOrganizer(smokeId);
+    orgPromos.forEach(function(p) { map[p.id] = p; });
+  }
+
+  return map;
+}
+
 async function compare() {
-  var smokeId = process.env.NOTIFICATION_SMOKE_USER_ID || 'user_alice';
-
-  var firebaseNotifs = await firebaseRepo.getNotificationsByUserId(smokeId);
-  var postgresNotifs = await postgresRepo.getNotificationsByUserId(smokeId);
-
-  var fbMap = {};
-  firebaseNotifs.forEach(function(n) { fbMap[n.id] = n; });
-  var pgMap = {};
-  postgresNotifs.forEach(function(n) { pgMap[n.id] = n; });
+  var fbMap = await getAllPromotionsForCompare(firebaseRepo);
+  var pgMap = await getAllPromotionsForCompare(postgresRepo);
 
   var allIds = Object.keys(fbMap).concat(Object.keys(pgMap)).filter(function(id, idx, arr) {
     return arr.indexOf(id) === idx;
@@ -77,6 +93,15 @@ async function compare() {
   different.forEach(function(d) {
     console.log('  DIFFERENT: ' + d.id);
   });
+
+  var smokeId = process.env.PROMOTION_SMOKE_ORGANIZER_ID;
+  if (smokeId) {
+    console.log('\nPROMOTION_SMOKE_ORGANIZER_ID=' + smokeId);
+    var fbPromos = await firebaseRepo.getPromotionsByOrganizer(smokeId);
+    var pgPromos = await postgresRepo.getPromotionsByOrganizer(smokeId);
+    console.log('  firebase: ' + fbPromos.length + ' promotions');
+    console.log('  postgres: ' + pgPromos.length + ' promotions');
+  }
 
   var hasDiff = missingInPostgres.length > 0 || missingInFirebase.length > 0 || different.length > 0;
   if (hasDiff) {

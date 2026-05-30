@@ -1,7 +1,10 @@
-// Compare review data between Firebase and Postgres
+// Compare user profile data between Firebase and Postgres
 // Usage:
-//   DATABASE_URL=postgres://... node scripts/compare.reviews.firebase-postgres.js
-//   DATABASE_URL=postgres://... REVIEW_COMPARE_EVENT_ID=<id> node scripts/compare.reviews.firebase-postgres.js
+//   DATABASE_URL=postgres://... node scripts/compare.users.firebase-postgres.js
+//   DATABASE_URL=postgres://... USER_COMPARE_IDS=uid1,uid2 node scripts/compare.users.firebase-postgres.js
+//
+// Without USER_COMPARE_IDS, compares all UIDs found in both Firebase Auth
+// and Firestore Users collection.
 
 require('dotenv').config({ quiet: true });
 
@@ -10,8 +13,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.review.repository');
-var postgresRepo = require('../providers/database/postgres.review.repository');
+var firebaseRepo = require('../../../providers/database/firebase.user.repository');
+var postgresRepo = require('../../../providers/database/postgres.user.repository');
+var admin = require('firebase-admin');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {
@@ -25,8 +29,8 @@ function stableStringify(obj) {
   });
 }
 
-function sortById(reviews) {
-  return reviews.slice().sort(function(a, b) {
+function sortById(users) {
+  return users.slice().sort(function(a, b) {
     if (a.id < b.id) return -1;
     if (a.id > b.id) return 1;
     return 0;
@@ -39,18 +43,51 @@ var missingInFirebase = [];
 var different = [];
 
 async function compare() {
-  var eventId = process.env.REVIEW_COMPARE_EVENT_ID || 'evt_vdf_hcm_2025';
+  var uidList = [];
 
-  var firebaseResult = await firebaseRepo.getReviewsByEventId(eventId, 1, 10000);
-  var postgresResult = await postgresRepo.getReviewsByEventId(eventId, 1, 10000);
+  var explicitIds = process.env.USER_COMPARE_IDS;
+  if (explicitIds) {
+    uidList = explicitIds.split(',').map(function(s) { return s.trim(); });
+    console.log('Comparing ' + uidList.length + ' explicit UIDs');
+  } else {
+    // Collect UIDs from Firebase Auth
+    try {
+      var listResult = await admin.auth().listUsers();
+      uidList = listResult.users.map(function(u) { return u.uid; });
+    } catch (e) {
+      console.warn('Could not list Firebase Auth users, falling back to Firestore scan.');
+    }
 
-  var firebaseReviews = firebaseResult.reviews;
-  var postgresReviews = postgresResult.reviews;
+    if (uidList.length === 0) {
+      var snapshot = await admin.firestore().collection('Users').get();
+      uidList = snapshot.docs.map(function(d) { return d.id; });
+    }
+    console.log('Comparing ' + uidList.length + ' users');
+  }
 
   var fbMap = {};
-  firebaseReviews.forEach(function(r) { fbMap[r.id] = r; });
   var pgMap = {};
-  postgresReviews.forEach(function(r) { pgMap[r.id] = r; });
+
+  // Batch fetch from both
+  for (var i = 0; i < uidList.length; i++) {
+    var uid = uidList[i];
+    try {
+      var fbUser = await firebaseRepo.getRawUserDataById(uid);
+      if (fbUser) {
+        fbMap[uid] = fbUser;
+      }
+    } catch (e) {
+      console.warn('Firebase fetch failed for ' + uid + ': ' + e.message);
+    }
+    try {
+      var pgUser = await postgresRepo.getRawUserDataById(uid);
+      if (pgUser) {
+        pgMap[uid] = pgUser;
+      }
+    } catch (e) {
+      console.warn('Postgres fetch failed for ' + uid + ': ' + e.message);
+    }
+  }
 
   var allIds = Object.keys(fbMap).concat(Object.keys(pgMap)).filter(function(id, idx, arr) {
     return arr.indexOf(id) === idx;

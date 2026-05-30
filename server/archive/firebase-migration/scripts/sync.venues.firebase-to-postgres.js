@@ -9,8 +9,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.venue.repository');
-var postgresRepo = require('../providers/database/postgres.venue.repository');
+var firebaseRepo = require('../../../providers/database/firebase.venue.repository');
+var postgresRepo = require('../../../providers/database/postgres.venue.repository');
 
 async function main() {
   var venues = await firebaseRepo.getAllVenues();

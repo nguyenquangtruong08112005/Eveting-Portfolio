@@ -11,8 +11,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.promotion.repository');
-var postgresRepo = require('../providers/database/postgres.promotion.repository');
+var firebaseRepo = require('../../../providers/database/firebase.promotion.repository');
+var postgresRepo = require('../../../providers/database/postgres.promotion.repository');
 
 async function main() {
   var total = 0;

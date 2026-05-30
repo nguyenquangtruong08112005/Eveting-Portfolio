@@ -9,8 +9,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.user.repository');
-var postgresRepo = require('../providers/database/postgres.organizer.repository');
+var firebaseRepo = require('../../../providers/database/firebase.user.repository');
+var postgresRepo = require('../../../providers/database/postgres.organizer.repository');
 var admin = require('firebase-admin');
 
 async function main() {

@@ -1,7 +1,7 @@
-// Compare venue data between Firebase and Postgres
+// Compare review data between Firebase and Postgres
 // Usage:
-//   DATABASE_URL=postgres://... node scripts/compare.venues.firebase-postgres.js
-//   DATABASE_URL=postgres://... VENUE_SMOKE_ID=<id> node scripts/compare.venues.firebase-postgres.js
+//   DATABASE_URL=postgres://... node scripts/compare.reviews.firebase-postgres.js
+//   DATABASE_URL=postgres://... REVIEW_COMPARE_EVENT_ID=<id> node scripts/compare.reviews.firebase-postgres.js
 
 require('dotenv').config({ quiet: true });
 
@@ -10,8 +10,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-var firebaseRepo = require('../providers/database/firebase.venue.repository');
-var postgresRepo = require('../providers/database/postgres.venue.repository');
+var firebaseRepo = require('../../../providers/database/firebase.review.repository');
+var postgresRepo = require('../../../providers/database/postgres.review.repository');
 
 function stableStringify(obj) {
   return JSON.stringify(obj, function(key, value) {
@@ -25,8 +25,8 @@ function stableStringify(obj) {
   });
 }
 
-function sortById(venues) {
-  return venues.slice().sort(function(a, b) {
+function sortById(reviews) {
+  return reviews.slice().sort(function(a, b) {
     if (a.id < b.id) return -1;
     if (a.id > b.id) return 1;
     return 0;
@@ -39,13 +39,18 @@ var missingInFirebase = [];
 var different = [];
 
 async function compare() {
-  var firebaseVenues = await firebaseRepo.getAllVenues();
-  var postgresVenues = await postgresRepo.getAllVenues();
+  var eventId = process.env.REVIEW_COMPARE_EVENT_ID || 'evt_vdf_hcm_2025';
+
+  var firebaseResult = await firebaseRepo.getReviewsByEventId(eventId, 1, 10000);
+  var postgresResult = await postgresRepo.getReviewsByEventId(eventId, 1, 10000);
+
+  var firebaseReviews = firebaseResult.reviews;
+  var postgresReviews = postgresResult.reviews;
 
   var fbMap = {};
-  firebaseVenues.forEach(function(v) { fbMap[v.id] = v; });
+  firebaseReviews.forEach(function(r) { fbMap[r.id] = r; });
   var pgMap = {};
-  postgresVenues.forEach(function(v) { pgMap[v.id] = v; });
+  postgresReviews.forEach(function(r) { pgMap[r.id] = r; });
 
   var allIds = Object.keys(fbMap).concat(Object.keys(pgMap)).filter(function(id, idx, arr) {
     return arr.indexOf(id) === idx;
@@ -83,26 +88,6 @@ async function compare() {
   different.forEach(function(d) {
     console.log('  DIFFERENT: ' + d.id);
   });
-
-  var smokeId = process.env.VENUE_SMOKE_ID;
-  if (smokeId) {
-    console.log('\nVENUE_SMOKE_ID=' + smokeId);
-    var fbVenue = await firebaseRepo.getVenueById(smokeId);
-    var pgVenue = await postgresRepo.getVenueById(smokeId);
-    var fbFound = fbVenue !== null;
-    var pgFound = pgVenue !== null;
-    console.log('  firebase: ' + (fbFound ? 'found' : 'not found'));
-    console.log('  postgres: ' + (pgFound ? 'found' : 'not found'));
-    if (fbFound && pgFound) {
-      var fbStr = stableStringify(fbVenue);
-      var pgStr = stableStringify(pgVenue);
-      if (fbStr === pgStr) {
-        console.log('  getVenueById: MATCH');
-      } else {
-        console.log('  getVenueById: DIFFERENT');
-      }
-    }
-  }
 
   var hasDiff = missingInPostgres.length > 0 || missingInFirebase.length > 0 || different.length > 0;
   if (hasDiff) {
