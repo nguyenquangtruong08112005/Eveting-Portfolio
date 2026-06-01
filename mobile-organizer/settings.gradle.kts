@@ -29,7 +29,10 @@ dependencyResolutionManagement {
             credentials {
                 // Luôn để username là "mapbox"
                 username = "mapbox"
-                password = "sk.eyJ1Ijoibmd1eWVucXVhbmd0cnVvbmcwODExMjAwNSIsImEiOiJjbWk0ZmhibjUxenpnMmxzNThqdDM4enBuIn0.w5iFZP_v1XgIzV4q8R0iXA"
+                password = providers.gradleProperty("MAPBOX_DOWNLOADS_TOKEN")
+                    .orElse(providers.environmentVariable("MAPBOX_DOWNLOADS_TOKEN"))
+                    .orNull
+                    ?: error("MAPBOX_DOWNLOADS_TOKEN is missing. Add it to user Gradle properties or set it as an environment variable.")
             }
         }
     }
