@@ -20,6 +20,10 @@ const validateEnv = () => {
     }
 };
 
+const isExternalIdMode = () => {
+    return (process.env.ONESIGNAL_TARGET_MODE || 'subscription') === 'external_id';
+};
+
 const sendMulticast = async (tokens, title, body, data = {}) => {
     if (!tokens) return;
     const tokenList = Array.isArray(tokens) ? tokens : [tokens];
@@ -53,6 +57,11 @@ const sendMulticast = async (tokens, title, body, data = {}) => {
 const sendToTopic = async (topic, title, body, data = {}) => {
     validateEnv();
 
+    if (isExternalIdMode()) {
+        console.log(`OneSignal topic "${topic}" skipped because external id targeting is active.`);
+        return;
+    }
+
     const payload = {
         app_id: process.env.ONESIGNAL_APP_ID,
         headings: { en: title },
@@ -76,6 +85,11 @@ const subscribeToTopic = async (tokens, topic) => {
     const tokenList = Array.isArray(tokens) ? tokens : [tokens];
     if (tokenList.length === 0) return;
     validateEnv();
+
+    if (isExternalIdMode()) {
+        console.log(`OneSignal subscribeToTopic "${topic}" skipped because external id targeting is active.`);
+        return;
+    }
 
     const results = await Promise.allSettled(tokenList.map(token =>
         axios.put(`${ONESIGNAL_BASE_URL}/players/${token}`, {
@@ -101,6 +115,11 @@ const unsubscribeFromTopic = async (tokens, topic) => {
     const tokenList = Array.isArray(tokens) ? tokens : [tokens];
     if (tokenList.length === 0) return;
     validateEnv();
+
+    if (isExternalIdMode()) {
+        console.log(`OneSignal unsubscribeFromTopic "${topic}" skipped because external id targeting is active.`);
+        return;
+    }
 
     const results = await Promise.allSettled(tokenList.map(token =>
         axios.put(`${ONESIGNAL_BASE_URL}/players/${token}`, {

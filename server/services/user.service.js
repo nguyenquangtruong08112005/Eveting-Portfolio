@@ -1,6 +1,7 @@
 // services/user.service.js
 const userRepository = require('../providers/database/user.repository');
 const fcmService = require('./fcm.service');
+const notifHelper = require('./notification-event.helper');
 require('dotenv').config();
 const ADMIN_UID = process.env.ADMIN_UID;
 
@@ -100,7 +101,7 @@ const updateUserProfile = async (userId, updateData) => {
 
     const fcmToken = updateData.fcmToken || null;
 
-    if (fcmToken) {
+    if (fcmToken && notifHelper.shouldManageDeviceTopics()) {
         try {
             const userData = await userRepository.getUserDataById(userId);
             const followedIds = userData ? (userData.followedProfileIds || []) : [];
@@ -116,6 +117,8 @@ const updateUserProfile = async (userId, updateData) => {
         } catch (error) {
             console.error("[Sync] Error syncing topics for new token:", error);
         }
+    } else if (fcmToken) {
+        console.log("[Sync] Skipped device topic sync because notification provider uses external id targeting.");
     }
 
     if (Object.keys(dataToUpdate).length > 0 || fcmToken) {
@@ -132,9 +135,11 @@ const followProfile = async (userId, profileId) => {
         const userData = await userRepository.getUserDataById(userId);
         const tokens = extractFcmTokens(userData);
 
-        if (tokens.length > 0) {
+        if (tokens.length > 0 && notifHelper.shouldManageDeviceTopics()) {
             const topicName = `artist_${profileId}`;
             await fcmService.subscribeToTopic(tokens, topicName);
+        } else if (tokens.length > 0) {
+            console.log(`[Follow] Skipped topic subscription for profile ${profileId}; external id targeting is active.`);
         }
 
         return { success: true, message: `Successfully followed profile.` };
@@ -152,9 +157,11 @@ const unfollowProfile = async (userId, profileId) => {
         const userData = await userRepository.getUserDataById(userId);
         const tokens = extractFcmTokens(userData);
 
-        if (tokens.length > 0) {
+        if (tokens.length > 0 && notifHelper.shouldManageDeviceTopics()) {
             const topicName = `artist_${profileId}`;
             await fcmService.unsubscribeFromTopic(tokens, topicName);
+        } else if (tokens.length > 0) {
+            console.log(`[Unfollow] Skipped topic unsubscription for profile ${profileId}; external id targeting is active.`);
         }
 
         return { success: true, message: 'Successfully unfollowed profile.' };

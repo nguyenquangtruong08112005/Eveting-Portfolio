@@ -16,6 +16,10 @@ const isOneSignalExternalId = () => {
   return process.env.NOTIFICATION_PROVIDER === 'onesignal' && process.env.ONESIGNAL_TARGET_MODE === 'external_id';
 };
 
+const shouldManageDeviceTopics = () => {
+  return !isOneSignalExternalId();
+};
+
 const collectMessagingTargets = async (userIds) => {
   const result = await userRepository.getUsersFcmTokens(userIds);
   if (isOneSignalExternalId()) {
@@ -51,5 +55,7 @@ module.exports = {
   buildPayloadData,
   collectMessagingTargets,
   collectTokens,
-  buildNotificationDoc
+  buildNotificationDoc,
+  isOneSignalExternalId,
+  shouldManageDeviceTopics
 };
