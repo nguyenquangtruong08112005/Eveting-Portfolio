@@ -23,6 +23,8 @@ var authRouter = require('./routes/auth.routes');
 var storageRouter = require('./routes/storage.routes');
 var app = express();
 
+app.set('trust proxy', 1);
+
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

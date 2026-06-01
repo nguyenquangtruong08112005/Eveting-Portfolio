@@ -543,7 +543,7 @@ const searchEvents = async (queryParams) => {
         });
         return { events, pagination: { currentPage: page, limit: limit, totalPages: Math.ceil(totalItems / limit), totalItems: totalItems } };
     } catch (e) {
-        console.error("Lỗi tìm kiếm:", e.meta ? e.meta.body.error : e);
+        console.error("Lỗi tìm kiếm:", e.meta?.body?.error || e.message || e);
         throw new Error("Lỗi máy chủ tìm kiếm.");
     }
 };
