@@ -1,1 +1,1 @@
-module.exports = require('@/modules/notifications/api/routes');
+module.exports = require('./api/routes');

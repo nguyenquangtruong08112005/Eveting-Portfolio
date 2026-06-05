@@ -1,1 +1,1 @@
-module.exports = require('@/modules/notifications/infrastructure/providers/fcm.service');
+module.exports = require('./infrastructure/providers/fcm.service');

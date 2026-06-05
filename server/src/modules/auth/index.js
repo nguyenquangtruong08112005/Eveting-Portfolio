@@ -1,6 +1,6 @@
-const router = require('@/modules/auth/api/routes');
-const controller = require('@/modules/auth/api/controller');
-const service = require('@/modules/auth/application/service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,

@@ -1,1 +1,1 @@
-module.exports = require('@/modules/venues/application/service');
+module.exports = require('./application/service');

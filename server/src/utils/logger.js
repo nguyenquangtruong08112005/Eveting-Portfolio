@@ -1,1 +1,1 @@
-module.exports = require('@/shared/logger');
+module.exports = require('../shared/logger');

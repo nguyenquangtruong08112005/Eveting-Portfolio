@@ -1,2 +1,2 @@
 'use strict';
-module.exports = require('@/modules/auth/api/controller');
+module.exports = require('./api/controller');

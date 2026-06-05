@@ -1,1 +1,1 @@
-module.exports = require('@/modules/notifications/application/service');
+module.exports = require('./application/service');

@@ -1,1 +1,1 @@
-module.exports = require('@/modules/notifications/application/notification-event.helper');
+module.exports = require('./application/notification-event.helper');

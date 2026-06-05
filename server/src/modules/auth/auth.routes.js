@@ -1,2 +1,2 @@
 'use strict';
-module.exports = require('@/modules/auth/api/routes');
+module.exports = require('./api/routes');

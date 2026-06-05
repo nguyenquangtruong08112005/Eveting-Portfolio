@@ -1,1 +1,1 @@
-module.exports = require('@/shared/middleware/rateLimit.middleware');
+module.exports = require('../shared/middleware/rateLimit.middleware');

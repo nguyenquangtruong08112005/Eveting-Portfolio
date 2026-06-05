@@ -1,2 +1,2 @@
 'use strict';
-module.exports = require('@/modules/auth/application/service');
+module.exports = require('./application/service');

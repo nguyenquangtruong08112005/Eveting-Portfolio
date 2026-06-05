@@ -1,1 +1,1 @@
-module.exports = require('@/shared/config/elasticsearch.config');
+module.exports = require('../shared/config/elasticsearch.config');

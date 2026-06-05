@@ -1,1 +1,1 @@
-module.exports = require('@/modules/venues/api/controller');
+module.exports = require('./api/controller');
