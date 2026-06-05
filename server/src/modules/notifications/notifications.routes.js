@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('./notification.controller');
-const { verifyAuthToken } = require('../../middleware/auth.middleware');
+const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 
 // [GET] /notifications - Lấy thông báo cho người dùng đang đăng nhập
 router.get('/', verifyAuthToken, notificationController.getUserNotifications);

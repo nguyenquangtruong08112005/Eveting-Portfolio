@@ -1,7 +1,7 @@
 // src/modules/organizer/organizer.routes.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken, isOrganizer } = require('../../middleware/auth.middleware');
+const { verifyAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
 const organizerController = require('./organizer.controller');
 
 const multer = require('multer');

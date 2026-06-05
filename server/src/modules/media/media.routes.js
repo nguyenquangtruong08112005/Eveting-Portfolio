@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyAuthToken } = require('../../middleware/auth.middleware');
+const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const mediaController = require('./media.controller');
 const multer = require('multer');
 

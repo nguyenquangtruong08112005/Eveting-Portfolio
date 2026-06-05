@@ -1,8 +1,8 @@
 // src/modules/admin/admin.routes.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken } = require('../../middleware/auth.middleware');
-const { isAdmin } = require('../../middleware/admin.middleware');
+const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
+const { isAdmin } = require('@/shared/middleware/admin.middleware');
 const adminController = require('./admin.controller');
 
 // Tất cả route Admin đều cần Login + Quyền Admin

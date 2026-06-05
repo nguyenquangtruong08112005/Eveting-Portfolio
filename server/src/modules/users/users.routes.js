@@ -1,7 +1,7 @@
 // modules/users/users.routes.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken } = require('../../middleware/auth.middleware');
+const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const userController = require('./user.controller');
 const ticketController = require('../../controllers/ticket.controller');
 const { validateProfileUpdate } = require('../../utils/validators/user.validator');

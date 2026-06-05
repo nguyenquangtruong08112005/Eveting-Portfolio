@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const geofire = require('geofire-common');
 const { calculateMinPrice } = require('../../utils/tickets/calculateMinPrice.tickets');
-const esClient = require('../../config/elasticsearch.config');
+const esClient = require('@/shared/config/elasticsearch.config');
 const moment = require('moment');
 const axios = require('axios');
 const fcmService = require('../../services/fcm.service');

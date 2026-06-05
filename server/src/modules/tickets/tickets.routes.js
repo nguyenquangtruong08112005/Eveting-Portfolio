@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken } = require('../../middleware/auth.middleware');
+const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const ticketController = require('./ticket.controller');
 
 // [GET] /tickets - Lấy danh sách vé của người dùng đang đăng nhập

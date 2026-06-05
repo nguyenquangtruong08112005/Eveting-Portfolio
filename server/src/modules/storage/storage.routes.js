@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyAuthToken } = require('../../middleware/auth.middleware');
+const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const storageController = require('./storage.controller');
 const multer = require('multer');
 

@@ -2,8 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const promoController = require('./promotion.controller');
-const { verifyAuthToken, isOrganizer } = require('../../middleware/auth.middleware');
-const { publicApiLimiter } = require('../../middleware/rateLimit.middleware');
+const { verifyAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
+const { publicApiLimiter } = require('@/shared/middleware/rateLimit.middleware');
 
 // --- PUBLIC ROUTES (User) ---
 

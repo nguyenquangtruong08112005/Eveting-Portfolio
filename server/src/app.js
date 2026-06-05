@@ -21,7 +21,7 @@ var adminRouter = require('@/modules/admin').router;
 var authRouter = require('@/modules/auth').router;
 var storageRouter = require('@/modules/storage').router;
 var activeStorageProvider = require('@/providers/storage');
-const { observabilityMiddleware, metricsHandler } = require('@/middleware/observability.middleware');
+const { observabilityMiddleware, metricsHandler } = require('@/shared/middleware/observability.middleware');
 var app = express();
 
 app.set('trust proxy', 1);

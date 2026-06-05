@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const analyticsController = require('./analytics.controller');
 const organizerController = require('../../controllers/organizer.controller');
-const { verifyAuthToken, isOrganizer } = require('../../middleware/auth.middleware');
+const { verifyAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
 
 // [GET] /analytics?eventId=<id> - Lấy dữ liệu phân tích cho một sự kiện
 router.get(
