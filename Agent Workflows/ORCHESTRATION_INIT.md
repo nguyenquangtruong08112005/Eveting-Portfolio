@@ -148,6 +148,34 @@ Agent Workflows/runs/<task-slug>/verification.md
 - next command
 - blockers
 
+## CodeGraph Context
+
+CodeGraph is installed globally as `@colbymchenry/codegraph` and initialized per source repo, not at the parent workspace root.
+
+Indexed scopes:
+
+```text
+D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing
+D:\01_university\year3\semester-5\mobile\final\Mobile-2025-Eventing
+D:\01_university\year3\semester-5\mobile\final\Mobile-2025-Eventing-Organizer
+```
+
+Worker rule:
+
+```text
+Before broad grep or whole-repo reading, run CodeGraph in the target repo:
+  codegraph status .
+  codegraph query <symbol-or-feature> --limit 10
+  codegraph callers <symbol>
+  codegraph callees <symbol>
+  codegraph impact <path-or-symbol>
+
+After any code edit in that repo, run:
+  codegraph sync .
+```
+
+Codex CLI and OpenCode have CodeGraph MCP installed globally. Antigravity/agy is not listed by the installer, so agy prompts must explicitly tell the worker to use the `codegraph` CLI from the target repo.
+
 ## Current Project Defaults
 
 Project root:
@@ -175,7 +203,7 @@ Firebase exit should be phased through provider boundaries first.
 Preferred local worker:
 
 ```text
-agy interactive with Gemini 3.5 Flash (Medium)
+agy interactive with the currently available stable model, especially for Android/Kotlin work
 ```
 
 Worker selection rule:
@@ -190,7 +218,7 @@ Avoid unless re-approved:
 
 ```text
 Gemini CLI
-OpenCode
+OpenCode only when agy is unavailable, quota-limited, or unhealthy
 GitHub Copilot while rate-limited
 agy print mode for implementation, because it has produced empty stdout and no git diff in this workspace
 ```

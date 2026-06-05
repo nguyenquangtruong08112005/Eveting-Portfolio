@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A, B, C, D foundation, D route wiring, E, E media upload wiring, F, C6 admin Postgres coverage, C7 global Postgres boot/read smoke, C8 controlled write-path smoke, C9 Firebase-removal blocker audit, C10 lazy provider loading, C11 env cutover template, C12 server Firebase tooling archive, M1 mobile backend token foundation, M2 mobile auth repository wiring, M3 backend-auth profile/current-user support, M4 mobile refresh-token handling, M5 attendee backend media upload, M6 OneSignal external id push registration, M7 consolidation/blocker audit, M8 generic backend storage upload, M9 mobile OneSignal Kotlin compatibility, and M10 OneSignal external-id topic guard are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, and N3-S1 through N3-S5 are complete on `staging`.
 
-Next phase: wire mobile profile/organizer media upload use cases to backend generic storage upload with Firebase Storage fallback.
+Next phase: post-N3 packaging. Device smoke for attendee/organizer has been confirmed; decide whether to commit/package the current diff or start a separate cleanup/security slice.
 
 ## Source Of Truth
 
@@ -47,9 +47,15 @@ Next phase: wire mobile profile/organizer media upload use cases to backend gene
 - Phase M8 generic storage upload verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m8-generic-storage-upload-verification.md`
 - Phase M9 mobile OneSignal Kotlin compatibility verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m9-mobile-onesignal-kotlin-compatibility-verification.md`
 - Phase M10 OneSignal external-id topic guard verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m10-onesignal-external-id-topic-guard-verification.md`
+- Phase M11 checkpoint and next slices: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-m11-checkpoint-and-next-slices.md`
+- Phase N1/N2 verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n1-n2-verification.md`
+- Phase N3 Firebase dependency cleanup audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n3-firebase-dependency-cleanup-audit.md`
+- Phase N3-S1 to N3-S5 completion: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n3-s1-s5-completion.md`
+- Phase N4 post-N3 cleanup: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n4-post-n3-cleanup.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
+- CodeGraph is installed globally and initialized per repo for `Server-2025-Eventing`, `Mobile-2025-Eventing`, and `Mobile-2025-Eventing-Organizer`. Do not use a parent-root graph.
 
 ## Manager / Worker Rule
 
@@ -146,6 +152,21 @@ Next phase: wire mobile profile/organizer media upload use cases to backend gene
 
 ## Current Plan Summary
 
+Checkpoint 2026-06-03:
+
+- Existing attendee Firebase accounts can log in through `/auth/firebase-exchange`.
+- Existing organizer Firebase accounts can log in through `/auth/firebase-exchange` with `role=organizer`.
+- Attendee and organizer protected flows were smoke-tested on device by the user and recovered to pre-refactor behavior.
+- Payment flow recovered after migration `015_add_ticket_payment_fields.sql`.
+- OneSignal push works in local/dev with `NOTIFICATION_PROVIDER=onesignal` and `ONESIGNAL_TARGET_MODE=external_id`.
+- Current uncommitted generated artifacts to exclude: attendee `.kotlin/errors/*.log`, organizer `.kotlin/`, organizer `.idea/deploymentTargetSelector.xml`.
+- Remaining tracked work before Firebase dependency cleanup: media public URL/R2, OneSignal dashboard/subscription evidence, Firebase runtime-path cleanup audit.
+- N1 backend media public URL/R2 path is verified: local fallback URL returns 200, R2 provider upload/read/public/delete passes, and authenticated `POST /storage/upload` to R2 returns a readable public URL.
+- N2 OneSignal verification is complete: external-id mapping exists, the test Android device has one enabled subscription, and OneSignal message evidence shows `successful=1`, `failed=0`.
+- Remaining tracked work: device-test attendee event-media upload to R2, then run N3 Firebase runtime-path cleanup audit.
+- N3 read-only audit is complete. Server normal provider boot does not load Firebase, but Firebase remains required by `/auth/firebase-exchange` and mobile Firebase Auth compatibility.
+- Corrected N3 blockers: backend generic storage upload already exists; remaining storage blocker is mobile profile/organizer wiring. OneSignal still requires FCM transport credentials, while direct mobile FCM token/service logic can be removed only after a dedicated device-tested slice.
+
 Slice A:
 
 - Add provider ports/interfaces with Firebase still active.
@@ -202,14 +223,12 @@ Then review:
 
 ## Next Exact Step
 
-Assign a local agent Phase M10 mobile generic storage upload wiring:
+Post-N3 stabilization:
 
-- add mobile Retrofit multipart client for `POST /storage/upload`
-- wire profile image uploads first, then organizer create/edit event media if scope remains safe
-- keep Firebase Storage upload use case as fallback
-- do not remove Firebase Storage dependencies yet
-- do not overwrite existing dirty mobile changes
-- use `agy` only when available and producing verifiable diffs; otherwise use `opencode`
+- review/stage/commit the current N3/N4 checkpoint after final git status review
+- keep Google Services config because OneSignal Android still needs FCM transport
+- old Firebase Storage URLs and commented admin auth middleware have been cleaned in N4
+- use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit
 
 ## Latest Verification
 
@@ -263,3 +282,11 @@ Results:
 - Phase M8 generic backend storage upload completed: server now exposes authenticated `POST /storage/upload` multipart upload through the active storage provider, defaults to local storage for smoke verification, and returns key/url metadata for mobile callers. Node syntax checks and `node scripts\smoke.storage.js` passed.
 - Phase M9 mobile compile unblock completed: both mobile apps now pin OneSignal SDK to `5.6.1` instead of the dynamic `[5.6.1,5.9.99]` range that resolved to Kotlin 2.2 metadata dependencies. Attendee and organizer `gradlew.bat :app:compileDebugKotlin` passed after the change.
 - Phase M10 OneSignal external-id topic guard completed: backend no longer calls OneSignal topic/tag APIs with legacy FCM tokens when `ONESIGNAL_TARGET_MODE=external_id`; provider guard smoke, profile update/follow/unfollow runtime smoke, and `npm run db:smoke:auth` passed.
+- Phase M11 checkpoint completed: `opencode` verification-worker audited current diff read-only, server migration `015_add_ticket_payment_fields.sql` was applied, organizer compile/install passed, OneSignal was confirmed working by runtime device test, and the next task split is N1 media public URL/R2, N2 OneSignal subscription evidence, N3 Firebase cleanup audit.
+- Phase N1 completed: OpenCode added a local fallback public read route and storage metadata methods; manager verified local public reads plus direct and authenticated HTTP R2 upload/read/delete paths.
+- Phase N2 completed: OneSignal API shows three identified Android subscriptions for the backend external ID, one currently enabled subscription on `SM-A526B`, and one successful API message with zero failures.
+- Phase N3 audit completed: OpenCode performed a read-only three-repo audit; manager verified remaining imports, confirmed lazy Postgres/backend/OneSignal boot does not load Firebase, corrected storage and OneSignal/FCM classifications, and recorded ordered cleanup slices N3-S1 through N3-S5.
+- Phase N3-S1 through N3-S5 completed: direct mobile Firebase SDK usage and backend runtime Firebase providers/config/tooling were removed; `/auth/firebase-exchange` and `firebase-admin` are gone; provider selectors default to backend/postgres/onesignal and reject Firebase values; legacy auth migration, backend auth, storage, Postgres provider/write paths, domain smokes, full JS syntax scan, both Android clean compiles, and diff checks passed. Android Google Services config remains intentionally for OneSignal/FCM transport.
+- Final N3 device smoke confirmed by user on 2026-06-05: media works and attendee/organizer flows work as before the refactor. Local/dev auth users were reset to backend password `123456` with `scrypt` hashes to support post-Firebase login verification.
+- CodeGraph setup completed on 2026-06-05: package `@colbymchenry/codegraph` v0.9.9 is installed globally, Codex CLI and OpenCode MCP integration are installed globally, and per-repo indexes are up to date. Elasticsearch is Docker-hosted in container `es01` on `localhost:9200`; current local health is yellow because the single-node cluster has one replica shard unassigned.
+- Phase N4 cleanup completed: admin routes are protected again, local PostgreSQL has 0 remaining Firebase Storage URL references after cleanup scan, Elasticsearch was rebuilt from PostgreSQL with 18 indexed events, and ignored local Firebase artifacts were removed from the server workspace.

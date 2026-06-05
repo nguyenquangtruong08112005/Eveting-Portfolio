@@ -2,6 +2,22 @@
 
 Use OpenCode for cheap bounded implementation or read-only exploration.
 
+CodeGraph is installed for OpenCode globally. Start each bounded task from the target repo and use CodeGraph before broad file search:
+
+```powershell
+cmd /c codegraph status .
+cmd /c codegraph query "<symbol-or-feature>" --limit 10
+cmd /c codegraph callers "<symbol>"
+cmd /c codegraph callees "<symbol>"
+cmd /c codegraph impact "<path-or-symbol>"
+```
+
+After code edits in that repo:
+
+```powershell
+cmd /c codegraph sync .
+```
+
 Local command shape:
 
 ```powershell
@@ -53,10 +69,11 @@ Rules:
 2. Do not edit outside the write scope.
 3. Keep public API/mobile-facing contracts unchanged unless explicitly asked.
 4. Prefer small, reviewable changes.
-5. Before stopping, return the STOP SUMMARY from:
+5. Use CodeGraph first for symbol/context lookup before broad grep.
+6. Run `codegraph sync .` after code edits.
+7. Before stopping, return the STOP SUMMARY from:
    C:\Users\Admin\OneDrive\Desktop\Some Experience\Agent Workflows\agent-limit-recovery-protocol.md
 
 Verification:
 - Run: <command or "do not run">
 ```
-

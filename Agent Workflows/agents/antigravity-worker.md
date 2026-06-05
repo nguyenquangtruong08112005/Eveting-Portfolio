@@ -2,6 +2,22 @@
 
 Use Antigravity only with an explicit workspace directory.
 
+CodeGraph is installed globally, but the installer does not register agy automatically. Tell agy to run these from the target repo before broad source search:
+
+```powershell
+cmd /c codegraph status .
+cmd /c codegraph query "<symbol-or-feature>" --limit 10
+cmd /c codegraph callers "<symbol>"
+cmd /c codegraph callees "<symbol>"
+cmd /c codegraph impact "<path-or-symbol>"
+```
+
+After code edits in that repo:
+
+```powershell
+cmd /c codegraph sync .
+```
+
 Local command shape:
 
 ```powershell
@@ -44,6 +60,7 @@ Rules:
 2. Do not edit outside the workspace or write scope.
 3. Preserve existing user changes.
 4. Keep external contracts unchanged unless explicitly approved.
-5. End with a STOP SUMMARY.
+5. Use CodeGraph first for symbol/context lookup before broad grep.
+6. Run `codegraph sync .` after code edits.
+7. End with a STOP SUMMARY.
 ```
-

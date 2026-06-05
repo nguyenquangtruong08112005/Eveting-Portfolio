@@ -1,8 +1,24 @@
 # Firebase Exit Plan
 
 Status: active manager plan
-Last updated: 2026-05-29
+Last updated: 2026-06-05
 Scope: `Server-2025-Eventing` first; mobile contracts change only after backend compatibility is proven.
+
+Checkpoint 2026-06-03:
+
+- Server, attendee app, and organizer app are on `staging`.
+- Local/dev backend is running with PostgreSQL, backend JWT/session auth, and OneSignal external-id push.
+- Existing attendee and organizer Firebase accounts are bridged through `/auth/firebase-exchange`.
+- User smoke-tested core attendee and organizer flows on device and confirmed behavior is stable compared with before the refactor.
+- Payment flow recovered after applying migration `015_add_ticket_payment_fields.sql`.
+- Next slices are tracked in `Agent Workflows/runs/firebase-exit/phase-m11-checkpoint-and-next-slices.md`.
+- N1 backend storage path is verified against R2, including authenticated HTTP upload and public read.
+- N2 OneSignal external-id subscription and successful delivery are verified through the OneSignal API.
+- N3 Firebase dependency cleanup audit is complete. Ordered cleanup slices and verification gates are recorded in `Agent Workflows/runs/firebase-exit/phase-n3-firebase-dependency-cleanup-audit.md`.
+- N3-S1 through N3-S5 are complete on `staging`. Backend runtime Firebase support, server Firebase adapters/config/tooling, `/auth/firebase-exchange`, `firebase-admin`, and direct Android Firebase SDK usage were removed. Android still keeps Google Services configuration for OneSignal/FCM transport.
+- N3 completion evidence is recorded in `Agent Workflows/runs/firebase-exit/phase-n3-s1-s5-completion.md`.
+- Final N3 device smoke was confirmed on 2026-06-05: media and other attendee/organizer flows behave as before the refactor.
+- N4 post-N3 cleanup is complete: admin routes are protected, local PostgreSQL Firebase Storage URL references were cleaned to 0, Elasticsearch reindex from PostgreSQL is verified, and ignored local Firebase artifacts were removed.
 
 ## Goal
 
@@ -213,11 +229,12 @@ Important note:
 
 Current status:
 
-- Done as provider switch option.
+- Done as active local/dev provider.
 - Added OneSignal provider behind `providers/notification`.
-- Firebase remains default via `NOTIFICATION_PROVIDER=firebase`.
-- `NOTIFICATION_PROVIDER=onesignal` enables OneSignal delivery without renaming `fcm.service.js` or changing current route/payload contracts.
-- Current `fcmToken` mobile field is preserved for compatibility, but a future mobile migration must store OneSignal subscription IDs or external IDs.
+- `NOTIFICATION_PROVIDER=onesignal` and `ONESIGNAL_TARGET_MODE=external_id` are verified in local/dev.
+- Firebase FCM is no longer the backend push provider in local/dev.
+- Android still uses FCM transport underneath OneSignal.
+- Current `fcmToken` mobile field is preserved for compatibility.
 
 ## Migration Order
 
@@ -231,6 +248,14 @@ Current status:
 8. Switch push delivery to OneSignal facade.
 9. Change mobile contracts only after backend compatibility and migration checks pass.
 10. Remove Firebase runtime dependencies after no active code path uses Firebase except Android FCM transport under OneSignal.
+
+Current status:
+
+- Complete for N3 local/dev runtime: server providers default to backend auth, PostgreSQL database, OneSignal push, and S3-compatible storage.
+- Complete for direct Android Firebase SDK usage in app source/build catalogs.
+- Intentional exception: OneSignal Android still uses FCM transport underneath OneSignal, so Google Services config remains.
+- Historical data may still contain old Firebase Storage URLs; migrate those as data cleanup, not as runtime dependency cleanup.
+- Ignored local Firebase files may still exist on disk and should be deleted manually only after confirming no rollback/debug need.
 
 ## Risk Checklist
 
@@ -256,5 +281,6 @@ Codex manager responsibilities:
 
 Next slice:
 
-- Consolidation/review: verify all server slices together, then plan the first real provider flip in a controlled environment.
-- Do not remove Firebase packages until Firebase auth, database, storage, and push runtime paths are all disabled and migration data is verified.
+- Commit/integration packaging for the current N3/N4 checkpoint.
+- After packaging, choose the next separate slice from search hardening, admin UI auth UX, or old object migration to R2 if historical assets must be preserved instead of nulled.
+- Do not remove Google Services config while OneSignal Android push still relies on FCM transport.
