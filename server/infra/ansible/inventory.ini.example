@@ -1,0 +1,8 @@
+[app_servers]
+# Replace with the IP address output by Terraform
+192.0.2.1 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+environment=staging
+project_root=/opt/server-eventing

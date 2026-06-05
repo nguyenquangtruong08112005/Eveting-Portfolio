@@ -35,3 +35,43 @@ To completely reset container states and data volumes:
 ```bash
 docker compose -f infra/docker/docker-compose.local.yml down -v
 ```
+
+## Observability Stack (Docker Compose)
+
+The observability services are configured under `infra/docker/docker-compose.observability.yml` and include:
+
+1. **Prometheus** (Port `9090` -> `9090`) - Scrapes metrics from backend and node-exporter
+2. **Grafana** (Port `3001` -> `3000`) - Dashboards for server monitoring
+3. **Loki** (Port `3100` -> `3100`) - Log aggregation engine
+4. **Promtail** - Scrapes application and HTTP logs from the host
+5. **Node Exporter** (Port `9100` -> `9100`) - Basic system metrics
+
+### Commands (Windows CMD compatible)
+
+To spin up the observability containers in the background, run:
+
+```cmd
+docker compose -f infra\docker\docker-compose.observability.yml up -d
+```
+
+To stop the containers:
+
+```cmd
+docker compose -f infra\docker\docker-compose.observability.yml down
+```
+
+To completely reset container states and clean up volumes:
+
+```cmd
+docker compose -f infra\docker\docker-compose.observability.yml down -v
+```
+
+### Log files
+
+- **Application Logs:** `logs\app.log`
+- **HTTP request Logs:** `logs\http.log`
+- **Tailing logs (Windows Command Prompt):**
+  ```cmd
+  npm run logs:tail:app
+  npm run logs:tail:http
+  ```

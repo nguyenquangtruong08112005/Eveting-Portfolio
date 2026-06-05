@@ -1,0 +1,13 @@
+---
+- name: Deploy Eventing Backend and Observability Stack
+  hosts: app_servers
+  become: true
+
+  vars:
+    # Safe defaults, can be overridden in inventory or group_vars
+    env_name: "{{ environment | default('staging') }}"
+    deploy_dir: "{{ project_root | default('/opt/server-eventing') }}"
+
+  roles:
+    - { role: common, tags: [common, docker] }
+    - { role: observability, tags: [observability] }

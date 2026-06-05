@@ -1,0 +1,63 @@
+---
+- name: Ensure deployment directory and subdirectories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  loop:
+    - "{{ deploy_dir }}"
+    - "{{ deploy_dir }}/logs"
+    - "{{ deploy_dir }}/infra/docker"
+    - "{{ deploy_dir }}/infra/observability"
+    - "{{ deploy_dir }}/infra/observability/grafana/dashboards"
+    - "{{ deploy_dir }}/infra/observability/grafana/provisioning/dashboards"
+    - "{{ deploy_dir }}/infra/observability/grafana/provisioning/datasources"
+
+- name: Copy Docker Compose Observability file
+  copy:
+    src: ../../../docker/docker-compose.observability.yml
+    dest: "{{ deploy_dir }}/infra/docker/docker-compose.observability.yml"
+    mode: '0644'
+
+- name: Copy Prometheus config file
+  copy:
+    src: ../../../observability/prometheus.yml
+    dest: "{{ deploy_dir }}/infra/observability/prometheus.yml"
+    mode: '0644'
+
+- name: Copy Loki config file
+  copy:
+    src: ../../../observability/loki-config.yml
+    dest: "{{ deploy_dir }}/infra/observability/loki-config.yml"
+    mode: '0644'
+
+- name: Copy Promtail config file
+  copy:
+    src: ../../../observability/promtail-config.yml
+    dest: "{{ deploy_dir }}/infra/observability/promtail-config.yml"
+    mode: '0644'
+
+- name: Copy Grafana datasource provisioning file
+  copy:
+    src: ../../../observability/grafana/provisioning/datasources/datasources.yaml
+    dest: "{{ deploy_dir }}/infra/observability/grafana/provisioning/datasources/datasources.yaml"
+    mode: '0644'
+
+- name: Copy Grafana dashboard provider file
+  copy:
+    src: ../../../observability/grafana/provisioning/dashboards/provider.yaml
+    dest: "{{ deploy_dir }}/infra/observability/grafana/provisioning/dashboards/provider.yaml"
+    mode: '0644'
+
+- name: Copy Grafana dashboard JSON file
+  copy:
+    src: ../../../observability/grafana/dashboards/dashboard.json
+    dest: "{{ deploy_dir }}/infra/observability/grafana/dashboards/dashboard.json"
+    mode: '0644'
+
+- name: Launch Observability containers using Docker Compose
+  shell: docker compose -f docker-compose.observability.yml up -d
+  args:
+    chdir: "{{ deploy_dir }}/infra/docker"

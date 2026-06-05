@@ -105,3 +105,33 @@ Trong file `package.json`, bạn có thể chạy các câu lệnh:
 - `npm start`: Chạy server và khởi tạo `ngrok` tunnel (phục vụ test webhook).
 - `npm run db:migrate`: Thực thi các tệp tin migrations trong `db/migrations/`.
 - `npm run ci:check`: Chạy kiểm tra cú pháp Javascript (`scripts/check-js-syntax.js`) và kiểm thử kết nối của các lazy providers.
+- `npm run observability:up`: Khởi chạy stack giám sát (Prometheus, Grafana, Loki, Promtail, Node Exporter).
+- `npm run observability:down`: Dừng stack giám sát.
+- `npm run logs:tail:app`: Theo dõi log hệ thống thời gian thực (Windows CMD).
+- `npm run logs:tail:http`: Theo dõi log HTTP request thời gian thực (Windows CMD).
+
+## 📊 Giám sát & Quan sát (Observability)
+
+Dự án tích hợp sẵn một hệ thống giám sát và ghi log toàn diện:
+- **Đường dẫn Log File (định dạng JSONL):**
+  - Application Logs: `logs/app.log`
+  - HTTP Request Logs: `logs/http.log`
+- **Các cổng dịch vụ mặc định:**
+  - Prometheus: `http://localhost:9090` (Scrapes metrics tại `/metrics`)
+  - Grafana: `http://localhost:3001` (Mặc định: `admin` / `admin`, đã cấu hình sẵn Dashboard)
+  - Loki: `http://localhost:3100` (Thu thập log thông qua Promtail)
+
+### Câu lệnh tương thích CMD (Windows) để quản lý Observability:
+- Khởi động giám sát:
+  ```cmd
+  docker compose -f infra\docker\docker-compose.observability.yml up -d
+  ```
+- Dừng giám sát:
+  ```cmd
+  docker compose -f infra\docker\docker-compose.observability.yml down
+  ```
+- Xem log thời gian thực:
+  ```cmd
+  npm run logs:tail:app
+  npm run logs:tail:http
+  ```

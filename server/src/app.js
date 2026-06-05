@@ -1,7 +1,6 @@
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan');
 require('dotenv').config();
 const { startReminderJob } = require('./jobs/reminder.job');
 
@@ -22,11 +21,13 @@ var adminRouter = require('./routes/admin.routes');
 var authRouter = require('./routes/auth.routes');
 var storageRouter = require('./routes/storage.routes');
 var activeStorageProvider = require('./providers/storage');
+const { observabilityMiddleware, metricsHandler } = require('./middleware/observability.middleware');
 var app = express();
 
 app.set('trust proxy', 1);
 
-app.use(logger('dev'));
+app.use(observabilityMiddleware);
+app.get('/metrics', metricsHandler);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
