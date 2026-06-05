@@ -1,6 +1,6 @@
-const router = require('./admin.routes');
-const controller = require('./admin.controller');
-const service = require('./admin.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,

@@ -1,6 +1,6 @@
-const router = require('./storage.routes');
-const controller = require('./storage.controller');
-const service = require('./storage.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,

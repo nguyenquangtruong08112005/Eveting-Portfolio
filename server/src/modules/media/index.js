@@ -1,6 +1,6 @@
-const router = require('./media.routes');
-const controller = require('./media.controller');
-const service = require('./media.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,
