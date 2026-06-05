@@ -1,6 +1,6 @@
-const router = require('./payments.routes');
-const controller = require('./payment.controller');
-const service = require('./payment.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,

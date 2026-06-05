@@ -1,6 +1,6 @@
-const router = require('./events.routes');
-const controller = require('./event.controller');
-const service = require('./event.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,
