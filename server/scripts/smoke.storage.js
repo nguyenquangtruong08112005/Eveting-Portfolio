@@ -9,8 +9,8 @@ process.env.STORAGE_PROVIDER = 'local';
 const assert = require('assert');
 require('../src/alias-bootstrap');
 const storageProvider = require('../src/providers/storage');
-const storageService = require('../src/services/storage.service');
-const storageController = require('../src/controllers/storage.controller');
+const storageService = require('../src/modules/storage/storage.service');
+const storageController = require('../src/modules/storage/storage.controller');
 
 async function runTests() {
   console.log('--- Phase C5 Generic Storage Upload Smoke Test ---');

@@ -1,5 +1,5 @@
 const organizerService = require('@/modules/organizer/application/service');
-const analyticsService = require('@/modules/analytics').service;
+const analyticsService = require('@/modules/analytics/application/service');
 const eventRepository = require('@/providers/database/event.repository');
 
 const verifyEventOwnership = async (req, res, next) => {

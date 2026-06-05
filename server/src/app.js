@@ -5,7 +5,6 @@ require('dotenv').config();
 const { startReminderJob } = require('@/jobs/reminder.job');
 
 
-var indexRouter = require('@/routes/index');
 var usersRouter = require('@/modules/users').router;
 var eventsRouter = require('@/modules/events').router;
 var ticketsRouter = require('@/modules/tickets').router;
@@ -32,7 +31,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.use('/', indexRouter);
+app.get('/', function(req, res) { res.send("Welcome"); });
 app.use('/users', usersRouter);
 app.use('/events', eventsRouter);
 app.use('/tickets', ticketsRouter);

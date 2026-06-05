@@ -10,9 +10,9 @@ const assert = require('assert');
 const path = require('path');
 require('../src/alias-bootstrap');
 const storageProvider = require('../src/providers/storage');
-const mediaService = require('../src/services/media.service');
+const mediaService = require('../src/modules/media/media.service');
 const mediaRepository = require('../src/providers/database/media.repository');
-const mediaController = require('../src/controllers/media.controller');
+const mediaController = require('../src/modules/media/media.controller');
 
 // Stub repository method to avoid hitting real database (Postgres/Firebase)
 let databaseSavedItems = [];

@@ -88,7 +88,7 @@ console.error = function(...args) {
 // Require repositories/services AFTER setting provider envs
 require('../src/alias-bootstrap');
 const eventRepository = require('../src/providers/database/event.repository');
-const adminService = require('../src/services/admin.service');
+const adminService = require('../src/modules/admin/admin.service');
 const { query, getPool } = require('../src/providers/database/postgres.client');
 
 async function run() {
