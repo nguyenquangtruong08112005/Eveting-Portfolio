@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.NOTIFICATION_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   var notificationRepo = require('../src/providers/database/notification.repository');
 
   console.log('Notification repository provider: ' + process.env.NOTIFICATION_DATABASE_PROVIDER);

@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.MEDIA_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   var mediaRepo = require('../src/providers/database/media.repository');
 
   console.log('Media repository provider: ' + process.env.MEDIA_DATABASE_PROVIDER);

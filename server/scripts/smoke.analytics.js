@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.ANALYTICS_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   const analyticsRepo = require('../src/providers/database/analytics.repository');
 
   console.log('Analytics repository provider: ' + process.env.ANALYTICS_DATABASE_PROVIDER);

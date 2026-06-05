@@ -12,6 +12,7 @@ if (!process.env.DATABASE_URL) {
 process.env.NOTIFICATION_DATABASE_PROVIDER = 'postgres';
 
 var notifications = require('../seed/notifications.json');
+require('../src/alias-bootstrap');
 var notificationRepo = require('../src/providers/database/notification.repository');
 
 async function seed() {

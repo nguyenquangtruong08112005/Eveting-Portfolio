@@ -7,6 +7,7 @@
 process.env.STORAGE_PROVIDER = 'local';
 
 const assert = require('assert');
+require('../src/alias-bootstrap');
 const storageProvider = require('../src/providers/storage');
 const storageService = require('../src/services/storage.service');
 const storageController = require('../src/controllers/storage.controller');

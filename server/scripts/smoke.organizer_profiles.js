@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.ORGANIZER_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   var organizerRepo = require('../src/providers/database/organizer.repository');
 
   console.log('Organizer repository provider: ' + process.env.ORGANIZER_DATABASE_PROVIDER);

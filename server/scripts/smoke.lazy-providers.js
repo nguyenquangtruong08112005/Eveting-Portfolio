@@ -27,6 +27,7 @@ console.log('--- Starting Lazy Provider Loading Smoke Test ---');
 (function testDefaultProviders() {
   console.log('\n[Test 1] Default provider resolution (no env overrides)...');
 
+require('../src/alias-bootstrap');
   const auth = require('../src/providers/auth');
   if (!auth || typeof auth.verifyToken !== 'function') {
     throw new Error('Default auth provider missing verifyToken');

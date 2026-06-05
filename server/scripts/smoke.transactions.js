@@ -7,6 +7,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 process.env.TICKET_DATABASE_PROVIDER = 'postgres';
+require('../src/alias-bootstrap');
 const ticketRepo = require('../src/providers/database/ticket.repository');
 const { query } = require('../src/providers/database/postgres.client');
 

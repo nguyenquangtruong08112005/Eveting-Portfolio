@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.FEATURED_PROFILE_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   var profileRepo = require('../src/providers/database/featuredProfile.repository');
 
   console.log('FeaturedProfile repository provider: ' + process.env.FEATURED_PROFILE_DATABASE_PROVIDER);

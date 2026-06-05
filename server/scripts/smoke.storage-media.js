@@ -8,6 +8,7 @@ process.env.STORAGE_PROVIDER = 'local';
 
 const assert = require('assert');
 const path = require('path');
+require('../src/alias-bootstrap');
 const storageProvider = require('../src/providers/storage');
 const mediaService = require('../src/services/media.service');
 const mediaRepository = require('../src/providers/database/media.repository');

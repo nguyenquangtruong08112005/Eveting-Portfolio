@@ -12,6 +12,7 @@ if (!process.env.DATABASE_URL) {
 process.env.VENUE_DATABASE_PROVIDER = 'postgres';
 
 var venues = require('../seed/venues.json');
+require('../src/alias-bootstrap');
 var venueRepo = require('../src/providers/database/venue.repository');
 
 async function seed() {

@@ -2,6 +2,7 @@
 // Script to scan, report, and safely clean up Firebase Storage URLs in PostgreSQL database tables (events, user_profiles, event_media).
 
 require('dotenv').config();
+require('../src/alias-bootstrap');
 const { query, getPool, transaction } = require('../src/providers/database/postgres.client');
 
 const FIREBASE_URL_PATTERN = 'firebasestorage.googleapis.com';

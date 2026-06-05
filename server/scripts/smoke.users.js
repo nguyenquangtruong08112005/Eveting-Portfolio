@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.USER_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   var userRepo = require('../src/providers/database/user.repository');
 
   console.log('User repository provider: ' + process.env.USER_DATABASE_PROVIDER);

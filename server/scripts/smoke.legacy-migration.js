@@ -13,6 +13,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgres://eventing:eventing_d
 
 process.env.DATABASE_URL = DATABASE_URL;
 
+require('../src/alias-bootstrap');
 const { query } = require('../src/providers/database/postgres.client');
 
 const tokensToRedact = new Set();

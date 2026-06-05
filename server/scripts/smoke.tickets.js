@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.TICKET_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   const ticketRepo = require('../src/providers/database/ticket.repository');
 
   console.log('Ticket repository provider: ' + process.env.TICKET_DATABASE_PROVIDER);

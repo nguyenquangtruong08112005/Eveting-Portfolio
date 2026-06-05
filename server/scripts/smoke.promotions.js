@@ -14,6 +14,7 @@ if (!process.env.DATABASE_URL) {
 process.env.PROMOTION_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
+require('../src/alias-bootstrap');
   var promoRepo = require('../src/providers/database/promotion.repository');
 
   console.log('Promotion repository provider: ' + process.env.PROMOTION_DATABASE_PROVIDER);
