@@ -1,8 +1,12 @@
 package com.tdtuer.eventing.data.repository
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
-import com.google.firebase.storage.FirebaseStorage
+import dagger.hilt.android.qualifiers.ApplicationContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import com.tdtuer.eventing.data.local.dao.UserDao
 import com.tdtuer.eventing.data.local.entity.toDomain
 import com.tdtuer.eventing.data.local.entity.toEntity
@@ -15,14 +19,13 @@ import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class UserRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val apiService: EventApiService,
-    private val storage: FirebaseStorage,
     private val userDao: UserDao // <-- Inject DAO
 ) : UserRepository {
 
@@ -91,13 +94,45 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    // Các hàm khác giữ nguyên, không liên quan caching
+    private fun mapPathToPurpose(path: String): String {
+        val lower = path.lowercase()
+        return when {
+            lower.contains("avatar") || lower.contains("cover") || lower.contains("profile") || lower.contains("user") -> "profile"
+            lower.contains("banner") || lower.contains("thumbnail") || lower.contains("video") -> "event"
+            lower.contains("media") || lower.contains("upload") -> "media"
+            lower.contains("event") -> "event"
+            else -> "misc"
+        }
+    }
+
     override suspend fun uploadImage(uri: Uri, path: String): Result<String> {
         return try {
-            val storageRef = storage.reference.child(path)
-            storageRef.putFile(uri).await()
-            val downloadUrl = storageRef.downloadUrl.await().toString()
-            Result.success(downloadUrl)
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+            val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: throw Exception("Failed to read URI content")
+
+            val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull(), 0, bytes.size)
+
+            val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) {
+                    cursor.getString(nameIndex)
+                } else null
+            } ?: uri.lastPathSegment ?: "file.jpg"
+
+            val filePart = MultipartBody.Part.createFormData("file", fileName, requestBody)
+
+            val purposeStr = mapPathToPurpose(path)
+            val purposePart = purposeStr.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val response = apiService.uploadImage(filePart, purposePart)
+            if (response.isSuccessful && response.body() != null) {
+                val uploadResponse = response.body()!!
+                Result.success(uploadResponse.url)
+            } else {
+                Result.failure(Exception("Upload failed with code: ${response.code()}"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

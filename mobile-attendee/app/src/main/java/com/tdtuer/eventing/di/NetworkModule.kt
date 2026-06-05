@@ -1,7 +1,7 @@
 package com.tdtuer.eventing.di
 
 import com.facebook.core.BuildConfig
-import com.google.firebase.auth.FirebaseAuth
+
 import com.google.gson.Gson
 import com.tdtuer.eventing.constants.Constraints.BASE_URL
 import com.tdtuer.eventing.data.auth.TokenStore
@@ -13,7 +13,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.tasks.await
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -37,7 +36,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(auth: FirebaseAuth, tokenStore: TokenStore, gson: Gson): OkHttpClient {
+    fun provideOkHttpClient(tokenStore: TokenStore, gson: Gson): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -58,7 +57,6 @@ object NetworkModule {
             val token = try {
                 runBlocking {
                     tokenStore.getAccessToken()
-                        ?: auth.currentUser?.getIdToken(false)?.await()?.token
                 }
             } catch (e: Exception) {
                 null

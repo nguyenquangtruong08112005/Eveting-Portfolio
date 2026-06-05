@@ -17,7 +17,8 @@ data class UserDto(
     @SerializedName("joinedEvents") val joinedEvents: List<JoinedEventDto>?,
     @SerializedName("birthDate") val birthDate: Long?,
     @SerializedName("address") val address: String?,
-    @SerializedName("followedProfileIds") val followedProfileIds: List<String>?
+    @SerializedName("followedProfileIds") val followedProfileIds: List<String>?,
+    @SerializedName("emailVerified") val emailVerified: Boolean? = null
 )
 
 data class JoinedEventDto(

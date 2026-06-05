@@ -4,9 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInWithFacebookUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInWithGoogleUseCase
@@ -80,13 +77,8 @@ class SignUpViewModel @Inject constructor(
             if (result.isSuccess) {
                 _authState.value = AuthState.Success(result.getOrNull()!!)
             } else {
-                val exception = result.exceptionOrNull()
-                val errorMessage = when (exception) {
-                    is FirebaseAuthWeakPasswordException -> "The password is too weak. Please choose a stronger one."
-                    is FirebaseAuthInvalidCredentialsException -> "The email address is badly formatted."
-                    is FirebaseAuthUserCollisionException -> "This email is already in use by another account."
-                    else -> exception?.message ?: "An unknown error occurred."
-                }
+                val errorMessage = result.exceptionOrNull()?.message
+                    ?: "An unknown error occurred."
                 _authState.value = AuthState.Error(errorMessage)
             }
         }

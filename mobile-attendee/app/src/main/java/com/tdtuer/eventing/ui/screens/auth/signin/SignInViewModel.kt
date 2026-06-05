@@ -4,9 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.FirebaseNetworkException
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SaveRememberMeStatusUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInUseCase
@@ -71,13 +68,8 @@ class SignInViewModel @Inject constructor(
                 saveRememberMeStatusUseCase(rememberMe)
                 _authState.value = AuthState.Success(result.getOrNull()!!)
             } else {
-                val exception = result.exceptionOrNull()
-                val errorMessage = when (exception) {
-                    is FirebaseAuthInvalidCredentialsException -> "Incorrect email or password. Please try again."
-                    is FirebaseAuthInvalidUserException -> "No account found with this email address."
-                    is FirebaseNetworkException -> "Please check your internet connection and try again."
-                    else -> exception?.localizedMessage ?: "An unknown error occurred."
-                }
+                val errorMessage = result.exceptionOrNull()?.localizedMessage
+                    ?: "An unknown error occurred."
                 _authState.value = AuthState.Error(errorMessage)
             }
         }

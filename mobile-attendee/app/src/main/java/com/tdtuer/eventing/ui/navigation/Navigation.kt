@@ -80,7 +80,7 @@ fun RootNavigationGraph(navController: NavHostController, intent: Intent?) {
                 }
             }
 
-            // --- Existing Logic: Firebase Auth Deep Link ---
+            // --- Existing Logic: Auth Deep Link ---
             val mode = uri.getQueryParameter("mode")
             val oobCode = uri.getQueryParameter("oobCode")
 

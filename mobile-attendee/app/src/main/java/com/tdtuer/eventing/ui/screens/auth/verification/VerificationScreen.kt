@@ -45,10 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material3.Icon
 import com.tdtuer.eventing.ui.theme.EventingTheme
 
 @Composable
@@ -111,12 +110,13 @@ private fun VerificationContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(com.google.firebase.R.raw.firebase_common_keep))
-
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.size(200.dp)
+            Icon(
+                imageVector = Icons.Default.Email,
+                contentDescription = "Email Verification",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(150.dp)
+                    .padding(bottom = 24.dp)
             )
 
             Text(

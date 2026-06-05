@@ -11,6 +11,12 @@ import com.tdtuer.eventing.data.network.model.EventDetailDto
 import com.tdtuer.eventing.data.network.model.EventDto
 import com.tdtuer.eventing.data.network.model.EventListResponse
 import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
+import com.tdtuer.eventing.data.network.model.GoogleLoginRequest
+import com.tdtuer.eventing.data.network.model.FacebookLoginRequest
+import com.tdtuer.eventing.data.network.model.PasswordResetRequest
+import com.tdtuer.eventing.data.network.model.PasswordResetConfirmRequest
+import com.tdtuer.eventing.data.network.model.EmailVerificationRequest
+import com.tdtuer.eventing.data.network.model.EmailVerificationConfirmRequest
 import com.tdtuer.eventing.data.network.model.MediaResponse
 import com.tdtuer.eventing.data.network.model.NotificationDto
 import com.tdtuer.eventing.data.network.model.PostMediaRequest
@@ -24,6 +30,7 @@ import com.tdtuer.eventing.data.network.model.TicketDetailResponse
 import com.tdtuer.eventing.data.network.model.UpdateUserRequest
 import com.tdtuer.eventing.data.network.model.UserDto
 import com.tdtuer.eventing.data.network.model.UserTicketResponse
+import com.tdtuer.eventing.data.network.model.UploadResponse
 import com.tdtuer.eventing.data.network.model.WeatherDto
 import com.tdtuer.eventing.domain.model.Ticket
 import com.tdtuer.eventing.domain.usecase.payment.CreateZaloPayOrderUseCase
@@ -187,9 +194,36 @@ interface EventApiService {
     @POST("auth/login")
     suspend fun login(@Body request: AuthLoginRequest): Response<AuthResponse>
 
+
+
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: RefreshTokenRequest): Response<AuthResponse>
 
     @POST("auth/logout")
     suspend fun logout(@Body request: RefreshTokenRequest): Response<Unit>
+
+    @POST("auth/google-login")
+    suspend fun googleLogin(@Body request: GoogleLoginRequest): Response<AuthResponse>
+
+    @POST("auth/facebook-login")
+    suspend fun facebookLogin(@Body request: FacebookLoginRequest): Response<AuthResponse>
+
+    @POST("auth/password-reset/request")
+    suspend fun requestPasswordReset(@Body request: PasswordResetRequest): Response<Unit>
+
+    @POST("auth/password-reset/confirm")
+    suspend fun confirmPasswordReset(@Body request: PasswordResetConfirmRequest): Response<Unit>
+
+    @POST("auth/email-verification/request")
+    suspend fun requestEmailVerification(@Body request: EmailVerificationRequest): Response<Unit>
+
+    @POST("auth/email-verification/confirm")
+    suspend fun confirmEmailVerification(@Body request: EmailVerificationConfirmRequest): Response<Unit>
+
+    @Multipart
+    @POST("storage/upload")
+    suspend fun uploadImage(
+        @Part file: okhttp3.MultipartBody.Part,
+        @Part("purpose") purpose: okhttp3.RequestBody?
+    ): Response<UploadResponse>
 }

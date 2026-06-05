@@ -2,16 +2,17 @@ package com.tdtuer.eventing.data.auth
 
 import android.util.Log
 import com.facebook.AccessToken
-import com.google.firebase.auth.ActionCodeSettings
-import com.google.firebase.auth.FacebookAuthProvider
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FirebaseFirestore
 import com.tdtuer.eventing.data.auth.TokenStore
 import com.tdtuer.eventing.data.network.EventApiService
 import com.tdtuer.eventing.data.network.model.AuthLoginRequest
 import com.tdtuer.eventing.data.network.model.AuthRegisterRequest
+import com.tdtuer.eventing.data.network.model.AuthResponse
+import com.tdtuer.eventing.data.network.model.GoogleLoginRequest
+import com.tdtuer.eventing.data.network.model.FacebookLoginRequest
+import com.tdtuer.eventing.data.network.model.PasswordResetRequest
+import com.tdtuer.eventing.data.network.model.PasswordResetConfirmRequest
+import com.tdtuer.eventing.data.network.model.EmailVerificationRequest
+import com.tdtuer.eventing.data.network.model.EmailVerificationConfirmRequest
 import com.tdtuer.eventing.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing.data.network.model.UserDto
 import com.tdtuer.eventing.data.network.model.toDomainUser
@@ -25,11 +26,37 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
-    private val auth: FirebaseAuth,
-    private val db: FirebaseFirestore,
     private val apiService: EventApiService,
     private val tokenStore: TokenStore
 ) : AuthRepository {
+
+    private suspend fun saveBackendAuth(body: AuthResponse?, fallbackMessage: String): Result<User> {
+        val accessToken = body?.accessToken
+        val refreshToken = body?.refreshToken
+        val userDto = body?.user
+        return if (accessToken != null && refreshToken != null && userDto != null) {
+            tokenStore.saveTokens(accessToken, refreshToken)
+            Result.success(userDto.toDomainUser())
+        } else {
+            Result.failure(Exception(fallbackMessage))
+        }
+    }
+
+    private fun getUserIdFromToken(): String? {
+        val token = kotlinx.coroutines.runBlocking { tokenStore.getAccessToken() }
+        if (token.isNullOrBlank()) return null
+        return try {
+            val parts = token.split(".")
+            if (parts.size >= 2) {
+                val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.DEFAULT))
+                val jsonObject = org.json.JSONObject(payload)
+                jsonObject.optString("uid")
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     override suspend fun signUp(
         name: String,
         email: String,
@@ -51,27 +78,12 @@ class AuthRepositoryImpl @Inject constructor(
             )
             if (response.isSuccessful) {
                 val body = response.body()
-                val accessToken = body?.accessToken
-                val refreshToken = body?.refreshToken
-                val userDto = body?.user
-                if (accessToken != null && refreshToken != null && userDto != null) {
-                    tokenStore.saveTokens(accessToken, refreshToken)
-                    val domainUser = userDto.toDomainUser()
-                    return Result.success(domainUser)
-                }
+                saveBackendAuth(body, "Backend registration returned an invalid response")
+            } else {
+                Result.failure(Exception("Backend registration failed with code: ${response.code()}"))
             }
-            throw Exception("Backend register failed, falling back to Firebase")
         } catch (e: Exception) {
-            return try {
-                val result = auth.createUserWithEmailAndPassword(email, password).await()
-                val uid = result.user?.uid
-                    ?: return Result.failure(Exception("Sign up failed"))
-                val user = User(id = uid, name = name, email = email, role = listOf(role))
-                db.collection("Users").document(uid).set(user).await()
-                Result.success(user)
-            } catch (e2: Exception) {
-                Result.failure(e2)
-            }
+            Result.failure(e)
         }
     }
 
@@ -83,52 +95,23 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.login(AuthLoginRequest(email = email, password = password))
             if (response.isSuccessful) {
                 val body = response.body()
-                val accessToken = body?.accessToken
-                val refreshToken = body?.refreshToken
-                val userDto = body?.user
-                if (accessToken != null && refreshToken != null && userDto != null) {
-                    tokenStore.saveTokens(accessToken, refreshToken)
-                    val domainUser = userDto.toDomainUser()
-                    return Result.success(domainUser)
-                }
+                saveBackendAuth(body, "Backend login returned an invalid response")
+            } else {
+                Result.failure(Exception("Backend login failed with code: ${response.code()}"))
             }
-            throw Exception("Backend login failed, falling back to Firebase")
         } catch (e: Exception) {
-            return try {
-                val result = auth.signInWithEmailAndPassword(email, password).await()
-                val uid = result.user?.uid
-                    ?: return Result.failure(Exception("Sign in failed"))
-                val user = db.collection("Users").document(uid).get().await()
-                    .toObject(User::class.java)
-                    ?: return Result.failure(Exception("User not found"))
-                val idToken = result.user?.getIdToken(false)?.await()?.token
-                Result.success(user)
-            } catch (e2: Exception) {
-                Result.failure(e2)
-            }
+            Result.failure(e)
         }
     }
 
     override suspend fun signInWithGoogle(idToken: String): Result<User> {
         return try {
-            val credential = GoogleAuthProvider.getCredential(idToken, null)
-            val result = auth.signInWithCredential(credential).await()
-            val firebaseUser =
-                result.user ?: return Result.failure(Exception("Google sign-in failed"))
-
-            val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
-            if (userDoc.exists()) {
-                val user = userDoc.toObject(User::class.java)!!
-                Result.success(user)
+            val response = apiService.googleLogin(GoogleLoginRequest(idToken = idToken, role = "user"))
+            if (response.isSuccessful) {
+                val body = response.body()
+                saveBackendAuth(body, "Google login returned an invalid response")
             } else {
-                val newUser = User(
-                    id = firebaseUser.uid,
-                    name = firebaseUser.displayName ?: "Unknown",
-                    email = firebaseUser.email ?: "Unknown",
-                    profilePicUrl = firebaseUser.photoUrl?.toString() ?: ""
-                )
-                db.collection("Users").document(firebaseUser.uid).set(newUser).await()
-                Result.success(newUser)
+                Result.failure(Exception("Google login failed with code: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -137,25 +120,12 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signInWithFacebook(token: AccessToken): Result<User> {
         return try {
-            val credential = FacebookAuthProvider.getCredential(token.token)
-            val result = auth.signInWithCredential(credential).await()
-            val firebaseUser =
-                result.user ?: return Result.failure(Exception("Facebook sign-in failed"))
-
-            // Logic kiểm tra và tạo user mới
-            val userDoc = db.collection("Users").document(firebaseUser.uid).get().await()
-            if (userDoc.exists()) {
-                val user = userDoc.toObject(User::class.java)!!
-                Result.success(user)
+            val response = apiService.facebookLogin(FacebookLoginRequest(accessToken = token.token, role = "user"))
+            if (response.isSuccessful) {
+                val body = response.body()
+                saveBackendAuth(body, "Facebook login returned an invalid response")
             } else {
-                val newUser = User(
-                    id = firebaseUser.uid,
-                    name = firebaseUser.displayName ?: "Unknown",
-                    email = firebaseUser.email ?: "Unknown",
-                    profilePicUrl = firebaseUser.photoUrl?.toString() ?: ""
-                )
-                db.collection("Users").document(firebaseUser.uid).set(newUser).await()
-                Result.success(newUser)
+                Result.failure(Exception("Facebook login failed with code: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -181,47 +151,28 @@ class AuthRepositoryImpl @Inject constructor(
                 }
             }
         }
-        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
-            val uid = auth.currentUser?.uid
-            if (uid != null) {
-                db.collection("Users").document(uid).get()
-                    .addOnSuccessListener { doc ->
-                        val user = doc.toObject(User::class.java)
-                        trySend(user)
-                    }
-                    .addOnFailureListener {
-                        trySend(null)
-                    }
-            } else {
-                trySend(null)
-            }
-        }
-        auth.addAuthStateListener(authStateListener)
-        awaitClose {
-            auth.removeAuthStateListener(authStateListener)
-        }
+        trySend(null)
+        close()
+        awaitClose { }
     }
 
     override fun getCurrentUserId(): String? {
-        return auth.currentUser?.uid
+        return getUserIdFromToken()
     }
 
     override suspend fun sendEmailVerification(): Result<Unit> {
         return try {
-            val user = auth.currentUser
-
-            val actionCodeSettings = ActionCodeSettings.newBuilder()
-                .setUrl("https://eventing-baa25.firebaseapp.com")
-                .setHandleCodeInApp(true)
-                .setAndroidPackageName(
-                    "com.tdtuer.eventing",
-                    true,
-                    null
-                )
-                .build()
-
-            user?.sendEmailVerification(actionCodeSettings)?.await()
-            Result.success(Unit)
+            val userResponse = apiService.getUserProfile()
+            val email = if (userResponse.isSuccessful) userResponse.body()?.email else null
+            if (email.isNullOrEmpty()) {
+                return Result.failure(Exception("Failed to retrieve user email for verification"))
+            }
+            val response = apiService.requestEmailVerification(EmailVerificationRequest(email))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Email verification request failed"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -229,9 +180,12 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun checkEmailVerificationStatus(): Result<Boolean> {
         return try {
-            auth.currentUser?.reload()?.await()
-            val isVerified = auth.currentUser?.isEmailVerified ?: false
-            Result.success(isVerified)
+            val response = apiService.getUserProfile()
+            if (response.isSuccessful) {
+                Result.success(response.body()?.emailVerified ?: false)
+            } else {
+                Result.failure(Exception("Failed to fetch email verification status"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -239,8 +193,12 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun applyVerificationCode(code: String): Result<Unit> {
         return try {
-            auth.applyActionCode(code).await()
-            Result.success(Unit)
+            val response = apiService.confirmEmailVerification(EmailVerificationConfirmRequest(code))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Email verification confirmation failed"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -248,43 +206,38 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() {
         try {
-            val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
-            apiService.removeFcmToken(RemoveTokenRequest(token))
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        try {
             OneSignal.logout()
         } catch (e: Exception) {
             e.printStackTrace()
         }
         tokenStore.clearTokens()
-        auth.signOut()
     }
 
-    // --> ADDED FOR PASSWORD RESET
     override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
         return try {
-            auth.sendPasswordResetEmail(email).await()
-            Result.success(Unit)
+            val response = apiService.requestPasswordReset(PasswordResetRequest(email))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Password reset request failed"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     override suspend fun verifyPasswordResetCode(code: String): Result<String> {
-        return try {
-            val email = auth.verifyPasswordResetCode(code).await()
-            Result.success(email ?: "")
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return Result.success(code)
     }
 
     override suspend fun confirmPasswordReset(code: String, newPassword: String): Result<Unit> {
         return try {
-            auth.confirmPasswordReset(code, newPassword).await()
-            Result.success(Unit)
+            val response = apiService.confirmPasswordReset(PasswordResetConfirmRequest(code, newPassword))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Password reset confirmation failed"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

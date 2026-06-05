@@ -3,7 +3,6 @@ package com.tdtuer.eventing
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.google.firebase.FirebaseApp
 import com.onesignal.OneSignal
 import com.tdtuer.eventing.constants.Constraints
 import dagger.hilt.android.HiltAndroidApp
@@ -22,7 +21,6 @@ class MyApp: Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        FirebaseApp.initializeApp(this) // tạo firebase app
 
         // Khởi tạo OneSignal (chỉ khi có App ID hợp lệ)
         val oneSignalAppId = Constraints.ONESIGNAL_APP_ID

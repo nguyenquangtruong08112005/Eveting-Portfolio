@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
 import com.tdtuer.eventing.constants.Constraints
 import com.tdtuer.eventing.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing.domain.model.Result

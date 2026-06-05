@@ -27,6 +27,8 @@ data class AuthUserDto(
     @SerializedName("roles") val roles: List<String>?
 )
 
+
+
 data class AuthResponse(
     @SerializedName("user") val user: AuthUserDto?,
     @SerializedName("accessToken") val accessToken: String?,
@@ -49,3 +51,30 @@ fun AuthUserDto.toDomainUser(): User {
         role = domainRoles
     )
 }
+
+data class GoogleLoginRequest(
+    @SerializedName("idToken") val idToken: String,
+    @SerializedName("role") val role: String? = null
+)
+
+data class FacebookLoginRequest(
+    @SerializedName("accessToken") val accessToken: String,
+    @SerializedName("role") val role: String? = null
+)
+
+data class PasswordResetRequest(
+    @SerializedName("email") val email: String
+)
+
+data class PasswordResetConfirmRequest(
+    @SerializedName("token") val token: String,
+    @SerializedName("newPassword") val newPassword: String
+)
+
+data class EmailVerificationRequest(
+    @SerializedName("email") val email: String
+)
+
+data class EmailVerificationConfirmRequest(
+    @SerializedName("token") val token: String
+)

@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
+import com.tdtuer.eventing.domain.usecase.authentication.SignOutUseCase
 import com.tdtuer.eventing.domain.usecase.events.GetAllEventsUseCase
 import com.tdtuer.eventing.domain.usecase.events.GetRecommendationsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -56,7 +56,7 @@ data class Destination(val name: String, val imageUrl: String)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val firebaseAuth: FirebaseAuth, // Inject FirebaseAuth
+    private val signOutUseCase: SignOutUseCase,
     private val getAllEventsUseCase: GetAllEventsUseCase,
     private val searchEventsUseCase: SearchEventsUseCase,
     private val getRecommendationsUseCase: GetRecommendationsUseCase,
@@ -163,7 +163,7 @@ class HomeViewModel @Inject constructor(
 
     // --- Event Handlers ---
     fun onSignOutClick() = viewModelScope.launch {
-        firebaseAuth.signOut()
+        signOutUseCase()
         _navEvent.emit(HomeNavEvent.NavigateToAuth) // Phát sự kiện điều hướng
     }
 
