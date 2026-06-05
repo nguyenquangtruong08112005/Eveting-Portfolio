@@ -13,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.REVIEW_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
-  var reviewRepo = require('../providers/database/review.repository');
+  var reviewRepo = require('../src/providers/database/review.repository');
 
   console.log('Review repository provider: ' + process.env.REVIEW_DATABASE_PROVIDER);
   console.log('');

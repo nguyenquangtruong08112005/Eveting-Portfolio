@@ -13,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.EVENT_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
-  const eventRepo = require('../providers/database/event.repository');
+  const eventRepo = require('../src/providers/database/event.repository');
 
   console.log('Event repository provider: ' + process.env.EVENT_DATABASE_PROVIDER);
   console.log('');

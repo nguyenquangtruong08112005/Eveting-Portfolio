@@ -7,8 +7,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 process.env.TICKET_DATABASE_PROVIDER = 'postgres';
-const ticketRepo = require('../providers/database/ticket.repository');
-const { query } = require('../providers/database/postgres.client');
+const ticketRepo = require('../src/providers/database/ticket.repository');
+const { query } = require('../src/providers/database/postgres.client');
 
 async function testRollback() {
   console.log('--- TEST 1: Intentional Transaction Rollback ---');

@@ -28,26 +28,40 @@
 
 ## 📂 Cấu trúc thư mục
 
+Sau khi tái cấu trúc, mã nguồn của ứng dụng được tổ chức như sau:
+
 ```
 /
-├── config/         # Cấu hình cho các dịch vụ (DB, ZaloPay)
-├── controllers/    # Logic xử lý request và response
-├── jobs/           # Các tác vụ chạy nền (cron jobs)
-├── middleware/     # Các middleware (xác thực, giới hạn request)
-├── routes/         # Định nghĩa các API endpoints
-├── seed/           # Dữ liệu mẫu để khởi tạo hệ thống
-├── services/       # Logic nghiệp vụ chính của ứng dụng
-├── utils/          # Các hàm tiện ích (tạo QR, validators)
-├── app.js          # File khởi tạo chính của ứng dụng
-└── docker-compose.yml # Cấu hình để chạy ứng dụng với Docker
+├── .github/workflows/
+│   └── server-ci.yml       # Tự động chạy CI check trên GitHub Actions
+├── db/                     # Quản lý cơ sở dữ liệu
+│   ├── migrations/         # Lưu trữ các file SQL/JS migration
+│   └── migrate.js          # Script thực thi migrations
+├── infra/
+│   └── docker/
+│       └── docker-compose.local.yml # Docker Compose chạy PostgreSQL & Elasticsearch local
+├── scripts/                # Các script kiểm tra vận hành (smoke tests, check syntax, seed)
+├── src/                    # Thư mục mã nguồn chính của ứng dụng
+│   ├── config/             # Cấu hình ứng dụng và kết nối các dịch vụ
+│   ├── controllers/        # Tiếp nhận request và điều phối dữ liệu
+│   ├── jobs/               # Tác vụ chạy nền tuần kỳ (cron jobs)
+│   ├── middleware/         # Middleware lọc request (xác thực, kiểm tra dữ liệu, v.v.)
+│   ├── providers/          # Bộ điều hợp kết nối các dịch vụ bên ngoài (AWS S3, Elasticsearch, Postgres)
+│   ├── routes/             # Định nghĩa cấu trúc API Endpoints
+│   ├── services/           # Xử lý logic nghiệp vụ chính của ứng dụng
+│   ├── utils/              # Các hàm tiện ích dùng chung
+│   └── app.js              # Khởi tạo Express app và đăng ký middleware/routes
+├── app.js                  # Entrypoint tương thích ngược (root) chuyển tiếp đến src/app.js
+├── docker-compose.yml      # Cấu hình chạy riêng Elasticsearch (tương thích ngược)
+└── package.json            # Định nghĩa scripts và dependencies của hệ thống
 ```
 
 ## ⚙️ Cài đặt và Chạy dự án
 
 ### Yêu cầu
 
-- [Node.js](https://nodejs.org/) (phiên bản 18.x trở lên)
-- [Docker](https://www.docker.com/) (tùy chọn)
+- [Node.js](https://nodejs.org/) (phiên bản 18.x hoặc 20.x trở lên)
+- [Docker](https://www.docker.com/) (để chạy các dịch vụ local)
 - npm
 
 ### Hướng dẫn
@@ -64,23 +78,30 @@
     ```
 
 3.  **Cấu hình môi trường:**
-    Tạo một file `.env` ở thư mục gốc và định nghĩa các biến môi trường cần thiết. Bạn có thể tham khảo các file trong thư mục `config/` để biết các biến cần thiết (ví dụ: thông tin kết nối Elasticsearch, khóa bí mật cho JWT).
+    Tạo file `.env` ở thư mục gốc và định nghĩa các biến môi trường cần thiết theo cấu hình mẫu.
 
-4.  **Chạy dự án ở chế độ phát triển:**
-    Lệnh này sẽ khởi động server với `nodemon`, tự động khởi động lại khi có thay đổi.
+4.  **Khởi động các dịch vụ cơ sở dữ liệu local (PostgreSQL & Elasticsearch):**
+    Sử dụng Docker Compose để dựng nhanh môi trường local:
+    ```bash
+    docker compose -f infra/docker/docker-compose.local.yml up -d
+    ```
+
+5.  **Chạy migrations để thiết lập schema cơ sở dữ liệu:**
+    ```bash
+    npm run db:migrate
+    ```
+
+6.  **Chạy dự án ở chế độ phát triển:**
     ```bash
     npm run dev
     ```
-    Server sẽ chạy tại `http://localhost:3000`.
+    Server sẽ khởi chạy tại `http://localhost:3000`.
 
-5.  **Chạy dự án với Docker (tùy chọn):**
-    ```bash
-    docker-compose up -d
-    ```
+## 📜 Các Scripts có sẵn
 
-## 📜 Scripts có sẵn
+Trong file `package.json`, bạn có thể chạy các câu lệnh:
 
-Trong file `package.json`, có các scripts sau:
-
-- `npm run dev`: Chạy server ở chế độ development bằng `nodemon`.
-- `npm start`: Chạy server và `ngrok` để tạo tunnel public (hữu ích cho việc test webhook).
+- `npm run dev`: Khởi động server ở chế độ phát triển bằng `nodemon`.
+- `npm start`: Chạy server và khởi tạo `ngrok` tunnel (phục vụ test webhook).
+- `npm run db:migrate`: Thực thi các tệp tin migrations trong `db/migrations/`.
+- `npm run ci:check`: Chạy kiểm tra cú pháp Javascript (`scripts/check-js-syntax.js`) và kiểm thử kết nối của các lazy providers.

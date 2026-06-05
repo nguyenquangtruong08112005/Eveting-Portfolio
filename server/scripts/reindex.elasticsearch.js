@@ -12,9 +12,9 @@ for (const file of firebaseSeedFiles) {
   }
 }
 
-const esClient = require('../config/elasticsearch.config');
-const { query } = require('../providers/database/postgres.client');
-const featuredProfileRepository = require('../providers/database/featuredProfile.repository');
+const esClient = require('../src/config/elasticsearch.config');
+const { query } = require('../src/providers/database/postgres.client');
+const featuredProfileRepository = require('../src/providers/database/featuredProfile.repository');
 
 const ELASTIC_INDEX = 'events';
 

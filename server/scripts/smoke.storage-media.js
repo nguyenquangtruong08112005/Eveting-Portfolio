@@ -8,10 +8,10 @@ process.env.STORAGE_PROVIDER = 'local';
 
 const assert = require('assert');
 const path = require('path');
-const storageProvider = require('../providers/storage');
-const mediaService = require('../services/media.service');
-const mediaRepository = require('../providers/database/media.repository');
-const mediaController = require('../controllers/media.controller');
+const storageProvider = require('../src/providers/storage');
+const mediaService = require('../src/services/media.service');
+const mediaRepository = require('../src/providers/database/media.repository');
+const mediaController = require('../src/controllers/media.controller');
 
 // Stub repository method to avoid hitting real database (Postgres/Firebase)
 let databaseSavedItems = [];

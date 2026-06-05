@@ -26,7 +26,8 @@
     "db:smoke:featured_profiles": "node scripts/smoke.featured_profiles.js",
     "db:smoke:organizer_profiles": "node scripts/smoke.organizer_profiles.js",
     "search:reindex": "node scripts/reindex.elasticsearch.js",
-    "db:smoke:legacy-migration": "node scripts/smoke.legacy-migration.js"
+    "db:smoke:legacy-migration": "node scripts/smoke.legacy-migration.js",
+    "ci:check": "node scripts/check-js-syntax.js && npm run db:smoke:lazy-providers"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.800.0",

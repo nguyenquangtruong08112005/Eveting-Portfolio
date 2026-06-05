@@ -13,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.ORGANIZER_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
-  var organizerRepo = require('../providers/database/organizer.repository');
+  var organizerRepo = require('../src/providers/database/organizer.repository');
 
   console.log('Organizer repository provider: ' + process.env.ORGANIZER_DATABASE_PROVIDER);
   console.log('');
@@ -32,7 +32,7 @@ async function smoke() {
     console.log('Pass ORGANIZER_SMOKE_ID=<PostgreSQL-UUID> to run smoke test.');
     
     // Attempt dummy read of any organizer if no ID provided
-    const { query } = require('../providers/database/postgres.client');
+    const { query } = require('../src/providers/database/postgres.client');
     const result = await query('SELECT id FROM organizer_profiles LIMIT 1');
     if (result.rows.length > 0) {
       const id = result.rows[0].id;

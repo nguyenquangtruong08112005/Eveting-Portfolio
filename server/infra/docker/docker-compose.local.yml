@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mobile-eventing-postgres
+    environment:
+      POSTGRES_USER: eventing
+      POSTGRES_PASSWORD: eventing_dev_password
+      POSTGRES_DB: eventing_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  elasticsearch:
+    image: elasticsearch:9.1.7
+    container_name: es01
+    environment:
+      - discovery.type=single-node
+      # Disable security for local development
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+
+volumes:
+  postgres_data:
+  esdata01:

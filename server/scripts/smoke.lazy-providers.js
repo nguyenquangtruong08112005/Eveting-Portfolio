@@ -27,13 +27,13 @@ console.log('--- Starting Lazy Provider Loading Smoke Test ---');
 (function testDefaultProviders() {
   console.log('\n[Test 1] Default provider resolution (no env overrides)...');
 
-  const auth = require('../providers/auth');
+  const auth = require('../src/providers/auth');
   if (!auth || typeof auth.verifyToken !== 'function') {
     throw new Error('Default auth provider missing verifyToken');
   }
   console.log('[OK] Auth provider resolved: backend');
 
-  const notification = require('../providers/notification');
+  const notification = require('../src/providers/notification');
   if (!notification) {
     throw new Error('Default notification provider is null');
   }
@@ -45,7 +45,7 @@ console.log('--- Starting Lazy Provider Loading Smoke Test ---');
     'user', 'venue'
   ];
   for (const repo of repoNames) {
-    const repository = require(`../providers/database/${repo}.repository`);
+    const repository = require(`../src/providers/database/${repo}.repository`);
     if (!repository) {
       throw new Error(`Default ${repo} repository is null`);
     }
@@ -64,8 +64,8 @@ console.log('--- Starting Lazy Provider Loading Smoke Test ---');
   // Auth: 'firebase' is no longer supported
   process.env.AUTH_PROVIDER = 'firebase';
   try {
-    delete require.cache[require.resolve('../providers/auth')];
-    require('../providers/auth');
+    delete require.cache[require.resolve('../src/providers/auth')];
+    require('../src/providers/auth');
     console.error('FAIL: Auth provider "firebase" should have thrown');
     process.exit(1);
   } catch (err) {
@@ -79,8 +79,8 @@ console.log('--- Starting Lazy Provider Loading Smoke Test ---');
   // Database: 'firebase' is no longer supported
   process.env.DATABASE_PROVIDER = 'firebase';
   try {
-    delete require.cache[require.resolve('../providers/database/user.repository')];
-    require('../providers/database/user.repository');
+    delete require.cache[require.resolve('../src/providers/database/user.repository')];
+    require('../src/providers/database/user.repository');
     console.error('FAIL: DB provider "firebase" should have thrown');
     process.exit(1);
   } catch (err) {
@@ -94,8 +94,8 @@ console.log('--- Starting Lazy Provider Loading Smoke Test ---');
   // Notification: 'firebase' is no longer supported
   process.env.NOTIFICATION_PROVIDER = 'firebase';
   try {
-    delete require.cache[require.resolve('../providers/notification')];
-    require('../providers/notification');
+    delete require.cache[require.resolve('../src/providers/notification')];
+    require('../src/providers/notification');
     console.error('FAIL: Notification provider "firebase" should have thrown');
     process.exit(1);
   } catch (err) {

@@ -13,7 +13,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgres://eventing:eventing_d
 
 process.env.DATABASE_URL = DATABASE_URL;
 
-const { query } = require('../providers/database/postgres.client');
+const { query } = require('../src/providers/database/postgres.client');
 
 const tokensToRedact = new Set();
 const dbPassMatch = DATABASE_URL.match(/postgres(?:ql)?:\/\/[^:]+:([^@]+)@/);

@@ -86,9 +86,9 @@ console.error = function(...args) {
 };
 
 // Require repositories/services AFTER setting provider envs
-const eventRepository = require('../providers/database/event.repository');
-const adminService = require('../services/admin.service');
-const { query, getPool } = require('../providers/database/postgres.client');
+const eventRepository = require('../src/providers/database/event.repository');
+const adminService = require('../src/services/admin.service');
+const { query, getPool } = require('../src/providers/database/postgres.client');
 
 async function run() {
   console.log('--- Starting Phase C8 Postgres Write-Paths Smoke Test ---');

@@ -13,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 process.env.VENUE_DATABASE_PROVIDER = 'postgres';
 
 async function smoke() {
-  var venueRepo = require('../providers/database/venue.repository');
+  var venueRepo = require('../src/providers/database/venue.repository');
 
   console.log('Venue repository provider: ' + process.env.VENUE_DATABASE_PROVIDER);
   console.log('');
