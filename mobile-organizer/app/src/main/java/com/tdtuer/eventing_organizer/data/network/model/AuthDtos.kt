@@ -53,3 +53,30 @@ data class LogoutRequest(
 data class LogoutResponse(
     @SerializedName("message") val message: String? = null
 )
+
+data class GoogleLoginRequest(
+    @SerializedName("idToken") val idToken: String,
+    @SerializedName("role") val role: String? = null
+)
+
+data class FacebookLoginRequest(
+    @SerializedName("accessToken") val accessToken: String,
+    @SerializedName("role") val role: String? = null
+)
+
+data class PasswordResetRequest(
+    @SerializedName("email") val email: String
+)
+
+data class PasswordResetConfirmRequest(
+    @SerializedName("token") val token: String,
+    @SerializedName("newPassword") val newPassword: String
+)
+
+data class EmailVerificationRequest(
+    @SerializedName("email") val email: String
+)
+
+data class EmailVerificationConfirmRequest(
+    @SerializedName("token") val token: String
+)

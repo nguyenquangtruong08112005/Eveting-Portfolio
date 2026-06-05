@@ -20,5 +20,7 @@ interface AuthRepository {
     suspend fun verifyPasswordResetCode(code: String): Result<String> // Returns the user's email
     suspend fun confirmPasswordReset(code: String, newPassword: String): Result<Unit>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
-
+    fun getCurrentUserId(): String?
 }
+
+class UserCollisionException(message: String = "Email already in use") : Exception(message)

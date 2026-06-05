@@ -35,6 +35,7 @@ import com.tdtuer.eventing_organizer.data.network.model.UpdateUserRequest
 import com.tdtuer.eventing_organizer.data.network.model.UserDto
 import com.tdtuer.eventing_organizer.data.network.model.UserTicketResponse
 import com.tdtuer.eventing_organizer.data.network.model.VenueResponse
+import com.tdtuer.eventing_organizer.data.network.model.UploadResponse
 import com.tdtuer.eventing_organizer.data.network.model.WeatherDto
 import com.tdtuer.eventing_organizer.domain.model.Ticket
 import okhttp3.MultipartBody
@@ -277,4 +278,11 @@ interface EventApiService {
 
     @DELETE("promotions/organizer/{id}")
     suspend fun deletePromotion(@Path("id") id: String): Response<Unit>
+
+    @Multipart
+    @POST("storage/upload")
+    suspend fun uploadImage(
+        @Part file: okhttp3.MultipartBody.Part,
+        @Part("purpose") purpose: okhttp3.RequestBody?
+    ): Response<UploadResponse>
 }

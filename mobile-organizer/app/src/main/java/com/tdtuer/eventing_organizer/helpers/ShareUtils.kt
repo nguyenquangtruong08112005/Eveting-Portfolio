@@ -11,7 +11,7 @@ import com.tdtuer.eventing_organizer.domain.model.Event
 
 object ShareUtils {
 
-    // 1. Giả lập tạo Deep Link (Trong thực tế bạn cần cấu hình AndroidManifest hoặc dùng Firebase Dynamic Links/Branch.io)
+    // 1. Giả lập tạo Deep Link (Trong thực tế bạn cần cấu hình AndroidManifest hoặc dùng App Links/Branch.io)
     private const val EVENT_HOST = "eventing.tdtuer.com"
 
     fun generateEventLink(eventId: String): String {

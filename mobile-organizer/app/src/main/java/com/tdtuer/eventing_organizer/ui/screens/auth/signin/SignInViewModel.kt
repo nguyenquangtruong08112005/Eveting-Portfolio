@@ -5,9 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.FirebaseNetworkException
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.tdtuer.eventing_organizer.domain.model.Result
 import com.tdtuer.eventing_organizer.domain.usecase.authentication.GetGoogleIdTokenUseCase
 import com.tdtuer.eventing_organizer.domain.usecase.authentication.SaveRememberMeStatusUseCase
@@ -63,13 +60,13 @@ class SignInViewModel @Inject constructor(
 
 //            //Log.d("SignInViewModel", "1. Bắt đầu gọi signInUseCase...")
 
-            // Bước 1: Đăng nhập Firebase
+            // Bước 1: Đăng nhập
             val result = signInUseCase(processedEmail, password)
 
 //            //Log.d("SignInViewModel", "2. Kết quả signInUseCase: ${result::class.simpleName}")
 
             if (result.isSuccess) {
-//                //Log.d("SignInViewModel", "3. Đăng nhập Firebase thành công. Đang lấy Profile từ API...")
+//                //Log.d("SignInViewModel", "3. Đăng nhập thành công. Đang lấy Profile từ API...")
 
                 // Bước 2: Gọi API Profile để lấy Role (Admin/Organizer)
                 // QUAN TRỌNG: Dùng .filter để bỏ qua Loading, chỉ lấy Success hoặc Failure
@@ -89,7 +86,7 @@ class SignInViewModel @Inject constructor(
                     } else {
 //                        Log.e("SignInViewModel", "5. Lỗi lấy Profile: ${(profileResult as? Result.Failure)?.exception?.message}")
 
-                        // Fallback: Nếu API lỗi, dùng tạm user từ Firebase (nhưng sẽ không có quyền Admin)
+                        // Fallback: Nếu API lỗi, dùng tạm user trả về từ bước đăng nhập
                         _authState.value = AuthState.Success(result.getOrNull()!!)
                     }
                 } catch (e: Exception) {
@@ -98,14 +95,7 @@ class SignInViewModel @Inject constructor(
                 }
             } else {
                 val exception = result.exceptionOrNull()
-//                Log.e("SignInViewModel", "Lỗi đăng nhập: ${exception?.message}")
-
-                val errorMessage = when (exception) {
-                    is FirebaseAuthInvalidCredentialsException -> "Incorrect email or password."
-                    is FirebaseAuthInvalidUserException -> "No account found."
-                    is FirebaseNetworkException -> "Check your internet connection."
-                    else -> exception?.localizedMessage ?: "An unknown error occurred."
-                }
+                val errorMessage = exception?.localizedMessage ?: "An unknown error occurred."
                 _authState.value = AuthState.Error(errorMessage)
             }
         }

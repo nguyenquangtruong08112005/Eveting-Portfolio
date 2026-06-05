@@ -10,7 +10,7 @@ class UploadImageUseCase @Inject constructor(
 ) {
     /**
      * Upload ảnh lên đường dẫn chỉ định.
-     * @param path: Đường dẫn đầy đủ trên Firebase Storage (ví dụ: "events/123/uploads/user_456/image.jpg")
+     * @param path: Đường dẫn đầy đủ trên backend storage (ví dụ: "events/123/uploads/user_456/image.jpg")
      */
     suspend operator fun invoke(uri: Uri, path: String): Result<String> {
         return repository.uploadImage(uri, path)

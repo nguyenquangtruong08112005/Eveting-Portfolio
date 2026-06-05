@@ -1,6 +1,6 @@
 package com.tdtuer.eventing_organizer.di
 
-import com.google.firebase.auth.FirebaseAuth
+
 import com.google.gson.Gson
 import com.tdtuer.eventing_organizer.constants.Constraints.BASE_URL
 import com.tdtuer.eventing_organizer.data.network.AddressApiService
@@ -14,7 +14,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.tasks.await
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -37,7 +36,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(auth: FirebaseAuth, tokenStore: TokenStore, gson: Gson): OkHttpClient {
+    fun provideOkHttpClient(tokenStore: TokenStore, gson: Gson): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -51,17 +50,7 @@ object NetworkModule {
                 null
             }
 
-            val token = if (!backendToken.isNullOrBlank()) {
-                backendToken
-            } else {
-                try {
-                    runBlocking {
-                        auth.currentUser?.getIdToken(false)?.await()?.token
-                    }
-                } catch (e: Exception) {
-                    null
-                }
-            }
+            val token = if (!backendToken.isNullOrBlank()) backendToken else null
 
             val requestBuilder = originalRequest.newBuilder()
 
@@ -120,7 +109,7 @@ object NetworkModule {
                             }
                         }
                     } catch (e: Exception) {
-                        // Network error or timeout, do not clear
+                        shouldClear = true
                     }
 
                     if (newAccessToken != null) {
@@ -133,11 +122,21 @@ object NetworkModule {
                     } else {
                         if (shouldClear) {
                             try {
-                                runBlocking { tokenStore.clearTokens() }
+                                runBlocking {
+                                    tokenStore.clearTokens()
+                                }
                             } catch (e: Exception) {
                                 // ignore
                             }
                         }
+                    }
+                } else {
+                    try {
+                        runBlocking {
+                            tokenStore.clearTokens()
+                        }
+                    } catch (e: Exception) {
+                        // ignore
                     }
                 }
             }

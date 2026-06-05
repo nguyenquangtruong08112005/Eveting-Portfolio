@@ -60,7 +60,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.play.services.location)
@@ -77,16 +76,10 @@ dependencies {
     // DataStore for local storage
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // Firebase
-    implementation(platform(libs.firebase.bom)) // Đồng ộ version các thư viện fbase
-    implementation(libs.firebase.firestore) // Thao tác với dữ liệu đám mây Firestore
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.auth) // Đã sửa
     implementation(libs.play.services.auth)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.playservices)
     implementation(libs.googleid)
-    implementation(libs.firebase.messaging)
     implementation("com.onesignal:OneSignal:5.6.1")
 
     //Facebook
@@ -135,7 +128,6 @@ dependencies {
     implementation(libs.mapbox.android)
     implementation(libs.mapbox.compose)
     implementation("com.google.accompanist:accompanist-drawablepainter:0.34.0") // Dùng phiên bản mới nhất
-    implementation("com.google.firebase:firebase-storage")
 
     implementation("androidx.hilt:hilt-work:1.0.0")
     kapt("androidx.hilt:hilt-compiler:1.0.0")

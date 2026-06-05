@@ -76,7 +76,7 @@ class AdminViewModel @Inject constructor(
     // --- HÀM ĐĂNG XUẤT MỚI ---
     fun onSignOut() {
         viewModelScope.launch {
-            signOutUseCase() // Gọi usecase xóa token/firebase auth
+            signOutUseCase() // Gọi usecase xóa token/auth
             _uiState.update { it.copy(isLoggedOut = true) } // Báo hiệu cho UI
         }
     }

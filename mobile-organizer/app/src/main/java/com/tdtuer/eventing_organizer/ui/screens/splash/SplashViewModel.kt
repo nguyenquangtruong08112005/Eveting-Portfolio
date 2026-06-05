@@ -50,7 +50,7 @@ class SplashViewModel @Inject constructor(
             if (hasCompletedOnboarding) {
                 val rememberMe = getRememberMeStatusUseCase().first()
                 if (rememberMe) {
-                    // 1. Kiểm tra Firebase Auth
+                    // 1. Kiểm tra User hiện tại
                     val currentUser = getCurrentUserUseCase().first()
 
                     if (currentUser != null) {

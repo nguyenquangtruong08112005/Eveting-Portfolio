@@ -5,9 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.tdtuer.eventing_organizer.data.auth.UserCollisionException
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
 import com.tdtuer.eventing_organizer.data.repository.EventRepository
 import com.tdtuer.eventing_organizer.domain.model.Result
@@ -107,7 +105,7 @@ class SignUpViewModel @Inject constructor(
                 val exception = signUpResult.exceptionOrNull()
 
                 // CASE B: Tài khoản đã tồn tại (Email collision) VÀ đang muốn làm Organizer
-                if (exception is FirebaseAuthUserCollisionException && isOrganizerMode) {
+                if (exception is UserCollisionException && isOrganizerMode) {
                     // Thử đăng nhập để xác thực quyền sở hữu tài khoản
                     val signInResult = signInUseCase(processedEmail, password)
 
@@ -121,12 +119,7 @@ class SignUpViewModel @Inject constructor(
                     }
                 } else {
                     // Các lỗi đăng ký thông thường (Password yếu, email sai format...)
-                    val errorMessage = when (exception) {
-                        is FirebaseAuthWeakPasswordException -> "The password is too weak."
-                        is FirebaseAuthInvalidCredentialsException -> "Invalid email address."
-                        is FirebaseAuthUserCollisionException -> "Email already in use. Sign in instead."
-                        else -> exception?.message ?: "An unknown error occurred."
-                    }
+                    val errorMessage = exception?.message ?: "An unknown error occurred."
                     _authState.value = AuthState.Error(errorMessage)
                 }
             }
