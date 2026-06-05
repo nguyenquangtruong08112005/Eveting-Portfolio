@@ -1,8 +1,2 @@
-// services/analytics.service.js
-const analyticsRepository = require('../providers/database/analytics.repository');
-
-const getAnalyticsByEventId = async (eventId) => {
-    return analyticsRepository.getAnalyticsByEventId(eventId);
-};
-
-module.exports = { getAnalyticsByEventId };
+// Compatibility shim for services/analytics.service.js
+module.exports = require('../modules/analytics/analytics.service');
