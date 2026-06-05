@@ -234,16 +234,20 @@ async function run() {
   }
   console.log('[OK] GET /profiles check passed.');
 
-  console.log('\nTesting: GET /admin/events/pending?page=1&limit=5');
-  const resAdminPending = await axios.get(`${BASE_URL}/admin/events/pending?page=1&limit=5`);
-  console.log('GET /admin/events/pending Response Status:', resAdminPending.status);
-  if (resAdminPending.status !== 200) {
-    throw new Error(`Expected 200 from GET /admin/events/pending, got ${resAdminPending.status}`);
+  console.log('\nTesting: GET /admin/events/pending?page=1&limit=5 (unauthenticated)');
+  let adminAuthWorks = false;
+  try {
+    await axios.get(`${BASE_URL}/admin/events/pending?page=1&limit=5`);
+  } catch (err) {
+    if (err.response && err.response.status === 401) {
+      adminAuthWorks = true;
+      console.log('GET /admin/events/pending Response Status: 401 (expected)');
+    }
   }
-  if (!resAdminPending.data || !Array.isArray(resAdminPending.data)) {
-    throw new Error('GET /admin/events/pending response is not an array.');
+  if (!adminAuthWorks) {
+    throw new Error('Expected 401 from unauthenticated GET /admin/events/pending, but admin route was not secured.');
   }
-  console.log('[OK] GET /admin/events/pending check passed.');
+  console.log('[OK] Unauthenticated admin route correctly rejected with 401.');
 
   console.log('\n--- All Postgres Provider Smoke Tests Passed Successfully! ---');
 }
