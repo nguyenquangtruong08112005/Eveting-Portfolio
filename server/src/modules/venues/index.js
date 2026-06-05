@@ -1,6 +1,6 @@
-const router = require('./venues.routes');
-const controller = require('./venue.controller');
-const service = require('./venue.service');
+const router = require('@/modules/venues/api/routes');
+const controller = require('@/modules/venues/api/controller');
+const service = require('@/modules/venues/application/service');
 
 module.exports = {
   router,
