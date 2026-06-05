@@ -1,6 +1,6 @@
-const router = require('./featuredProfile.routes');
-const controller = require('./featuredProfile.controller');
-const service = require('./featuredProfile.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,

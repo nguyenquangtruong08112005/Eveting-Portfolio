@@ -1,6 +1,6 @@
-const router = require('./analytics.routes');
-const controller = require('./analytics.controller');
-const service = require('./analytics.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,

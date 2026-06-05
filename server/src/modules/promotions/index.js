@@ -1,6 +1,6 @@
-const router = require('./promotions.routes');
-const controller = require('./promotion.controller');
-const service = require('./promotion.service');
+const router = require('./api/routes');
+const controller = require('./api/controller');
+const service = require('./application/service');
 
 module.exports = {
   router,
