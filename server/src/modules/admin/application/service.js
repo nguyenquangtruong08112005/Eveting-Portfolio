@@ -3,8 +3,7 @@ const featuredProfileRepository = require('@/providers/database/featuredProfile.
 const adminRepository = require('@/providers/database/admin.repository');
 const esClient = require('@/shared/config/elasticsearch.config');
 const ELASTIC_INDEX = 'events';
-const fcmService = require('@/services/fcm.service');
-const notifHelper = require('@/services/notification-event.helper');
+const { fcmService, helper: notifHelper } = require('@/modules/notifications');
 
 const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];

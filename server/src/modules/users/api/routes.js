@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const userController = require('./controller');
-const ticketController = require('@/controllers/ticket.controller');
+const ticketController = require('@/modules/tickets').controller;
 const { validateProfileUpdate } = require('@/utils/validators/user.validator');
 
 router.post('/register', verifyAuthToken, userController.registerUser);

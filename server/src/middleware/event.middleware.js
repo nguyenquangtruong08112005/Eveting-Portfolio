@@ -1,4 +1,4 @@
-const { getEventById } = require('../services/event.service');
+const { getEventById } = require('@/modules/events').service;
 
 /**
  * Middleware kiểm tra eventId có tồn tại trong Firestore không.

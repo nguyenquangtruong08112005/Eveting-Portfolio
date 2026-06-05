@@ -1,11 +1,9 @@
 const TICKET_SECRET = process.env.JWT_TICKET_SECRET;
 const jwt = require('jsonwebtoken');
-const ticketService = require('@/services/ticket.service');
-const fcmService = require('@/services/fcm.service');
+const ticketService = require('@/modules/tickets').service;
+const { fcmService, service: notificationService, helper: notifHelper } = require('@/modules/notifications');
 const xlsx = require('xlsx');
 const ExcelJS = require('exceljs');
-const notificationService = require('@/services/notification.service');
-const notifHelper = require('@/services/notification-event.helper');
 const ticketRepository = require('@/providers/database/ticket.repository');
 const userRepository = require('@/providers/database/user.repository');
 const eventRepository = require('@/providers/database/event.repository');

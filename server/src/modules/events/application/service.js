@@ -4,9 +4,7 @@ const { calculateMinPrice } = require('@/utils/tickets/calculateMinPrice.tickets
 const esClient = require('@/shared/config/elasticsearch.config');
 const moment = require('moment');
 const axios = require('axios');
-const fcmService = require('@/services/fcm.service');
-const notificationService = require('@/services/notification.service');
-const notifHelper = require('@/services/notification-event.helper');
+const { fcmService, service: notificationService, helper: notifHelper } = require('@/modules/notifications');
 
 const eventRepository = require('@/providers/database/event.repository');
 const venueRepository = require('@/providers/database/venue.repository');

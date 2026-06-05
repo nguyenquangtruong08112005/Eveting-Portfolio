@@ -1,7 +1,6 @@
 const userRepository = require('@/providers/database/user.repository');
 const authRepository = require('@/providers/database/postgres.auth.repository');
-const fcmService = require('@/services/fcm.service');
-const notifHelper = require('@/services/notification-event.helper');
+const { fcmService, helper: notifHelper } = require('@/modules/notifications');
 require('dotenv').config();
 const ADMIN_UID = process.env.ADMIN_UID;
 

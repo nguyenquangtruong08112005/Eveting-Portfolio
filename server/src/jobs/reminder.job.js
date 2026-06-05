@@ -1,7 +1,6 @@
 // jobs/reminder.job.js
 const cron = require('node-cron');
-const fcmService = require('../services/fcm.service');
-const notifHelper = require('../services/notification-event.helper');
+const { fcmService, helper: notifHelper } = require('@/modules/notifications');
 const eventRepository = require('../providers/database/event.repository');
 const ticketRepository = require('../providers/database/ticket.repository');
 const moment = require('moment');

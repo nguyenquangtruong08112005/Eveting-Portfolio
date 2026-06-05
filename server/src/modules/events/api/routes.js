@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { verifyAuthToken, optionalAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
-const reviewsRouter = require('@/routes/reviews.routes');
+const reviewsRouter = require('@/modules/reviews').router;
 const eventController = require('@/modules/events/api/controller');
 const { publicApiLimiter } = require('@/shared/middleware/rateLimit.middleware');
-const mediaRouter = require('@/routes/media.routes');
+const mediaRouter = require('@/modules/media').router;
 
 router.get('/search', publicApiLimiter ,eventController.searchEvents);
 
