@@ -21,6 +21,7 @@ var venuesRouter = require('./routes/venues.routes');
 var adminRouter = require('./routes/admin.routes');
 var authRouter = require('./routes/auth.routes');
 var storageRouter = require('./routes/storage.routes');
+var activeStorageProvider = require('./providers/storage');
 var app = express();
 
 app.set('trust proxy', 1);
@@ -46,6 +47,23 @@ app.use('/admin', adminRouter);
 app.use('/auth', authRouter);
 app.use('/api/auth', authRouter);
 app.use('/storage', storageRouter);
+
+// GET /public/:key(*) - Serve files from the active storage provider (e.g. local in-memory)
+app.get('/public/:key(*)', async (req, res) => {
+  try {
+    const key = req.params.key;
+    const [buffer, metadata] = await Promise.all([
+      activeStorageProvider.getObjectBuffer(key),
+      activeStorageProvider.getObjectMetadata(key),
+    ]);
+    if (metadata && metadata.contentType) {
+      res.set('Content-Type', metadata.contentType);
+    }
+    res.send(buffer);
+  } catch (error) {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
 
 // ======================
 // Tạo server trực tiếp ở đây

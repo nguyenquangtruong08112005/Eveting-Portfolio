@@ -1,5 +1,6 @@
 // services/user.service.js
 const userRepository = require('../providers/database/user.repository');
+const authRepository = require('../providers/database/postgres.auth.repository');
 const fcmService = require('./fcm.service');
 const notifHelper = require('./notification-event.helper');
 require('dotenv').config();
@@ -83,7 +84,14 @@ const getUserById = async (userId) => {
     if (!userData) {
         return null;
     }
-    return await mapUserToMobileProfile(userData);
+    const authUser = await authRepository.findUserById(userId);
+    const emailVerified = authUser ? !!authUser.email_verified : false;
+
+    const profile = await mapUserToMobileProfile(userData);
+    if (profile) {
+        profile.emailVerified = emailVerified;
+    }
+    return profile;
 };
 
 const updateUserProfile = async (userId, updateData) => {

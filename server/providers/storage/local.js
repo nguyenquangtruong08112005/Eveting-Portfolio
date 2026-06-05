@@ -29,4 +29,12 @@ const getObjectBuffer = async (key) => {
   return item.buffer;
 };
 
-module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl, getObjectBuffer };
+const getObjectMetadata = async (key) => {
+  const item = store.get(key);
+  if (!item) {
+    throw new Error(`Object with key "${key}" not found in local storage`);
+  }
+  return { contentType: item.contentType };
+};
+
+module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl, getObjectBuffer, getObjectMetadata };

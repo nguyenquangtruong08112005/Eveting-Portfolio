@@ -1,13 +1,8 @@
 // providers/notification/index.js
-const providerName = process.env.NOTIFICATION_PROVIDER || 'firebase';
+const providerName = process.env.NOTIFICATION_PROVIDER || 'onesignal';
 
-let activeProvider;
-if (providerName === 'onesignal') {
-    activeProvider = require('./onesignal.provider');
-} else if (providerName === 'firebase') {
-    activeProvider = require('./firebase.provider');
-} else {
-    throw new Error(`Notification provider "${providerName}" is not supported.`);
+if (providerName !== 'onesignal') {
+  throw new Error(`Notification provider "${providerName}" is not supported. Only "onesignal" is available.`);
 }
 
-module.exports = activeProvider;
+module.exports = require('./onesignal.provider');

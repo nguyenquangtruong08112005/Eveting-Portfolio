@@ -447,6 +447,19 @@ var updateUserFields = async function (userId, updateData) {
   );
 };
 
+var appendRoleToProfile = async function (userId, role) {
+  await query(
+    `UPDATE user_profiles
+     SET roles = CASE
+       WHEN $2 = ANY(roles) THEN roles
+       ELSE array_append(roles, $2)
+     END,
+     updated_at = NOW()
+     WHERE id = $1`,
+    [userId, role]
+  );
+};
+
 var addHistoryEventIdInTransaction = async function (transaction, userId, eventId) {
   await query(
     `UPDATE user_profiles
@@ -473,5 +486,6 @@ module.exports = {
   getRawUserDataById: getRawUserDataById,
   addOrganizerRoleToUser: addOrganizerRoleToUser,
   updateUserFields: updateUserFields,
+  appendRoleToProfile: appendRoleToProfile,
   addHistoryEventIdInTransaction: addHistoryEventIdInTransaction,
 };

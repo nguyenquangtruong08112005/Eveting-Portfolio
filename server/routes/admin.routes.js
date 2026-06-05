@@ -5,7 +5,7 @@ const { isAdmin } = require('../middleware/admin.middleware');
 const adminController = require('../controllers/admin.controller');
 
 // Tất cả route Admin đều cần Login + Quyền Admin
-// router.use(verifyAuthToken, isAdmin);
+router.use(verifyAuthToken, isAdmin);
 
 // [GET] /admin/events/pending
 router.get('/events/pending', adminController.getPendingEvents);

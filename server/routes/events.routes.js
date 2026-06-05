@@ -1,7 +1,7 @@
 // routes/events.routes.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuthToken, isOrganizer } = require('../middleware/auth.middleware');
+const { verifyAuthToken, optionalAuthToken, isOrganizer } = require('../middleware/auth.middleware');
 const reviewsRouter = require('./reviews.routes');
 const eventController = require('../controllers/event.controller');
 const { publicApiLimiter } = require('../middleware/rateLimit.middleware');
@@ -27,10 +27,8 @@ router.get('/', publicApiLimiter, eventController.getAllEvents);
 router.get('/:eventId/weather', publicApiLimiter, eventController.getEventWeather); 
 
 // [GET] /events/:eventId - Lấy chi tiết một sự kiện (có kiểm tra visibility)
-// Thêm verifyAuthToken một cách tùy chọn để controller có thể nhận req.user
-// Middleware này cần được thiết kế lại để không báo lỗi nếu không có token
-// Tạm thời bỏ verifyAuthToken ở đây, controller sẽ tự kiểm tra req.user
-router.get('/:eventId', publicApiLimiter, verifyAuthToken, eventController.getEventById);
+// Nhận req.user nếu token hợp lệ, nhưng vẫn cho phép xem event public khi token thiếu/cũ.
+router.get('/:eventId', publicApiLimiter, optionalAuthToken, eventController.getEventById);
 
 // --- Các route yêu cầu xác thực ---
 

@@ -1,4 +1,16 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+// NOTE: This script rebuilds the Elasticsearch "events" index directly from the PostgreSQL database.
+// This should only be run after Firebase seed scripts have been removed to avoid indexing stale or duplicate Firebase data.
+const firebaseSeedFiles = ['../seed/seed_elastic.js', '../seed/seed_events.js'];
+for (const file of firebaseSeedFiles) {
+  const absolutePath = path.resolve(__dirname, file);
+  if (fs.existsSync(absolutePath)) {
+    console.warn(`WARNING: Stale Firebase seed script still exists: ${file}. Please ensure it is removed.`);
+  }
+}
 
 const esClient = require('../config/elasticsearch.config');
 const { query } = require('../providers/database/postgres.client');

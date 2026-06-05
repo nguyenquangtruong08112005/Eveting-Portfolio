@@ -1,93 +1,116 @@
 // scripts/smoke.lazy-providers.js
-// Smoke test for Phase C10 Lazy Provider Loading assertion
-// Sets env to postgres/backend/onesignal and asserts that no Firebase modules are required
+// Smoke test for provider loader: asserts that postgres/backend/onesignal resolve
+// and that unknown provider values produce clear unsupported-provider errors.
 
 const Module = require('module');
 
-// Set required env variables to target Postgres, backend, and OneSignal
-process.env.DATABASE_PROVIDER = 'postgres';
-process.env.AUTH_PROVIDER = 'backend';
-process.env.NOTIFICATION_PROVIDER = 'onesignal';
-
 const originalLoad = Module._load;
-
-const forbiddenPatterns = [
-  /firebase-admin/,
-  /config\/firebase\.config/,
-  /providers\/auth\/firebase\.auth\.provider/,
-  /providers\/notification\/firebase\.provider/,
-  /providers\/database\/firebase\..*\.repository/
-];
+const loadedModules = [];
 
 Module._load = function (request, parent, isMain) {
   let resolvedPath = '';
   try {
     resolvedPath = Module._resolveFilename(request, parent);
   } catch (e) {
-    // If it can't resolve, fallback to request
+    // ignore unresolvable
   }
-
   const normalizedPath = (resolvedPath || request).replace(/\\/g, '/');
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalizedPath)) {
-      console.error(`Assertion Failed: Forbidden module loaded: "${request}" resolved to "${normalizedPath}"`);
-      process.exit(1);
-    }
-  }
-
+  loadedModules.push(normalizedPath);
   return originalLoad.apply(this, arguments);
 };
 
 console.log('--- Starting Lazy Provider Loading Smoke Test ---');
 
-// Attempt to load auth provider selector
-try {
-  console.log('Requiring providers/auth...');
-  const authProvider = require('../providers/auth');
-  if (!authProvider || typeof authProvider.verifyToken !== 'function') {
-    throw new Error('Loaded auth provider is missing expected verifyToken interface');
+// -----------------------------------------------------------------------
+// 1. Default providers (no overrides) must resolve to postgres/backend/onesignal
+// -----------------------------------------------------------------------
+(function testDefaultProviders() {
+  console.log('\n[Test 1] Default provider resolution (no env overrides)...');
+
+  const auth = require('../providers/auth');
+  if (!auth || typeof auth.verifyToken !== 'function') {
+    throw new Error('Default auth provider missing verifyToken');
   }
-  console.log('Loaded auth provider: backend');
-} catch (err) {
-  console.error('Failed to load auth provider:', err);
-  process.exit(1);
-}
+  console.log('[OK] Auth provider resolved: backend');
 
-// Attempt to load notification provider selector
-try {
-  console.log('Requiring providers/notification...');
-  const notificationProvider = require('../providers/notification');
-  if (!notificationProvider) {
-    throw new Error('Loaded notification provider is null or undefined');
+  const notification = require('../providers/notification');
+  if (!notification) {
+    throw new Error('Default notification provider is null');
   }
-  console.log('Loaded notification provider: onesignal');
-} catch (err) {
-  console.error('Failed to load notification provider:', err);
-  process.exit(1);
-}
+  console.log('[OK] Notification provider resolved: onesignal');
 
-// Attempt to load database repository selectors
-const repoNames = [
-  'admin', 'analytics', 'event', 'featuredProfile', 'media',
-  'notification', 'organizer', 'promotion', 'review', 'ticket',
-  'user', 'venue'
-];
-
-for (const repo of repoNames) {
-  try {
-    console.log(`Requiring database repository selector: ${repo}.repository...`);
+  const repoNames = [
+    'admin', 'analytics', 'event', 'featuredProfile', 'media',
+    'notification', 'organizer', 'promotion', 'review', 'ticket',
+    'user', 'venue'
+  ];
+  for (const repo of repoNames) {
     const repository = require(`../providers/database/${repo}.repository`);
     if (!repository) {
-      throw new Error(`Loaded ${repo} repository is null or undefined`);
+      throw new Error(`Default ${repo} repository is null`);
     }
-  } catch (err) {
-    console.error(`Failed to load database repository selector "${repo}":`, err);
-    process.exit(1);
   }
-}
+  console.log('[OK] All database repository selectors resolved: postgres');
+})();
 
-console.log('--- Checking active provider instance types (must not load Firebase) ---');
-console.log('Assertion Succeeded: No Firebase configuration or repository modules were loaded at boot.');
-console.log('--- Lazy Provider Loading Smoke Test Passed Successfully! ---');
+// -----------------------------------------------------------------------
+// 2. Unsupported provider values must throw clear errors
+// -----------------------------------------------------------------------
+(function testUnsupportedProviders() {
+  console.log('\n[Test 2] Unsupported provider values...');
+
+  const { NODE_ENV, ...rest } = process.env;
+
+  // Auth: 'firebase' is no longer supported
+  process.env.AUTH_PROVIDER = 'firebase';
+  try {
+    delete require.cache[require.resolve('../providers/auth')];
+    require('../providers/auth');
+    console.error('FAIL: Auth provider "firebase" should have thrown');
+    process.exit(1);
+  } catch (err) {
+    if (!err.message.includes('not supported')) {
+      console.error('FAIL: Wrong error for unsupported auth provider:', err.message);
+      process.exit(1);
+    }
+    console.log('[OK] Auth provider "firebase" rejected with clear error.');
+  }
+
+  // Database: 'firebase' is no longer supported
+  process.env.DATABASE_PROVIDER = 'firebase';
+  try {
+    delete require.cache[require.resolve('../providers/database/user.repository')];
+    require('../providers/database/user.repository');
+    console.error('FAIL: DB provider "firebase" should have thrown');
+    process.exit(1);
+  } catch (err) {
+    if (!err.message.includes('not supported')) {
+      console.error('FAIL: Wrong error for unsupported DB provider:', err.message);
+      process.exit(1);
+    }
+    console.log('[OK] Database provider "firebase" rejected with clear error.');
+  }
+
+  // Notification: 'firebase' is no longer supported
+  process.env.NOTIFICATION_PROVIDER = 'firebase';
+  try {
+    delete require.cache[require.resolve('../providers/notification')];
+    require('../providers/notification');
+    console.error('FAIL: Notification provider "firebase" should have thrown');
+    process.exit(1);
+  } catch (err) {
+    if (!err.message.includes('not supported')) {
+      console.error('FAIL: Wrong error for unsupported notification provider:', err.message);
+      process.exit(1);
+    }
+    console.log('[OK] Notification provider "firebase" rejected with clear error.');
+  }
+
+  // Restore env vars
+  process.env.AUTH_PROVIDER = 'backend';
+  process.env.DATABASE_PROVIDER = 'postgres';
+  process.env.NOTIFICATION_PROVIDER = 'onesignal';
+})();
+
+console.log('\n--- Lazy Provider Loading Smoke Test Passed Successfully! ---');
 process.exit(0);

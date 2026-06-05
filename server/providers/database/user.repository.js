@@ -1,12 +1,7 @@
-const providerName = process.env.USER_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
+const providerName = process.env.USER_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'postgres';
 
-let activeRepository;
-if (providerName === 'postgres') {
-  activeRepository = require('./postgres.user.repository');
-} else if (providerName === 'firebase') {
-  activeRepository = require('./firebase.user.repository');
-} else {
-  throw new Error(`Database provider "${providerName}" is not supported for users.`);
+if (providerName !== 'postgres') {
+  throw new Error(`Database provider "${providerName}" is not supported for users. Only "postgres" is available.`);
 }
 
-module.exports = activeRepository;
+module.exports = require('./postgres.user.repository');

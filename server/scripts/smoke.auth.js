@@ -370,11 +370,11 @@ async function run() {
     }
     console.log('Invalid Bearer Token Response Status:', err.response.status);
     console.log('Invalid Bearer Token Response Data:', JSON.stringify(err.response.data, null, 2));
-    if (err.response.status !== 403) {
-      throw new Error(`Expected 403 for invalid bearer token on /auth/logout-all, got ${err.response.status}`);
+    if (err.response.status !== 401) {
+      throw new Error(`Expected 401 for invalid bearer token on /auth/logout-all, got ${err.response.status}`);
     }
   }
-  console.log('[OK] Invalid bearer token on /auth/logout-all returns 403 check passed.');
+  console.log('[OK] Invalid bearer token on /auth/logout-all returns 401 check passed.');
 
   console.log('\nTesting: POST /auth/logout-all (protected route)');
   const logoutAllRes = await axios.post(

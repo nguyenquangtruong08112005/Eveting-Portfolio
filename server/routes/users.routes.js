@@ -6,7 +6,7 @@ const userController = require('../controllers/user.controller');
 const ticketController = require('../controllers/ticket.controller');
 const { validateProfileUpdate } = require('../utils/validators/user.validator');
 
-// [POST] /users/register - Tạo hồ sơ user trong Firestore sau khi đăng ký Firebase Auth
+// [POST] /users/register - Create user profile in Postgres after backend registration
 // TODO: This route will be depreacated because mobile app already call this after sign up
 router.post('/register', verifyAuthToken, userController.registerUser);
 

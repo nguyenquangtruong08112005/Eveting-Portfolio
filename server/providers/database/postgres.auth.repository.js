@@ -22,7 +22,7 @@ async function createUser({ id, email, name, passwordHash, roles }) {
 
 async function findUserByEmail(email) {
   const result = await query(
-    'SELECT id, email, name, password_hash, roles, profile_pic_url, bio, is_active, created_at FROM auth_users WHERE email = $1',
+    'SELECT id, email, name, password_hash, roles, profile_pic_url, bio, is_active, email_verified, created_at FROM auth_users WHERE email = $1',
     [email]
   );
   return result.rows.length ? result.rows[0] : null;
@@ -30,7 +30,7 @@ async function findUserByEmail(email) {
 
 async function findUserById(id) {
   const result = await query(
-    'SELECT id, email, name, password_hash, roles, profile_pic_url, bio, is_active, created_at FROM auth_users WHERE id = $1',
+    'SELECT id, email, name, password_hash, roles, profile_pic_url, bio, is_active, email_verified, created_at FROM auth_users WHERE id = $1',
     [id]
   );
   return result.rows.length ? result.rows[0] : null;
@@ -81,6 +81,54 @@ async function cleanExpiredSessions() {
   return result.rowCount;
 }
 
+async function appendRoleToUser(userId, role) {
+  await query(
+    `UPDATE auth_users
+     SET roles = CASE
+       WHEN $2 = ANY(roles) THEN roles
+       ELSE array_append(roles, $2)
+     END,
+     updated_at = NOW()
+     WHERE id = $1`,
+    [userId, role]
+  );
+}
+
+
+async function saveToken({ id, tokenHash, purpose, email, expiresAt }) {
+  const tokenId = id || crypto.randomUUID();
+  await query(
+    `INSERT INTO auth_tokens (id, token_hash, purpose, email, expires_at)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [tokenId, tokenHash, purpose, email, expiresAt]
+  );
+  return tokenId;
+}
+
+async function findTokenByHash(tokenHash, purpose) {
+  const result = await query(
+    `SELECT id, token_hash, purpose, email, expires_at, created_at, used_at
+     FROM auth_tokens
+     WHERE token_hash = $1 AND purpose = $2`,
+    [tokenHash, purpose]
+  );
+  return result.rows.length ? result.rows[0] : null;
+}
+
+async function markTokenUsed(tokenId) {
+  await query(
+    'UPDATE auth_tokens SET used_at = NOW() WHERE id = $1',
+    [tokenId]
+  );
+}
+
+async function verifyUserEmail(email) {
+  await query(
+    'UPDATE auth_users SET email_verified = true, updated_at = NOW() WHERE email = $1',
+    [email]
+  );
+}
+
 module.exports = {
   createUser,
   findUserByEmail,
@@ -92,4 +140,9 @@ module.exports = {
   revokeSession,
   revokeAllUserSessions,
   cleanExpiredSessions,
+  appendRoleToUser,
+  saveToken,
+  findTokenByHash,
+  markTokenUsed,
+  verifyUserEmail,
 };

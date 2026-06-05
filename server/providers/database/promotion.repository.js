@@ -1,12 +1,7 @@
-const providerName = process.env.PROMOTION_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
+const providerName = process.env.PROMOTION_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'postgres';
 
-let activeRepository;
-if (providerName === 'postgres') {
-    activeRepository = require('./postgres.promotion.repository');
-} else if (providerName === 'firebase') {
-    activeRepository = require('./firebase.promotion.repository');
-} else {
-    throw new Error(`Database provider "${providerName}" is not supported for promotions.`);
+if (providerName !== 'postgres') {
+  throw new Error(`Database provider "${providerName}" is not supported for promotions. Only "postgres" is available.`);
 }
 
-module.exports = activeRepository;
+module.exports = require('./postgres.promotion.repository');

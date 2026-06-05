@@ -29,7 +29,7 @@ async function smoke() {
     }
   } else {
     console.log('Set ORGANIZER_SMOKE_ID env var to test a specific organizer.');
-    console.log('Pass ORGANIZER_SMOKE_ID=<firebase-uid> to run smoke test.');
+    console.log('Pass ORGANIZER_SMOKE_ID=<PostgreSQL-UUID> to run smoke test.');
     
     // Attempt dummy read of any organizer if no ID provided
     const { query } = require('../providers/database/postgres.client');

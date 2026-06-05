@@ -1,6 +1,6 @@
 // providers/database/venue.contract.js
 // Expected interface for a venue repository adapter.
-// Each adapter (firebase, postgres, etc.) MUST implement all methods below.
+// Each adapter MUST implement all methods below.
 
 const REQUIRED_METHODS = [
   'getAllVenues',

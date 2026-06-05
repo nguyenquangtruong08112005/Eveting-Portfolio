@@ -1,12 +1,7 @@
-const providerName = process.env.ORGANIZER_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'firebase';
+const providerName = process.env.ORGANIZER_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'postgres';
 
-let activeRepository;
-if (providerName === 'postgres') {
-  activeRepository = require('./postgres.organizer.repository');
-} else if (providerName === 'firebase') {
-  activeRepository = require('./firebase.organizer.repository');
-} else {
-  throw new Error(`Database provider "${providerName}" is not supported for organizers.`);
+if (providerName !== 'postgres') {
+  throw new Error(`Database provider "${providerName}" is not supported for organizers. Only "postgres" is available.`);
 }
 
-module.exports = activeRepository;
+module.exports = require('./postgres.organizer.repository');

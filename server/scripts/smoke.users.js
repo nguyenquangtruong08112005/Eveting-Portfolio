@@ -38,7 +38,7 @@ async function smoke() {
   } else {
     console.log('Set USER_SMOKE_ID env var to test a specific user.');
     console.log('Listing all users is not available as getUsersByIds requires IDs.');
-    console.log('Pass USER_SMOKE_ID=<firebase-uid> to run smoke test.');
+    console.log('Pass USER_SMOKE_ID=<PostgreSQL-UUID> to run smoke test.');
   }
 }
 

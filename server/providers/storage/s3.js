@@ -3,7 +3,7 @@
 // Requires: STORAGE_PROVIDER=s3, S3_BUCKET, S3_REGION (default us-east-1),
 //           S3_ENDPOINT (for R2/MinIO), S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY.
 
-const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 let client;
@@ -82,4 +82,11 @@ const getObjectBuffer = async (key) => {
   return Buffer.concat(chunks);
 };
 
-module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl, getObjectBuffer };
+const getObjectMetadata = async (key) => {
+  requireBucket();
+  const cmd = new HeadObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
+  const response = await getClient().send(cmd);
+  return { contentType: response.ContentType };
+};
+
+module.exports = { uploadBuffer, deleteObject, getPublicUrl, getSignedReadUrl, getObjectBuffer, getObjectMetadata };
