@@ -1,7 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const moment = require('moment');
-const config = require('@/config/zalopay.config');
+const config = require('@/modules/payments/infrastructure/config/zalopay.config');
 
 /**
  * Tạo một đơn hàng thanh toán mới với ZaloPay.

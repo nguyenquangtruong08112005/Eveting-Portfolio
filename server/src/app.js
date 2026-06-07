@@ -1,9 +1,5 @@
 var express = require('express');
-var path = require('path');
 var cookieParser = require('cookie-parser');
-require('dotenv').config();
-const { startReminderJob } = require('@/jobs/reminder.job');
-
 
 var usersRouter = require('@/modules/users').router;
 var eventsRouter = require('@/modules/events').router;
@@ -63,18 +59,6 @@ app.get('/public/:key(*)', async (req, res) => {
   } catch (error) {
     res.status(404).json({ error: 'Not found' });
   }
-});
-
-// ======================
-// Tạo server trực tiếp ở đây
-// ======================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server address http://localhost:${PORT}`);
-  // startEventSyncListener();
-  
-  // Kích hoạt Cron Job
-  startReminderJob();
 });
 
 module.exports = app;

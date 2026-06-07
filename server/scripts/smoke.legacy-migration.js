@@ -66,7 +66,7 @@ function startServer() {
   console.log('\n[Test] Spawning server...');
   stdoutBuf = '';
   resetToken = null;
-  serverProcess = spawn('node', ['app.js'], {
+  serverProcess = spawn('node', ['src/server.js'], {
     env: Object.assign({}, envBase, { NODE_ENV: 'development', AUTH_SOCIAL_DEV_BYPASS: 'true' }),
     stdio: ['ignore', 'pipe', 'pipe'],
   });

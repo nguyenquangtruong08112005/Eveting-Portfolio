@@ -13,7 +13,7 @@ for (const file of firebaseSeedFiles) {
 }
 
 require('../src/alias-bootstrap');
-const esClient = require('../src/config/elasticsearch.config');
+const esClient = require('../src/shared/config/elasticsearch.config');
 const { query } = require('../src/providers/database/postgres.client');
 const featuredProfileRepository = require('../src/providers/database/featuredProfile.repository');
 

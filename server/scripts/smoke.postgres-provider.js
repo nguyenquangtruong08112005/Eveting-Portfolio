@@ -142,7 +142,7 @@ process.on('unhandledRejection', (reason) => {
 async function run() {
   // 1. Start the server as a child process
   console.log('Spawning application server...');
-  serverProcess = spawn('node', ['app.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  serverProcess = spawn('node', ['src/server.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 
   let serverStarted = false;
   let exitError = null;

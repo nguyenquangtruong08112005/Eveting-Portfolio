@@ -103,7 +103,7 @@ function startServer(additionalEnv = {}) {
   lastResetToken = null;
   lastVerifyToken = null;
 
-  serverProcess = spawn('node', ['app.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  serverProcess = spawn('node', ['src/server.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 
   serverProcess.stdout.on('data', (data) => {
     stdoutBuffer += data.toString();

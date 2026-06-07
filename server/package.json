@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "start cmd /k nodemon app.js && ngrok http 3000",
-    "dev": "nodemon app.js",
+    "start": "start cmd /k nodemon src/server.js && ngrok http 3000",
+    "dev": "nodemon src/server.js",
     "db:migrate": "node db/migrate.js",
     "db:smoke:auth": "node scripts/smoke.auth.js",
     "db:smoke:postgres-provider": "node scripts/smoke.postgres-provider.js",
