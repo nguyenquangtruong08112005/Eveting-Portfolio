@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, and N3-S1 through N3-S5 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, and the O4 structure checkpoint are complete on `staging`.
 
-Next phase: post-N3 packaging. Device smoke for attendee/organizer has been confirmed; decide whether to commit/package the current diff or start a separate cleanup/security slice.
+Next phase: business-domain redesign and behavior hardening. Device install, backend smoke checks, Elasticsearch reindex, Docker infra, and CodeGraph were verified at the structure checkpoint.
 
 ## Source Of Truth
 
@@ -52,6 +52,7 @@ Next phase: post-N3 packaging. Device smoke for attendee/organizer has been conf
 - Phase N3 Firebase dependency cleanup audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n3-firebase-dependency-cleanup-audit.md`
 - Phase N3-S1 to N3-S5 completion: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n3-s1-s5-completion.md`
 - Phase N4 post-N3 cleanup: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n4-post-n3-cleanup.md`
+- Phase O4 structure checkpoint verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o4-structure-checkpoint-verification.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -223,11 +224,12 @@ Then review:
 
 ## Next Exact Step
 
-Post-N3 stabilization:
+Business-domain redesign:
 
-- review/stage/commit the current N3/N4 checkpoint after final git status review
-- keep Google Services config because OneSignal Android still needs FCM transport
-- old Firebase Storage URLs and commented admin auth middleware have been cleaned in N4
+- audit current mobile-facing workflows before changing behavior
+- design event, ticket/payment, organizer/admin, notification, media, and auth state boundaries
+- implement behavior changes slice-by-slice with worker agents
+- keep mobile route/payload compatibility unless a later explicit mobile contract phase is opened
 - use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit
 
 ## Latest Verification
@@ -294,3 +296,4 @@ Results:
 - Phase O2 auth moduleization completed: `src/modules/auth` now owns auth routes/controller/service, while old route/controller/service paths remain compatibility shims. Auth routes and payloads are unchanged; auth smoke, CI check, diff check, and CodeGraph resync passed.
 - Phase O2 server moduleization completed: every current server route/controller/service domain now has a `src/modules/<domain>` boundary with old paths kept as compatibility shims. Completed modules: admin, analytics, auth, events, featuredProfile, media, notifications, organizer, payments, promotions, reviews, storage, tickets, users, venues. Final CI check, domain smokes, diff check, and CodeGraph status passed.
 - Phase O3 deep Modular Monolith plan recorded only. No O3 code implementation is active. The next implementation must proceed slice-by-slice: alias bootstrap, module public route mounts, shared layer, low-risk pilot layering, medium modules, core modules, event/ticket/payment modules, media/storage/organizer/admin modules, legacy import cleanup, then legacy shim archive.
+- Phase O4 structure checkpoint completed on 2026-06-09: Docker Postgres and Elasticsearch were running, migrations were already applied, full backend smoke sequence passed, Elasticsearch reindexed 18 events, attendee compile/install passed, organizer compile/install passed after retrying install alone, server CodeGraph was synced and up to date, server working tree was clean, and tag `backend-refactor-structure-complete` was created at commit `07565ad`.
