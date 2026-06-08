@@ -30,6 +30,9 @@
     "ci:check": "node scripts/check-js-syntax.js && npm run db:smoke:lazy-providers",
     "observability:up": "docker compose -f infra/docker/docker-compose.observability.yml up -d",
     "observability:down": "docker compose -f infra/docker/docker-compose.observability.yml down",
+    "local:infra": "docker start mobile-eventing-postgres es01 2>nul || docker compose -f infra/docker/docker-compose.local.yml up -d",
+    "local:mobile": "npm run local:infra && npm run db:migrate && npm run search:reindex && start \"Server-2025-Eventing\" cmd /k \"npm run dev\" && ngrok http 3000",
+    "local:down": "docker stop mobile-eventing-postgres es01 2>nul || docker compose -f infra/docker/docker-compose.local.yml down",
     "logs:tail:app": "node scripts/tail-log.js app",
     "logs:tail:http": "node scripts/tail-log.js http"
   },
