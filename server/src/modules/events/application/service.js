@@ -5,6 +5,7 @@ const esClient = require('@/shared/config/elasticsearch.config');
 const moment = require('moment');
 const axios = require('axios');
 const { fcmService, service: notificationService, helper: notifHelper } = require('@/modules/notifications');
+const { BadRequestError, NotFoundError, ServiceUnavailableError } = require('@/shared/errors');
 
 const eventRepository = require('@/providers/database/event.repository');
 const venueRepository = require('@/providers/database/venue.repository');
@@ -168,11 +169,11 @@ const createEvent = async (eventData, organizerId) => {
     const eventId = `evt_${uuidv4()}`;
 
     if (!eventData.date || typeof eventData.date !== 'number') {
-        throw new Error('Invalid or missing event date (must be a timestamp).');
+        throw new BadRequestError('Invalid or missing event date (must be a timestamp).');
     }
 
     if (Array.isArray(eventData.ticketTypes)) {
-        throw new Error("ticketTypes must be a Map (Object), not a List (Array).");
+        throw new BadRequestError("ticketTypes must be a Map (Object), not a List (Array).");
     }
     let geohash = null;
     let location = eventData.location || null;
@@ -191,7 +192,7 @@ const createEvent = async (eventData, organizerId) => {
                 if (venue.addressDetails) city = venue.addressDetails.city || null;
                 if (!location && venue.location) location = venue.location;
             } else {
-                throw new Error(`Venue with ID ${finalVenueId} not found.`);
+                throw new NotFoundError(`Venue with ID ${finalVenueId} not found.`);
             }
         }
         else if (location && eventData.venueName && eventData.addressDetails) {
@@ -231,7 +232,7 @@ const createEvent = async (eventData, organizerId) => {
             city = newVenue.addressDetails.city;
         }
         else {
-            throw new Error('Physical event must have either a valid venueId OR full location details (name, address).');
+            throw new BadRequestError('Physical event must have either a valid venueId OR full location details (name, address).');
         }
 
         if (location && (location.latitude || location.lat) && (location.longitude || location.lng)) {
@@ -248,7 +249,7 @@ const createEvent = async (eventData, organizerId) => {
         venueName = "Online";
         city = "Online";
         finalVenueId = null;
-        if (!onlineUrl) throw new Error('Online event must have an onlineUrl.');
+        if (!onlineUrl) throw new BadRequestError('Online event must have an onlineUrl.');
     }
 
     const minPrice = calculateMinPrice(eventData.ticketTypes || {});
@@ -306,7 +307,7 @@ const createEvent = async (eventData, organizerId) => {
 
 const updateEvent = async (eventId, eventData) => {
     if (Array.isArray(eventData.ticketTypes)) {
-        throw new Error("ticketTypes must be a Map (Object), not a List (Array).");
+        throw new BadRequestError("ticketTypes must be a Map (Object), not a List (Array).");
     }
 
     const { exists, data: oldData } = await eventRepository.getEventRawById(eventId);
@@ -463,7 +464,7 @@ const findNearbyEvents = async (centerLat, centerLon, initialRadiusInKm, page = 
 const searchEvents = async (queryParams) => {
     if (!esClient) {
         console.error("Elasticsearch unavailable.");
-        throw new Error("Dịch vụ tìm kiếm gián đoạn.");
+        throw new ServiceUnavailableError("Dịch vụ tìm kiếm gián đoạn.");
     }
     const page = parseInt(queryParams.page) || 1;
     const limit = parseInt(queryParams.limit) || 10;
@@ -596,7 +597,7 @@ const getEventWeather = async (eventId) => {
 
     const { exists, data: eventData } = await eventRepository.getEventRawById(eventId);
     if (!exists) {
-        throw new Error('Event not found');
+        throw new NotFoundError('Event not found');
     }
 
     if (eventData.eventType === 'online') {
@@ -604,7 +605,7 @@ const getEventWeather = async (eventId) => {
     }
 
     if (!eventData.location || !eventData.location.latitude) {
-        throw new Error('Event location is missing');
+        throw new BadRequestError('Event location is missing');
     }
 
     const eventDate = moment(eventData.date);

@@ -1,32 +1,29 @@
+const asyncHandler = require('@/shared/middleware/asyncHandler');
+const { BadRequestError, NotFoundError, ForbiddenError } = require('@/shared/errors');
 const organizerService = require('@/modules/organizer/application/service');
 const analyticsService = require('@/modules/analytics/application/service');
 const eventRepository = require('@/providers/database/event.repository');
 
-const verifyEventOwnership = async (req, res, next) => {
-    try {
-        const eventId = req.params.eventId || req.body.eventId || req.query.eventId;
-        const organizerId = req.user.uid;
+const verifyEventOwnership = asyncHandler(async (req, res, next) => {
+    const eventId = req.params.eventId || req.body.eventId || req.query.eventId;
+    const organizerId = req.user.uid;
 
-        if (!eventId) {
-            return res.status(400).send({ error: 'Bad Request: eventId is missing.' });
-        }
-
-        const event = await eventRepository.getEventById(eventId);
-        if (!event) {
-            return res.status(404).send({ error: 'Event not found.' });
-        }
-
-        if (event.organizerId !== organizerId) {
-            return res.status(403).send({ error: 'Forbidden: You are not the owner of this event.' });
-        }
-
-        req.event = event;
-        next();
-    } catch (error) {
-        console.error("Error in verifyEventOwnership middleware:", error);
-        res.status(500).send({ error: 'Internal Server Error At Verify Event OwnerShip Middleware' });
+    if (!eventId) {
+        throw new BadRequestError('eventId is missing.');
     }
-};
+
+    const event = await eventRepository.getEventById(eventId);
+    if (!event) {
+        throw new NotFoundError('Event not found.');
+    }
+
+    if (event.organizerId !== organizerId) {
+        throw new ForbiddenError('You are not the owner of this event.');
+    }
+
+    req.event = event;
+    next();
+});
 
 const checkInByQr = async (req, res) => {
     try {
@@ -81,126 +78,72 @@ const checkInByQr = async (req, res) => {
     }
 };
 
-const registerOrganizer = async (req, res) => {
-    try {
-        await organizerService.registerOrganizer(req.user.uid, req.body);
-        res.status(200).json({ success: true, message: "Register successful." });
-    } catch (error) {
-        console.error("Error in registerOrganizer:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
+const registerOrganizer = asyncHandler(async (req, res) => {
+    await organizerService.registerOrganizer(req.user.uid, req.body);
+    res.status(200).json({ success: true, message: "Register successful." });
+});
+
+const getOrganizerProfile = asyncHandler(async (req, res) => {
+    const profile = await organizerService.getOrganizerProfile(req.user.uid);
+    res.status(200).json(profile);
+});
+
+const getMyEvents = asyncHandler(async (req, res) => {
+    const { page, limit, status } = req.query;
+    const events = await organizerService.getMyEvents(req.user.uid, Number(page), Number(limit), status);
+    res.status(200).json({ data: events });
+});
+
+const getStatsOverview = asyncHandler(async (req, res) => {
+    const stats = await organizerService.getOrganizerStats(req.user.uid);
+    res.status(200).json(stats);
+});
+
+const getEventStats = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const analytics = await analyticsService.getAnalyticsByEventId(eventId);
+    res.status(200).json(analytics || {});
+});
+
+const updateOrganizerProfile = asyncHandler(async (req, res) => {
+    const updatedProfile = await organizerService.updateOrganizerProfile(req.user.uid, req.body);
+    res.status(200).json(updatedProfile);
+});
+
+const getEventAttendees = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const attendees = await organizerService.getAttendeesByEventId(eventId);
+    res.status(200).json({ attendees });
+});
+
+const importAttendees = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        throw new BadRequestError('No file uploaded. Please upload an Excel/CSV file.');
     }
-};
 
-const getOrganizerProfile = async (req, res) => {
-    try {
-        const profile = await organizerService.getOrganizerProfile(req.user.uid);
-        res.status(200).json(profile);
-    } catch (error) {
-        console.error("Error in getOrganizerProfile:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+    const { eventId } = req.params;
+    const result = await organizerService.importAttendees(eventId, req.file.buffer, req.user.uid);
 
-const getMyEvents = async (req, res) => {
-    try {
-        const { page, limit, status } = req.query;
-        const events = await organizerService.getMyEvents(req.user.uid, Number(page), Number(limit), status);
-        res.status(200).json({ data: events });
-    } catch (error) {
-        console.error("Error in getMyEvents:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+    res.status(200).json(result);
+});
 
-const getStatsOverview = async (req, res) => {
-    try {
-        const stats = await organizerService.getOrganizerStats(req.user.uid);
-        res.status(200).json(stats);
-    } catch (error) {
-        console.error("Error in getStatsOverview:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+const exportAttendees = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const buffer = await organizerService.exportAttendees(eventId);
 
-const getEventStats = async (req, res) => {
-    try {
-        const { eventId } = req.params;
-        const analytics = await analyticsService.getAnalyticsByEventId(eventId);
-        res.status(200).json(analytics || {});
-    } catch (error) {
-        console.error("Error in getEventStats:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=attendees_${eventId}.xlsx`);
 
-const updateOrganizerProfile = async (req, res) => {
-    try {
-        const updatedProfile = await organizerService.updateOrganizerProfile(req.user.uid, req.body);
-        res.status(200).json(updatedProfile);
-    } catch (error) {
-        console.error("Error updating organizer profile:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+    res.send(buffer);
+});
 
-const getEventAttendees = async (req, res) => {
-    try {
-        const { eventId } = req.params;
-        const attendees = await organizerService.getAttendeesByEventId(eventId);
-        res.status(200).json({ attendees });
-    } catch (error) {
-        console.error("Error getting event attendees:", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+const broadcastNotification = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const { title, message } = req.body;
 
-const importAttendees = async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).send({ error: 'No file uploaded. Please upload an Excel/CSV file.' });
-        }
-
-        const { eventId } = req.params;
-        const result = await organizerService.importAttendees(eventId, req.file.buffer, req.user.uid);
-
-        res.status(200).json(result);
-    } catch (error) {
-        console.error("Import Error:", error);
-        res.status(500).send({ error: error.message });
-    }
-};
-
-const exportAttendees = async (req, res) => {
-    try {
-        const { eventId } = req.params;
-        const buffer = await organizerService.exportAttendees(eventId);
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=attendees_${eventId}.xlsx`);
-
-        res.send(buffer);
-    } catch (error) {
-        console.error("Export Error:", error);
-        res.status(500).send({ error: error.message });
-    }
-};
-
-const broadcastNotification = async (req, res) => {
-    try {
-        const { eventId } = req.params;
-        const { title, message } = req.body;
-
-        if (!title || !message) {
-            return res.status(400).send({ error: 'Title and message are required.' });
-        }
-
-        const result = await organizerService.broadcastNotification(eventId, title, message, req.user.uid);
-        res.status(200).json({ success: true, sentTo: result.count });
-    } catch (error) {
-        console.error("Broadcast Error:", error);
-        res.status(500).send({ error: error.message });
-    }
-};
+    const result = await organizerService.broadcastNotification(eventId, title, message, req.user.uid);
+    res.status(200).json({ success: true, sentTo: result.count });
+});
 
 module.exports = {
     verifyEventOwnership,
