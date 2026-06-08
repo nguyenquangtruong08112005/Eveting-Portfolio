@@ -1,10 +1,11 @@
-// Lấy thông tin cấu hình từ .env
+const envConfig = require('@/shared/config/env.config');
+
 const config = {
-    app_id: process.env.ZALOPAY_APP_ID,
-    key1: process.env.ZALOPAY_KEY1,
-    key2: process.env.ZALOPAY_KEY2,
-    endpoint: process.env.ZALOPAY_ENDPOINT,
-    callback_url: `${process.env.APP_PUBLIC_URL}/payments/callback`
+    app_id: envConfig.zalopay.appId,
+    key1: envConfig.zalopay.key1,
+    key2: envConfig.zalopay.key2,
+    endpoint: envConfig.zalopay.endpoint,
+    callback_url: `${envConfig.appPublicUrl}/payments/callback`
 };
 
 module.exports = config;

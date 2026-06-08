@@ -5,8 +5,15 @@ const analyticsRepository = require('@/providers/database/analytics.repository')
 const venueRepository = require('@/providers/database/venue.repository');
 const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
+const config = require('@/shared/config/env.config');
+const {
+  BadRequestError,
+  NotFoundError,
+  ConflictError,
+  ForbiddenError,
+} = require('@/shared/errors');
 
-const TICKET_SECRET = process.env.JWT_TICKET_SECRET;
+const TICKET_SECRET = config.jwtTicketSecret;
 
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
     const allTickets = await ticketRepository.getTicketsByUserId(userId);
@@ -93,20 +100,20 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
     let appliedPromotion = null;
 
     const qty = parseInt(quantity);
-    if (isNaN(qty) || qty < 1) throw new Error("Invalid ticket quantity.");
+    if (isNaN(qty) || qty < 1) throw new BadRequestError("Invalid ticket quantity.");
 
     return ticketRepository.runTransaction(async (transaction) => {
         const eventData = await eventRepository.getEventInTransaction(transaction, eventId);
         if (!eventData) {
-            throw new Error("Event not found!");
+            throw new NotFoundError("Event not found!");
         }
         const ticketTypeData = eventData.ticketTypes[ticketType];
 
         if (!ticketTypeData) {
-            throw new Error(`Ticket type '${ticketType}' does not exist.`);
+            throw new NotFoundError(`Ticket type '${ticketType}' does not exist.`);
         }
         if (ticketTypeData.available < qty) {
-            throw new Error(`Not enough tickets available. Only ${ticketTypeData.available} left.`);
+            throw new ConflictError(`Not enough tickets available. Only ${ticketTypeData.available} left.`);
         }
 
         const unitPrice = ticketTypeData.price;
@@ -120,12 +127,12 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
                 appliedPromotion = foundPromo;
                 const now = new Date().getTime();
 
-                if (appliedPromotion.validUntil <= now) throw new Error('Promotion has expired.');
-                if (appliedPromotion.usedCount >= appliedPromotion.usageLimit) throw new Error('Promotion usage limit reached.');
-                if (appliedPromotion.eventId && appliedPromotion.eventId !== eventId) throw new Error('Promotion not valid for this event.');
+                if (appliedPromotion.validUntil <= now) throw new ConflictError('Promotion has expired.');
+                if (appliedPromotion.usedCount >= appliedPromotion.usageLimit) throw new ConflictError('Promotion usage limit reached.');
+                if (appliedPromotion.eventId && appliedPromotion.eventId !== eventId) throw new ConflictError('Promotion not valid for this event.');
 
                 if (appliedPromotion.minTicketQuantity && qty < appliedPromotion.minTicketQuantity) {
-                    throw new Error(`Promotion requires minimum ${appliedPromotion.minTicketQuantity} tickets.`);
+                    throw new ConflictError(`Promotion requires minimum ${appliedPromotion.minTicketQuantity} tickets.`);
                 }
 
                 if (appliedPromotion.discountType === 'percent') {
@@ -205,7 +212,7 @@ const confirmTicketPayment = async (ticketId) => {
         const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
 
         if (!ticketData) {
-            throw new Error('Ticket not found.');
+            throw new NotFoundError('Ticket not found.');
         }
 
         if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
@@ -245,19 +252,19 @@ const getTicketDetailsById = async (ticketId, requestingUserId) => {
     const ticketData = await ticketRepository.getTicketById(ticketId);
 
     if (!ticketData) {
-        throw new Error('Ticket not found.');
+        throw new NotFoundError('Ticket not found.');
     }
 
     const eventData = await eventRepository.getEventById(ticketData.eventId);
     if (!eventData) {
-        throw new Error('Associated event not found.');
+        throw new NotFoundError('Associated event not found.');
     }
 
     const isTicketOwner = ticketData.userId === requestingUserId;
     const isEventOrganizer = eventData.organizerId === requestingUserId;
 
     if (!isTicketOwner && !isEventOrganizer) {
-        throw new Error('Forbidden: You do not have permission to view this ticket.');
+        throw new ForbiddenError('You do not have permission to view this ticket.');
     }
 
     let venueData = null;

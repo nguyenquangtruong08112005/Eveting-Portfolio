@@ -56,6 +56,18 @@ class InternalServerError extends AppError {
   }
 }
 
+class BadGatewayError extends AppError {
+  constructor(message = 'Bad Gateway') {
+    super(message, 502, 'BAD_GATEWAY');
+  }
+}
+
+class ServiceUnavailableError extends AppError {
+  constructor(message = 'Service Unavailable') {
+    super(message, 503, 'SERVICE_UNAVAILABLE');
+  }
+}
+
 module.exports = {
   AppError,
   BadRequestError,
@@ -63,5 +75,7 @@ module.exports = {
   ForbiddenError,
   NotFoundError,
   ConflictError,
-  InternalServerError
+  InternalServerError,
+  BadGatewayError,
+  ServiceUnavailableError
 };

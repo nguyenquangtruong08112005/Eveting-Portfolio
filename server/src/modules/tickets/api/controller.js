@@ -1,68 +1,36 @@
 const ticketService = require('@/modules/tickets/application/service');
+const asyncHandler = require('@/shared/middleware/asyncHandler');
 
-const getCurrentUserTickets = async (req, res) => {
-    try {
-        const userId = req.user.uid;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+const getCurrentUserTickets = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
-        const result = await ticketService.getTicketsByUserId(userId, page, limit);
-        res.status(200).json(result);
-    } catch (error) {
-        console.error("Error in Ticket Controller - getCurrentUserTickets: ", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+    const result = await ticketService.getTicketsByUserId(userId, page, limit);
+    res.status(200).json(result);
+});
 
-const bookTicket = async (req, res) => {
-    try {
-        const userId = req.user.uid;
-        const { eventId, ticketType, promoCode, quantity } = req.body;
+const bookTicket = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { eventId, ticketType, promoCode, quantity } = req.body;
 
-        if (!eventId || !ticketType) {
-            return res.status(400).send({ error: 'Bad Request: eventId and ticketType are required.' });
-        }
+    const newTicket = await ticketService.bookTicket(
+        userId,
+        eventId,
+        ticketType,
+        quantity || 1,
+        promoCode
+    );
+    res.status(201).json(newTicket);
+});
 
-        const newTicket = await ticketService.bookTicket(
-            userId,
-            eventId,
-            ticketType,
-            quantity || 1,
-            promoCode
-        );
-        res.status(201).json(newTicket);
+const getTicketDetails = asyncHandler(async (req, res) => {
+    const { ticketId } = req.params;
+    const userId = req.user.uid;
 
-    } catch (error) {
-        console.error("Error in Ticket Controller - bookTicket: ", error);
-        if (error.message.includes("sold out") || error.message.includes("not found")
-            || error.message.includes("Invalid promotion") || error.message.includes("Promotion has")) {
-            return res.status(409).send({ error: `Conflict: ${error.message}` });
-        }
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-}
-
-const getTicketDetails = async (req, res) => {
-    try {
-        const { ticketId } = req.params;
-        const userId = req.user.uid;
-
-        const ticketDetails = await ticketService.getTicketDetailsById(ticketId, userId);
-
-        res.status(200).json(ticketDetails);
-    } catch (error) {
-        console.error("Error in Ticket Controller - getTicketDetails: ", error);
-
-        if (error.message.includes('not found')) {
-            return res.status(404).send({ error: error.message });
-        }
-        if (error.message.includes('Forbidden')) {
-            return res.status(403).send({ error: error.message });
-        }
-
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+    const ticketDetails = await ticketService.getTicketDetailsById(ticketId, userId);
+    res.status(200).json(ticketDetails);
+});
 
 module.exports = {
     getCurrentUserTickets,

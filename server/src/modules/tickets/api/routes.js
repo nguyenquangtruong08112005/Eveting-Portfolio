@@ -1,16 +1,30 @@
 const express = require('express');
 const router = express.Router();
+const { body, param } = require('express-validator');
 const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const ticketController = require('@/modules/tickets/api/controller');
+const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 
-// [GET] /tickets - Lấy danh sách vé của người dùng đang đăng nhập
-router.get('/',  verifyAuthToken, ticketController.getCurrentUserTickets);
+router.get('/',
+    verifyAuthToken,
+    ticketController.getCurrentUserTickets
+);
 
-// [POST] /tickets/book - Đặt vé cho một sự kiện
-router.post('/book', verifyAuthToken, ticketController.bookTicket);
+router.post('/book',
+    verifyAuthToken,
+    body('eventId').notEmpty().withMessage('eventId is required'),
+    body('ticketType').notEmpty().withMessage('ticketType is required'),
+    body('quantity').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('quantity must be a positive integer'),
+    body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),
+    validateRequest,
+    ticketController.bookTicket
+);
 
-// [GET] /tickets/:ticketId - Lấy chi tiết vé (để hiển thị sau khi thanh toán)
-// Yêu cầu xác thực để đảm bảo đúng chủ sở hữu
-router.get('/:ticketId', verifyAuthToken, ticketController.getTicketDetails);
+router.get('/:ticketId',
+    verifyAuthToken,
+    param('ticketId').notEmpty().withMessage('ticketId is required'),
+    validateRequest,
+    ticketController.getTicketDetails
+);
 
 module.exports = router;
