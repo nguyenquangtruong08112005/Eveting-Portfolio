@@ -5,34 +5,35 @@
 
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const envConfig = require('@/shared/config/env.config');
 
 let client;
 
 function getClient() {
   if (!client) {
-    const REGION = process.env.S3_REGION || 'us-east-1';
-    const ENDPOINT = process.env.S3_ENDPOINT;
-    const config = { region: REGION };
+    const REGION = envConfig.s3.region;
+    const ENDPOINT = envConfig.s3.endpoint;
+    const s3config = { region: REGION };
     if (ENDPOINT) {
-      config.endpoint = ENDPOINT;
-      config.forcePathStyle = true;
+      s3config.endpoint = ENDPOINT;
+      s3config.forcePathStyle = true;
     }
-    if (process.env.S3_ACCESS_KEY_ID) {
-      if (!process.env.S3_SECRET_ACCESS_KEY) {
+    if (envConfig.s3.accessKeyId) {
+      if (!envConfig.s3.secretAccessKey) {
         throw new Error('S3_ACCESS_KEY_ID is set but S3_SECRET_ACCESS_KEY is missing');
       }
-      config.credentials = {
-        accessKeyId: process.env.S3_ACCESS_KEY_ID,
-        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+      s3config.credentials = {
+        accessKeyId: envConfig.s3.accessKeyId,
+        secretAccessKey: envConfig.s3.secretAccessKey,
       };
     }
-    client = new S3Client(config);
+    client = new S3Client(s3config);
   }
   return client;
 }
 
 function requireBucket() {
-  if (!process.env.S3_BUCKET) {
+  if (!envConfig.s3.bucket) {
     throw new Error('S3_BUCKET environment variable is required for this operation');
   }
 }
@@ -40,7 +41,7 @@ function requireBucket() {
 const uploadBuffer = async (key, buffer, contentType) => {
   requireBucket();
   const cmd = new PutObjectCommand({
-    Bucket: process.env.S3_BUCKET,
+    Bucket: envConfig.s3.bucket,
     Key: key,
     Body: buffer,
     ContentType: contentType,
@@ -50,30 +51,30 @@ const uploadBuffer = async (key, buffer, contentType) => {
 
 const deleteObject = async (key) => {
   requireBucket();
-  const cmd = new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
+  const cmd = new DeleteObjectCommand({ Bucket: envConfig.s3.bucket, Key: key });
   await getClient().send(cmd);
 };
 
 const getPublicUrl = async (key) => {
   requireBucket();
-  const PUBLIC_URL_BASE = process.env.S3_PUBLIC_URL_BASE;
+  const PUBLIC_URL_BASE = envConfig.s3.publicUrlBase;
   if (PUBLIC_URL_BASE) {
     const base = PUBLIC_URL_BASE.replace(/\/+$/, '');
     return `${base}/${key}`;
   }
-  const REGION = process.env.S3_REGION || 'us-east-1';
-  return `https://${process.env.S3_BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
+  const REGION = envConfig.s3.region;
+  return `https://${envConfig.s3.bucket}.s3.${REGION}.amazonaws.com/${key}`;
 };
 
 const getSignedReadUrl = async (key, expiresIn = 900) => {
   requireBucket();
-  const cmd = new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
+  const cmd = new GetObjectCommand({ Bucket: envConfig.s3.bucket, Key: key });
   return getSignedUrl(getClient(), cmd, { expiresIn });
 };
 
 const getObjectBuffer = async (key) => {
   requireBucket();
-  const cmd = new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
+  const cmd = new GetObjectCommand({ Bucket: envConfig.s3.bucket, Key: key });
   const response = await getClient().send(cmd);
   const chunks = [];
   for await (const chunk of response.Body) {
@@ -84,7 +85,7 @@ const getObjectBuffer = async (key) => {
 
 const getObjectMetadata = async (key) => {
   requireBucket();
-  const cmd = new HeadObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
+  const cmd = new HeadObjectCommand({ Bucket: envConfig.s3.bucket, Key: key });
   const response = await getClient().send(cmd);
   return { contentType: response.ContentType };
 };

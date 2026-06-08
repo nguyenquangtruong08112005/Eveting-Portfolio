@@ -1,10 +1,12 @@
+const config = require('@/shared/config/env.config');
+
 let pool = null;
 
 function getPool() {
     if (!pool) {
         const { Pool } = require('pg');
         pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
+            connectionString: config.databaseUrl,
         });
     }
     return pool;

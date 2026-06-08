@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
+const config = require('@/shared/config/env.config');
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -8,7 +9,7 @@ const SALT_LENGTH = 16;
 const SCRYPT_KEY_LENGTH = 64;
 const HASH_ALGORITHM = 'scrypt';
 const REFRESH_TOKEN_BYTES = 48;
-const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRES_IN || '15m';
+const ACCESS_TOKEN_EXPIRY = config.accessTokenExpiresIn;
 
 async function hashPassword(password) {
   const salt = crypto.randomBytes(SALT_LENGTH).toString('hex');
@@ -38,13 +39,13 @@ async function verifyPassword(password, storedHash) {
 }
 
 function signAccessToken(payload) {
-  return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
+  return jwt.sign(payload, config.accessTokenSecret, {
     expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 }
 
 function verifyAccessToken(token) {
-  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+  return jwt.verify(token, config.accessTokenSecret);
 }
 
 function generateRefreshToken() {

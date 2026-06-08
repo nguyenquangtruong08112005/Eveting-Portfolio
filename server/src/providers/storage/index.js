@@ -2,6 +2,7 @@
 // Storage provider selector. Set STORAGE_PROVIDER=s3 to use S3-compatible storage.
 // Default is local in-memory (no env vars required, safe for boot without config).
 
+const config = require('@/shared/config/env.config');
 const localProvider = require('./local');
 const s3Provider = require('./s3');
 
@@ -10,7 +11,7 @@ const providers = {
   s3: s3Provider,
 };
 
-const providerName = process.env.STORAGE_PROVIDER || 'local';
+const providerName = config.storageProvider;
 const activeProvider = providers[providerName];
 
 if (!activeProvider) {

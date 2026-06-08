@@ -1,9 +1,10 @@
 require('dotenv').config();
+const config = require('@/shared/config/env.config');
 
 const isAdmin = (req, res, next) => {
     try {
         const currentUid = req.user.uid;
-        const adminUid = process.env.ADMIN_UID;
+        const adminUid = config.adminUid;
 
         if (currentUid && currentUid === adminUid) {
             return next();

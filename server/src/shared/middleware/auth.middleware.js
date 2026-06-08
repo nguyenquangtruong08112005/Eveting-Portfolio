@@ -1,9 +1,10 @@
+const config = require('@/shared/config/env.config');
 const authProvider = require('@/providers/auth');
 const userRepository = require('@/providers/database/user.repository');
 
 const attachRequestUser = async (req, decodedToken) => {
   let userRoles = [];
-  if (process.env.AUTH_PROVIDER === 'backend') {
+  if (config.authProvider === 'backend') {
     userRoles = decodedToken.roles || [];
   } else {
     userRoles = await userRepository.getUserRoles(decodedToken.uid);
@@ -32,7 +33,7 @@ const verifyAuthToken = async (req, res, next) => {
     if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
         return res.status(401).send({ error: 'Unauthorized: Invalid or expired token.' });
     }
-    if (process.env.AUTH_PROVIDER === 'backend' && (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError')) {
+    if (config.authProvider === 'backend' && (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError')) {
         return res.status(401).send({ error: 'Unauthorized: Invalid or expired token.' });
     }
     console.error('Error verifying auth token:', error);

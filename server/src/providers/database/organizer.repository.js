@@ -1,4 +1,5 @@
-const providerName = process.env.ORGANIZER_DATABASE_PROVIDER || process.env.DATABASE_PROVIDER || 'postgres';
+const config = require('@/shared/config/env.config');
+const providerName = config.databaseProviders.organizer || config.databaseProvider;
 
 if (providerName !== 'postgres') {
   throw new Error(`Database provider "${providerName}" is not supported for organizers. Only "postgres" is available.`);

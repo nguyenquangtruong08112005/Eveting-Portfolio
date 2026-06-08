@@ -4,6 +4,7 @@ const { calculateMinPrice } = require('@/utils/tickets/calculateMinPrice.tickets
 const esClient = require('@/shared/config/elasticsearch.config');
 const moment = require('moment');
 const axios = require('axios');
+const config = require('@/shared/config/env.config');
 const { fcmService, service: notificationService, helper: notifHelper } = require('@/modules/notifications');
 const { BadRequestError, NotFoundError, ServiceUnavailableError } = require('@/shared/errors');
 
@@ -14,7 +15,7 @@ const userRepository = require('@/providers/database/user.repository');
 const featuredProfileRepository = require('@/providers/database/featuredProfile.repository');
 
 const ELASTIC_INDEX = 'events';
-const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
+const OPENWEATHER_API_KEY = config.openweatherApiKey;
 
 const mapPublicTicketTypes = (ticketTypes) => {
     if (!ticketTypes) return {};

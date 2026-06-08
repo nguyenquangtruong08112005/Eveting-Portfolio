@@ -1,5 +1,6 @@
 // providers/notification/index.js
-const providerName = process.env.NOTIFICATION_PROVIDER || 'onesignal';
+const config = require('@/shared/config/env.config');
+const providerName = config.notificationProvider;
 
 if (providerName !== 'onesignal') {
   throw new Error(`Notification provider "${providerName}" is not supported. Only "onesignal" is available.`);

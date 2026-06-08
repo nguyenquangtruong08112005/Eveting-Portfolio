@@ -2,6 +2,7 @@
 // In-memory storage provider for development/testing.
 // Default when STORAGE_PROVIDER is not set. No env vars required.
 
+const config = require('@/shared/config/env.config');
 const store = new Map();
 
 const uploadBuffer = async (key, buffer, contentType) => {
@@ -13,7 +14,7 @@ const deleteObject = async (key) => {
 };
 
 const getPublicUrl = async (key) => {
-  const baseUrl = process.env.APP_PUBLIC_URL || 'http://localhost:3000';
+  const baseUrl = config.appPublicUrl || 'http://localhost:3000';
   return `${baseUrl.replace(/\/+$/, '')}/public/${key}`;
 };
 

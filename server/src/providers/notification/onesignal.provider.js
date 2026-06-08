@@ -3,25 +3,26 @@
 // This removes direct backend FCM coupling only; the OneSignal SDK on Android
 // still relies on FCM for delivery. iOS uses APNs via OneSignal directly.
 const axios = require('axios');
+const config = require('@/shared/config/env.config');
 
 const ONESIGNAL_BASE_URL = 'https://onesignal.com/api/v1';
 
 const headers = () => ({
     'Content-Type': 'application/json',
-    Authorization: `Key ${process.env.ONESIGNAL_REST_API_KEY}`,
+    Authorization: `Key ${config.onesignal.restApiKey}`,
 });
 
 const validateEnv = () => {
-    if (!process.env.ONESIGNAL_APP_ID) {
+    if (!config.onesignal.appId) {
         throw new Error('ONESIGNAL_APP_ID environment variable is required');
     }
-    if (!process.env.ONESIGNAL_REST_API_KEY) {
+    if (!config.onesignal.restApiKey) {
         throw new Error('ONESIGNAL_REST_API_KEY environment variable is required');
     }
 };
 
 const isExternalIdMode = () => {
-    return (process.env.ONESIGNAL_TARGET_MODE || 'subscription') === 'external_id';
+    return config.onesignal.targetMode === 'external_id';
 };
 
 const sendMulticast = async (tokens, title, body, data = {}) => {
@@ -30,10 +31,10 @@ const sendMulticast = async (tokens, title, body, data = {}) => {
     if (tokenList.length === 0) return;
     validateEnv();
 
-    const targetMode = process.env.ONESIGNAL_TARGET_MODE || 'subscription';
+    const targetMode = config.onesignal.targetMode;
 
     const payload = {
-        app_id: process.env.ONESIGNAL_APP_ID,
+        app_id: config.onesignal.appId,
         headings: { en: title },
         contents: { en: body },
         data,
@@ -63,7 +64,7 @@ const sendToTopic = async (topic, title, body, data = {}) => {
     }
 
     const payload = {
-        app_id: process.env.ONESIGNAL_APP_ID,
+        app_id: config.onesignal.appId,
         headings: { en: title },
         contents: { en: body },
         data,
@@ -93,7 +94,7 @@ const subscribeToTopic = async (tokens, topic) => {
 
     const results = await Promise.allSettled(tokenList.map(token =>
         axios.put(`${ONESIGNAL_BASE_URL}/players/${token}`, {
-            app_id: process.env.ONESIGNAL_APP_ID,
+            app_id: config.onesignal.appId,
             tags: { [`topic_${topic}`]: true },
         }, { headers: headers() })
     ));
@@ -123,7 +124,7 @@ const unsubscribeFromTopic = async (tokens, topic) => {
 
     const results = await Promise.allSettled(tokenList.map(token =>
         axios.put(`${ONESIGNAL_BASE_URL}/players/${token}`, {
-            app_id: process.env.ONESIGNAL_APP_ID,
+            app_id: config.onesignal.appId,
             tags: { [`topic_${topic}`]: '' },
         }, { headers: headers() })
     ));
