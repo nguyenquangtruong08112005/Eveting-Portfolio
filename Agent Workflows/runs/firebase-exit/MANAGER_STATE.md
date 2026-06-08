@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, and the O4 structure checkpoint are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, and O5-S1 through O5-S4 are complete on `staging`.
 
-Next phase: business-domain redesign and behavior hardening. Device install, backend smoke checks, Elasticsearch reindex, Docker infra, and CodeGraph were verified at the structure checkpoint.
+Next phase: continue setup hardening with O5-S5 to O5-S9 before deep business-domain redesign.
 
 ## Source Of Truth
 
@@ -53,6 +53,7 @@ Next phase: business-domain redesign and behavior hardening. Device install, bac
 - Phase N3-S1 to N3-S5 completion: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n3-s1-s5-completion.md`
 - Phase N4 post-N3 cleanup: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-n4-post-n3-cleanup.md`
 - Phase O4 structure checkpoint verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o4-structure-checkpoint-verification.md`
+- Phase O5 backend setup hardening: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o5-backend-setup-hardening.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -224,12 +225,14 @@ Then review:
 
 ## Next Exact Step
 
-Business-domain redesign:
+Backend setup hardening before business-domain redesign:
 
-- audit current mobile-facing workflows before changing behavior
-- design event, ticket/payment, organizer/admin, notification, media, and auth state boundaries
-- implement behavior changes slice-by-slice with worker agents
-- keep mobile route/payload compatibility unless a later explicit mobile contract phase is opened
+- O5-S5: extend asyncHandler and typed errors to events and organizer controllers
+- O5-S6: centralize remaining env/config for auth, storage, notification, weather, and database providers
+- O5-S7: add route validation for events, organizer, auth, users, and media
+- O5-S8: split long service files into use-cases/helpers/policies
+- O5-S9: add contract/smoke checks for structured error responses on mobile-facing routes
+- after O5 setup hardening, audit current mobile-facing workflows before changing business behavior
 - use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit
 
 ## Latest Verification
@@ -297,3 +300,4 @@ Results:
 - Phase O2 server moduleization completed: every current server route/controller/service domain now has a `src/modules/<domain>` boundary with old paths kept as compatibility shims. Completed modules: admin, analytics, auth, events, featuredProfile, media, notifications, organizer, payments, promotions, reviews, storage, tickets, users, venues. Final CI check, domain smokes, diff check, and CodeGraph status passed.
 - Phase O3 deep Modular Monolith plan recorded only. No O3 code implementation is active. The next implementation must proceed slice-by-slice: alias bootstrap, module public route mounts, shared layer, low-risk pilot layering, medium modules, core modules, event/ticket/payment modules, media/storage/organizer/admin modules, legacy import cleanup, then legacy shim archive.
 - Phase O4 structure checkpoint completed on 2026-06-09: Docker Postgres and Elasticsearch were running, migrations were already applied, full backend smoke sequence passed, Elasticsearch reindexed 18 events, attendee compile/install passed, organizer compile/install passed after retrying install alone, server CodeGraph was synced and up to date, server working tree was clean, and tag `backend-refactor-structure-complete` was created at commit `07565ad`.
+- Phase O5-S1 through O5-S4 completed on 2026-06-09: console bridge now mirrors existing console output into `logs/app.log`, request ids are attached to responses and HTTP logs, shared errors/global error middleware/asyncHandler are in place, request validation middleware and env config foundation are in place, and tickets/payments are the first controller pilot using validation plus typed errors. Verification passed: full backend smoke sequence, validation runtime probe, CodeGraph sync. Server commits: `a9ace1d`, `073a97f`.
