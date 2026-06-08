@@ -4,16 +4,15 @@ const promotionRepository = require('@/providers/database/promotion.repository')
 const analyticsRepository = require('@/providers/database/analytics.repository');
 const venueRepository = require('@/providers/database/venue.repository');
 const { v4: uuidv4 } = require('uuid');
-const jwt = require('jsonwebtoken');
-const config = require('@/shared/config/env.config');
 const {
   BadRequestError,
   NotFoundError,
   ConflictError,
   ForbiddenError,
 } = require('@/shared/errors');
-
-const TICKET_SECRET = config.jwtTicketSecret;
+const { sortTicketsByPriorityAndDate, buildPagination, mapTicketWithEvent, mapTicketDetailResponse } = require('./helpers/ticket-mappers');
+const { generateTicketQR } = require('./helpers/qr-code.helper');
+const { applyPromotion } = require('./helpers/promotion-validator.helper');
 
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
     const allTickets = await ticketRepository.getTicketsByUserId(userId);
@@ -21,77 +20,25 @@ const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
     if (allTickets.length === 0) {
         return {
             tickets: [],
-            pagination: {
-                currentPage: page,
-                limit: limit,
-                totalPages: 0,
-                totalItems: 0
-            }
+            pagination: { currentPage: page, limit: limit, totalPages: 0, totalItems: 0 }
         };
     }
 
-    const statusPriority = {
-        'paid': 1,
-        'pending': 2,
-        'checkedIn': 3,
-        'cancelled': 4
-    };
-
-    allTickets.sort((a, b) => {
-        const priorityA = statusPriority[a.status] || 99;
-        const priorityB = statusPriority[b.status] || 99;
-
-        if (priorityA !== priorityB) {
-            return priorityA - priorityB;
-        }
-        return b.purchaseDate - a.purchaseDate;
-    });
+    sortTicketsByPriorityAndDate(allTickets);
 
     const totalItems = allTickets.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
+    const pagination = buildPagination(totalItems, page, limit);
 
-    const paginatedTickets = allTickets.slice(startIndex, endIndex);
+    const paginatedTickets = allTickets.slice(pagination.startIndex, pagination.endIndex);
 
     const ticketsWithEventDetails = await Promise.all(paginatedTickets.map(async (ticketData) => {
         const eventData = await eventRepository.getEventById(ticketData.eventId);
-        let eventInfo = null;
-
-        if (eventData) {
-            eventInfo = {
-                id: eventData.id,
-                name: eventData.name,
-                date: eventData.date,
-                imageUrl: eventData.imageUrl,
-                venueName: eventData.venueName,
-                city: eventData.city,
-                status: eventData.status
-            };
-        } else {
-            eventInfo = { id: ticketData.eventId, name: "Unknown Event", status: "deleted" };
-        }
-
-        return {
-            id: ticketData.id,
-            status: ticketData.status,
-            type: ticketData.type,
-            price: ticketData.price,
-            seat: ticketData.seat,
-            qrCode: ticketData.qrCode,
-            purchaseDate: ticketData.purchaseDate,
-            event: eventInfo
-        };
+        return mapTicketWithEvent(ticketData, eventData);
     }));
 
     return {
         tickets: ticketsWithEventDetails,
-        pagination: {
-            currentPage: page,
-            limit: limit,
-            totalPages: totalPages,
-            totalItems: totalItems
-        }
+        pagination: pagination.meta
     };
 };
 
@@ -121,35 +68,12 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
         const originalTotalPrice = totalPrice;
 
         if (promoCode) {
-            const foundPromo = await promotionRepository.findPromoByCodeInTransaction(transaction, promoCode);
-
-            if (foundPromo) {
-                appliedPromotion = foundPromo;
-                const now = new Date().getTime();
-
-                if (appliedPromotion.validUntil <= now) throw new ConflictError('Promotion has expired.');
-                if (appliedPromotion.usedCount >= appliedPromotion.usageLimit) throw new ConflictError('Promotion usage limit reached.');
-                if (appliedPromotion.eventId && appliedPromotion.eventId !== eventId) throw new ConflictError('Promotion not valid for this event.');
-
-                if (appliedPromotion.minTicketQuantity && qty < appliedPromotion.minTicketQuantity) {
-                    throw new ConflictError(`Promotion requires minimum ${appliedPromotion.minTicketQuantity} tickets.`);
-                }
-
-                if (appliedPromotion.discountType === 'percent') {
-                    totalPrice = totalPrice * (1 - appliedPromotion.discountValue);
-                } else if (appliedPromotion.discountType === 'amount') {
-                    totalPrice = Math.max(0, totalPrice - appliedPromotion.discountValue);
-                }
-            }
+            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, qty, totalPrice);
+            appliedPromotion = result.appliedPromotion;
+            totalPrice = result.totalPrice;
         }
 
-        const qrPayload = {
-            ticketId: ticketId,
-            userId: userId,
-            eventId: eventId,
-            quantity: qty
-        };
-        const qrCodeJwt = jwt.sign(qrPayload, TICKET_SECRET);
+        const qrCodeJwt = generateTicketQR(ticketId, userId, eventId, qty);
 
         const newTicketData = {
             id: ticketId,
@@ -272,24 +196,7 @@ const getTicketDetailsById = async (ticketId, requestingUserId) => {
         venueData = await venueRepository.getVenueById(eventData.venueId);
     }
 
-    return {
-        ticket: ticketData,
-        event: {
-            name: eventData.name,
-            date: eventData.date,
-            endDate: eventData.endDate,
-            bannerUrl: eventData.bannerUrl,
-            eventType: eventData.eventType,
-            onlineUrl: eventData.onlineUrl,
-            city: eventData.city,
-            venueName: eventData.venueName,
-        },
-        venue: venueData ? {
-            name: venueData.name,
-            addressDetails: venueData.addressDetails,
-            location: venueData.location
-        } : null
-    };
+    return mapTicketDetailResponse(ticketData, eventData, venueData);
 };
 
 module.exports = {

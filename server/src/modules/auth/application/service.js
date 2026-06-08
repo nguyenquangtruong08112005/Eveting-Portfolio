@@ -4,77 +4,9 @@ const authRepository = require('@/providers/database/postgres.auth.repository');
 const userProfileRepository = require('@/providers/database/postgres.user.repository');
 const axios = require('axios');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
-
-async function provisionAuthUserFromProfile(profile, requestedRole) {
-  var profileRoles = profile.roles || ['attendee'];
-  var authRoles = profileRoles.map(function (r) { return r === 'attendee' ? 'user' : r; });
-  var safeRole = requestedRole || 'user';
-  if (safeRole !== 'user' && authRoles.indexOf(safeRole) === -1) {
-    authRoles.push(safeRole);
-  }
-  var unusablePassword = 'migrated:' + profile._id + ':' + Date.now() + ':' + Math.random();
-  var passwordHash = await backendAuthProvider.hashPassword(unusablePassword);
-  var uid = await authRepository.createUser({
-    id: profile._id,
-    email: profile.email,
-    name: profile.name || '',
-    passwordHash: passwordHash,
-    roles: authRoles,
-  });
-  if (uid) {
-    return await authRepository.findUserById(uid);
-  }
-  return await authRepository.findUserByEmail(profile.email);
-}
-
-const REFRESH_TOKEN_EXPIRY_MS = (() => {
-  const env = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
-  const match = env.match(/^(\d+)\s*(d|h|m|s)$/);
-  if (!match) return 7 * 24 * 60 * 60 * 1000;
-  const n = parseInt(match[1], 10);
-  switch (match[2]) {
-    case 'd': return n * 24 * 60 * 60 * 1000;
-    case 'h': return n * 60 * 60 * 1000;
-    case 'm': return n * 60 * 1000;
-    case 's': return n * 1000;
-    default:  return 7 * 24 * 60 * 60 * 1000;
-  }
-})();
-
-async function ensureUserProfileForAuthUser(_a) {
-  var id = _a.id, email = _a.email, name = _a.name, roles = _a.roles;
-  var existing = await userProfileRepository.getUserDataById(id);
-  if (existing) return;
-  var profileRoles = (roles || []).map(function (r) { return r === 'user' ? 'attendee' : r; });
-  await userProfileRepository.createUser(id, {
-    id: id,
-    email: email,
-    name: name || '',
-    profilePicUrl: '',
-    coverPhotoUrl: null,
-    bio: '',
-    birthDate: null,
-    roles: profileRoles,
-    createdAt: Date.now(),
-    followedProfileIds: [],
-    historyEventIds: [],
-    followersCount: 0,
-    followingCount: 0,
-    points: 0,
-    level: 'bronze',
-    matchingPreferences: { interests: [], ageRange: '18-25' },
-    sharedMedia: [],
-    fcmTokens: [],
-  });
-}
-
-function makeTokens(uid, email, roles) {
-  const payload = { uid, email, roles };
-  const accessToken = backendAuthProvider.signAccessToken(payload);
-  const { raw: refreshToken, hash: refreshTokenHash } = backendAuthProvider.generateRefreshToken();
-  return { accessToken, refreshToken, refreshTokenHash };
-}
+const { REFRESH_TOKEN_EXPIRY_MS, makeTokens } = require('./helpers/token.helper');
+const { sendEmail } = require('./helpers/email.helper');
+const { provisionAuthUserFromProfile, ensureUserProfileForAuthUser } = require('./helpers/profile.helper');
 
 async function register({ email, password, name, role }) {
   const ALLOWED_ROLES = new Set(['user', 'organizer']);
@@ -209,38 +141,6 @@ async function logout(refreshTokenRaw) {
 async function logoutAll(userId) {
   await authRepository.revokeAllUserSessions(userId);
   return { success: true };
-}
-
-function getMailTransporter() {
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-  return null;
-}
-
-async function sendEmail({ to, subject, text, html }) {
-  const transporter = getMailTransporter();
-  if (transporter) {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@eventing.tdtuer.com',
-      to,
-      subject,
-      text,
-      html,
-    });
-  } else if (process.env.AUTH_MOCK_EMAIL === 'true') {
-    console.log(`[MOCK EMAIL] To: ${to}\nSubject: ${subject}\nContent: ${text || html}`);
-  } else {
-    throw new Error('Email service not configured and mock mode is off');
-  }
 }
 
 async function socialLogin({ email, name, role, profilePicUrl }) {
