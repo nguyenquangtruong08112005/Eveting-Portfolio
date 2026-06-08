@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, and O5-S1 through O5-S4 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, and O5 are complete on `staging`.
 
-Next phase: continue setup hardening with O5-S5 to O5-S9 before deep business-domain redesign.
+Next phase: audit current mobile-facing workflows, then plan business-domain redesign. Do not start business behavior rewrites until expected screens, routes, payloads, and persistence side effects are recorded.
 
 ## Source Of Truth
 
@@ -126,6 +126,15 @@ Next phase: continue setup hardening with O5-S5 to O5-S9 before deep business-do
 - `0b40153` - Add generic storage upload route.
 - `e1df578` - Stabilize ngrok and local search runtime.
 - `be9f6ce` - Skip OneSignal topic sync in external id mode.
+- `a9ace1d` - Add logging and error handling foundation.
+- `073a97f` - Harden tickets and payments request handling.
+- `5cf3f99` - Harden events and organizer request handling.
+- `0a0b9a5` - Centralize provider environment config.
+- `5612b3d` - Split events service helpers.
+- `e3cc9f4` - Harden auth users and media routes.
+- `c80d1fd` - Split auth and tickets service helpers.
+- `8ef1268` - Split organizer and users service helpers.
+- `2ee6a1b` - Add structured error smoke checks.
 
 ## Integrated Mobile Commits
 
@@ -225,14 +234,12 @@ Then review:
 
 ## Next Exact Step
 
-Backend setup hardening before business-domain redesign:
+Post-O5 checkpoint before business-domain redesign:
 
-- O5-S5: extend asyncHandler and typed errors to events and organizer controllers
-- O5-S6: centralize remaining env/config for auth, storage, notification, weather, and database providers
-- O5-S7: add route validation for events, organizer, auth, users, and media
-- O5-S8: split long service files into use-cases/helpers/policies
-- O5-S9: add contract/smoke checks for structured error responses on mobile-facing routes
-- after O5 setup hardening, audit current mobile-facing workflows before changing business behavior
+- audit current attendee and organizer mobile-facing workflows
+- record expected screens, routes, request payloads, response payloads, and persistence side effects
+- compare those expectations with current backend module boundaries
+- then create the next slice plan for business-domain redesign
 - use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit
 
 ## Latest Verification
@@ -301,3 +308,4 @@ Results:
 - Phase O3 deep Modular Monolith plan recorded only. No O3 code implementation is active. The next implementation must proceed slice-by-slice: alias bootstrap, module public route mounts, shared layer, low-risk pilot layering, medium modules, core modules, event/ticket/payment modules, media/storage/organizer/admin modules, legacy import cleanup, then legacy shim archive.
 - Phase O4 structure checkpoint completed on 2026-06-09: Docker Postgres and Elasticsearch were running, migrations were already applied, full backend smoke sequence passed, Elasticsearch reindexed 18 events, attendee compile/install passed, organizer compile/install passed after retrying install alone, server CodeGraph was synced and up to date, server working tree was clean, and tag `backend-refactor-structure-complete` was created at commit `07565ad`.
 - Phase O5-S1 through O5-S4 completed on 2026-06-09: console bridge now mirrors existing console output into `logs/app.log`, request ids are attached to responses and HTTP logs, shared errors/global error middleware/asyncHandler are in place, request validation middleware and env config foundation are in place, and tickets/payments are the first controller pilot using validation plus typed errors. Verification passed: full backend smoke sequence, validation runtime probe, CodeGraph sync. Server commits: `a9ace1d`, `073a97f`.
+- Phase O5-S5 through O5-S9 completed on 2026-06-09: events/organizer/auth/users/media routes and controllers now use shared validation/error handling where safe, provider env access is centralized through shared config getters, events/auth/tickets/organizer/users services were split into helpers/policies/builders, and structured error smoke coverage was added. Verification passed: `git diff --check`, `npm run ci:check`, `npm run db:smoke:structured-errors`, `npm run db:smoke:auth`, `npm run db:smoke:events`, `npm run db:smoke:organizer_profiles`, `npm run db:smoke:users`, `npm run db:smoke:media`, `npm run db:smoke:storage-media`, `npm run db:smoke:tickets`, `npm run db:smoke:transactions`, `npm run db:smoke:postgres-write-paths`, `npm run db:smoke:notifications`, and CodeGraph sync/status. Final server CodeGraph stats: 285 files, 1,269 nodes, 1,512 edges, index up to date. Server commits: `5cf3f99`, `0a0b9a5`, `5612b3d`, `e3cc9f4`, `c80d1fd`, `8ef1268`, `2ee6a1b`.
