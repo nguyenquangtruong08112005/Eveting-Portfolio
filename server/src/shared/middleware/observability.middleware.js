@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const logger = require('@/shared/logger');
 
 const metricsStore = {
@@ -17,6 +18,13 @@ function observabilityMiddleware(req, res, next) {
   }
 
   const startTime = process.hrtime();
+
+  // Extract or generate request ID/correlation ID
+  const requestId = req.headers['x-request-id'] || req.headers['x-correlation-id'] || crypto.randomUUID();
+  req.id = requestId;
+  req.correlationId = requestId;
+  res.setHeader('x-request-id', requestId);
+  res.setHeader('x-correlation-id', requestId);
 
   res.on('finish', () => {
     const durationDiff = process.hrtime(startTime);
@@ -40,13 +48,17 @@ function observabilityMiddleware(req, res, next) {
       status,
       durationMs,
       ip: req.ip || req.headers['x-forwarded-for'] || (req.socket ? req.socket.remoteAddress : ''),
-      userAgent: req.headers['user-agent']
+      userAgent: req.headers['user-agent'],
+      requestId
     });
 
     recordMetric(method, route, status, durationSec);
   });
 
-  next();
+  // Run next in the context of AsyncLocalStorage to propagate requestId to all logs
+  logger.asyncLocalStorage.run({ requestId }, () => {
+    next();
+  });
 }
 
 function escapeLabelValue(val) {

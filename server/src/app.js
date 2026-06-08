@@ -17,6 +17,7 @@ var authRouter = require('@/modules/auth').router;
 var storageRouter = require('@/modules/storage').router;
 var activeStorageProvider = require('@/providers/storage');
 const { observabilityMiddleware, metricsHandler } = require('@/shared/middleware/observability.middleware');
+const { notFoundHandler, globalErrorHandler } = require('@/shared/middleware/error.middleware');
 var app = express();
 
 app.set('trust proxy', 1);
@@ -60,5 +61,8 @@ app.get('/public/:key(*)', async (req, res) => {
     res.status(404).json({ error: 'Not found' });
   }
 });
+
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
 
 module.exports = app;
