@@ -1,3 +1,4 @@
+const { BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError } = require('@/shared/errors');
 const backendAuthProvider = require('@/providers/auth/backend.auth.provider');
 const authRepository = require('@/providers/database/postgres.auth.repository');
 const userProfileRepository = require('@/providers/database/postgres.user.repository');
@@ -79,23 +80,17 @@ async function register({ email, password, name, role }) {
   const ALLOWED_ROLES = new Set(['user', 'organizer']);
   const safeRole = role || 'user';
   if (!ALLOWED_ROLES.has(safeRole)) {
-    const err = new Error(`Invalid role '${role}'. Allowed roles: user, organizer`);
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError(`Invalid role '${role}'. Allowed roles: user, organizer`);
   }
 
   const existing = await authRepository.findUserByEmail(email);
   if (existing) {
-    const err = new Error('Email already registered');
-    err.statusCode = 409;
-    throw err;
+    throw new ConflictError('Email already registered');
   }
 
   var existingProfile = await userProfileRepository.findUserByEmail(email);
   if (existingProfile && existingProfile.email && existingProfile.email.trim() !== '') {
-    const err = new Error('Email belongs to an existing profile. Use password reset or social login to claim this account.');
-    err.statusCode = 409;
-    throw err;
+    throw new ConflictError('Email belongs to an existing profile. Use password reset or social login to claim this account.');
   }
 
   const passwordHash = await backendAuthProvider.hashPassword(password);
@@ -106,9 +101,7 @@ async function register({ email, password, name, role }) {
     roles: [safeRole],
   });
   if (!uid) {
-    const err = new Error('Email already registered');
-    err.statusCode = 409;
-    throw err;
+    throw new ConflictError('Email already registered');
   }
 
   const { accessToken, refreshToken, refreshTokenHash } = makeTokens(uid, email, [safeRole]);
@@ -132,22 +125,16 @@ async function register({ email, password, name, role }) {
 async function login({ email, password }) {
   const user = await authRepository.findUserByEmail(email);
   if (!user) {
-    const err = new Error('Invalid email or password');
-    err.statusCode = 401;
-    throw err;
+    throw new UnauthorizedError('Invalid email or password');
   }
 
   if (!user.is_active) {
-    const err = new Error('Account is deactivated');
-    err.statusCode = 403;
-    throw err;
+    throw new ForbiddenError('Account is deactivated');
   }
 
   const valid = await backendAuthProvider.verifyPassword(password, user.password_hash);
   if (!valid) {
-    const err = new Error('Invalid email or password');
-    err.statusCode = 401;
-    throw err;
+    throw new UnauthorizedError('Invalid email or password');
   }
 
   const { accessToken, refreshToken, refreshTokenHash } = makeTokens(
@@ -174,30 +161,22 @@ async function refreshToken(refreshTokenRaw) {
   const hash = backendAuthProvider.hashRefreshToken(refreshTokenRaw);
   const session = await authRepository.findSessionByRefreshHash(hash);
   if (!session) {
-    const err = new Error('Invalid refresh token');
-    err.statusCode = 401;
-    throw err;
+    throw new UnauthorizedError('Invalid refresh token');
   }
 
   if (session.revoked_at) {
-    const err = new Error('Refresh token revoked');
-    err.statusCode = 401;
-    throw err;
+    throw new UnauthorizedError('Refresh token revoked');
   }
 
   if (new Date() > new Date(session.expires_at)) {
-    const err = new Error('Refresh token expired');
-    err.statusCode = 401;
-    throw err;
+    throw new UnauthorizedError('Refresh token expired');
   }
 
   await authRepository.revokeSession(session.id);
 
   const user = await authRepository.findUserById(session.user_id);
   if (!user) {
-    const err = new Error('User not found');
-    err.statusCode = 404;
-    throw err;
+    throw new NotFoundError('User not found');
   }
 
   const { accessToken, refreshToken, refreshTokenHash } = makeTokens(
@@ -268,15 +247,11 @@ async function socialLogin({ email, name, role, profilePicUrl }) {
   const ALLOWED_ROLES = new Set(['user', 'organizer']);
   const safeRole = role || 'user';
   if (!ALLOWED_ROLES.has(safeRole)) {
-    const err = new Error(`Invalid role '${role}'. Allowed roles: user, organizer`);
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError(`Invalid role '${role}'. Allowed roles: user, organizer`);
   }
 
   if (!email) {
-    const err = new Error('Social provider did not return an email address');
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError('Social provider did not return an email address');
   }
 
   let user = await authRepository.findUserByEmail(email);
@@ -305,15 +280,11 @@ async function socialLogin({ email, name, role, profilePicUrl }) {
   }
 
   if (!user) {
-    const err = new Error('Unable to create backend auth user from social login');
-    err.statusCode = 500;
-    throw err;
+    throw new Error('Unable to create backend auth user from social login');
   }
 
   if (!user.is_active) {
-    const err = new Error('Account is deactivated');
-    err.statusCode = 403;
-    throw err;
+    throw new ForbiddenError('Account is deactivated');
   }
 
   if (safeRole !== 'user' && (!user.roles || !user.roles.includes(safeRole))) {
@@ -388,9 +359,7 @@ async function googleLogin({ idToken, role }) {
     const profilePicUrl = payload.picture || '';
     return await socialLogin({ email, name, role, profilePicUrl });
   } catch (error) {
-    const err = new Error(error.message || 'Invalid Google ID token');
-    err.statusCode = error.statusCode || 401;
-    throw err;
+    throw new UnauthorizedError(error.message || 'Invalid Google ID token');
   }
 }
 
@@ -442,9 +411,7 @@ async function facebookLogin({ accessToken, role }) {
     const profilePicUrl = payload.picture?.data?.url || '';
     return await socialLogin({ email, name, role, profilePicUrl });
   } catch (error) {
-    const err = new Error(error.message || 'Invalid Facebook access token');
-    err.statusCode = error.statusCode || 401;
-    throw err;
+    throw new UnauthorizedError(error.message || 'Invalid Facebook access token');
   }
 }
 
@@ -480,22 +447,16 @@ async function requestPasswordReset(email) {
 
 async function confirmPasswordReset(token, newPassword) {
   if (!token || !newPassword) {
-    const err = new Error('Token and newPassword are required');
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError('Token and newPassword are required');
   }
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const dbToken = await authRepository.findTokenByHash(tokenHash, 'password_reset');
   if (!dbToken || dbToken.used_at || new Date() > new Date(dbToken.expires_at)) {
-    const err = new Error('Invalid or expired token');
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError('Invalid or expired token');
   }
   const user = await authRepository.findUserByEmail(dbToken.email);
   if (!user) {
-    const err = new Error('User not found');
-    err.statusCode = 404;
-    throw err;
+    throw new NotFoundError('User not found');
   }
   const passwordHash = await backendAuthProvider.hashPassword(newPassword);
   await authRepository.updateUserPassword(user.id, passwordHash);
@@ -527,16 +488,12 @@ async function requestEmailVerification(email) {
 
 async function confirmEmailVerification(token) {
   if (!token) {
-    const err = new Error('Token is required');
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError('Token is required');
   }
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const dbToken = await authRepository.findTokenByHash(tokenHash, 'email_verification');
   if (!dbToken || dbToken.used_at || new Date() > new Date(dbToken.expires_at)) {
-    const err = new Error('Invalid or expired token');
-    err.statusCode = 400;
-    throw err;
+    throw new BadRequestError('Invalid or expired token');
   }
   await authRepository.verifyUserEmail(dbToken.email);
   await authRepository.markTokenUsed(dbToken.id);
