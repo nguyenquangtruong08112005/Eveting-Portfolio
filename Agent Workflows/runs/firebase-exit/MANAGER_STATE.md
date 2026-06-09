@@ -236,6 +236,7 @@ Then review:
 - security gate completed after implementation:
   - functional check
   - OWASP Top 10 scan
+  - CI/CD tool scan when configured, including Trivy where practical
   - hardening review
   - attacker mindset
   - defense design

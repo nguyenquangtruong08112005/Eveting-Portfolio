@@ -39,6 +39,57 @@ Minimum expectations:
 - Error responses do not expose secrets, stack traces, tokens, provider keys, or database URLs.
 - New dependencies are justified and checked before commit.
 
+## 2.1 CI/CD Security Tooling
+
+If CI/CD is available, add automated scanners where practical. Automated scans do not replace manual review, but they should catch common dependency, container, filesystem, secret, and IaC issues.
+
+Recommended baseline:
+
+- Trivy:
+  - filesystem scan for source/config/IaC:
+    - `trivy fs --scanners vuln,secret,misconfig .`
+  - dependency vulnerability scan from lockfiles.
+  - container image scan when Docker images are built:
+    - `trivy image <image-name>`
+- `npm audit` or equivalent Node dependency audit:
+  - useful for `Server-2025-Eventing`.
+  - treat high/critical runtime dependency findings as blockers unless accepted with reason.
+- GitHub CodeQL, if GitHub Actions is used:
+  - JavaScript/Node analysis for backend.
+  - Kotlin/Java analysis for Android if configured.
+- Semgrep:
+  - useful for custom rules around auth bypass, SSRF, command injection, unsafe redirects, and insecure crypto.
+- Gitleaks or Trivy secret scanner:
+  - scan for committed secrets, tokens, private keys, provider credentials, `.env` leaks.
+- IaC scanners:
+  - Trivy misconfig for Terraform, Docker Compose, Kubernetes, and YAML.
+  - Checkov can be added later for deeper Terraform/Kubernetes coverage.
+- Android-specific checks:
+  - Gradle dependency audit where practical.
+  - verify release builds do not embed server-side secrets.
+  - verify `google-services.json`, OneSignal app id, and Mapbox public token handling match the accepted risk model.
+
+Suggested CI stages:
+
+```text
+1. lint / syntax / compile
+2. unit or smoke tests
+3. dependency audit
+4. Trivy filesystem scan
+5. Trivy image scan, if an image is built
+6. secret scan
+7. IaC misconfiguration scan
+8. artifact upload only if all blocking checks pass
+```
+
+Blocking policy:
+
+- Block on critical/high vulnerabilities in runtime dependencies unless explicitly accepted.
+- Block on detected secrets in tracked source.
+- Block on auth/access-control regressions.
+- Block on IaC that exposes databases, metrics, admin routes, or storage buckets publicly without an explicit exception.
+- Warn, but do not automatically block, on dev-only sandbox credentials if they are intentionally documented as public and not reused in production.
+
 ## 3. Hardening Review
 
 Review:
@@ -103,6 +154,7 @@ Every manager verification note after implementation must include:
 Security Verification Gate:
 - Functional check: pass | fail | not run + reason
 - OWASP Top 10 scan: pass | findings
+- CI/CD tool scan: pass | findings | not configured + reason
 - Hardening review: pass | findings
 - Attacker mindset: pass | findings
 - Defense design: fixed | accepted | deferred | blocker

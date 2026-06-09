@@ -255,7 +255,14 @@ Minimum report sections:
    - security misconfiguration
    - sensitive data exposure
    - dependency vulnerabilities
-3. Hardening review:
+3. CI/CD security tool scan when configured:
+   - Trivy filesystem/dependency/misconfiguration scan
+   - Trivy image scan if Docker images are built
+   - npm audit or equivalent dependency audit
+   - CodeQL/Semgrep where available
+   - Gitleaks or Trivy secret scan
+   - IaC scan for Terraform, Docker Compose, Kubernetes, and YAML
+4. Hardening review:
    - input validation
    - output encoding
    - rate limiting
@@ -264,8 +271,8 @@ Minimum report sections:
    - logging and audit trail
    - least privilege
    - network segmentation
-4. Attacker mindset.
-5. Defense design.
+5. Attacker mindset.
+6. Defense design.
 
 Do not accept or commit a slice with unresolved security blockers. If a risk is not fixed immediately, record whether it is accepted temporarily or deferred as a named follow-up task.
 
