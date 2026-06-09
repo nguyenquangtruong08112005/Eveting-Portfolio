@@ -55,6 +55,7 @@ Next phase: add contract smokes for the audited mobile-facing workflows, then pl
 - Phase O4 structure checkpoint verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o4-structure-checkpoint-verification.md`
 - Phase O5 backend setup hardening: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o5-backend-setup-hardening.md`
 - Phase O6 mobile-facing workflow audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o6-mobile-facing-workflow-audit.md`
+- Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
 - `main` is not the integration target; the user will merge manually after the system runs correctly.
@@ -232,6 +233,12 @@ Then review:
 - no event/topic/name drift
 - no new direct Firebase import outside adapters/providers unless intentionally deferred
 - no package changes unless explicitly required by the slice
+- security gate completed after implementation:
+  - functional check
+  - OWASP Top 10 scan
+  - hardening review
+  - attacker mindset
+  - defense design
 
 ## Next Exact Step
 

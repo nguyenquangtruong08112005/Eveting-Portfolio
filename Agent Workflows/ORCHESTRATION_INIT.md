@@ -85,6 +85,7 @@ Required output:
 - summary
 - verification commands/results
 - compatibility notes
+- security notes using `Agent Workflows/security-verification-gate.md` when implementation touched runtime behavior
 - risks
 - next exact step
 ```
@@ -234,6 +235,39 @@ Before accepting any worker output:
 5. `node --check` on changed JavaScript files
 6. Confirm public payloads, event names, route contracts, and env keys are unchanged unless approved
 7. Confirm no unrelated repo/file changes
+
+For every implementation slice, also run the security gate in:
+
+```text
+Agent Workflows/security-verification-gate.md
+```
+
+Minimum report sections:
+
+1. Functional check.
+2. OWASP Top 10 scan:
+   - authentication bypass
+   - broken access control
+   - injection: SQL, NoSQL, command injection
+   - XSS
+   - CSRF
+   - SSRF
+   - security misconfiguration
+   - sensitive data exposure
+   - dependency vulnerabilities
+3. Hardening review:
+   - input validation
+   - output encoding
+   - rate limiting
+   - secret management
+   - encryption
+   - logging and audit trail
+   - least privilege
+   - network segmentation
+4. Attacker mindset.
+5. Defense design.
+
+Do not accept or commit a slice with unresolved security blockers. If a risk is not fixed immediately, record whether it is accepted temporarily or deferred as a named follow-up task.
 
 ## Merge Rule
 
