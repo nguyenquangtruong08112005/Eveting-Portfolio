@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, and O5 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, and O7 are complete on `staging`.
 
-Next phase: add contract smokes for the audited mobile-facing workflows, then plan business-domain redesign. Do not start business behavior rewrites until expected screens, routes, payloads, and persistence side effects are protected by tests or explicit acceptance notes.
+Next phase: add CI/CD security baseline, then fix the audited pre-business-redesign mobile-facing gaps. Do not start business behavior rewrites until expected screens, routes, payloads, and persistence side effects are protected by tests or explicit acceptance notes.
 
 ## Source Of Truth
 
@@ -55,6 +55,7 @@ Next phase: add contract smokes for the audited mobile-facing workflows, then pl
 - Phase O4 structure checkpoint verification: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o4-structure-checkpoint-verification.md`
 - Phase O5 backend setup hardening: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o5-backend-setup-hardening.md`
 - Phase O6 mobile-facing workflow audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o6-mobile-facing-workflow-audit.md`
+- Phase O7 mobile contract smokes: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o7-mobile-contract-smokes.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
@@ -243,11 +244,11 @@ Then review:
 
 ## Next Exact Step
 
-Post-O6 checkpoint before business-domain redesign:
+Post-O7 checkpoint before business-domain redesign:
 
-- add contract smoke tests for the most fragile audited shapes
-- prioritize: auth response, `/users/me`, event list/search/nearby/recommendations, organizer my-events, QR check-in legacy error, media JSON+multipart, ticket/payment flow
-- then create the next slice plan for business-domain redesign
+- add O8 CI/CD security baseline for server CI
+- prioritize: `npm audit`, Trivy filesystem scan where practical, and clear non-secret security gate output
+- then run O9 worker slices for the audited mobile-facing gaps
 - use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit
 
 ## Latest Verification
@@ -318,3 +319,4 @@ Results:
 - Phase O5-S1 through O5-S4 completed on 2026-06-09: console bridge now mirrors existing console output into `logs/app.log`, request ids are attached to responses and HTTP logs, shared errors/global error middleware/asyncHandler are in place, request validation middleware and env config foundation are in place, and tickets/payments are the first controller pilot using validation plus typed errors. Verification passed: full backend smoke sequence, validation runtime probe, CodeGraph sync. Server commits: `a9ace1d`, `073a97f`.
 - Phase O5-S5 through O5-S9 completed on 2026-06-09: events/organizer/auth/users/media routes and controllers now use shared validation/error handling where safe, provider env access is centralized through shared config getters, events/auth/tickets/organizer/users services were split into helpers/policies/builders, and structured error smoke coverage was added. Verification passed: `git diff --check`, `npm run ci:check`, `npm run db:smoke:structured-errors`, `npm run db:smoke:auth`, `npm run db:smoke:events`, `npm run db:smoke:organizer_profiles`, `npm run db:smoke:users`, `npm run db:smoke:media`, `npm run db:smoke:storage-media`, `npm run db:smoke:tickets`, `npm run db:smoke:transactions`, `npm run db:smoke:postgres-write-paths`, `npm run db:smoke:notifications`, and CodeGraph sync/status. Final server CodeGraph stats: 285 files, 1,269 nodes, 1,512 edges, index up to date. Server commits: `5cf3f99`, `0a0b9a5`, `5612b3d`, `e3cc9f4`, `c80d1fd`, `8ef1268`, `2ee6a1b`.
 - Phase O6 mobile-facing workflow audit completed on 2026-06-09: OpenCode workers audited attendee and organizer app API dependencies, O5 worker verification passed, and manager corrected false positives against current source. Confirmed guardrails: auth response shape, `/users/me` mobile field mapping, event list/search/nearby wrapper, recommendations bare array, organizer my-events `{data:[...]}`, QR check-in legacy error shape, media JSON plus multipart support, ticket/payment write path. Confirmed gaps: attendee address not persisted on profile update, nearby `distanceKm` discarded by mobile, organizer attendee import result ignored, organizer broadcast sent count ignored, organizer cancel-event server capability unused, logout-all unused.
+- Phase O7 mobile contract smoke completed on 2026-06-11: `scripts/smoke.mobile-contracts.cjs` protects auth response shape, `/users/me`, event list/search/nearby wrappers, recommendations bare array, organizer my-events `{data:[...]}`, QR invalid legacy error shape, media JSON route/access-control path, and ticket/payment entry points. Verification passed: `node --check scripts\smoke.mobile-contracts.cjs`, `git diff --check`, `npm run ci:check`, and `npm run db:smoke:mobile-contracts` with 13 pass, 0 fail, 2 skip. Smoke-created `mobile_contract_%@test.com` rows were verified clean from `auth_users`, `user_profiles`, and `auth_tokens`.
