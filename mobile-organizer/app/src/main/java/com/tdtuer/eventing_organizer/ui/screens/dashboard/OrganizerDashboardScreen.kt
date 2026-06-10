@@ -1,5 +1,6 @@
 package com.tdtuer.eventing_organizer.ui.screens.dashboard
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -40,6 +41,45 @@ fun OrganizerDashboardScreen(
     viewModel: OrganizerDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var eventToCancel by remember { mutableStateOf<MyEventDto?>(null) }
+
+    LaunchedEffect(uiState.successMessage, uiState.error) {
+        uiState.successMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessage()
+        }
+        uiState.error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessage()
+        }
+    }
+
+    if (eventToCancel != null) {
+        AlertDialog(
+            onDismissRequest = { eventToCancel = null },
+            title = { Text("Hủy sự kiện") },
+            text = { Text("Bạn có chắc chắn muốn hủy sự kiện \"${eventToCancel?.name}\" không? Hành động này không thể hoàn tác.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        eventToCancel?.let { viewModel.cancelEvent(it.id) }
+                        eventToCancel = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Xác nhận", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { eventToCancel = null }
+                ) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     // State cho Menu Bottom Sheet
     var showMenuSheet by remember { mutableStateOf(false) }
@@ -169,6 +209,9 @@ fun OrganizerDashboardScreen(
                                             event.id
                                         )
                                     )
+                                },
+                                onCancelClick = {
+                                    eventToCancel = event
                                 }
                             )
                         }
@@ -351,7 +394,11 @@ fun StatsCard(title: String, value: String, modifier: Modifier = Modifier, color
 }
 
 @Composable
-fun OrganizerEventCard(event: MyEventDto, onClick: () -> Unit) {
+fun OrganizerEventCard(
+    event: MyEventDto,
+    onClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -400,6 +447,20 @@ fun OrganizerEventCard(event: MyEventDto, onClick: () -> Unit) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
+            }
+
+            val statusLower = event.status.lowercase()
+            if (statusLower == "active" || statusLower == "pending") {
+                IconButton(
+                    onClick = onCancelClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cancel,
+                        contentDescription = "Hủy sự kiện",
+                        tint = Color.Red
+                    )
+                }
             }
         }
     }

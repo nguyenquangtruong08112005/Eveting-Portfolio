@@ -281,6 +281,9 @@ interface EventApiService {
     @DELETE("promotions/organizer/{id}")
     suspend fun deletePromotion(@Path("id") id: String): Response<Unit>
 
+    @DELETE("events/{id}")
+    suspend fun cancelEvent(@Path("id") eventId: String): Response<ResponseBody>
+
     @Multipart
     @POST("storage/upload")
     suspend fun uploadImage(

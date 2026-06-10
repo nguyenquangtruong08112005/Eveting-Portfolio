@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.domain.model.Result
+import com.tdtuer.eventing_organizer.data.repository.EventRepository
 import com.tdtuer.eventing_organizer.domain.usecase.authentication.SignOutUseCase // Nhớ import UseCase
 import com.tdtuer.eventing_organizer.domain.usecase.organizer.GetDashboardStatsUseCase
 import com.tdtuer.eventing_organizer.domain.usecase.organizer.GetMyEventsUseCase
@@ -22,14 +23,16 @@ data class DashboardUiState(
     val isLoadingMore: Boolean = false,
     val stats: DashboardStatsResponse? = null,
     val myEvents: List<MyEventDto> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val successMessage: String? = null
 )
 
 @HiltViewModel
 class OrganizerDashboardViewModel @Inject constructor(
     private val getDashboardStatsUseCase: GetDashboardStatsUseCase,
     private val getMyEventsUseCase: GetMyEventsUseCase,
-    private val signOutUseCase: SignOutUseCase // Inject thêm SignOutUseCase
+    private val signOutUseCase: SignOutUseCase, // Inject thêm SignOutUseCase
+    private val eventRepository: EventRepository
 ) : ViewModel() {
 
     // ... (Phần code cũ giữ nguyên) ...
@@ -106,5 +109,26 @@ class OrganizerDashboardViewModel @Inject constructor(
             signOutUseCase()
             onSuccess()
         }
+    }
+
+    fun cancelEvent(eventId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
+            val result = eventRepository.cancelEvent(eventId)
+            when (result) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(isLoading = false, successMessage = "Hủy sự kiện thành công") }
+                    loadData(isRefresh = true)
+                }
+                is Result.Failure -> {
+                    _uiState.update { it.copy(isLoading = false, error = result.exception.message ?: "Có lỗi xảy ra khi hủy sự kiện") }
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun clearMessage() {
+        _uiState.update { it.copy(successMessage = null, error = null) }
     }
 }

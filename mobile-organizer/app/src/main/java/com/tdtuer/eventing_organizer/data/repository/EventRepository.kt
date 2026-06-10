@@ -114,4 +114,5 @@ interface EventRepository {
     suspend fun createPromotion(request: CreatePromotionRequest): Result<Unit>
     suspend fun updatePromotion(id: String, request: UpdatePromotionRequest): Result<Unit>
     suspend fun deletePromotion(id: String): Result<Unit>
+    suspend fun cancelEvent(eventId: String): Result<Unit>
 }

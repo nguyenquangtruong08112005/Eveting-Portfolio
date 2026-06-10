@@ -647,5 +647,13 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-
+    override suspend fun cancelEvent(eventId: String): Result<Unit> {
+        return try {
+            val response = apiService.cancelEvent(eventId)
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Failure(Exception("Cancel failed: ${response.code()}"))
+        } catch (e: Exception) {
+            Result.Failure(e)
+        }
+    }
 }
