@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, and O9 are complete on `staging`.
 
-Next phase: business redesign planning can begin from the `staging` checkpoint after user confirmation. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: Phase P1 business redesign planning is now opened from the `staging` checkpoint. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -58,6 +58,7 @@ Next phase: business redesign planning can begin from the `staging` checkpoint a
 - Phase O7 mobile contract smokes: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o7-mobile-contract-smokes.md`
 - Phase O8 CI security baseline: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o8-ci-security-baseline.md`
 - Phase O9 pre-business-redesign gap closure: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o9-pre-business-redesign-gaps.md`
+- Phase P1 business redesign plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-business-redesign-plan.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
@@ -254,10 +255,11 @@ Then review:
 
 ## Next Exact Step
 
-Post-O9 checkpoint before business-domain redesign:
+Post-O9 checkpoint and P1 business redesign entry:
 
 - O9 mobile-facing gaps are closed and committed on `staging`.
-- Next recommended action is a business redesign/audit phase, not more infrastructure restructuring.
+- Phase P1 business redesign plan is saved and treats web as a full Eventing product, not only an admin panel.
+- Next recommended action is P1.0 read-only domain audit, not implementation.
 - Keep `npm run db:smoke:mobile-contracts` as the guardrail before and after business behavior changes.
 - Keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking.
 - Use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit.
@@ -333,3 +335,4 @@ Results:
 - Phase O7 mobile contract smoke completed on 2026-06-11: `scripts/smoke.mobile-contracts.cjs` protects auth response shape, `/users/me`, event list/search/nearby wrappers, recommendations bare array, organizer my-events `{data:[...]}`, QR invalid legacy error shape, media JSON route/access-control path, and ticket/payment entry points. Verification passed: `node --check scripts\smoke.mobile-contracts.cjs`, `git diff --check`, `npm run ci:check`, and `npm run db:smoke:mobile-contracts` with 13 pass, 0 fail, 2 skip. Smoke-created `mobile_contract_%@test.com` rows were verified clean from `auth_users`, `user_profiles`, and `auth_tokens`.
 - Phase O8 CI security baseline completed on 2026-06-11: server CI now has a report-only `security-baseline` job with blocking checkout/setup/install and non-blocking scan steps for `npm audit` and pinned Trivy filesystem scan. Verification passed: `git diff --check`, `npm run ci:check`, and CodeGraph sync. `npm run security:audit` intentionally exits nonzero with current known findings: 44 total vulnerabilities, including 14 high and 1 critical. Local Trivy CLI is not installed; GitHub Actions uses `aquasecurity/trivy-action@0.28.0`.
 - Phase O9 pre-business-redesign gap closure completed on 2026-06-11: attendee address persistence, attendee nearby `distanceKm`, organizer import/broadcast result display, organizer cancel-event UX, organizer logout-all, and Elasticsearch empty-index mapping guard are complete. Verification passed: server `npm run ci:check`, `npm run search:reindex`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, attendee `gradlew.bat :app:compileDebugKotlin`, organizer `git diff --check`, organizer `gradlew.bat :app:compileDebugKotlin`, and CodeGraph sync after each organizer edit.
+- Phase P1 business redesign plan opened on 2026-06-11: web is defined as a full Eventing product surface for attendees, organizers, and admins. The plan records BFF-style API boundaries, modular-monolith-first architecture, auth/RBAC priority, event/ticket/payment/notification/search/cache/security domains, Ticketbox/Eventbrite references, shadcn web direction, and P1.0 read-only domain audit as the immediate next step.
