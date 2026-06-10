@@ -34,6 +34,9 @@ interface AuthApiService {
     @POST("auth/logout")
     suspend fun logout(@Body request: LogoutRequest): Response<LogoutResponse>
 
+    @POST("auth/logout-all")
+    suspend fun logoutAll(): Response<LogoutResponse>
+
     @POST("auth/google-login")
     suspend fun googleLogin(@Body request: GoogleLoginRequest): Response<LoginResponse>
 

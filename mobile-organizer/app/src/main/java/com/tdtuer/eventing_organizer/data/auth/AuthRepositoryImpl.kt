@@ -243,6 +243,25 @@ class AuthRepositoryImpl @Inject constructor(
         tokenStore.clearTokens()
     }
 
+    override suspend fun signOutAllDevices(): Result<Unit> {
+        return try {
+            val response = authApiService.logoutAll()
+            if (response.isSuccessful) {
+                try {
+                    OneSignal.logout()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                tokenStore.clearTokens()
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Sign out all devices failed with code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
         return try {
             val response = authApiService.requestPasswordReset(PasswordResetRequest(email))

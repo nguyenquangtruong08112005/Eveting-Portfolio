@@ -36,6 +36,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -63,6 +70,51 @@ fun SettingsScreen(
     navController: NavController
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var showLogoutAllDialog by remember { mutableStateOf(false) }
+
+    val isEnglish = uiState.language == "English"
+    val titleText = if (isEnglish) "Sign Out All Devices" else "Đăng xuất tất cả thiết bị"
+    val dialogTitle = if (isEnglish) "Sign Out All Devices" else "Đăng xuất khỏi tất cả thiết bị"
+    val dialogText = if (isEnglish)
+        "Are you sure you want to sign out from all devices? This will invalidate all your sessions."
+        else "Bạn có chắc chắn muốn đăng xuất khỏi tất cả các thiết bị? Hành động này sẽ hủy tất cả các phiên làm việc của bạn."
+    val confirmText = if (isEnglish) "Confirm" else "Xác nhận"
+    val cancelText = if (isEnglish) "Cancel" else "Hủy"
+
+    if (showLogoutAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutAllDialog = false },
+            title = { Text(text = dialogTitle) },
+            text = { Text(text = dialogText) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutAllDialog = false
+                        viewModel.onLogoutAllDevicesClick(
+                            onSuccess = {
+                                val successToast = if (isEnglish) "Successfully signed out of all devices" else "Đăng xuất tất cả thiết bị thành công"
+                                Toast.makeText(context, successToast, Toast.LENGTH_SHORT).show()
+                                navController.navigate(Graph.AUTHENTICATION) {
+                                    popUpTo(Graph.MAIN_APP) { inclusive = true }
+                                }
+                            },
+                            onError = { errorMsg ->
+                                Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
+                ) {
+                    Text(confirmText, color = AppTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutAllDialog = false }) {
+                    Text(cancelText)
+                }
+            }
+        )
+    }
 
     // Lấy trạng thái hệ thống để hiển thị đúng lần đầu nếu user chưa từng cài đặt
     val systemDark = isSystemInDarkTheme()
@@ -174,6 +226,28 @@ fun SettingsScreen(
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Sign Out", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // --- Sign Out All Devices Button ---
+            Button(
+                onClick = {
+                    showLogoutAllDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppTheme.colorScheme.error.copy(alpha = 0.1f),
+                    contentColor = AppTheme.colorScheme.error
+                ),
+                elevation = ButtonDefaults.buttonElevation(0.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(titleText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
 
             Spacer(modifier = Modifier.height(24.dp))

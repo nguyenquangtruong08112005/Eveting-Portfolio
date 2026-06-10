@@ -2,6 +2,7 @@ package com.tdtuer.eventing.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing_organizer.domain.usecase.authentication.SignOutAllDevicesUseCase
 import com.tdtuer.eventing_organizer.domain.usecase.authentication.SignOutUseCase
 import com.tdtuer.eventing_organizer.domain.usecase.settings.GetThemeUseCase
 import com.tdtuer.eventing_organizer.domain.usecase.settings.SaveThemeUseCase
@@ -23,6 +24,7 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val signOutUseCase: SignOutUseCase,
+    private val signOutAllDevicesUseCase: SignOutAllDevicesUseCase,
     private val getThemeUseCase: GetThemeUseCase,
     private val saveThemeUseCase: SaveThemeUseCase
 ) : ViewModel() {
@@ -83,5 +85,17 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-
+    fun onLogoutAllDevicesClick(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            signOutAllDevicesUseCase().fold(
+                onSuccess = { onSuccess() },
+                onFailure = { error ->
+                    onError(error.localizedMessage ?: "Sign out all devices failed")
+                }
+            )
+        }
+    }
 }
