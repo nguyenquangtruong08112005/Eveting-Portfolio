@@ -193,3 +193,19 @@ data class BroadcastRequest(
     val title: String,
     val message: String
 )
+
+data class ImportAttendeesResponse(
+    @SerializedName("successCount") val successCount: Int? = null,
+    @SerializedName("failCount") val failCount: Int? = null,
+    @SerializedName("errors") val errors: List<ImportErrorDto>? = null
+)
+
+data class ImportErrorDto(
+    @SerializedName("row") val row: Any? = null,
+    @SerializedName("error") val error: String? = null
+)
+
+data class BroadcastResponse(
+    @SerializedName("success") val success: Boolean? = null,
+    @SerializedName("sentTo") val sentTo: Int? = null
+)

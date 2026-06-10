@@ -1,6 +1,8 @@
 package com.tdtuer.eventing_organizer.data.repository
 
 import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
+import com.tdtuer.eventing_organizer.data.network.model.BroadcastResponse
+import com.tdtuer.eventing_organizer.data.network.model.ImportAttendeesResponse
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
 import com.tdtuer.eventing_organizer.data.network.model.CreatePromotionRequest
@@ -103,9 +105,9 @@ interface EventRepository {
 
     suspend fun updateEvent(eventId: String, request: CreateEventRequest): Result<Unit>
 
-    suspend fun importAttendees(eventId: String, file: File): Result<Unit>
+    suspend fun importAttendees(eventId: String, file: File): Result<ImportAttendeesResponse>
     suspend fun exportAttendees(eventId: String): Result<String> // Trả về đường dẫn file
-    suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<Unit>
+    suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<BroadcastResponse>
 
     // Promotions
     fun getPromotions(): Flow<Result<List<Promotion>>>

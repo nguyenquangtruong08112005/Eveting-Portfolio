@@ -2,6 +2,8 @@ package com.tdtuer.eventing_organizer.data.network
 
 import com.tdtuer.eventing_organizer.data.network.model.BookTicketRequest
 import com.tdtuer.eventing_organizer.data.network.model.BroadcastRequest
+import com.tdtuer.eventing_organizer.data.network.model.BroadcastResponse
+import com.tdtuer.eventing_organizer.data.network.model.ImportAttendeesResponse
 import com.tdtuer.eventing_organizer.data.network.model.CheckInRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
@@ -251,7 +253,7 @@ interface EventApiService {
     suspend fun importAttendees(
         @Path("eventId") eventId: String,
         @Part file: MultipartBody.Part // Đảm bảo đúng import okhttp3.MultipartBody
-    ): Response<Unit>
+    ): Response<ImportAttendeesResponse>
 
     @GET("organizer/events/{eventId}/attendees/export")
     suspend fun exportAttendees(
@@ -262,7 +264,7 @@ interface EventApiService {
     suspend fun broadcastNotification(
         @Path("eventId") eventId: String,
         @Body request: BroadcastRequest
-    ): Response<Unit>
+    ): Response<BroadcastResponse>
 
     @GET("promotions/organizer")
     suspend fun getOrganizerPromotions(): Response<List<PromotionDto>>

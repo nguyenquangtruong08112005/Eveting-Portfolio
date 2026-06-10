@@ -7,7 +7,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
+import com.tdtuer.eventing_organizer.data.network.model.BroadcastResponse
 import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
+import com.tdtuer.eventing_organizer.data.network.model.ImportAttendeesResponse
 import com.tdtuer.eventing_organizer.data.repository.EventRepository
 import com.tdtuer.eventing_organizer.domain.model.Event
 import com.tdtuer.eventing_organizer.domain.model.Result
@@ -107,7 +109,18 @@ class EventManagementViewModel @Inject constructor(
             hideBroadcast()
             _uiState.update { it.copy(isLoading = true) }
             val result = eventRepository.broadcastNotification(eventId, title, message)
-            handleResult(result, "Đã gửi thông báo thành công!")
+            if (result is Result.Success) {
+                val sentTo = result.data.sentTo
+                val successMsg = if (sentTo != null) {
+                    "Đã gửi thông báo thành công đến $sentTo người!"
+                } else {
+                    "Đã gửi thông báo thành công!"
+                }
+                _uiState.update { it.copy(isLoading = false, successMessage = successMsg) }
+            } else {
+                val err = (result as Result.Failure).exception.message ?: "Có lỗi xảy ra"
+                _uiState.update { it.copy(isLoading = false, error = err) }
+            }
         }
     }
 
@@ -121,8 +134,47 @@ class EventManagementViewModel @Inject constructor(
             val file = uriToFile(uri)
             if (file != null) {
                 val result = eventRepository.importAttendees(eventId, file)
-                handleResult(result, "Import thành công! Đang tải lại danh sách.")
-                if (result is Result.Success) loadEventData()
+                if (result is Result.Success) {
+                    val response = result.data
+                    val successCount = response.successCount
+                    val failCount = response.failCount
+                    val errors = response.errors
+                    val successMsg = if (successCount != null && failCount != null) {
+                        var msg = "Import thành công: $successCount. Thất bại: $failCount."
+                        val firstError = errors?.firstOrNull()
+                        if (firstError != null) {
+                            val rowObj = firstError.row
+                            val hint = when (rowObj) {
+                                is Map<*, *> -> {
+                                    val email = rowObj.entries.find { it.key.toString().contains("email", ignoreCase = true) }?.value?.toString()
+                                    val name = rowObj.entries.find { it.key.toString().contains("name", ignoreCase = true) }?.value?.toString()
+                                    val rowNum = rowObj.entries.find {
+                                        val k = it.key.toString()
+                                        k.equals("row", ignoreCase = true) || k.equals("index", ignoreCase = true) || k.equals("line", ignoreCase = true)
+                                    }?.value?.toString()
+                                    email ?: name ?: rowNum ?: ""
+                                }
+                                is List<*> -> {
+                                    val email = rowObj.find { it?.toString()?.contains("@") == true }?.toString()
+                                    email ?: rowObj.firstOrNull()?.toString() ?: ""
+                                }
+                                is String -> rowObj
+                                is Number -> rowObj.toString()
+                                else -> ""
+                            }
+                            val hintStr = if (hint.isNotBlank()) " ($hint)" else ""
+                            msg += " Lỗi$hintStr: ${firstError.error ?: "Không xác định"}"
+                        }
+                        msg
+                    } else {
+                        "Import thành công! Đang tải lại danh sách."
+                    }
+                    _uiState.update { it.copy(isLoading = false, successMessage = successMsg) }
+                    loadEventData()
+                } else {
+                    val err = (result as Result.Failure).exception.message ?: "Có lỗi xảy ra"
+                    _uiState.update { it.copy(isLoading = false, error = err) }
+                }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = "Không thể đọc file") }
             }
@@ -164,15 +216,6 @@ class EventManagementViewModel @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             null
-        }
-    }
-
-    private fun handleResult(result: Result<Unit>, successMsg: String) {
-        if (result is Result.Success) {
-            _uiState.update { it.copy(isLoading = false, successMessage = successMsg) }
-        } else {
-            val err = (result as Result.Failure).exception.message ?: "Có lỗi xảy ra"
-            _uiState.update { it.copy(isLoading = false, error = err) }
         }
     }
 

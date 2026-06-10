@@ -11,6 +11,8 @@ import com.tdtuer.eventing_organizer.data.mapper.toDomainModel
 import com.tdtuer.eventing_organizer.data.network.EventApiService
 import com.tdtuer.eventing_organizer.data.network.model.AttendeeDto
 import com.tdtuer.eventing_organizer.data.network.model.BroadcastRequest
+import com.tdtuer.eventing_organizer.data.network.model.BroadcastResponse
+import com.tdtuer.eventing_organizer.data.network.model.ImportAttendeesResponse
 import com.tdtuer.eventing_organizer.data.network.model.CheckInRequest
 import com.tdtuer.eventing_organizer.data.network.model.CheckInResponse
 import com.tdtuer.eventing_organizer.data.network.model.CreateEventRequest
@@ -495,14 +497,14 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun importAttendees(eventId: String, file: File): Result<Unit> {
+    override suspend fun importAttendees(eventId: String, file: File): Result<ImportAttendeesResponse> {
         return try {
             val requestFile = file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
             val response = apiService.importAttendees(eventId, body)
             if (response.isSuccessful) {
-                Result.Success(Unit)
+                Result.Success(response.body() ?: ImportAttendeesResponse())
             } else {
                 Result.Failure(Exception("Import failed: ${response.code()} ${response.message()}"))
             }
@@ -527,12 +529,12 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<Unit> {
+    override suspend fun broadcastNotification(eventId: String, title: String, message: String): Result<BroadcastResponse> {
         return try {
             val request = BroadcastRequest(title, message)
             val response = apiService.broadcastNotification(eventId, request)
             if (response.isSuccessful) {
-                Result.Success(Unit)
+                Result.Success(response.body() ?: BroadcastResponse())
             } else {
                 Result.Failure(Exception("Broadcast failed: ${response.code()}"))
             }
