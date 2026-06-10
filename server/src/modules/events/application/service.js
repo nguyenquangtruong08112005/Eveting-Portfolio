@@ -258,7 +258,14 @@ const getRecommendations = async (userId, limit = 10) => {
     const historyIds = userData.historyEventIds || [];
 
     if (interests.length === 0) {
-        return searchEvents({ date: 'upcoming', limit: limit }).then(res => res.events);
+        try {
+            const result = await searchEvents({ date: 'upcoming', limit: limit });
+            return result.events;
+        } catch (error) {
+            console.error("Lỗi recommendations (no interests fallback):", error.message || error);
+            const fallback = await getAllEvents(1, limit);
+            return fallback.events;
+        }
     }
 
     if (!esClient) {
