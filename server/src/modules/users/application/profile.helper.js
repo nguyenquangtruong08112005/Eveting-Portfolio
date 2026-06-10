@@ -22,6 +22,7 @@ const mapUserToMobileProfile = async (userData) => {
         followersCount: userData.followersCount || 0,
         followedProfileIds: userData.followedProfileIds || [],
         aboutMe: userData.bio || "",
+        address: userData.address || "",
         interests: userData.matchingPreferences?.interests || [],
         joinedEvents: joinedEvents
     };
@@ -48,6 +49,7 @@ const buildProfileUpdateData = (updateData) => {
     if (updateData.aboutMe !== undefined) dataToUpdate.bio = updateData.aboutMe;
     if (updateData.birthDate !== undefined) dataToUpdate.birthDate = updateData.birthDate;
     if (updateData.interests !== undefined) { dataToUpdate['matchingPreferences.interests'] = updateData.interests; }
+    if (updateData.address !== undefined) dataToUpdate.address = updateData.address;
     return dataToUpdate;
 };
 

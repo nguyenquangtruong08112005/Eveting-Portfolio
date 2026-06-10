@@ -21,10 +21,6 @@ var FIELD_MAP = {
 
 function rowToFirebaseDoc(row, includeId) {
   if (!row) return null;
-  if (row.raw_data) {
-    if (includeId) return { id: row.id, ...row.raw_data };
-    return row.raw_data;
-  }
   var doc = {};
   if (includeId && row.id) doc.id = row.id;
   if (row.email) doc.email = row.email;
@@ -45,6 +41,9 @@ function rowToFirebaseDoc(row, includeId) {
   if (row.shared_media && Array.isArray(row.shared_media) && row.shared_media.length > 0) doc.sharedMedia = row.shared_media;
   if (row.fcm_tokens && row.fcm_tokens.length > 0) doc.fcmTokens = row.fcm_tokens;
   if (row.organizer_info) doc.organizerInfo = row.organizer_info;
+  if (row.raw_data) {
+    doc = { ...doc, ...row.raw_data };
+  }
   return doc;
 }
 
@@ -175,6 +174,8 @@ var updateUser = async function (userId, updateData, fcmToken) {
       idx++;
     } else if (key === 'id') {
       continue;
+    } else if (key === 'address') {
+      // raw_data-only field, no column update needed
     } else {
       // attempt direct snake_case conversion
       var snake = key.replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); });
@@ -190,8 +191,6 @@ var updateUser = async function (userId, updateData, fcmToken) {
     idx++;
   }
 
-  if (sets.length === 0) return;
-
   var rawMerge = {};
   for (var key in updateData) {
     if (key === 'id') continue;
@@ -202,6 +201,8 @@ var updateUser = async function (userId, updateData, fcmToken) {
     params.push(JSON.stringify(rawMerge));
     idx++;
   }
+
+  if (sets.length === 0) return;
 
   sets.push('updated_at = NOW()');
   params.push(userId);
@@ -418,6 +419,9 @@ var updateUserFields = async function (userId, updateData) {
     if (key in FIELD_MAP) {
       sets.push(FIELD_MAP[key] + ' = $' + idx);
       params.push(updateData[key]);
+    } else if (key === 'id' || key === 'address') {
+      // id is excluded from rawMerge, address is raw_data-only
+      continue;
     } else {
       var snake = key.replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); });
       sets.push(snake + ' = $' + idx);
@@ -425,8 +429,6 @@ var updateUserFields = async function (userId, updateData) {
     }
     idx++;
   }
-  if (sets.length === 0) return;
-
   var rawMerge = {};
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
@@ -438,6 +440,8 @@ var updateUserFields = async function (userId, updateData) {
     params.push(JSON.stringify(rawMerge));
     idx++;
   }
+
+  if (sets.length === 0) return;
 
   sets.push('updated_at = NOW()');
   params.push(userId);

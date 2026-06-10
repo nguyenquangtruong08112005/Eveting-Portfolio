@@ -323,9 +323,38 @@ async function run() {
   });
 
   // -----------------------------------------------------------------------
-  // Step 3: Verify /users/me contract shape
+  // Step 3: PUT /users/me with address then GET /users/me contract shape
   // -----------------------------------------------------------------------
-  console.log('--- Step 3: /users/me contract ---');
+  console.log('--- Step 3: /users/me address round-trip + contract shape ---');
+
+  const syntheticAddress = `Smoke Test Address ${Date.now()}`;
+
+  await check('PUT /users/me with address returns 200 and preserves existing fields', async () => {
+    const r = await httpRequest('PUT', '/users/me', {
+      headers: authHeaders(userToken),
+      body: { address: syntheticAddress },
+    });
+    assertResponseShape(r, 200);
+    const u = r.data;
+    assert(u.address === syntheticAddress, `response address mismatch: ${u.address} !== ${syntheticAddress}`);
+    assert(typeof u.userName === 'string' && u.userName.length > 0, 'userName should exist after address update');
+    assert(typeof u.profilePictureUrl === 'string', 'profilePictureUrl should exist after address update');
+    assert(typeof u.aboutMe === 'string', 'aboutMe should exist after address update');
+    assert(typeof u.isOrganizer === 'boolean', 'isOrganizer should remain boolean');
+    assert(typeof u.followingCount === 'number', 'followingCount should remain number');
+    assert(typeof u.followersCount === 'number', 'followersCount should remain number');
+    assert(Array.isArray(u.interests), 'interests should remain an array');
+  });
+
+  await check('GET /users/me returns same address after PUT', async () => {
+    const r = await httpRequest('GET', '/users/me', { headers: authHeaders(userToken) });
+    assertResponseShape(r, 200);
+    const u = r.data;
+    assert(u.address === syntheticAddress, `GET address mismatch: ${u.address} !== ${syntheticAddress}`);
+    assert(typeof u.userName === 'string' && u.userName.length > 0, 'userName should still be present on GET');
+    assert(typeof u.aboutMe === 'string', 'aboutMe should still be present on GET');
+  });
+
   await check('GET /users/me returns 200 with userName, profilePictureUrl, aboutMe', async () => {
     const r = await httpRequest('GET', '/users/me', { headers: authHeaders(userToken) });
     assertResponseShape(r, 200);

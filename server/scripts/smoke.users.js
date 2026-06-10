@@ -36,6 +36,24 @@ require('../src/alias-bootstrap');
     console.log('');
     var emailUser = await userRepo.findUserByEmail(user ? user.email : 'none@test.com');
     console.log('findUserByEmail: ' + (emailUser ? 'found' : 'not found'));
+    var smokeAddress = process.env.USER_SMOKE_ADDRESS;
+    if (smokeAddress && smokeId) {
+      console.log('');
+      console.log('--- Address persistence test ---');
+      await userRepo.updateUser(smokeId, { address: smokeAddress });
+      var updatedUser = await userRepo.getUserDataById(smokeId);
+      var storedAddress = updatedUser ? updatedUser.address : undefined;
+      console.log('Stored address: ' + JSON.stringify(storedAddress));
+      if (storedAddress === smokeAddress) {
+        console.log('PASS: address matches');
+      } else {
+        console.log('FAIL: expected ' + JSON.stringify(smokeAddress) + ', got ' + JSON.stringify(storedAddress));
+        process.exitCode = 1;
+      }
+    } else {
+      console.log('');
+      console.log('Set USER_SMOKE_ADDRESS env var to also test address round-trip.');
+    }
   } else {
     console.log('Set USER_SMOKE_ID env var to test a specific user.');
     console.log('Listing all users is not available as getUsersByIds requires IDs.');

@@ -7,6 +7,7 @@ const validateProfileUpdate = [
     body('coverPhotoUrl').optional().isURL().withMessage('Cover photo must be a valid URL'),
     body('profilePicUrl').optional().isURL().withMessage('Profile picture must be a valid URL'),
     body('interests').optional().isArray().withMessage('Interests must be an array of strings'),
+    body('address').optional().isString().withMessage('Address must be a string'),
     
     (req, res, next) => {
         const errors = validationResult(req);
