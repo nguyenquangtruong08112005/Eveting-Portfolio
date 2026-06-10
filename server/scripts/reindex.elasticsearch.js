@@ -90,7 +90,31 @@ async function run() {
   }
 
   await esClient.indices.delete({ index: ELASTIC_INDEX, ignore_unavailable: true });
-  await esClient.indices.create({ index: ELASTIC_INDEX });
+  await esClient.indices.create({
+    index: ELASTIC_INDEX,
+    mappings: {
+      dynamic: true,
+      properties: {
+        date: { type: 'long' },
+        name: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        description: { type: 'text' },
+        tags: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+        category: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+        city: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        minPrice: { type: 'double' },
+        featuredProfileNames: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+        featuredProfileIds: { type: 'keyword' },
+        status: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        visibility: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        imageUrl: { type: 'keyword' },
+        bannerUrl: { type: 'keyword' },
+        videoUrl: { type: 'keyword' },
+        location: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        venueName: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        eventType: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+      },
+    },
+  });
 
   const result = await query(
     "SELECT * FROM events WHERE status = 'active' AND visibility = 'public' ORDER BY date ASC"
