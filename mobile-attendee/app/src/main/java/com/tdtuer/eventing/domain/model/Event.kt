@@ -8,6 +8,7 @@ data class Event(
     val createdAt: Long = 0L,
     val coordinates: String = "",
     val date: Long = 0L,
+    val distanceKm: Double? = null,
     val description: String = "",
     val endDate: Long? = null,
     val eventType: String = "physical",

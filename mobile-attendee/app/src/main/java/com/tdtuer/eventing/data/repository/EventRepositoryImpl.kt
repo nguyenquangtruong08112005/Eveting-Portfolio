@@ -191,10 +191,14 @@ class EventRepositoryImpl @Inject constructor(
                 val userLon = lon.toDoubleOrNull() ?: 0.0
                 val radius = radiusInKm ?: 50.0
 
-                val filtered = localEvents.filter { event ->
+                val filtered = localEvents.mapNotNull { event ->
                     val (eLat, eLon) = parseCoordinates(event.coordinates)
                     val distance = calculateDistanceKm(userLat, userLon, eLat, eLon)
-                    distance <= radius
+                    if (distance <= radius) {
+                        event.copy(distanceKm = distance)
+                    } else {
+                        null
+                    }
                 }
                 emit(Result.success(filtered))
             } else {

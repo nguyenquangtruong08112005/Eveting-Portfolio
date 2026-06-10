@@ -18,6 +18,7 @@ fun EventDto.toDomainModel(): Event {
         id = this.id ?: "",
         name = this.name ?: "",
         date = this.date ?: 0L,
+        distanceKm = this.distanceKm,
         location = "${this.venueName}, ${this.city}",
         coordinates = this.location?.toLocationString() ?: "",
         category = this.category ?: emptyList(),

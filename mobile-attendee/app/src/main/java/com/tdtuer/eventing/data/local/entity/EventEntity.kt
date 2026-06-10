@@ -18,6 +18,7 @@ data class EventEntity(
     val city: String,
     val venueName: String,
     val minPrice: Double,
+    val distanceKm: Double? = null,
     val lastFetchedAt: Long = System.currentTimeMillis() // Để check thời gian 15p
 )
 
@@ -35,7 +36,8 @@ fun Event.toEntity(): EventEntity {
         bannerUrl = this.bannerUrl,
         city = this.city,
         venueName = this.venueName,
-        minPrice = this.minPrice ?: 0.0
+        minPrice = this.minPrice ?: 0.0,
+        distanceKm = this.distanceKm
     )
 }
 
@@ -53,6 +55,7 @@ fun EventEntity.toDomain(): Event {
         bannerUrl = this.bannerUrl,
         city = this.city,
         venueName = this.venueName,
-        minPrice = this.minPrice
+        minPrice = this.minPrice,
+        distanceKm = this.distanceKm
     )
 }

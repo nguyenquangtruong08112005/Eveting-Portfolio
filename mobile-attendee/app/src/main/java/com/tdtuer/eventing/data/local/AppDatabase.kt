@@ -22,7 +22,7 @@ import com.tdtuer.eventing.data.local.entity.WeatherEntity // [NEW]
         UserEntity::class,
         WeatherEntity::class // [NEW] Đăng ký Entity mới
     ],
-    version = 5, // [IMPORTANT] Tăng version DB lên 5 (hoặc n+1 so với hiện tại)
+    version = 6, // [IMPORTANT] Tăng version DB lên 6 (hoặc n+1 so với hiện tại)
     exportSchema = false
 )
 @TypeConverters(Converters::class)

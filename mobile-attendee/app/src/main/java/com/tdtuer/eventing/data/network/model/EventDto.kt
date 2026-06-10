@@ -39,6 +39,9 @@ data class EventDto(
 
     @SerializedName("category")
     val category: List<String>?,
+
+    @SerializedName("distanceKm")
+    val distanceKm: Double? = null,
 )
 
 // Các DTO lồng bên trong
