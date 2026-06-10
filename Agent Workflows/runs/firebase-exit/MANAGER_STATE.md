@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, and O8 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, and O9 are complete on `staging`.
 
-Next phase: fix the audited pre-business-redesign mobile-facing gaps. Do not start business behavior rewrites until expected screens, routes, payloads, and persistence side effects are protected by tests or explicit acceptance notes.
+Next phase: business redesign planning can begin from the `staging` checkpoint after user confirmation. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -57,6 +57,7 @@ Next phase: fix the audited pre-business-redesign mobile-facing gaps. Do not sta
 - Phase O6 mobile-facing workflow audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o6-mobile-facing-workflow-audit.md`
 - Phase O7 mobile contract smokes: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o7-mobile-contract-smokes.md`
 - Phase O8 CI security baseline: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o8-ci-security-baseline.md`
+- Phase O9 pre-business-redesign gap closure: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o9-pre-business-redesign-gaps.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
@@ -139,6 +140,10 @@ Next phase: fix the audited pre-business-redesign mobile-facing gaps. Do not sta
 - `c80d1fd` - Split auth and tickets service helpers.
 - `8ef1268` - Split organizer and users service helpers.
 - `2ee6a1b` - Add structured error smoke checks.
+- `4e45ff5` - Add mobile contract smoke checks.
+- `0e5a680` - Add report-only security baseline.
+- `ec4d406` - Persist attendee address profile field.
+- `9db60ba` - Keep Elasticsearch mappings on empty reindex.
 
 ## Integrated Mobile Commits
 
@@ -150,6 +155,7 @@ Next phase: fix the audited pre-business-redesign mobile-facing gaps. Do not sta
 - Attendee `Mobile-2025-Eventing`: `07c07d8` - Upload attendee event media through backend.
 - Attendee `Mobile-2025-Eventing`: `ce6ffd7` - Register attendee push targets with OneSignal.
 - Attendee `Mobile-2025-Eventing`: `fdb8226` - Pin OneSignal SDK for Kotlin compatibility.
+- Attendee `Mobile-2025-Eventing`: `8477517` - Preserve nearby event distance.
 - Organizer `Mobile-2025-Eventing-Organizer`: `a05cfc2` - Save organizer pre-refactor work.
 - Organizer `Mobile-2025-Eventing-Organizer`: `4e6e2b3` - Add backend token fallback foundation.
 - Organizer `Mobile-2025-Eventing-Organizer`: `5ed4650` - Wire organizer auth to backend fallback.
@@ -157,6 +163,9 @@ Next phase: fix the audited pre-business-redesign mobile-facing gaps. Do not sta
 - Organizer `Mobile-2025-Eventing-Organizer`: `0684fb1` - Refresh backend access token on 401.
 - Organizer `Mobile-2025-Eventing-Organizer`: `54aaece` - Register organizer push targets with OneSignal.
 - Organizer `Mobile-2025-Eventing-Organizer`: `04fe094` - Pin OneSignal SDK for Kotlin compatibility.
+- Organizer `Mobile-2025-Eventing-Organizer`: `43096cc` - Show organizer operation results.
+- Organizer `Mobile-2025-Eventing-Organizer`: `e4e03b4` - Allow organizers to cancel events.
+- Organizer `Mobile-2025-Eventing-Organizer`: `53f662b` - Add organizer logout all devices.
 
 ## Mobile Rewrite Notes
 
@@ -245,12 +254,13 @@ Then review:
 
 ## Next Exact Step
 
-Post-O8 checkpoint before business-domain redesign:
+Post-O9 checkpoint before business-domain redesign:
 
-- run O9 worker slices for the audited mobile-facing gaps
-- prioritize: attendee address persistence, nearby `distanceKm`, organizer import result display, organizer broadcast sent count display, organizer cancel-event UX decision, logout-all decision
-- keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking
-- use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit
+- O9 mobile-facing gaps are closed and committed on `staging`.
+- Next recommended action is a business redesign/audit phase, not more infrastructure restructuring.
+- Keep `npm run db:smoke:mobile-contracts` as the guardrail before and after business behavior changes.
+- Keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking.
+- Use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit.
 
 ## Latest Verification
 
@@ -322,3 +332,4 @@ Results:
 - Phase O6 mobile-facing workflow audit completed on 2026-06-09: OpenCode workers audited attendee and organizer app API dependencies, O5 worker verification passed, and manager corrected false positives against current source. Confirmed guardrails: auth response shape, `/users/me` mobile field mapping, event list/search/nearby wrapper, recommendations bare array, organizer my-events `{data:[...]}`, QR check-in legacy error shape, media JSON plus multipart support, ticket/payment write path. Confirmed gaps: attendee address not persisted on profile update, nearby `distanceKm` discarded by mobile, organizer attendee import result ignored, organizer broadcast sent count ignored, organizer cancel-event server capability unused, logout-all unused.
 - Phase O7 mobile contract smoke completed on 2026-06-11: `scripts/smoke.mobile-contracts.cjs` protects auth response shape, `/users/me`, event list/search/nearby wrappers, recommendations bare array, organizer my-events `{data:[...]}`, QR invalid legacy error shape, media JSON route/access-control path, and ticket/payment entry points. Verification passed: `node --check scripts\smoke.mobile-contracts.cjs`, `git diff --check`, `npm run ci:check`, and `npm run db:smoke:mobile-contracts` with 13 pass, 0 fail, 2 skip. Smoke-created `mobile_contract_%@test.com` rows were verified clean from `auth_users`, `user_profiles`, and `auth_tokens`.
 - Phase O8 CI security baseline completed on 2026-06-11: server CI now has a report-only `security-baseline` job with blocking checkout/setup/install and non-blocking scan steps for `npm audit` and pinned Trivy filesystem scan. Verification passed: `git diff --check`, `npm run ci:check`, and CodeGraph sync. `npm run security:audit` intentionally exits nonzero with current known findings: 44 total vulnerabilities, including 14 high and 1 critical. Local Trivy CLI is not installed; GitHub Actions uses `aquasecurity/trivy-action@0.28.0`.
+- Phase O9 pre-business-redesign gap closure completed on 2026-06-11: attendee address persistence, attendee nearby `distanceKm`, organizer import/broadcast result display, organizer cancel-event UX, organizer logout-all, and Elasticsearch empty-index mapping guard are complete. Verification passed: server `npm run ci:check`, `npm run search:reindex`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, attendee `gradlew.bat :app:compileDebugKotlin`, organizer `git diff --check`, organizer `gradlew.bat :app:compileDebugKotlin`, and CodeGraph sync after each organizer edit.
