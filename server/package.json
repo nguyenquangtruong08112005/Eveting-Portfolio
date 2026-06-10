@@ -36,7 +36,9 @@
     "local:mobile": "npm run local:infra && npm run db:migrate && npm run search:reindex && start \"Server-2025-Eventing\" cmd /k \"npm run dev\" && ngrok http 3000",
     "local:down": "docker stop mobile-eventing-postgres es01 2>nul || docker compose -f infra/docker/docker-compose.local.yml down",
     "logs:tail:app": "node scripts/tail-log.js app",
-    "logs:tail:http": "node scripts/tail-log.js http"
+    "logs:tail:http": "node scripts/tail-log.js http",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "security:audit:json": "npm audit --omit=dev --audit-level=high --json"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.800.0",
