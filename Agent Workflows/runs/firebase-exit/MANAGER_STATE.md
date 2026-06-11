@@ -8,7 +8,7 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, and P1.1-B are complete on `staging`.
 
-Next phase: Phase P1.2 requires a user decision before implementation. Recommended next slice is Event lifecycle foundation, but Staff/team management and Ticket/order/payment hardening are also valid options. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: Phase P user decisions are now recorded. Run P1.1-C RBAC/shared-error/logger cleanup first, then P1.2 Event Lifecycle Foundation. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -62,6 +62,7 @@ Next phase: Phase P1.2 requires a user decision before implementation. Recommend
 - Phase P1.0 domain audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-domain-audit.md`
 - Phase P1.1-A RBAC foundation: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-1-rbac-foundation.md`
 - Phase P1.1-B RBAC route guard pilot: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-1-b-rbac-route-guard-pilot.md`
+- Phase P decisions and guardrails: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p-decisions-and-guardrails.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
@@ -73,6 +74,8 @@ Next phase: Phase P1.2 requires a user decision before implementation. Recommend
 - Codex must not directly implement backend source changes unless the user explicitly approves it.
 - Use local agents for implementation, preferably `opencode` via `cmd /c`.
 - Use `agy` only when it is available and producing verifiable diffs.
+- Prefer continuing existing local worker sessions where practical to avoid repeatedly re-reading the whole source tree.
+- If OpenCode and AGY are both unavailable, Codex may use Codex sub-agents as a fallback.
 - Skip any agent that has no result, quota failure, capacity failure, or no diff.
 - Codex responsibilities: assign bounded prompts, review diffs, run verification, commit passing slices, update this state file.
 
@@ -267,7 +270,9 @@ Post-P1.1-A checkpoint and P1 business redesign execution:
 - P1.0 read-only domain audit is saved.
 - P1.1-A Auth/RBAC/Staff foundation is complete on the server.
 - P1.1-B RBAC route-guard pilot is complete on the server.
-- Next recommended action is P1.2 Event lifecycle foundation, but ask the user before implementation because Staff/team management and Ticket/order/payment hardening are also valid next priorities.
+- User decisions are now recorded in `phase-p-decisions-and-guardrails.md`.
+- Next action is P1.1-C cleanup: bring recent RBAC/authz middleware closer to shared error/logger conventions while preserving smoke-protected status codes and response bodies.
+- After P1.1-C, proceed to P1.2 Event Lifecycle Foundation with canonical lifecycle states and legacy mobile-compatible status mapping.
 - Keep `npm run db:smoke:mobile-contracts` as the guardrail before and after business behavior changes.
 - Keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking.
 - Use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit.
@@ -347,3 +352,4 @@ Results:
 - Phase P1.0 domain audit completed on 2026-06-11: OpenCode audited backend and mobile dependencies read-only; AGY mobile audit was attempted but returned no report and made no changes. The saved audit confirms Auth/RBAC/Staff is the required P1.1 starting point, followed by event lifecycle, ticket/order/seat concurrency, payment/finance, notification outbox, search projection, cache/realtime, web surfaces, promotion/membership, social/reviews, and security/compliance.
 - Phase P1.1-A RBAC foundation completed on 2026-06-11: OpenCode implemented additive server RBAC tables, PostgreSQL repository, authz middleware helpers, `event:cancel` permission, and `scripts/smoke.rbac.js`; manager review fixed smoke dotenv/user cleanup scope and required conflict-return semantics. Verification passed: JS syntax checks, `git diff --check`, `npm run ci:check`, `npm run db:migrate`, `npm run db:smoke:rbac` with 29 pass/0 fail, and `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip.
 - Phase P1.1-B RBAC route-guard pilot completed on 2026-06-11: OpenCode wired `isAdmin` and `isOrganizer` through shared RBAC role helper while preserving `ADMIN_UID`, legacy organizer role support, and existing route imports. Verification passed: JS syntax checks, `git diff --check`, `npm run ci:check`, `npm run db:smoke:authz-middleware` with 23 pass/0 fail, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, and CodeGraph sync/status.
+- Phase P decision checkpoint recorded on 2026-06-12: target event lifecycle is `draft/submitted/approved/published/rejected/cancelled`; organizer model is organization/team based; web is a full Eventing product; ticket/order/payment target includes orders, order items, payment attempts, ticket issuance, seat map, payout/refund later; notification target is Observer first with push/email/Socket.IO channels; search moves to domain event/outbox after lifecycle; Redis/promotion/membership/social/AI are deferred as documented. New guardrails require shared errors/logger, DB query budget reporting, index planning, SQL parameterization/whitelisting, security review, and visualization artifacts.
