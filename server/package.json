@@ -26,6 +26,7 @@
     "db:smoke:featured_profiles": "node scripts/smoke.featured_profiles.js",
     "db:smoke:organizer_profiles": "node scripts/smoke.organizer_profiles.js",
     "search:reindex": "node scripts/reindex.elasticsearch.js",
+    "db:smoke:rbac": "node scripts/smoke.rbac.js",
     "db:smoke:legacy-migration": "node scripts/smoke.legacy-migration.js",
     "db:smoke:structured-errors": "node scripts/structured-errors.smoke.cjs",
     "db:smoke:mobile-contracts": "node scripts/smoke.mobile-contracts.cjs",
