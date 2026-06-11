@@ -1,6 +1,7 @@
 const config = require('@/shared/config/env.config');
 const authProvider = require('@/providers/auth');
 const userRepository = require('@/providers/database/user.repository');
+const { userHasRole } = require('@/shared/middleware/authz.middleware');
 
 const attachRequestUser = async (req, decodedToken) => {
   let userRoles = [];
@@ -62,11 +63,19 @@ const optionalAuthToken = async (req, res, next) => {
 };
 
 const isOrganizer = (req, res, next) => {
-  if (req.user && (req.user.roles?.includes('organizer') || req.user.role?.includes('organizer'))) {
+  if (req.user && req.user.role && (typeof req.user.role === 'string' ? req.user.role === 'organizer' : req.user.role.includes('organizer'))) {
       return next();
   }
 
-  return res.status(403).send({ error: 'Forbidden: User does not have organizer privileges.' });
+  if (!req.user) {
+    return res.status(401).send({ error: 'Unauthorized: No authenticated user.' });
+  }
+
+  if (!userHasRole(req, 'organizer')) {
+    return res.status(403).send({ error: 'Forbidden: User does not have organizer privileges.' });
+  }
+
+  next();
 };
 
 module.exports = {

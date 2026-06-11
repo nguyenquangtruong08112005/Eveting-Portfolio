@@ -1,5 +1,6 @@
 require('dotenv').config();
 const config = require('@/shared/config/env.config');
+const { userHasRole } = require('@/shared/middleware/authz.middleware');
 
 const isAdmin = (req, res, next) => {
     try {
@@ -7,6 +8,10 @@ const isAdmin = (req, res, next) => {
         const adminUid = config.adminUid;
 
         if (currentUid && currentUid === adminUid) {
+            return next();
+        }
+
+        if (userHasRole(req, 'admin')) {
             return next();
         }
 

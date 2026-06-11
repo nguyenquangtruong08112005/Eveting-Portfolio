@@ -1,13 +1,18 @@
 const rbacRepository = require('@/providers/database/rbac.repository');
 
+function userHasRole(req, role) {
+  if (!req.user) return false;
+  const userRoles = req.user.roles || [];
+  return userRoles.includes(role);
+}
+
 function requireRole(...allowedRoles) {
   return function(req, res, next) {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized: No authenticated user.' });
     }
-    const userRoles = req.user.roles || [];
     const hasRole = allowedRoles.some(function(role) {
-      return userRoles.includes(role);
+      return userHasRole(req, role);
     });
     if (!hasRole) {
       return res.status(403).json({
@@ -107,6 +112,7 @@ function auditLog(action, resourceType) {
 }
 
 module.exports = {
+  userHasRole,
   requireRole,
   requirePermission,
   requireOrganizationRole,
