@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, and O9 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, and P1.1-A are complete on `staging`.
 
-Next phase: Phase P1 business redesign planning is now opened from the `staging` checkpoint. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: Phase P1.1-B should wire the new RBAC foundation into a very small admin/organizer route surface without changing mobile-facing contracts. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -60,6 +60,7 @@ Next phase: Phase P1 business redesign planning is now opened from the `staging`
 - Phase O9 pre-business-redesign gap closure: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\firebase-exit\phase-o9-pre-business-redesign-gaps.md`
 - Phase P1 business redesign plan: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-business-redesign-plan.md`
 - Phase P1.0 domain audit: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-domain-audit.md`
+- Phase P1.1-A RBAC foundation: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-1-rbac-foundation.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
 - Dev base branch: `staging`
@@ -146,6 +147,7 @@ Next phase: Phase P1 business redesign planning is now opened from the `staging`
 - `0e5a680` - Add report-only security baseline.
 - `ec4d406` - Persist attendee address profile field.
 - `9db60ba` - Keep Elasticsearch mappings on empty reindex.
+- `2cc328a` - Add RBAC foundation.
 
 ## Integrated Mobile Commits
 
@@ -256,11 +258,13 @@ Then review:
 
 ## Next Exact Step
 
-Post-O9 checkpoint and P1 business redesign entry:
+Post-P1.1-A checkpoint and P1 business redesign execution:
 
 - O9 mobile-facing gaps are closed and committed on `staging`.
 - Phase P1 business redesign plan is saved and treats web as a full Eventing product, not only an admin panel.
-- P1.0 read-only domain audit is saved. Next recommended action is P1.1 Auth/RBAC/Staff Foundation.
+- P1.0 read-only domain audit is saved.
+- P1.1-A Auth/RBAC/Staff foundation is complete on the server.
+- Next recommended action is P1.1-B: wire RBAC into a small admin/organizer route surface while preserving response codes and mobile-facing contracts.
 - Keep `npm run db:smoke:mobile-contracts` as the guardrail before and after business behavior changes.
 - Keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking.
 - Use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit.
@@ -338,3 +342,4 @@ Results:
 - Phase O9 pre-business-redesign gap closure completed on 2026-06-11: attendee address persistence, attendee nearby `distanceKm`, organizer import/broadcast result display, organizer cancel-event UX, organizer logout-all, and Elasticsearch empty-index mapping guard are complete. Verification passed: server `npm run ci:check`, `npm run search:reindex`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, attendee `gradlew.bat :app:compileDebugKotlin`, organizer `git diff --check`, organizer `gradlew.bat :app:compileDebugKotlin`, and CodeGraph sync after each organizer edit.
 - Phase P1 business redesign plan opened on 2026-06-11: web is defined as a full Eventing product surface for attendees, organizers, and admins. The plan records BFF-style API boundaries, modular-monolith-first architecture, auth/RBAC priority, event/ticket/payment/notification/search/cache/security domains, Ticketbox/Eventbrite references, shadcn web direction, and P1.0 read-only domain audit as the immediate next step.
 - Phase P1.0 domain audit completed on 2026-06-11: OpenCode audited backend and mobile dependencies read-only; AGY mobile audit was attempted but returned no report and made no changes. The saved audit confirms Auth/RBAC/Staff is the required P1.1 starting point, followed by event lifecycle, ticket/order/seat concurrency, payment/finance, notification outbox, search projection, cache/realtime, web surfaces, promotion/membership, social/reviews, and security/compliance.
+- Phase P1.1-A RBAC foundation completed on 2026-06-11: OpenCode implemented additive server RBAC tables, PostgreSQL repository, authz middleware helpers, `event:cancel` permission, and `scripts/smoke.rbac.js`; manager review fixed smoke dotenv/user cleanup scope and required conflict-return semantics. Verification passed: JS syntax checks, `git diff --check`, `npm run ci:check`, `npm run db:migrate`, `npm run db:smoke:rbac` with 29 pass/0 fail, and `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip.
