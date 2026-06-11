@@ -1,6 +1,8 @@
 require('dotenv').config();
 const config = require('@/shared/config/env.config');
-const { userHasRole } = require('@/shared/middleware/authz.middleware');
+const { userHasRole, sendLegacyError } = require('@/shared/middleware/authz.middleware');
+const { ForbiddenError, InternalServerError } = require('@/shared/errors');
+const logger = require('@/shared/logger');
 
 const isAdmin = (req, res, next) => {
     try {
@@ -15,9 +17,10 @@ const isAdmin = (req, res, next) => {
             return next();
         }
 
-        return res.status(403).send({ error: 'Forbidden: Require Admin Privileges.' });
+        return sendLegacyError(res, new ForbiddenError(), 'Forbidden: Require Admin Privileges.');
     } catch (e) {
-        return res.status(500).send({ error: 'Internal Server Error' });
+        logger.error('isAdmin error', { error: e.message });
+        return sendLegacyError(res, new InternalServerError(), 'Internal Server Error');
     }
 };
 

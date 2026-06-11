@@ -1,4 +1,6 @@
 const rbacRepository = require('@/providers/database/rbac.repository');
+const { UnauthorizedError, ForbiddenError, InternalServerError } = require('@/shared/errors');
+const logger = require('@/shared/logger');
 
 function userHasRole(req, role) {
   if (!req.user) return false;
@@ -6,18 +8,20 @@ function userHasRole(req, role) {
   return userRoles.includes(role);
 }
 
+function sendLegacyError(res, appError, legacyMessage) {
+  return res.status(appError.statusCode).send({ error: legacyMessage || appError.message });
+}
+
 function requireRole(...allowedRoles) {
   return function(req, res, next) {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized: No authenticated user.' });
+      return sendLegacyError(res, new UnauthorizedError(), 'Unauthorized: No authenticated user.');
     }
     const hasRole = allowedRoles.some(function(role) {
       return userHasRole(req, role);
     });
     if (!hasRole) {
-      return res.status(403).json({
-        error: 'Forbidden: Requires one of roles: ' + allowedRoles.join(', '),
-      });
+      return sendLegacyError(res, new ForbiddenError(), 'Forbidden: Requires one of roles: ' + allowedRoles.join(', '));
     }
     next();
   };
@@ -44,8 +48,8 @@ function requirePermission(...requiredPermissions) {
       }
       next();
     } catch (err) {
-      console.error('requirePermission error:', err);
-      return res.status(500).json({ error: 'Internal Server Error checking permissions.' });
+      logger.error('requirePermission error', { error: err.message });
+      return sendLegacyError(res, new InternalServerError(), 'Internal Server Error checking permissions.');
     }
   };
 }
@@ -76,8 +80,8 @@ function requireOrganizationRole(orgIdParam, ...allowedRoles) {
       req.organizationMembership = membership;
       next();
     } catch (err) {
-      console.error('requireOrganizationRole error:', err);
-      return res.status(500).json({ error: 'Internal Server Error checking organization membership.' });
+      logger.error('requireOrganizationRole error', { error: err.message });
+      return sendLegacyError(res, new InternalServerError(), 'Internal Server Error checking organization membership.');
     }
   };
 }
@@ -102,7 +106,7 @@ function auditLog(action, resourceType) {
           metadata: metadata,
           ipAddress: req.ip || req.connection.remoteAddress || '',
         }).catch(function(err) {
-          console.error('auditLog error:', err);
+          logger.error('auditLog error', { error: err.message });
         });
       }
       return originalSend(body);
@@ -113,6 +117,7 @@ function auditLog(action, resourceType) {
 
 module.exports = {
   userHasRole,
+  sendLegacyError,
   requireRole,
   requirePermission,
   requireOrganizationRole,

@@ -1,7 +1,8 @@
 const config = require('@/shared/config/env.config');
 const authProvider = require('@/providers/auth');
 const userRepository = require('@/providers/database/user.repository');
-const { userHasRole } = require('@/shared/middleware/authz.middleware');
+const { userHasRole, sendLegacyError } = require('@/shared/middleware/authz.middleware');
+const { UnauthorizedError, ForbiddenError } = require('@/shared/errors');
 
 const attachRequestUser = async (req, decodedToken) => {
   let userRoles = [];
@@ -68,11 +69,11 @@ const isOrganizer = (req, res, next) => {
   }
 
   if (!req.user) {
-    return res.status(401).send({ error: 'Unauthorized: No authenticated user.' });
+    return sendLegacyError(res, new UnauthorizedError(), 'Unauthorized: No authenticated user.');
   }
 
   if (!userHasRole(req, 'organizer')) {
-    return res.status(403).send({ error: 'Forbidden: User does not have organizer privileges.' });
+    return sendLegacyError(res, new ForbiddenError(), 'Forbidden: User does not have organizer privileges.');
   }
 
   next();
