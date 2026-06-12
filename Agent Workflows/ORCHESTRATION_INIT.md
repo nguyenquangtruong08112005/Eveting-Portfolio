@@ -177,6 +177,8 @@ After any code edit in that repo, run:
 
 Codex CLI and OpenCode have CodeGraph MCP installed globally. Antigravity/agy is not listed by the installer, so agy prompts must explicitly tell the worker to use the `codegraph` CLI from the target repo.
 
+For OpenCode tasks, the manager prompt must explicitly say: use the CodeGraph MCP first for symbol/module exploration, then fall back to grep/read only for exact confirmation or files CodeGraph cannot cover. The active OpenCode config path is `%USERPROFILE%\.config\opencode\opencode.json`; verify with `opencode mcp list` if a worker appears to grep/read broadly again.
+
 ## Current Project Defaults
 
 Project root:

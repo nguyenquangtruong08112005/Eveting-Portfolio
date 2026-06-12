@@ -282,6 +282,7 @@ Post-P1.1-A checkpoint and P1 business redesign execution:
 - Keep `npm run db:smoke:mobile-contracts` as the guardrail before and after business behavior changes.
 - Keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking.
 - Use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit.
+- OpenCode worker prompts must explicitly require CodeGraph MCP first, then grep/read only for confirmation. The active OpenCode config path is `%USERPROFILE%\.config\opencode\opencode.json`; `opencode mcp list` should show `codegraph connected`.
 
 ## Latest Verification
 
