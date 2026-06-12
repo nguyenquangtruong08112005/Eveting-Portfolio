@@ -109,59 +109,118 @@ const updateEvent = async (eventId, updates, transaction = null) => {
     const params = [];
     let idx = 1;
 
+    // Group updates by DB column
+    const columnUpdates = {}; // colName => { fullVal: any, hasFullVal: boolean, dots: [ { path: string[], val: any } ] }
+    const rawMerge = {};
+    const rawDots = [];
+
     for (const key in updates) {
         if (key === 'id') continue;
 
-        // Support dot notation: e.g. ticketTypes.VIP.available
         const dotIdx = key.indexOf('.');
         if (dotIdx > 0) {
             const topKey = key.substring(0, dotIdx);
             const nestedKey = key.substring(dotIdx + 1);
             if (topKey in FIELD_MAP) {
                 const col = FIELD_MAP[topKey];
-                sets.push(`${col} = jsonb_set(COALESCE(${col}, '{}'::jsonb), $${idx}::text[], $${idx+1}::jsonb)`);
-                params.push(nestedKey.split('.'));
-                params.push(JSON.stringify(updates[key]));
-                idx += 2;
+                if (!columnUpdates[col]) {
+                    columnUpdates[col] = { hasFullVal: false, dots: [] };
+                }
+                columnUpdates[col].dots.push({
+                    path: nestedKey.split('.'),
+                    val: updates[key]
+                });
             }
+
+            // All dot-notation updates on the event object are stored under raw_data
+            rawDots.push({
+                path: key.split('.'),
+                val: updates[key]
+            });
             continue;
         }
 
+        // Standard key
         if (key in FIELD_MAP) {
             const col = FIELD_MAP[key];
-            sets.push(`${col} = $${idx}`);
-            const isJsonb = ['location', 'ticketTypes', 'recurringRule', 'sponsors'].includes(key);
+            if (col !== 'raw_data') { // raw_data is built separately
+                if (!columnUpdates[col]) {
+                    columnUpdates[col] = { hasFullVal: false, dots: [] };
+                }
+                columnUpdates[col].hasFullVal = true;
+                columnUpdates[col].fullVal = updates[key];
+            }
+        }
+
+        // Exclude lifecycleStatus from raw_data as in original logic
+        if (key !== 'lifecycleStatus') {
+            rawMerge[key] = updates[key];
+        }
+    }
+
+    // Process columns other than raw_data
+    for (const col in columnUpdates) {
+        const info = columnUpdates[col];
+        if (info.hasFullVal) {
+            let expr = `$${idx}`;
+            const val = info.fullVal;
+            const isJsonb = ['location', 'ticket_types', 'recurring_rule', 'sponsors'].includes(col);
             if (isJsonb) {
-                params.push(updates[key] !== null ? JSON.stringify(updates[key]) : null);
-            } else if (key === 'date' || key === 'endDate' || key === 'createdAt' || key === 'lastUpdatedAt') {
-                params.push(updates[key] != null ? Number(updates[key]) : null);
+                params.push(val !== null ? JSON.stringify(val) : null);
+            } else if (['date', 'end_date', 'created_at', 'last_updated_at'].includes(col)) {
+                params.push(val != null ? Number(val) : null);
             } else {
-                params.push(updates[key]);
+                params.push(val);
             }
             idx++;
+
+            if (info.dots.length > 0) {
+                // If there are dot-notation updates applied on top of full value update
+                expr = `to_jsonb(${expr})`;
+                for (const dot of info.dots) {
+                    expr = `jsonb_set(${expr}, $${idx}::text[], $${idx+1}::jsonb)`;
+                    params.push(dot.path);
+                    params.push(JSON.stringify(dot.val));
+                    idx += 2;
+                }
+            }
+            sets.push(`${col} = ${expr}`);
+        } else if (info.dots.length > 0) {
+            // Only has dot-notation updates (e.g. ticketTypes.standard.available)
+            let expr = `COALESCE(${col}, '{}'::jsonb)`;
+            for (const dot of info.dots) {
+                expr = `jsonb_set(${expr}, $${idx}::text[], $${idx+1}::jsonb)`;
+                params.push(dot.path);
+                params.push(JSON.stringify(dot.val));
+                idx += 2;
+            }
+            sets.push(`${col} = ${expr}`);
         }
     }
 
-    const rawMerge = {};
-    for (const key in updates) {
-        if (key === 'id' || key === 'lifecycleStatus' || key.indexOf('.') > 0) continue;
-        rawMerge[key] = updates[key];
-    }
+    // Process raw_data column
+    const hasRawMerge = Object.keys(rawMerge).length > 0;
+    const hasRawDots = rawDots.length > 0;
 
-    if (Object.keys(rawMerge).length > 0) {
-        sets.push(`raw_data = COALESCE(raw_data, '{}'::jsonb) || $${idx}::jsonb`);
-        params.push(JSON.stringify(rawMerge));
-        idx++;
-    }
-
-    for (const key in updates) {
-        const dotIdx = key.indexOf('.');
-        if (dotIdx > 0) {
-            sets.push(`raw_data = jsonb_set(COALESCE(raw_data, '{}'::jsonb), $${idx}::text[], $${idx+1}::jsonb)`);
-            params.push(key.split('.'));
-            params.push(JSON.stringify(updates[key]));
-            idx += 2;
+    if (hasRawMerge || hasRawDots) {
+        let expr;
+        if (hasRawMerge) {
+            expr = `COALESCE(raw_data, '{}'::jsonb) || $${idx}::jsonb`;
+            params.push(JSON.stringify(rawMerge));
+            idx++;
+        } else {
+            expr = `COALESCE(raw_data, '{}'::jsonb)`;
         }
+
+        if (hasRawDots) {
+            for (const dot of rawDots) {
+                expr = `jsonb_set(${expr}, $${idx}::text[], $${idx+1}::jsonb)`;
+                params.push(dot.path);
+                params.push(JSON.stringify(dot.val));
+                idx += 2;
+            }
+        }
+        sets.push(`raw_data = ${expr}`);
     }
 
     if (sets.length === 0) return;
