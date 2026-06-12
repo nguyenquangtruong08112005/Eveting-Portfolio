@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, P1.3-S1, and P1.3-S2 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, P1.3-S1, P1.3-S2, and P1.3-S3 are complete on `staging`.
 
-Next phase: P1.3-S3 event raw-data update hardening before seat map / seat hold foundation. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: P1.3-S4 inventory locking and idempotent booking to prevent generic ticket overselling. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -169,6 +169,7 @@ Next phase: P1.3-S3 event raw-data update hardening before seat map / seat hold 
 - `2517907` - Persist event lifecycle status.
 - `8e47796` - Add order payment foundation.
 - `0a45bf5` - Wire shadow order records.
+- `c62fecc` - Harden event raw_data updates and support repeated booking.
 
 ## Integrated Mobile Commits
 
@@ -279,16 +280,11 @@ Then review:
 
 ## Next Exact Step
 
-Post-P1.1-A checkpoint and P1 business redesign execution:
+Post-P1.3-S3 event raw-data update hardening checkpoint:
 
-- O9 mobile-facing gaps are closed and committed on `staging`.
-- Phase P1 business redesign plan is saved and treats web as a full Eventing product, not only an admin panel.
-- P1.0 read-only domain audit is saved.
-- P1.1-A Auth/RBAC/Staff foundation is complete on the server.
-- P1.1-B RBAC route-guard pilot is complete on the server.
-- User decisions are now recorded in `phase-p-decisions-and-guardrails.md`.
-- P1.1-C cleanup is complete.
-- Next action is P1.2 Event Lifecycle Foundation with canonical lifecycle states and legacy mobile-compatible status mapping.
+- Event update raw_data bug is resolved and committed on `staging`.
+- Repeated booking smoke test verifies correct availability updates.
+- Next action is P1.3-S4 Inventory Locking and Idempotent Booking to prevent generic ticket overselling under concurrency.
 - Keep `npm run db:smoke:mobile-contracts` as the guardrail before and after business behavior changes.
 - Keep dependency remediation as a tracked security-hardening follow-up before security scans become blocking.
 - Use CodeGraph before broad repo exploration when assigning worker tasks; run `codegraph sync .` after each worker edit.
