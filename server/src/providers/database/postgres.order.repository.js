@@ -1,68 +1,89 @@
 const { query, transaction } = require('./postgres.client');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
 
+function getClient(tx) {
+    return (tx && typeof tx.query === 'function') ? tx : { query };
+}
+
 const createOrder = async (order) => {
     return transaction(async (client) => {
-        await client.query(
-            `INSERT INTO orders (
-                id, user_id, event_id, organizer_id, status,
-                subtotal_amount, discount_amount, fee_amount, total_amount,
-                currency, idempotency_key, notes,
-                expires_at, paid_at, cancelled_at,
-                created_at, updated_at, raw_data
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
-            [
-                order.id,
-                order.userId,
-                order.eventId || null,
-                order.organizerId || null,
-                order.status || ORDER_STATUS.PENDING_PAYMENT,
-                order.subtotalAmount || 0,
-                order.discountAmount || 0,
-                order.feeAmount || 0,
-                order.totalAmount || 0,
-                order.currency || 'VND',
-                order.idempotencyKey || null,
-                order.notes || null,
-                order.expiresAt || null,
-                order.paidAt || null,
-                order.cancelledAt || null,
-                order.createdAt || Date.now(),
-                order.updatedAt || Date.now(),
-                JSON.stringify(order.rawData || {}),
-            ]
-        );
-
+        await insertOrder(client, order);
         if (order.items && order.items.length > 0) {
             for (const item of order.items) {
-                await client.query(
-                    `INSERT INTO order_items (
-                        id, order_id, ticket_type_id, ticket_type,
-                        event_id, event_name, ticket_id, seat_id,
-                        quantity, unit_price, subtotal, total_amount, status, created_at
-                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-                    [
-                        item.id,
-                        order.id,
-                        item.ticketTypeId || null,
-                        item.ticketType || null,
-                        item.eventId || null,
-                        item.eventName || null,
-                        item.ticketId || null,
-                        item.seatId || null,
-                        item.quantity || 1,
-                        item.unitPrice || 0,
-                        item.subtotal || 0,
-                        item.totalAmount || 0,
-                        item.status || null,
-                        item.createdAt || Date.now(),
-                    ]
-                );
+                await insertOrderItem(client, item, order.id);
             }
         }
-
         return order.id;
     });
+};
+
+const createOrderInTransaction = async (tx, order) => {
+    const client = getClient(tx);
+    await insertOrder(client, order);
+    return order.id;
+};
+
+async function insertOrder(client, order) {
+    await client.query(
+        `INSERT INTO orders (
+            id, user_id, event_id, organizer_id, status,
+            subtotal_amount, discount_amount, fee_amount, total_amount,
+            currency, idempotency_key, notes,
+            expires_at, paid_at, cancelled_at,
+            created_at, updated_at, raw_data
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+        [
+            order.id,
+            order.userId,
+            order.eventId || null,
+            order.organizerId || null,
+            order.status || ORDER_STATUS.PENDING_PAYMENT,
+            order.subtotalAmount || 0,
+            order.discountAmount || 0,
+            order.feeAmount || 0,
+            order.totalAmount || 0,
+            order.currency || 'VND',
+            order.idempotencyKey || null,
+            order.notes || null,
+            order.expiresAt || null,
+            order.paidAt || null,
+            order.cancelledAt || null,
+            order.createdAt || Date.now(),
+            order.updatedAt || Date.now(),
+            JSON.stringify(order.rawData || {}),
+        ]
+    );
+}
+
+async function insertOrderItem(client, item, orderId) {
+    await client.query(
+        `INSERT INTO order_items (
+            id, order_id, ticket_type_id, ticket_type,
+            event_id, event_name, ticket_id, seat_id,
+            quantity, unit_price, subtotal, total_amount, status, created_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [
+            item.id,
+            orderId,
+            item.ticketTypeId || null,
+            item.ticketType || null,
+            item.eventId || null,
+            item.eventName || null,
+            item.ticketId || null,
+            item.seatId || null,
+            item.quantity || 1,
+            item.unitPrice || 0,
+            item.subtotal || 0,
+            item.totalAmount || 0,
+            item.status || null,
+            item.createdAt || Date.now(),
+        ]
+    );
+}
+
+const createOrderItemInTransaction = async (tx, item, orderId) => {
+    const client = getClient(tx);
+    await insertOrderItem(client, item, orderId);
 };
 
 const getOrderById = async (orderId) => {
@@ -150,7 +171,17 @@ const updateOrderStatus = async (orderId, status) => {
 };
 
 const createPaymentAttempt = async (attempt) => {
-    await query(
+    const client = getClient(null);
+    await insertPaymentAttempt(client, attempt);
+};
+
+const createPaymentAttemptInTransaction = async (tx, attempt) => {
+    const client = getClient(tx);
+    await insertPaymentAttempt(client, attempt);
+};
+
+async function insertPaymentAttempt(client, attempt) {
+    await client.query(
         `INSERT INTO payment_attempts (
             id, order_id, ticket_id, status, payment_method,
             provider, provider_order_id, provider_transaction_id, transaction_id,
@@ -180,9 +211,19 @@ const createPaymentAttempt = async (attempt) => {
             attempt.updatedAt || Date.now(),
         ]
     );
-};
+}
 
 const updatePaymentAttempt = async (attemptId, updates) => {
+    const client = getClient(null);
+    await applyPaymentAttemptUpdate(client, attemptId, updates);
+};
+
+const updatePaymentAttemptInTransaction = async (tx, attemptId, updates) => {
+    const client = getClient(tx);
+    await applyPaymentAttemptUpdate(client, attemptId, updates);
+};
+
+async function applyPaymentAttemptUpdate(client, attemptId, updates) {
     const sets = [];
     const params = [];
     let idx = 1;
@@ -245,13 +286,14 @@ const updatePaymentAttempt = async (attemptId, updates) => {
     idx++;
     params.push(attemptId);
 
-    await query(
+    await client.query(
         `UPDATE payment_attempts SET ${sets.join(', ')} WHERE id = $${idx}`,
         params
     );
-};
+}
 
 const linkTicketToOrder = async (ticketId, orderId, orderItemId, paymentAttemptId) => {
+    const client = getClient(null);
     const sets = [];
     const params = [];
     let idx = 1;
@@ -275,17 +317,96 @@ const linkTicketToOrder = async (ticketId, orderId, orderItemId, paymentAttemptI
     if (sets.length === 0) return;
 
     params.push(ticketId);
-    await query(
+    await client.query(
         `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx}`,
         params
     );
 };
 
+const linkTicketToOrderInTransaction = async (tx, ticketId, orderId, orderItemId, paymentAttemptId) => {
+    const client = getClient(tx);
+    const sets = [];
+    const params = [];
+    let idx = 1;
+
+    if (orderId !== undefined) {
+        sets.push(`order_id = $${idx}`);
+        params.push(orderId);
+        idx++;
+    }
+    if (orderItemId !== undefined) {
+        sets.push(`order_item_id = $${idx}`);
+        params.push(orderItemId);
+        idx++;
+    }
+    if (paymentAttemptId !== undefined) {
+        sets.push(`payment_attempt_id = $${idx}`);
+        params.push(paymentAttemptId);
+        idx++;
+    }
+
+    if (sets.length === 0) return;
+
+    params.push(ticketId);
+    await client.query(
+        `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx}`,
+        params
+    );
+};
+
+const getTicketOrderLink = async (ticketId) => {
+    const result = await query(
+        'SELECT order_id, order_item_id, payment_attempt_id FROM tickets WHERE id = $1',
+        [ticketId]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+        orderId: row.order_id,
+        orderItemId: row.order_item_id,
+        paymentAttemptId: row.payment_attempt_id,
+    };
+};
+
+const getTicketOrderLinkInTransaction = async (tx, ticketId) => {
+    const client = getClient(tx);
+    const result = await client.query(
+        'SELECT order_id, order_item_id, payment_attempt_id FROM tickets WHERE id = $1',
+        [ticketId]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+        orderId: row.order_id,
+        orderItemId: row.order_item_id,
+        paymentAttemptId: row.payment_attempt_id,
+    };
+};
+
+const createPaymentAttemptAndLinkTicketAtomic = async (attempt, ticketId) => {
+    return transaction(async (tx) => {
+        const client = getClient(tx);
+        await insertPaymentAttempt(client, attempt);
+        await client.query(
+            'UPDATE tickets SET payment_attempt_id = $1 WHERE id = $2',
+            [attempt.id, ticketId]
+        );
+    });
+};
+
 module.exports = {
     createOrder,
+    createOrderInTransaction,
+    createOrderItemInTransaction,
     getOrderById,
     updateOrderStatus,
     createPaymentAttempt,
+    createPaymentAttemptInTransaction,
     updatePaymentAttempt,
+    updatePaymentAttemptInTransaction,
     linkTicketToOrder,
+    linkTicketToOrderInTransaction,
+    getTicketOrderLink,
+    getTicketOrderLinkInTransaction,
+    createPaymentAttemptAndLinkTicketAtomic,
 };

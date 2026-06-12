@@ -1,8 +1,12 @@
 const ticketService = require('@/modules/tickets/application/service');
 const paymentService = require('@/modules/payments/application/service');
 const ticketRepository = require('@/providers/database/ticket.repository');
+const orderRepository = require('@/providers/database/order.repository');
 const asyncHandler = require('@/shared/middleware/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 const { BadRequestError, NotFoundError, ForbiddenError, ConflictError } = require('@/shared/errors');
+const { PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
+const logger = require('@/shared/logger');
 
 const createPaymentOrder = asyncHandler(async (req, res) => {
     const { ticketId } = req.body;
@@ -22,6 +26,32 @@ const createPaymentOrder = asyncHandler(async (req, res) => {
         paymentStatus: 'processing',
         lastPaymentAttempt: new Date().toISOString()
     });
+
+    // ── Shadow payment_attempt creation (atomic) ──
+    try {
+        const link = await orderRepository.getTicketOrderLink(ticketId);
+        if (link && link.orderId) {
+            const paId = `pa_${uuidv4()}`;
+            await orderRepository.createPaymentAttemptAndLinkTicketAtomic({
+                id: paId,
+                orderId: link.orderId,
+                ticketId,
+                status: PAYMENT_STATUS.PROCESSING,
+                paymentMethod: 'zalopay',
+                provider: 'zalopay',
+                providerOrderId: zaloResponse.app_trans_id,
+                amount: ticket.price,
+                currency: 'VND',
+                requestPayload: null,
+                responsePayload: zaloResponse,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+            }, ticketId);
+        }
+    } catch (err) {
+        logger.error(`[ShadowPayment] Failed to create payment_attempt for ticket ${ticketId}: ${err.message}`);
+    }
+    // ── End shadow payment_attempt creation ──
 
     res.status(200).json(zaloResponse);
 });

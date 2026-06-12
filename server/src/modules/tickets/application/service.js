@@ -3,6 +3,7 @@ const eventRepository = require('@/providers/database/event.repository');
 const promotionRepository = require('@/providers/database/promotion.repository');
 const analyticsRepository = require('@/providers/database/analytics.repository');
 const venueRepository = require('@/providers/database/venue.repository');
+const orderRepository = require('@/providers/database/order.repository');
 const { v4: uuidv4 } = require('uuid');
 const {
   BadRequestError,
@@ -10,6 +11,9 @@ const {
   ConflictError,
   ForbiddenError,
 } = require('@/shared/errors');
+const { ORDER_STATUS } = require('@/modules/orders/domain/order-status');
+const { PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
+const logger = require('@/shared/logger');
 const { sortTicketsByPriorityAndDate, buildPagination, mapTicketWithEvent, mapTicketDetailResponse } = require('./helpers/ticket-mappers');
 const { generateTicketQR } = require('./helpers/qr-code.helper');
 const { applyPromotion } = require('./helpers/promotion-validator.helper');
@@ -105,6 +109,52 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
             await promotionRepository.incrementPromotionUsedCountInTransaction(transaction, appliedPromotion._id || appliedPromotion.id);
         }
 
+        // ── Shadow order wiring (SAVEPOINT-isolated) ──
+        const shadowOrderId = `ord_${uuidv4()}`;
+        const shadowOrderItemId = `oi_${uuidv4()}`;
+        try {
+            await transaction.query('SAVEPOINT shadow_order');
+            try {
+                await orderRepository.createOrderInTransaction(transaction, {
+                    id: shadowOrderId,
+                    userId,
+                    eventId,
+                    organizerId: eventData.organizerId,
+                    status: ORDER_STATUS.PENDING_PAYMENT,
+                    subtotalAmount: originalTotalPrice,
+                    discountAmount: appliedPromotion ? originalTotalPrice - totalPrice : 0,
+                    feeAmount: 0,
+                    totalAmount: totalPrice,
+                    currency: 'VND',
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await orderRepository.createOrderItemInTransaction(transaction, {
+                    id: shadowOrderItemId,
+                    ticketTypeId: ticketType,
+                    ticketType,
+                    eventId,
+                    eventName: eventData.name || null,
+                    ticketId,
+                    quantity: qty,
+                    unitPrice,
+                    subtotal: originalTotalPrice,
+                    totalAmount: totalPrice,
+                    status: 'pending',
+                    createdAt: Date.now(),
+                }, shadowOrderId);
+                await orderRepository.linkTicketToOrderInTransaction(transaction, ticketId, shadowOrderId, shadowOrderItemId);
+                await transaction.query('RELEASE SAVEPOINT shadow_order');
+            } catch (innerErr) {
+                await transaction.query('ROLLBACK TO SAVEPOINT shadow_order');
+                await transaction.query('RELEASE SAVEPOINT shadow_order');
+                throw innerErr;
+            }
+        } catch (err) {
+            logger.error(`[ShadowOrder] Failed to create order for ticket ${ticketId}: ${err.message}`);
+        }
+        // ── End shadow order wiring ──
+
         return newTicketData;
     });
 };
@@ -165,6 +215,20 @@ const confirmTicketPayment = async (ticketId) => {
             quantity: 1,
             dailyTimestamp: todayTimestamp
         });
+
+        // ── Shadow payment_attempt update ──
+        try {
+            const link = await orderRepository.getTicketOrderLinkInTransaction(transaction, ticketId);
+            if (link && link.paymentAttemptId) {
+                await orderRepository.updatePaymentAttemptInTransaction(transaction, link.paymentAttemptId, {
+                    status: PAYMENT_STATUS.SUCCEEDED,
+                    completedAt: Date.now(),
+                });
+            }
+        } catch (err) {
+            logger.error(`[ShadowPayment] Failed to update payment_attempt for ticket ${ticketId}: ${err.message}`);
+        }
+        // ── End shadow payment_attempt update ──
 
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
 
