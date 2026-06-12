@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, and P1.2-S3 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, and P1.2-S4 are complete on `staging`.
 
-Next phase: P1.2-S4 additive draft flow. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: P1.2-S5 organizer draft submission / lifecycle transition workflow. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -66,6 +66,7 @@ Next phase: P1.2-S4 additive draft flow. Keep dependency vulnerability remediati
 - Phase P1.2-S1 event lifecycle foundation: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s1-event-lifecycle-foundation.md`
 - Phase P1.2-S2 lifecycle policy smoke: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s2-lifecycle-policy-smoke.md`
 - Phase P1.2-S3 lifecycle persistence: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s3-lifecycle-persistence.md`
+- Phase P1.2-S4 draft event flow: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s4-draft-event-flow.md`
 - Phase P decisions and guardrails: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p-decisions-and-guardrails.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
@@ -366,3 +367,4 @@ Results:
 - Phase P1.2-S1 event lifecycle foundation completed on 2026-06-12: OpenCode continued the Phase P backend session, added canonical lifecycle constants/mappings/predicates while preserving legacy `pending/active/rejected/cancelled` status and `public/private/unlisted` visibility behavior, parameterized lifecycle SQL constants after manager review, added lifecycle smoke coverage, and manager verification passed `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, and `git diff --check`.
 - Phase P1.2-S2 lifecycle policy smoke completed on 2026-06-12: OpenCode added a narrow adoption of `isPublicDetailVisible` in event detail, intentionally left ES indexing behavior unchanged for `active+unlisted`, added DB-free lifecycle policy smoke coverage to `ci:check`, and manager verification passed `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:events`, and `git diff --check`.
 - Phase P1.2-S3 lifecycle persistence completed on 2026-06-12: OpenCode added migration `018_add_lifecycle_status.sql`, backfilled legacy `pending` to canonical `submitted`, persisted lifecycle transitions internally on create/approve/reject/cancel, kept `lifecycleStatus` out of existing payloads/raw_data, added lifecycle persistence smoke coverage, and manager verification passed `npm run db:migrate`, `npm run db:smoke:lifecycle-persistence` with 38 pass/0 fail, `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, and `git diff --check`.
+- Phase P1.2-S4 draft event flow completed on 2026-06-12: OpenCode used CodeGraph MCP first, added an explicit `saveAsDraft: true` creation path that persists `lifecycle_status=draft` while preserving legacy `status=pending` and `visibility=private`, kept default create as submitted/pending/private, avoided exposing `lifecycleStatus` or `saveAsDraft` in existing payloads, skipped draft push notification side effects, and manager verification passed `npm run db:migrate`, changed-file `node --check`, `npm run db:smoke:draft-events` with 28 pass/0 fail, `npm run db:smoke:lifecycle-persistence` with 38 pass/0 fail, `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, and `git diff --check`.
