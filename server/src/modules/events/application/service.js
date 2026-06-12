@@ -136,18 +136,21 @@ const createEvent = async (eventData, organizerId) => {
         lastUpdatedAt: now,
     };
 
-    const eventToPersist = { ...newEventData, lifecycleStatus: LIFECYCLE.SUBMITTED };
+    const isDraft = eventData.saveAsDraft === true;
+    const eventToPersist = { ...newEventData, lifecycleStatus: isDraft ? LIFECYCLE.DRAFT : LIFECYCLE.SUBMITTED };
     await eventRepository.createEvent(eventId, eventToPersist);
 
-    const topic = `organizer_${organizerId}`;
-    const title = "Sự kiện mới!";
-    const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
-    const data = { eventId: eventId, type: "new_event" };
+    if (!isDraft) {
+        const topic = `organizer_${organizerId}`;
+        const title = "Sự kiện mới!";
+        const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
+        const data = { eventId: eventId, type: "new_event" };
 
-    if (newEventData.featuredProfileIds) {
-        newEventData.featuredProfileIds.forEach(artistId => {
-            fcmService.sendToTopic(`artist_${artistId}`, "Idol có show mới!", `${newEventData.name}`, data);
-        });
+        if (newEventData.featuredProfileIds) {
+            newEventData.featuredProfileIds.forEach(artistId => {
+                fcmService.sendToTopic(`artist_${artistId}`, "Idol có show mới!", `${newEventData.name}`, data);
+            });
+        }
     }
 
     return newEventData;
