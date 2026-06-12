@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, and P1.2-S1 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, and P1.2-S2 are complete on `staging`.
 
-Next phase: P1.2-S2 lifecycle adoption and policy tests. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: P1.2-S3 lifecycle transition model planning/implementation. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -64,6 +64,7 @@ Next phase: P1.2-S2 lifecycle adoption and policy tests. Keep dependency vulnera
 - Phase P1.1-B RBAC route guard pilot: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-1-b-rbac-route-guard-pilot.md`
 - Phase P1.1-C RBAC guardrail cleanup: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-1-c-rbac-guardrail-cleanup.md`
 - Phase P1.2-S1 event lifecycle foundation: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s1-event-lifecycle-foundation.md`
+- Phase P1.2-S2 lifecycle policy smoke: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s2-lifecycle-policy-smoke.md`
 - Phase P decisions and guardrails: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p-decisions-and-guardrails.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
@@ -157,6 +158,7 @@ Next phase: P1.2-S2 lifecycle adoption and policy tests. Keep dependency vulnera
 - `5892c4d` - Wire RBAC role guards.
 - `04f653d` - Align RBAC guards with shared errors.
 - `1cbbbf4` - Add event lifecycle foundation.
+- `a868364` - Add event lifecycle policy smoke.
 
 ## Integrated Mobile Commits
 
@@ -359,3 +361,4 @@ Results:
 - Phase P decision checkpoint recorded on 2026-06-12: target event lifecycle is `draft/submitted/approved/published/rejected/cancelled`; organizer model is organization/team based; web is a full Eventing product; ticket/order/payment target includes orders, order items, payment attempts, ticket issuance, seat map, payout/refund later; notification target is Observer first with push/email/Socket.IO channels; search moves to domain event/outbox after lifecycle; Redis/promotion/membership/social/AI are deferred as documented. New guardrails require shared errors/logger, DB query budget reporting, index planning, SQL parameterization/whitelisting, security review, and visualization artifacts.
 - Phase P1.1-C RBAC guardrail cleanup completed on 2026-06-12: OpenCode continued the P1.1-B session, added shared error class usage and shared logger usage to RBAC/admin/organizer guard paths through a `sendLegacyError` compatibility helper, preserved exact legacy response bodies, added no DB calls and no SQL, and manager verification passed `npm run ci:check`, `npm run db:smoke:mobile-contracts`, `git diff --check`, and CodeGraph sync/status.
 - Phase P1.2-S1 event lifecycle foundation completed on 2026-06-12: OpenCode continued the Phase P backend session, added canonical lifecycle constants/mappings/predicates while preserving legacy `pending/active/rejected/cancelled` status and `public/private/unlisted` visibility behavior, parameterized lifecycle SQL constants after manager review, added lifecycle smoke coverage, and manager verification passed `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, and `git diff --check`.
+- Phase P1.2-S2 lifecycle policy smoke completed on 2026-06-12: OpenCode added a narrow adoption of `isPublicDetailVisible` in event detail, intentionally left ES indexing behavior unchanged for `active+unlisted`, added DB-free lifecycle policy smoke coverage to `ci:check`, and manager verification passed `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:events`, and `git diff --check`.
