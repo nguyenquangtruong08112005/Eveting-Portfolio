@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, and P1.2-S6 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, and P1.3-S1 are complete on `staging`.
 
-Next phase: P1.3 ticket/order/payment foundation. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: P1.3-S2 ticket booking/payment shadow order wiring. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
 
 ## Source Of Truth
 
@@ -69,6 +69,7 @@ Next phase: P1.3 ticket/order/payment foundation. Keep dependency vulnerability 
 - Phase P1.2-S4 draft event flow: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s4-draft-event-flow.md`
 - Phase P1.2-S5 draft submit workflow: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s5-draft-submit-workflow.md`
 - Phase P1.2-S6 admin lifecycle boundary: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-2-s6-admin-lifecycle-boundary.md`
+- Phase P1.3-S1 order payment foundation: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p1-3-s1-order-payment-foundation.md`
 - Phase P decisions and guardrails: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\runs\business-redesign\phase-p-decisions-and-guardrails.md`
 - Security verification gate: `D:\01_university\year3\semester-5\mobile\final\Agent Workflows\security-verification-gate.md`
 - Server repo: `D:\01_university\year3\semester-5\mobile\final\Server-2025-Eventing`
@@ -164,6 +165,7 @@ Next phase: P1.3 ticket/order/payment foundation. Keep dependency vulnerability 
 - `1cbbbf4` - Add event lifecycle foundation.
 - `a868364` - Add event lifecycle policy smoke.
 - `2517907` - Persist event lifecycle status.
+- `8e47796` - Add order payment foundation.
 
 ## Integrated Mobile Commits
 
@@ -372,3 +374,4 @@ Results:
 - Phase P1.2-S4 draft event flow completed on 2026-06-12: OpenCode used CodeGraph MCP first, added an explicit `saveAsDraft: true` creation path that persists `lifecycle_status=draft` while preserving legacy `status=pending` and `visibility=private`, kept default create as submitted/pending/private, avoided exposing `lifecycleStatus` or `saveAsDraft` in existing payloads, skipped draft push notification side effects, and manager verification passed `npm run db:migrate`, changed-file `node --check`, `npm run db:smoke:draft-events` with 28 pass/0 fail, `npm run db:smoke:lifecycle-persistence` with 38 pass/0 fail, `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, and `git diff --check`.
 - Phase P1.2-S5 draft submit workflow completed on 2026-06-12: OpenCode added `POST /events/:eventId/submit-draft`, moved ownership/lifecycle checks into the event service using a minimal parameterized lifecycle/ownership repository lookup, enforced draft-to-submitted with `isTransitionAllowed`, explicitly preserved legacy `status=pending` and `visibility=private`, kept lifecycle fields out of existing payload/raw_data, and manager verification passed `npm run db:migrate`, changed-file `node --check`, `npm run db:smoke:draft-submit` with 24 pass/0 fail, `npm run db:smoke:draft-events` with 28 pass/0 fail, `npm run db:smoke:lifecycle-persistence` with 38 pass/0 fail, `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, and `git diff --check`.
 - Phase P1.2-S6 admin lifecycle boundary completed on 2026-06-12: OpenCode changed the admin pending queue to include submitted events and legacy-null pending rows while excluding explicit drafts, added submitted-only approve/reject lifecycle guards with compatibility fallback only for legacy-null pending rows, preserved admin success response shapes, added admin lifecycle smoke coverage, and manager verification passed `npm run db:migrate`, changed-file `node --check`, `npm run db:smoke:admin-lifecycle` with 38 pass/0 fail, `npm run db:smoke:draft-submit` with 24 pass/0 fail, `npm run db:smoke:postgres-write-paths`, `npm run db:smoke:lifecycle-persistence` with 38 pass/0 fail, `npm run db:smoke:draft-events` with 28 pass/0 fail, `npm run ci:check`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, and `git diff --check`.
+- Phase P1.3-S1 order/payment foundation completed on 2026-06-12: OpenCode added additive order, order item, payment attempt tables, nullable ticket linkage columns, order/payment status constants, a Postgres order repository, provider selector support, and order-foundation smoke coverage; manager review required migration hardening and ticket repository shape assertions so mobile ticket payloads do not expose order linkage fields. Verification passed `npm run db:migrate`, changed-file `node --check`, `npm run db:smoke:order-foundation` with 112 pass/0 fail, `npm run db:smoke:tickets`, `npm run db:smoke:transactions`, `npm run db:smoke:mobile-contracts` with 15 pass/0 fail/2 skip, `npm run db:smoke:postgres-write-paths`, `npm run ci:check`, and `git diff --check`.
