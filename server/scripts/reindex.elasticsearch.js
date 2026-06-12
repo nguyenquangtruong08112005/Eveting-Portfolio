@@ -16,6 +16,7 @@ require('../src/alias-bootstrap');
 const esClient = require('../src/shared/config/elasticsearch.config');
 const { query } = require('../src/providers/database/postgres.client');
 const featuredProfileRepository = require('../src/providers/database/featuredProfile.repository');
+const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
 
 const ELASTIC_INDEX = 'events';
 
@@ -40,8 +41,8 @@ function rowToEvent(row) {
     city: row.city || null,
     minPrice: row.min_price != null ? Number(row.min_price) : 0,
     videoUrl: row.video_url || '',
-    status: row.status || 'pending',
-    visibility: row.visibility || 'private',
+    status: row.status || STATUS.PENDING,
+    visibility: row.visibility || VISIBILITY.PRIVATE,
   };
 }
 
@@ -117,7 +118,8 @@ async function run() {
   });
 
   const result = await query(
-    "SELECT * FROM events WHERE status = 'active' AND visibility = 'public' ORDER BY date ASC"
+    `SELECT * FROM events WHERE status = $1 AND visibility = $2 ORDER BY date ASC`,
+    [STATUS.ACTIVE, VISIBILITY.PUBLIC]
   );
 
   if (result.rows.length === 0) {

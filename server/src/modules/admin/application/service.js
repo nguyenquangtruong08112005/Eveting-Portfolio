@@ -4,6 +4,7 @@ const adminRepository = require('@/providers/database/admin.repository');
 const esClient = require('@/shared/config/elasticsearch.config');
 const ELASTIC_INDEX = 'events';
 const { fcmService, helper: notifHelper } = require('@/modules/notifications');
+const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
 
 const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];
@@ -55,8 +56,8 @@ const approveEvent = async (eventId) => {
     }
 
     const updates = {
-        status: 'active',
-        visibility: 'public',
+        status: STATUS.ACTIVE,
+        visibility: VISIBILITY.PUBLIC,
         approvedAt: new Date().getTime(),
         lastUpdatedAt: new Date().getTime()
     };
@@ -95,7 +96,7 @@ const approveEvent = async (eventId) => {
 
 const rejectEvent = async (eventId, reason) => {
     await eventRepository.updateEvent(eventId, {
-        status: 'rejected',
+        status: STATUS.REJECTED,
         rejectReason: reason,
         rejectedAt: new Date().getTime(),
         lastUpdatedAt: new Date().getTime()

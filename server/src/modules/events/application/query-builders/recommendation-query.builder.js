@@ -1,10 +1,11 @@
 const moment = require('moment');
+const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
 
 const buildRecommendationQuery = (interests, historyIds) => {
     const now = moment().utcOffset('+07:00').valueOf();
     const mustConditions = [
-        { term: { "visibility.keyword": "public" } },
-        { term: { "status.keyword": "active" } },
+        { term: { "visibility.keyword": VISIBILITY.PUBLIC } },
+        { term: { "status.keyword": STATUS.ACTIVE } },
         { range: { date: { gte: now } } }
     ];
     const mustNotConditions = [];

@@ -1,4 +1,5 @@
 const { query } = require('./postgres.client');
+const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
 
 // Maps updates fields to PostgreSQL columns
 const FIELD_MAP = {
@@ -63,8 +64,8 @@ function rowToFirebaseDoc(row) {
             videoUrl: row.video_url || '',
             isOutdoor: row.is_outdoor || false,
             organizerId: row.organizer_id || null,
-            status: row.status || 'pending',
-            visibility: row.visibility || 'private',
+            status: row.status || STATUS.PENDING,
+            visibility: row.visibility || VISIBILITY.PRIVATE,
             recurringRule: row.recurring_rule || null,
             hotScore: row.hot_score != null ? Number(row.hot_score) : 0,
             viewCount: row.view_count != null ? Number(row.view_count) : 0,
@@ -93,8 +94,8 @@ const getEventDataById = async (eventId) => {
 
 const getActiveEventsInDateRange = async (startTime, endTime) => {
     const result = await query(
-        "SELECT * FROM events WHERE date >= $1 AND date < $2 AND status = 'active'",
-        [startTime, endTime]
+        `SELECT * FROM events WHERE date >= $1 AND date < $2 AND status = $3`,
+        [startTime, endTime, STATUS.ACTIVE]
     );
     return result.rows.map(row => ({ ...rowToFirebaseDoc(row), _id: row.id }));
 };
@@ -322,8 +323,8 @@ const createEvent = async (eventId, eventData) => {
             eventData.videoUrl || '',
             eventData.isOutdoor || false,
             eventData.organizerId || null,
-            eventData.status || 'pending',
-            eventData.visibility || 'private',
+            eventData.status || STATUS.PENDING,
+            eventData.visibility || VISIBILITY.PRIVATE,
             eventData.recurringRule ? JSON.stringify(eventData.recurringRule) : null,
             eventData.hotScore != null ? Number(eventData.hotScore) : 0,
             eventData.viewCount != null ? Number(eventData.viewCount) : 0,
@@ -347,16 +348,17 @@ const getPublicEventsPage = async (page, limit) => {
     const offset = (page - 1) * limit;
 
     const countResult = await query(
-        "SELECT COUNT(*)::int AS count FROM events WHERE visibility = 'public' AND status = 'active'"
+        `SELECT COUNT(*)::int AS count FROM events WHERE visibility = $1 AND status = $2`,
+        [VISIBILITY.PUBLIC, STATUS.ACTIVE]
     );
     const totalItems = countResult.rows[0].count;
 
     const result = await query(
         `SELECT * FROM events
-         WHERE visibility = 'public' AND status = 'active'
+         WHERE visibility = $1 AND status = $2
          ORDER BY date ASC
-         LIMIT $1 OFFSET $2`,
-        [limit, offset]
+         LIMIT $3 OFFSET $4`,
+        [VISIBILITY.PUBLIC, STATUS.ACTIVE, limit, offset]
     );
 
     const entries = [];
@@ -384,8 +386,8 @@ const queryActivePublicEventsByGeoBounds = async (bounds) => {
     const promises = [];
     for (const b of bounds) {
         promises.push(query(
-            "SELECT * FROM events WHERE status = 'active' AND visibility = 'public' AND geohash >= $1 AND geohash <= $2 ORDER BY geohash",
-            [b[0], b[1]]
+            `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND geohash >= $3 AND geohash <= $4 ORDER BY geohash`,
+            [STATUS.ACTIVE, VISIBILITY.PUBLIC, b[0], b[1]]
         ));
     }
     const results = await Promise.all(promises);

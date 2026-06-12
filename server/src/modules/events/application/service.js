@@ -19,6 +19,7 @@ const { buildRecommendationQuery } = require('./query-builders/recommendation-qu
 const { findNearbyEvents } = require('./helpers/nearby-events.helper');
 const { resolveVenueAndLocationForCreate, resolveVenueAndLocationForUpdate } = require('./helpers/venue-handler');
 const { getEventWeather } = require('./helpers/weather.helper');
+const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
 
 const ELASTIC_INDEX = 'events';
 
@@ -37,7 +38,7 @@ const getAllEvents = async (page = 1, limit = 10) => {
 
 const getEventById = async (eventId, requestingUser = null) => {
     const { exists, id, data: eventData } = await eventRepository.getEventRawById(eventId);
-    if (!exists || eventData.status === 'cancelled') return null;
+    if (!exists || eventData.status === STATUS.CANCELLED) return null;
 
     let venueData = null;
     let featuredProfilesData = [];
@@ -73,8 +74,8 @@ const getEventById = async (eventId, requestingUser = null) => {
         ticketTypes: mapPublicTicketTypes(eventData.ticketTypes), venue: mapPublicVenue(venueData)
     };
 
-    if (eventData.visibility === 'public') return publicEventView;
-    if (eventData.visibility === 'unlisted' && requestingUser) return publicEventView;
+    if (eventData.visibility === VISIBILITY.PUBLIC) return publicEventView;
+    if (eventData.visibility === VISIBILITY.UNLISTED && requestingUser) return publicEventView;
     return null;
 };
 
@@ -124,8 +125,8 @@ const createEvent = async (eventData, organizerId) => {
         videoUrl: eventData.videoUrl || '',
         isOutdoor: eventData.isOutdoor || false,
         organizerId: organizerId,
-        status: 'pending',
-        visibility: 'private',
+        status: STATUS.PENDING,
+        visibility: VISIBILITY.PRIVATE,
         recurringRule: eventData.recurringRule || null,
         hotScore: 0,
         viewCount: 0,
@@ -186,7 +187,7 @@ const updateEvent = async (eventId, eventData) => {
 
     if (esClient) {
         try {
-            if (fullEventData.status !== 'active' || fullEventData.visibility === 'private') {
+            if (fullEventData.status !== STATUS.ACTIVE || fullEventData.visibility === VISIBILITY.PRIVATE) {
                 await esClient.delete({ index: ELASTIC_INDEX, id: eventId }).catch(() => { });
             } else {
                 const elasticData = await buildElasticData(fullEventData);
@@ -204,7 +205,7 @@ const cancelEvent = async (eventId) => {
     const eventName = exists ? eventData.name : 'Sự kiện';
     const now = new Date().getTime();
 
-    await eventRepository.updateEvent(eventId, { status: 'cancelled', cancelledAt: now, lastUpdatedAt: now });
+    await eventRepository.updateEvent(eventId, { status: STATUS.CANCELLED, cancelledAt: now, lastUpdatedAt: now });
 
     if (esClient) {
         try {
