@@ -4,7 +4,8 @@ const adminRepository = require('@/providers/database/admin.repository');
 const esClient = require('@/shared/config/elasticsearch.config');
 const ELASTIC_INDEX = 'events';
 const { fcmService, helper: notifHelper } = require('@/modules/notifications');
-const { STATUS, VISIBILITY, LIFECYCLE } = require('@/modules/events/domain/event-lifecycle');
+const { STATUS, VISIBILITY, LIFECYCLE, isTransitionAllowed } = require('@/modules/events/domain/event-lifecycle');
+const { BadRequestError } = require('@/shared/errors');
 
 const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];
@@ -49,11 +50,17 @@ const getPendingEvents = async (page = 1, limit = 20) => {
 };
 
 const approveEvent = async (eventId) => {
-    const eventData = await eventRepository.getEventDataById(eventId);
-
-    if (!eventData) {
+    const row = await eventRepository.getEventLifecycleOwnership(eventId);
+    if (!row) {
         throw new Error('Event not found');
     }
+    const lifecycle = row.lifecycle_status || (row.status === STATUS.PENDING ? LIFECYCLE.SUBMITTED : null);
+    if (!isTransitionAllowed(lifecycle, LIFECYCLE.APPROVED)) {
+        const label = row.lifecycle_status || `legacy ${row.status}`;
+        throw new BadRequestError(`Cannot approve event with current lifecycle status "${label}". Event must be submitted first.`);
+    }
+
+    const eventData = await eventRepository.getEventDataById(eventId);
 
     const updates = {
         status: STATUS.ACTIVE,
@@ -96,6 +103,16 @@ const approveEvent = async (eventId) => {
 };
 
 const rejectEvent = async (eventId, reason) => {
+    const row = await eventRepository.getEventLifecycleOwnership(eventId);
+    if (!row) {
+        throw new Error('Event not found');
+    }
+    const lifecycle = row.lifecycle_status || (row.status === STATUS.PENDING ? LIFECYCLE.SUBMITTED : null);
+    if (!isTransitionAllowed(lifecycle, LIFECYCLE.REJECTED)) {
+        const label = row.lifecycle_status || `legacy ${row.status}`;
+        throw new BadRequestError(`Cannot reject event with current lifecycle status "${label}". Event must be submitted first.`);
+    }
+
     await eventRepository.updateEvent(eventId, {
         status: STATUS.REJECTED,
         lifecycleStatus: LIFECYCLE.REJECTED,

@@ -18,8 +18,8 @@ const approveEvent = async (req, res) => {
         res.status(200).json(result);
     } catch (error) {
         console.log(error.message);
-
-        res.status(500).send({ error: error.message });
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).send({ error: error.message });
     }
 };
 
@@ -30,7 +30,8 @@ const rejectEvent = async (req, res) => {
         const result = await adminService.rejectEvent(id, reason);
         res.status(200).json(result);
     } catch (error) {
-        res.status(500).send({ error: error.message });
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).send({ error: error.message });
     }
 };
 

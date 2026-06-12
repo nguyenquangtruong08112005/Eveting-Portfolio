@@ -1,5 +1,5 @@
 const { query } = require('./postgres.client');
-const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
+const { STATUS, VISIBILITY, LIFECYCLE } = require('@/modules/events/domain/event-lifecycle');
 
 function rowToFirebaseDoc(row) {
     if (!row) return null;
@@ -48,8 +48,8 @@ function rowToFirebaseDoc(row) {
 const getPendingEvents = async (page = 1, limit = 20) => {
     const offset = (page - 1) * limit;
     const result = await query(
-        `SELECT * FROM events WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-        [STATUS.PENDING, limit, offset]
+        `SELECT * FROM events WHERE status = $1 AND (lifecycle_status IS NULL OR lifecycle_status = $4) ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+        [STATUS.PENDING, limit, offset, LIFECYCLE.SUBMITTED]
     );
     return result.rows.map(row => {
         const eventData = rowToFirebaseDoc(row);
