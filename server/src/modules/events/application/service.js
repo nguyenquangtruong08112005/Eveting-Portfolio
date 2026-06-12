@@ -19,7 +19,7 @@ const { buildRecommendationQuery } = require('./query-builders/recommendation-qu
 const { findNearbyEvents } = require('./helpers/nearby-events.helper');
 const { resolveVenueAndLocationForCreate, resolveVenueAndLocationForUpdate } = require('./helpers/venue-handler');
 const { getEventWeather } = require('./helpers/weather.helper');
-const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
+const { STATUS, VISIBILITY, isPublicDetailVisible } = require('@/modules/events/domain/event-lifecycle');
 
 const ELASTIC_INDEX = 'events';
 
@@ -74,7 +74,7 @@ const getEventById = async (eventId, requestingUser = null) => {
         ticketTypes: mapPublicTicketTypes(eventData.ticketTypes), venue: mapPublicVenue(venueData)
     };
 
-    if (eventData.visibility === VISIBILITY.PUBLIC) return publicEventView;
+    if (isPublicDetailVisible(eventData.status, eventData.visibility)) return publicEventView;
     if (eventData.visibility === VISIBILITY.UNLISTED && requestingUser) return publicEventView;
     return null;
 };
