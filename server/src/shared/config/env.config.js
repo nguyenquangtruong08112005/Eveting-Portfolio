@@ -45,6 +45,7 @@ const config = {
     get featuredProfile() { return process.env.FEATURED_PROFILE_DATABASE_PROVIDER; },
     get media() { return process.env.MEDIA_DATABASE_PROVIDER; },
     get notification() { return process.env.NOTIFICATION_DATABASE_PROVIDER; },
+    get order() { return process.env.ORDER_DATABASE_PROVIDER; },
     get organizer() { return process.env.ORGANIZER_DATABASE_PROVIDER; },
     get promotion() { return process.env.PROMOTION_DATABASE_PROVIDER; },
     get review() { return process.env.REVIEW_DATABASE_PROVIDER; },

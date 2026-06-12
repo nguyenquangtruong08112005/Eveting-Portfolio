@@ -13,6 +13,7 @@
     "db:smoke:draft-events": "node scripts/smoke.draft-events.js",
     "db:smoke:draft-submit": "node scripts/smoke.draft-submit.js",
     "db:smoke:admin-lifecycle": "node scripts/smoke.admin-lifecycle.js",
+    "db:smoke:order-foundation": "node scripts/smoke.order-foundation.js",
     "db:smoke:auth": "node scripts/smoke.auth.js",
     "db:smoke:postgres-provider": "node scripts/smoke.postgres-provider.js",
     "db:smoke:lazy-providers": "node scripts/smoke.lazy-providers.js",
