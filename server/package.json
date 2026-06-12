@@ -9,6 +9,7 @@
     "db:smoke:authz-middleware": "node scripts/smoke.authz-middleware.js",
     "db:smoke:event-lifecycle": "node scripts/smoke.event-lifecycle.js",
     "db:smoke:event-lifecycle-policy": "node scripts/smoke.event-lifecycle-policy.js",
+    "db:smoke:lifecycle-persistence": "node scripts/smoke.lifecycle-persistence.js",
     "db:smoke:auth": "node scripts/smoke.auth.js",
     "db:smoke:postgres-provider": "node scripts/smoke.postgres-provider.js",
     "db:smoke:lazy-providers": "node scripts/smoke.lazy-providers.js",

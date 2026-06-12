@@ -6,6 +6,7 @@ function rowToFirebaseDoc(row) {
     let data;
     if (row.raw_data) {
         data = { ...row.raw_data };
+        delete data.lifecycleStatus;
     } else {
         data = {
             name: row.name,

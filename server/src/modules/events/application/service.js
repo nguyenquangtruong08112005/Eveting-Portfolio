@@ -19,7 +19,7 @@ const { buildRecommendationQuery } = require('./query-builders/recommendation-qu
 const { findNearbyEvents } = require('./helpers/nearby-events.helper');
 const { resolveVenueAndLocationForCreate, resolveVenueAndLocationForUpdate } = require('./helpers/venue-handler');
 const { getEventWeather } = require('./helpers/weather.helper');
-const { STATUS, VISIBILITY, isPublicDetailVisible } = require('@/modules/events/domain/event-lifecycle');
+const { STATUS, VISIBILITY, LIFECYCLE, isPublicDetailVisible } = require('@/modules/events/domain/event-lifecycle');
 
 const ELASTIC_INDEX = 'events';
 
@@ -136,7 +136,8 @@ const createEvent = async (eventData, organizerId) => {
         lastUpdatedAt: now,
     };
 
-    await eventRepository.createEvent(eventId, newEventData);
+    const eventToPersist = { ...newEventData, lifecycleStatus: LIFECYCLE.SUBMITTED };
+    await eventRepository.createEvent(eventId, eventToPersist);
 
     const topic = `organizer_${organizerId}`;
     const title = "Sự kiện mới!";
@@ -205,7 +206,7 @@ const cancelEvent = async (eventId) => {
     const eventName = exists ? eventData.name : 'Sự kiện';
     const now = new Date().getTime();
 
-    await eventRepository.updateEvent(eventId, { status: STATUS.CANCELLED, cancelledAt: now, lastUpdatedAt: now });
+    await eventRepository.updateEvent(eventId, { status: STATUS.CANCELLED, lifecycleStatus: LIFECYCLE.CANCELLED, cancelledAt: now, lastUpdatedAt: now });
 
     if (esClient) {
         try {

@@ -34,6 +34,7 @@ const FIELD_MAP = {
     createdAt: 'created_at',
     lastUpdatedAt: 'last_updated_at',
     rawData: 'raw_data',
+    lifecycleStatus: 'lifecycle_status',
 };
 
 function rowToFirebaseDoc(row) {
@@ -41,6 +42,7 @@ function rowToFirebaseDoc(row) {
     let data;
     if (row.raw_data) {
         data = { ...row.raw_data };
+        delete data.lifecycleStatus;
     } else {
         data = {
             name: row.name,
@@ -142,7 +144,7 @@ const updateEvent = async (eventId, updates, transaction = null) => {
 
     const rawMerge = {};
     for (const key in updates) {
-        if (key === 'id' || key.indexOf('.') > 0) continue;
+        if (key === 'id' || key === 'lifecycleStatus' || key.indexOf('.') > 0) continue;
         rawMerge[key] = updates[key];
     }
 
@@ -251,6 +253,7 @@ const getEventEntriesByOrganizer = async (organizerId) => {
 const createEvent = async (eventId, eventData) => {
     const matchingData = Object.assign({}, eventData);
     delete matchingData.id;
+    delete matchingData.lifecycleStatus;
 
     const featuredProfileIds = eventData.featuredProfileIds || [];
     const category = eventData.category || [];
@@ -263,11 +266,11 @@ const createEvent = async (eventId, eventData) => {
             geohash, venue_id, venue_name, city, ticket_types, min_price,
             video_url, is_outdoor, organizer_id, status, visibility,
             recurring_rule, hot_score, view_count, required_age, sponsors,
-            created_at, last_updated_at, raw_data
+            created_at, last_updated_at, raw_data, lifecycle_status
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
             $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29,
-            $30, $31, $32
+            $30, $31, $32, $33
         ) ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
@@ -299,7 +302,8 @@ const createEvent = async (eventId, eventData) => {
             sponsors = EXCLUDED.sponsors,
             created_at = EXCLUDED.created_at,
             last_updated_at = EXCLUDED.last_updated_at,
-            raw_data = EXCLUDED.raw_data`,
+            raw_data = EXCLUDED.raw_data,
+            lifecycle_status = COALESCE(EXCLUDED.lifecycle_status, events.lifecycle_status)`,
         [
             eventId,
             eventData.name || '',
@@ -332,7 +336,8 @@ const createEvent = async (eventId, eventData) => {
             eventData.sponsors ? JSON.stringify(eventData.sponsors) : '[]',
             eventData.createdAt != null ? Number(eventData.createdAt) : null,
             eventData.lastUpdatedAt != null ? Number(eventData.lastUpdatedAt) : null,
-            JSON.stringify(matchingData)
+            JSON.stringify(matchingData),
+            eventData.lifecycleStatus || null,
         ]
     );
 };
