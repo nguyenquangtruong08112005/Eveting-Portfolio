@@ -56,6 +56,11 @@ router.delete('/:eventId', verifyAuthToken, [
     validateRequest
 ], eventController.cancelEventController);
 
+router.post('/:eventId/submit-draft', verifyAuthToken, [
+    param('eventId').notEmpty().withMessage('eventId is required'),
+    validateRequest
+], eventController.submitDraftController);
+
 router.use('/:eventId/reviews', reviewsRouter);
 
 router.use('/:eventId/media', mediaRouter);

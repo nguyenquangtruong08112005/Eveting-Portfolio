@@ -100,12 +100,19 @@ const getEventWeather = asyncHandler(async (req, res) => {
   res.status(200).json(weather);
 });
 
+const submitDraftController = asyncHandler(async (req, res) => {
+  const eventId = req.params.eventId;
+  const result = await eventService.submitDraft(eventId, req.user.uid);
+  res.status(200).json(result);
+});
+
 module.exports = {
   getAllEvents,
   getEventById,
   createEvent,
   updateEvent,
   cancelEventController,
+  submitDraftController,
   searchEvents,
   findNearbyEvents,
   getRecommendations,

@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { calculateMinPrice } = require('@/utils/tickets/calculateMinPrice.tickets');
 const esClient = require('@/shared/config/elasticsearch.config');
 const { fcmService } = require('@/modules/notifications');
-const { BadRequestError, NotFoundError, ServiceUnavailableError } = require('@/shared/errors');
+const { BadRequestError, NotFoundError, ForbiddenError, ServiceUnavailableError } = require('@/shared/errors');
 
 const eventRepository = require('@/providers/database/event.repository');
 const venueRepository = require('@/providers/database/venue.repository');
@@ -19,7 +19,7 @@ const { buildRecommendationQuery } = require('./query-builders/recommendation-qu
 const { findNearbyEvents } = require('./helpers/nearby-events.helper');
 const { resolveVenueAndLocationForCreate, resolveVenueAndLocationForUpdate } = require('./helpers/venue-handler');
 const { getEventWeather } = require('./helpers/weather.helper');
-const { STATUS, VISIBILITY, LIFECYCLE, isPublicDetailVisible } = require('@/modules/events/domain/event-lifecycle');
+const { STATUS, VISIBILITY, LIFECYCLE, isPublicDetailVisible, isTransitionAllowed } = require('@/modules/events/domain/event-lifecycle');
 
 const ELASTIC_INDEX = 'events';
 
@@ -225,6 +225,30 @@ const cancelEvent = async (eventId) => {
     return fullEventData;
 };
 
+const submitDraft = async (eventId, requestingUserId) => {
+    const row = await eventRepository.getEventLifecycleOwnership(eventId);
+    if (!row) {
+        throw new NotFoundError('Event not found.');
+    }
+    if (row.organizer_id !== requestingUserId) {
+        throw new ForbiddenError('You do not have permission to submit this draft.');
+    }
+    if (!isTransitionAllowed(row.lifecycle_status, LIFECYCLE.SUBMITTED)) {
+        throw new BadRequestError(`Cannot submit draft: current lifecycle status "${row.lifecycle_status}" cannot transition to "${LIFECYCLE.SUBMITTED}".`);
+    }
+
+    const now = new Date().getTime();
+    await eventRepository.updateEvent(eventId, {
+        lifecycleStatus: LIFECYCLE.SUBMITTED,
+        status: STATUS.PENDING,
+        visibility: VISIBILITY.PRIVATE,
+        lastUpdatedAt: now,
+    });
+
+    const fullEventData = await eventRepository.getEventById(eventId);
+    return fullEventData;
+};
+
 const searchEvents = async (queryParams) => {
     if (!esClient) {
         console.error("Elasticsearch unavailable.");
@@ -303,5 +327,5 @@ const getRecommendations = async (userId, limit = 10) => {
 };
 
 module.exports = {
-    getAllEvents, getEventById, createEvent, updateEvent, cancelEvent, findNearbyEvents, searchEvents, getRecommendations, getEventWeather
+    getAllEvents, getEventById, createEvent, updateEvent, cancelEvent, submitDraft, findNearbyEvents, searchEvents, getRecommendations, getEventWeather
 };
