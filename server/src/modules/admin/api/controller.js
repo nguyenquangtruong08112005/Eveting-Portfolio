@@ -14,7 +14,8 @@ const getPendingEvents = async (req, res) => {
 const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await adminService.approveEvent(id);
+        const adminUserId = req.user ? (req.user.uid || req.user.id) : 'system_admin';
+        const result = await adminService.approveEvent(id, adminUserId, req.ip);
         res.status(200).json(result);
     } catch (error) {
         console.log(error.message);
@@ -27,7 +28,8 @@ const rejectEvent = async (req, res) => {
     try {
         const { id } = req.params;
         const { reason } = req.body;
-        const result = await adminService.rejectEvent(id, reason);
+        const adminUserId = req.user ? (req.user.uid || req.user.id) : 'system_admin';
+        const result = await adminService.rejectEvent(id, reason, adminUserId, req.ip);
         res.status(200).json(result);
     } catch (error) {
         const statusCode = error.statusCode || 500;

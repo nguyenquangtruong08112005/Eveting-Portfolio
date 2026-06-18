@@ -9,6 +9,7 @@ const { BadRequestError } = require('@/shared/errors');
 const { transaction: dbTransaction } = require('@/providers/database/postgres.client');
 const eventPublisher = require('@/shared/events/event-publisher');
 const outboxProcessor = require('@/shared/events/outbox-processor');
+const { logAction } = require('@/shared/audit/audit-logger');
 
 const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];
@@ -52,7 +53,7 @@ const getPendingEvents = async (page = 1, limit = 20) => {
     return adminRepository.getPendingEvents(page, limit);
 };
 
-const approveEvent = async (eventId) => {
+const approveEvent = async (eventId, adminUserId = 'system_admin', ipAddress = null) => {
     const row = await eventRepository.getEventLifecycleOwnership(eventId);
     if (!row) {
         throw new Error('Event not found');
@@ -95,6 +96,16 @@ const approveEvent = async (eventId) => {
                 data: payloadData
             }, transaction);
         }
+
+        // Relational audit logging inside transaction
+        await logAction(transaction, {
+            userId: adminUserId,
+            action: 'EVENT_APPROVED',
+            resourceType: 'event',
+            resourceId: eventId,
+            changes: { before: { status: row.status }, after: { status: STATUS.ACTIVE } },
+            ipAddress
+        });
     });
 
     outboxProcessor.triggerProcess();
@@ -102,7 +113,7 @@ const approveEvent = async (eventId) => {
     return { success: true, message: "Event approved and published." };
 };
 
-const rejectEvent = async (eventId, reason) => {
+const rejectEvent = async (eventId, reason, adminUserId = 'system_admin', ipAddress = null) => {
     const row = await eventRepository.getEventLifecycleOwnership(eventId);
     if (!row) {
         throw new Error('Event not found');
@@ -128,6 +139,16 @@ const rejectEvent = async (eventId, reason) => {
             action: 'delete',
             eventId: eventId
         }, transaction);
+
+        // Relational audit logging inside transaction
+        await logAction(transaction, {
+            userId: adminUserId,
+            action: 'EVENT_REJECTED',
+            resourceType: 'event',
+            resourceId: eventId,
+            changes: { reason, before: { status: row.status }, after: { status: STATUS.REJECTED } },
+            ipAddress
+        });
     });
 
     outboxProcessor.triggerProcess();

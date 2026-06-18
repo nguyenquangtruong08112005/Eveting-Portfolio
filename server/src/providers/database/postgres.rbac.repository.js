@@ -214,11 +214,12 @@ async function getOrganizationMember(organizationId, userId) {
 // Audit logs
 // ---------------------------------------------------------------------------
 async function createAuditLog({ id, actorId, action, resourceType, resourceId, metadata, ipAddress }) {
-  const logId = id || newId();
+  const { v4: uuidv4 } = require('uuid');
+  const logId = id || `aud_${uuidv4()}`;
   await query(
-    `INSERT INTO audit_logs (id, actor_id, action, resource_type, resource_id, metadata, ip_address)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [logId, actorId, action, resourceType, resourceId, metadata ? JSON.stringify(metadata) : '{}', ipAddress || '']
+    `INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, changes, ip_address, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [logId, actorId, action, resourceType, resourceId, metadata ? JSON.stringify(metadata) : '{}', ipAddress || '', Date.now()]
   );
   return logId;
 }
@@ -227,7 +228,7 @@ async function findAuditLogsByActor(actorId, limit, offset) {
   const lim = limit || 50;
   const off = offset || 0;
   const result = await query(
-    'SELECT * FROM audit_logs WHERE actor_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+    'SELECT * FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
     [actorId, lim, off]
   );
   return result.rows;
