@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { param, query } = require('express-validator');
 const { verifyAuthToken, optionalAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
+const { auditLog } = require('@/shared/middleware/authz.middleware');
 const reviewsRouter = require('@/modules/reviews').router;
 const eventController = require('@/modules/events/api/controller');
 const { publicApiLimiter } = require('@/shared/middleware/rateLimit.middleware');
@@ -44,22 +45,22 @@ router.get('/:eventId', publicApiLimiter, optionalAuthToken, [
     validateRequest
 ], eventController.getEventById);
 
-router.post('/', verifyAuthToken, isOrganizer, eventController.createEvent);
+router.post('/', verifyAuthToken, isOrganizer, auditLog('event:create', 'event', 'id'), eventController.createEvent);
 
 router.put('/:eventId', verifyAuthToken, [
     param('eventId').notEmpty().withMessage('eventId is required'),
     validateRequest
-], eventController.updateEvent);
+], auditLog('event:update', 'event', 'eventId'), eventController.updateEvent);
 
 router.delete('/:eventId', verifyAuthToken, [
     param('eventId').notEmpty().withMessage('eventId is required'),
     validateRequest
-], eventController.cancelEventController);
+], auditLog('event:cancel', 'event', 'eventId'), eventController.cancelEventController);
 
 router.post('/:eventId/submit-draft', verifyAuthToken, [
     param('eventId').notEmpty().withMessage('eventId is required'),
     validateRequest
-], eventController.submitDraftController);
+], auditLog('event:submit-draft', 'event', 'eventId'), eventController.submitDraftController);
 
 router.use('/:eventId/reviews', reviewsRouter);
 

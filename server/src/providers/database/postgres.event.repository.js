@@ -234,7 +234,7 @@ const updateEvent = async (eventId, updates, transaction = null) => {
 
 const getEventInTransaction = async (transaction, eventId) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
-    const result = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    const result = await client.query('SELECT * FROM events WHERE id = $1 FOR UPDATE', [eventId]);
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
     return { id: row.id, ...rowToFirebaseDoc(row) };

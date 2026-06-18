@@ -355,7 +355,7 @@ async function run() {
       if (logs.length === 0) throw new Error('No audit logs found for resource');
     });
 
-    // 9. Verify authz middleware helpers load correctly
+    // 9. Verify authz middleware helpers load and execute correctly
     console.log('--- Step 9: Authz middleware helpers ---');
     let authzMiddleware;
     try {
@@ -364,8 +364,53 @@ async function run() {
       assert(typeof authzMiddleware.requirePermission === 'function', 'requirePermission is a function');
       assert(typeof authzMiddleware.requireOrganizationRole === 'function', 'requireOrganizationRole is a function');
       assert(typeof authzMiddleware.auditLog === 'function', 'auditLog is a function');
+
+      // Test auditLog execution
+      await check('auditLog middleware writes log with custom idParamName', async function() {
+        const mockReq = {
+          user: { uid: userId },
+          method: 'POST',
+          originalUrl: '/test-events/evt_123',
+          params: { eventId: 'evt_123' },
+          ip: '127.0.0.1'
+        };
+
+        let sendCalled = false;
+        const mockRes = {
+          statusCode: 200,
+          json: function(body) {
+            sendCalled = true;
+            return body;
+          }
+        };
+
+        // Wrap res.json using the middleware
+        const middleware = authzMiddleware.auditLog('test:action', 'test-resource', 'eventId');
+
+        let nextCalled = false;
+        await middleware(mockReq, mockRes, () => { nextCalled = true; });
+
+        if (!nextCalled) throw new Error('next() was not called by middleware');
+
+        // Trigger res.json to invoke the audit logger hook
+        const testBody = { success: true };
+        const result = mockRes.json(testBody);
+
+        if (!sendCalled) throw new Error('res.json original send was not called');
+
+        // Wait a small bit for the async log promise to resolve
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Verify the audit log was written to the DB
+        const logs = await rbacRepo.findAuditLogsByActor(userId, 10, 0);
+        const testLog = logs.find(l => l.action === 'test:action');
+        if (!testLog) throw new Error('Audit log entry not found in database');
+        if (testLog.resource_id !== 'evt_123') throw new Error(`Incorrect resource ID logged: expected 'evt_123', got '${testLog.resource_id}'`);
+        if (testLog.resource_type !== 'test-resource') throw new Error(`Incorrect resource type: expected 'test-resource', got '${testLog.resource_type}'`);
+      });
+
     } catch (e) {
-      assert(false, 'authz middleware loads: ' + e.message);
+      assert(false, 'authz middleware loads/executes: ' + e.message);
     }
 
     console.log('');

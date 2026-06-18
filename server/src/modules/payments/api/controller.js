@@ -70,9 +70,20 @@ const handleZaloPayCallback = async (req, res) => {
             const { data: dataStr } = req.body;
             const dataObj = JSON.parse(dataStr);
 
+            const appTransId = dataObj.app_trans_id;
+            const zpTransId = dataObj.zp_trans_id;
+
+            // Enforce webhook idempotency
+            const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(appTransId);
+            if (existingAttempt && existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
+                console.log(`[ZaloPay Callback] Transaction ${appTransId} already succeeded. Skipping.`);
+                result.return_code = 1;
+                result.return_message = "success";
+                return res.json(result);
+            }
+
             const embedData = JSON.parse(dataObj.embed_data);
             const ticketId = embedData.ticket_id;
-            const zpTransId = dataObj.zp_trans_id;
 
             console.log(`[ZaloPay Callback] Success Verified. Ticket: ${ticketId}, ZaloID: ${zpTransId}`);
 

@@ -27,4 +27,29 @@ router.get('/:ticketId',
     ticketController.getTicketDetails
 );
 
+router.post('/hold-seat',
+    verifyAuthToken,
+    body('eventId').notEmpty().withMessage('eventId is required'),
+    body('seatId').notEmpty().withMessage('seatId is required'),
+    validateRequest,
+    ticketController.holdSeat
+);
+
+router.post('/release-seat',
+    verifyAuthToken,
+    body('eventId').notEmpty().withMessage('eventId is required'),
+    body('seatId').notEmpty().withMessage('seatId is required'),
+    validateRequest,
+    ticketController.releaseSeat
+);
+
+router.post('/book-held-seats',
+    verifyAuthToken,
+    body('eventId').notEmpty().withMessage('eventId is required'),
+    body('seatIds').isArray({ min: 1 }).withMessage('seatIds must be a non-empty array'),
+    body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),
+    validateRequest,
+    ticketController.bookHeldSeats
+);
+
 module.exports = router;

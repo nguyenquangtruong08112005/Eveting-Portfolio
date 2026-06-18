@@ -32,8 +32,32 @@ const getTicketDetails = asyncHandler(async (req, res) => {
     res.status(200).json(ticketDetails);
 });
 
+const holdSeat = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { eventId, seatId } = req.body;
+    const result = await ticketService.holdSeat(userId, eventId, seatId);
+    res.status(200).json(result);
+});
+
+const releaseSeat = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { eventId, seatId } = req.body;
+    const result = await ticketService.releaseSeat(userId, eventId, seatId);
+    res.status(200).json(result);
+});
+
+const bookHeldSeats = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { eventId, seatIds, promoCode } = req.body;
+    const result = await ticketService.bookHeldSeats(userId, eventId, seatIds, promoCode);
+    res.status(201).json(result);
+});
+
 module.exports = {
     getCurrentUserTickets,
     bookTicket,
     getTicketDetails,
+    holdSeat,
+    releaseSeat,
+    bookHeldSeats,
 };

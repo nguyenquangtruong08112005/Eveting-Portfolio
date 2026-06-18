@@ -4,6 +4,9 @@ const promotionRepository = require('@/providers/database/promotion.repository')
 const analyticsRepository = require('@/providers/database/analytics.repository');
 const venueRepository = require('@/providers/database/venue.repository');
 const orderRepository = require('@/providers/database/order.repository');
+const seatRepository = require('@/providers/database/seat.repository');
+const cacheProvider = require('@/shared/cache/cache-provider');
+const { getIo } = require('@/shared/socket/socket-server');
 const { v4: uuidv4 } = require('uuid');
 const {
   BadRequestError,
@@ -216,19 +219,24 @@ const confirmTicketPayment = async (ticketId) => {
             dailyTimestamp: todayTimestamp
         });
 
-        // ── Shadow payment_attempt update ──
+        // ── Shadow payment_attempt and order status update ──
         try {
             const link = await orderRepository.getTicketOrderLinkInTransaction(transaction, ticketId);
-            if (link && link.paymentAttemptId) {
-                await orderRepository.updatePaymentAttemptInTransaction(transaction, link.paymentAttemptId, {
-                    status: PAYMENT_STATUS.SUCCEEDED,
-                    completedAt: Date.now(),
-                });
+            if (link) {
+                if (link.paymentAttemptId) {
+                    await orderRepository.updatePaymentAttemptInTransaction(transaction, link.paymentAttemptId, {
+                        status: PAYMENT_STATUS.SUCCEEDED,
+                        completedAt: Date.now(),
+                    });
+                }
+                if (link.orderId) {
+                    await orderRepository.updateOrderStatusInTransaction(transaction, link.orderId, ORDER_STATUS.PAID, Date.now());
+                }
             }
         } catch (err) {
-            logger.error(`[ShadowPayment] Failed to update payment_attempt for ticket ${ticketId}: ${err.message}`);
+            logger.error(`[ShadowPayment] Failed to update payment or order status for ticket ${ticketId}: ${err.message}`);
         }
-        // ── End shadow payment_attempt update ──
+        // ── End shadow payment_attempt and order status update ──
 
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
 
@@ -263,10 +271,183 @@ const getTicketDetailsById = async (ticketId, requestingUserId) => {
     return mapTicketDetailResponse(ticketData, eventData, venueData);
 };
 
+const holdSeat = async (userId, eventId, seatId) => {
+    const seat = await seatRepository.getSeatById(seatId);
+    if (!seat) {
+        throw new NotFoundError('Seat not found.');
+    }
+    if (seat.status !== 'available') {
+        throw new ConflictError('Seat is not available.');
+    }
+
+    const holdKey = `hold:event:${eventId}:seat:${seatId}`;
+    const existingHold = await cacheProvider.get(holdKey);
+    if (existingHold) {
+        throw new ConflictError('Seat is currently held by another user.');
+    }
+
+    const expiresAt = Date.now() + 600000;
+    await cacheProvider.set(holdKey, JSON.stringify({ userId, expiresAt }), 600);
+
+    const io = getIo();
+    if (io) {
+        io.to(`event_${eventId}`).emit('seat:held', { eventId, seatId, expiresAt });
+    }
+
+    return { success: true, eventId, seatId, expiresAt };
+};
+
+const releaseSeat = async (userId, eventId, seatId) => {
+    const holdKey = `hold:event:${eventId}:seat:${seatId}`;
+    const holdDataStr = await cacheProvider.get(holdKey);
+    if (!holdDataStr) {
+        return { success: true, message: 'No active hold found.' };
+    }
+
+    const holdData = JSON.parse(holdDataStr);
+    if (holdData.userId !== userId) {
+        throw new ForbiddenError('You do not own the hold on this seat.');
+    }
+
+    await cacheProvider.del(holdKey);
+
+    const io = getIo();
+    if (io) {
+        io.to(`event_${eventId}`).emit('seat:released', { eventId, seatId });
+    }
+
+    return { success: true, eventId, seatId };
+};
+
+const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
+    if (!Array.isArray(seatIds) || seatIds.length === 0) {
+        throw new BadRequestError('At least one seatId is required.');
+    }
+
+    return ticketRepository.runTransaction(async (transaction) => {
+        const eventData = await eventRepository.getEventInTransaction(transaction, eventId);
+        if (!eventData) {
+            throw new NotFoundError('Event not found.');
+        }
+
+        const tickets = [];
+        let totalAmount = 0;
+        let subtotalAmount = 0;
+
+        for (const seatId of seatIds) {
+            const holdKey = `hold:event:${eventId}:seat:${seatId}`;
+            const holdDataStr = await cacheProvider.get(holdKey);
+            if (!holdDataStr) {
+                throw new ConflictError(`Seat ${seatId} hold has expired or does not exist.`);
+            }
+
+            const holdData = JSON.parse(holdDataStr);
+            if (holdData.userId !== userId) {
+                throw new ForbiddenError(`You do not own the hold on seat ${seatId}.`);
+            }
+
+            const seat = await seatRepository.getSeatById(seatId);
+            if (!seat || seat.status !== 'available') {
+                throw new ConflictError(`Seat ${seatId} is no longer available.`);
+            }
+
+            await seatRepository.updateSeatStatus(seatId, 'blocked', transaction);
+
+            const ticketType = 'standard';
+            const ticketTypeData = eventData.ticketTypes[ticketType];
+            if (!ticketTypeData) {
+                throw new NotFoundError(`Ticket type '${ticketType}' does not exist for this event.`);
+            }
+
+            const unitPrice = Number(ticketTypeData.price);
+            subtotalAmount += unitPrice;
+
+            await cacheProvider.del(holdKey);
+        }
+
+        totalAmount = subtotalAmount;
+
+        if (promoCode) {
+            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, seatIds.length, totalAmount);
+            totalAmount = result.totalPrice;
+        }
+
+        const shadowOrderId = `ord_${uuidv4()}`;
+
+        await orderRepository.createOrderInTransaction(transaction, {
+            id: shadowOrderId,
+            userId,
+            eventId,
+            organizerId: eventData.organizerId,
+            status: ORDER_STATUS.PENDING_PAYMENT,
+            subtotalAmount: subtotalAmount,
+            discountAmount: subtotalAmount - totalAmount,
+            feeAmount: 0,
+            totalAmount: totalAmount,
+            currency: 'VND',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        });
+
+        for (let i = 0; i < seatIds.length; i++) {
+            const seatId = seatIds[i];
+            const ticketId = `tkt_${uuidv4()}`;
+            const qrCodeJwt = generateTicketQR(ticketId, userId, eventId, 1);
+
+            const newTicketData = {
+                id: ticketId,
+                eventId: eventId,
+                userId: userId,
+                organizerId: eventData.organizerId,
+                type: 'standard',
+                price: totalAmount / seatIds.length,
+                originalPrice: subtotalAmount / seatIds.length,
+                quantity: 1,
+                unitPrice: subtotalAmount / seatIds.length,
+                appliedPromoCode: promoCode,
+                seat: seatId,
+                qrCode: qrCodeJwt,
+                status: 'pending',
+                purchaseDate: Date.now(),
+            };
+
+            await ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
+
+            await orderRepository.createOrderItemInTransaction(transaction, {
+                id: `oi_${uuidv4()}`,
+                ticketTypeId: 'standard',
+                ticketType: 'standard',
+                eventId,
+                eventName: eventData.name || null,
+                ticketId,
+                seatId,
+                quantity: 1,
+                unitPrice: subtotalAmount / seatIds.length,
+                subtotal: subtotalAmount / seatIds.length,
+                totalAmount: totalAmount / seatIds.length,
+                status: 'pending',
+                createdAt: Date.now(),
+            }, shadowOrderId);
+
+            tickets.push(newTicketData);
+        }
+
+        const io = getIo();
+        if (io) {
+            io.to(`event_${eventId}`).emit('seat:sold', { eventId, seatIds });
+        }
+
+        return { orderId: shadowOrderId, tickets };
+    });
+};
+
 module.exports = {
     getTicketsByUserId,
     bookTicket,
     cancelPendingTicket,
     confirmTicketPayment,
     getTicketDetailsById,
+    holdSeat,
+    releaseSeat,
+    bookHeldSeats,
 };

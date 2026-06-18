@@ -86,12 +86,16 @@ function requireOrganizationRole(orgIdParam, ...allowedRoles) {
   };
 }
 
-function auditLog(action, resourceType) {
+function auditLog(action, resourceType, idParamName = 'id') {
   return async function(req, res, next) {
     const originalSend = res.json.bind(res);
     res.json = function(body) {
       const userId = req.user ? (req.user.uid || req.user.id || req.user.user_id) : null;
-      const resourceId = req.params.id || req.body.id || (body && body.id) || '';
+      const resourceId = req.params[idParamName] || 
+                         req.body[idParamName] || 
+                         req.query[idParamName] || 
+                         (body && body[idParamName]) || 
+                         '';
       if (userId && resourceId) {
         const metadata = {
           method: req.method,

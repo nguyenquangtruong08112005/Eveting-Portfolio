@@ -409,4 +409,52 @@ module.exports = {
     getTicketOrderLink,
     getTicketOrderLinkInTransaction,
     createPaymentAttemptAndLinkTicketAtomic,
+    getPaymentAttemptByProviderOrderId,
+    updateOrderStatusInTransaction,
 };
+
+async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null) {
+    const client = getClient(tx);
+    const sets = ['status = $1', 'updated_at = $2'];
+    const params = [status, Date.now()];
+    let idx = 3;
+
+    if (paidAt !== null) {
+        sets.push(`paid_at = $${idx}`);
+        params.push(paidAt);
+        idx++;
+    }
+
+    params.push(orderId);
+    await client.query(
+        `UPDATE orders SET ${sets.join(', ')} WHERE id = $${idx}`,
+        params
+    );
+}
+
+async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction = null) {
+    const client = getClient(transaction);
+    const result = await client.query(
+        'SELECT * FROM payment_attempts WHERE provider_order_id = $1',
+        [providerOrderId]
+    );
+    if (result.rows.length === 0) return null;
+    const r = result.rows[0];
+    return {
+        id: r.id,
+        orderId: r.order_id,
+        ticketId: r.ticket_id,
+        status: r.status,
+        paymentMethod: r.payment_method,
+        provider: r.provider,
+        providerOrderId: r.provider_order_id,
+        providerTransactionId: r.provider_transaction_id,
+        transactionId: r.transaction_id,
+        amount: r.amount != null ? Number(r.amount) : 0,
+        currency: r.currency,
+        completedAt: r.completed_at != null ? Number(r.completed_at) : null,
+        failureReason: r.failure_reason,
+        createdAt: r.created_at != null ? Number(r.created_at) : null,
+        updatedAt: r.updated_at != null ? Number(r.updated_at) : null,
+    };
+}
