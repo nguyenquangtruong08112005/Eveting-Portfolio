@@ -2,192 +2,219 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, ArrowRight, Sparkles, User, Shield, Compass } from 'lucide-react';
+import { Search, ArrowRight, Flame, LayoutDashboard, Shield, Ticket } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { EventCard } from '@/components/events/EventCard';
 import { Input } from '@/components/ui/input';
-
-interface Event {
-  id: string;
-  name: string;
-  description: string;
-  date: number;
-  imageUrl?: string;
-  location: { address: string };
-  city?: string;
-  venueName?: string;
-  minPrice: number;
-  category: string[];
-}
+import { useAuth } from '@/hooks/useAuth';
+import { eventsApi } from '@/lib/api';
+import type { Event } from '@/types';
 
 const MOCK_EVENTS: Event[] = [
   {
     id: 'evt_1',
     name: 'Neo-Tokyo Symphony 2026',
-    description: 'An immersive cyberpunk orchestral experience blending classical instruments with futuristic synthwave aesthetics.',
+    description:
+      'Trải nghiệm hòa nhạc cyberpunk đắm chìm — kết hợp nhạc cụ cổ điển với âm thanh synthwave tương lai.',
     date: Date.now() + 86400000 * 5,
-    imageUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?q=80&w=600&auto=format&fit=crop',
-    location: { address: '79 Nguyen Hue, District 1' },
-    city: 'Ho Chi Minh City',
+    imageUrl:
+      'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?q=80&w=600&auto=format&fit=crop',
+    location: { address: '79 Nguyễn Huệ, Quận 1' },
+    city: 'TP. Hồ Chí Minh',
     venueName: 'Rex Premium Theatre',
     minPrice: 150000,
-    category: ['Music', 'Cyberpunk']
+    category: ['Âm nhạc', 'Cyberpunk'],
   },
   {
     id: 'evt_2',
-    name: 'AI & Art Frontiers Exhibition',
-    description: 'Witness the intersection of generative AI algorithms and human physical expression in a dynamic spatial canvas.',
+    name: 'Triển lãm AI & Nghệ thuật',
+    description:
+      'Chứng kiến giao điểm của AI generative và biểu đạt con người trong không gian nghệ thuật động.',
     date: Date.now() + 86400000 * 12,
-    imageUrl: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?q=80&w=600&auto=format&fit=crop',
-    location: { address: '182 Le Dai Hanh, District 11' },
-    city: 'Ho Chi Minh City',
+    imageUrl:
+      'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?q=80&w=600&auto=format&fit=crop',
+    location: { address: '182 Lê Đại Hành, Quận 11' },
+    city: 'TP. Hồ Chí Minh',
     venueName: 'Lotte Innovation Labs',
     minPrice: 75000,
-    category: ['Art', 'Tech']
+    category: ['Nghệ thuật', 'Công nghệ'],
   },
   {
     id: 'evt_3',
-    name: 'Sunset Beats & Lounge Poolside',
-    description: 'Unwind with tropical house DJ sets under a gorgeous crimson sunset. Includes complimentary drinks.',
+    name: 'Sunset Beats — Poolside Lounge',
+    description:
+      'Thư giãn với tropical house DJ dưới hoàng hôn đỏ rực. Bao gồm đồ uống miễn phí.',
     date: Date.now() + 86400000 * 3,
-    imageUrl: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=600&auto=format&fit=crop',
+    imageUrl:
+      'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=600&auto=format&fit=crop',
     location: { address: 'Saigon Rooftop Lounge' },
-    city: 'Ho Chi Minh City',
+    city: 'TP. Hồ Chí Minh',
     venueName: 'The Grand Vista',
     minPrice: 200000,
-    category: ['Nightlife', 'DJ']
-  }
+    category: ['Nightlife', 'DJ'],
+  },
 ];
 
+const CATEGORIES = ['Tất cả', 'Âm nhạc', 'Nghệ thuật', 'Nightlife', 'Thể thao', 'Công nghệ'];
+
 export default function LandingPage() {
+  const { token, role, logout } = useAuth();
   const [events, setEvents] = useState<Event[]>(MOCK_EVENTS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userToken, setUserToken] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState('Tất cả');
 
   useEffect(() => {
-    // Read local auth storage if present
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    setUserToken(token);
-    setUserRole(role);
-
-    // Attempt to fetch from real backend
-    fetch('http://localhost:3000/events')
-      .then(res => res.json())
-      .then(data => {
-        if (data && Array.isArray(data.events)) {
-          setEvents(data.events);
-        }
+    eventsApi
+      .list()
+      .then((data) => {
+        if (data?.events?.length) setEvents(data.events);
       })
-      .catch(err => {
-        console.warn('Backend offline, using high-fidelity mock events instead.', err.message);
+      .catch(() => {
+        /* use mock data */
       });
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('uid');
-    setUserToken(null);
-    setUserRole(null);
-  };
-
-  const filteredEvents = events.filter(e => 
-    e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (e.description && e.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredEvents = events.filter((e) => {
+    const matchesSearch =
+      !searchQuery ||
+      e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      activeCategory === 'Tất cả' || (e.category ?? []).some((c) => c === activeCategory);
+    return matchesSearch && matchesCategory;
+  });
 
   return (
-    <div className="flex-1 flex flex-col relative bg-[#09090b] min-h-screen">
-      {/* Background Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
+    <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
+      {/* Ambient Glow */}
+      <div className="fixed top-0 left-0 w-full h-[600px] pointer-events-none overflow-hidden -z-10">
+        <div className="absolute top-[-200px] left-[10%] w-[500px] h-[500px] rounded-full bg-[#F76B10]/5 blur-[150px]" />
+        <div className="absolute top-[-100px] right-[15%] w-[400px] h-[400px] rounded-full bg-[#FF9C5B]/4 blur-[120px]" />
+      </div>
 
-      {/* Navbar Layout */}
-      <Navbar userToken={userToken} userRole={userRole} onLogout={handleLogout} />
+      <Navbar userToken={token} userRole={role} onLogout={logout} />
 
       {/* Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-6 py-20 text-center flex flex-col items-center">
-        <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-purple-500/20 bg-purple-500/5 text-sm text-purple-300 mb-6">
-          <Sparkles className="size-4 text-purple-400" />
-          <span>Redefining Live Entertainment Tech</span>
+      <section className="relative max-w-7xl mx-auto px-6 pt-16 pb-12 text-center flex flex-col items-center">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 text-sm text-[var(--primary-dark)] mb-6 animate-fade-in-up">
+          <Flame className="size-4" />
+          <span>Nền tảng sự kiện trực tuyến hàng đầu</span>
         </div>
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white max-w-4xl mb-6 leading-tight">
-          Discover and Book <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">Immersive Events</span> Locally
+
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--text-primary)] max-w-4xl mb-5 leading-[1.1]">
+          Khám phá &{' '}
+          <span className="bg-gradient-to-r from-[#F76B10] via-[#FF8F66] to-[#FF9C5B] bg-clip-text text-transparent">
+            Đặt vé sự kiện
+          </span>{' '}
+          yêu thích
         </h1>
-        <p className="text-zinc-400 text-lg max-w-2xl mb-10">
-          Experience real-time interactive seat selection, secure payment processing via ZaloPay, and instant tickets delivery.
+
+        <p className="text-[var(--text-secondary)] text-lg max-w-2xl mb-10 leading-relaxed">
+          Chọn ghế tương tác thời gian thực, thanh toán an toàn qua ZaloPay, phát hành vé tức thì.
         </p>
 
-        {/* Search Bar using shadcn Input */}
+        {/* Search Bar */}
         <div className="w-full max-w-xl relative">
-          <Input 
-            type="text" 
-            placeholder="Search events, cities, categories..." 
+          <Input
+            type="text"
+            placeholder="Tìm sự kiện, địa điểm, thể loại..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-7 rounded-2xl border border-zinc-850 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-1 focus-visible:ring-purple-500 focus-visible:border-purple-500 transition-all backdrop-blur-md"
+            className="w-full pl-12 pr-4 py-7 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)]/60 text-[var(--text-primary)] placeholder-[var(--text-muted)] focus-visible:ring-1 focus-visible:ring-[var(--primary-dark)] focus-visible:border-[var(--primary-dark)]/50 transition-all backdrop-blur-md"
           />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-500" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-[var(--text-muted)]" />
+        </div>
+
+        {/* Category Tabs — Ticketbox style */}
+        <div className="flex items-center gap-2 mt-6 flex-wrap justify-center">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={cn(
+                'px-4 py-2 rounded-full text-sm font-medium transition-all btn-tactile cursor-pointer',
+                activeCategory === cat
+                  ? 'bg-[var(--primary)] text-[var(--on-primary)]'
+                  : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] border border-[var(--surface-border)]'
+              )}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </section>
 
-      {/* Quick Navigation Panels for Demo */}
-      <section className="max-w-7xl mx-auto px-6 mb-16 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/attendee/events/evt_1" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left btn-tactile">
-            <div className="size-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4 group-hover:bg-cyan-500/20 transition-all">
-              <Compass className="size-5" />
+      {/* Quick Navigation Panels */}
+      <section className="max-w-7xl mx-auto px-6 mb-12 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <Link
+            href="/attendee/events/evt_1"
+            className="aura-card p-5 flex flex-col group cursor-pointer btn-tactile"
+          >
+            <div className="size-10 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center text-[var(--primary-dark)] mb-3 group-hover:bg-[var(--primary)]/20 transition-all">
+              <Ticket className="size-5" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
-              Interactive Seating
-              <ArrowRight className="size-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1 flex items-center justify-between">
+              Chọn ghế tương tác
+              <ArrowRight className="size-4 text-[var(--primary-dark)] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </h3>
-            <p className="text-zinc-400 text-sm">
-              Real-time interactive seat booking, holds, and live WebSocket synchronization.
+            <p className="text-[var(--text-muted)] text-sm">
+              Giữ ghế real-time, đồng bộ WebSocket, thanh toán nhanh.
             </p>
           </Link>
 
-          <Link href="/organizer/dashboard" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left btn-tactile">
-            <div className="size-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 group-hover:bg-purple-500/20 transition-all">
-              <User className="size-5" />
+          <Link
+            href="/organizer/dashboard"
+            className="aura-card p-5 flex flex-col group cursor-pointer btn-tactile"
+          >
+            <div className="size-10 rounded-xl bg-[var(--secondary-yellow)]/10 border border-[var(--secondary-yellow)]/20 flex items-center justify-center text-[var(--secondary-yellow)] mb-3 group-hover:bg-[var(--secondary-yellow)]/20 transition-all">
+              <LayoutDashboard className="size-5" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
-              Organizer Panel
-              <ArrowRight className="size-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1 flex items-center justify-between">
+              Ban tổ chức
+              <ArrowRight className="size-4 text-[var(--secondary-yellow)] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </h3>
-            <p className="text-zinc-400 text-sm">
-              Manage ticket prices, check balances, and view dynamic platform fee ledger payouts.
+            <p className="text-[var(--text-muted)] text-sm">
+              Quản lý vé, doanh thu, và chi phí nền tảng.
             </p>
           </Link>
 
-          <Link href="/admin/moderation" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left btn-tactile">
-            <div className="size-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4 group-hover:bg-red-500/20 transition-all">
+          <Link
+            href="/admin/moderation"
+            className="aura-card p-5 flex flex-col group cursor-pointer btn-tactile"
+          >
+            <div className="size-10 rounded-xl bg-[var(--error)]/10 border border-[var(--error)]/20 flex items-center justify-center text-[var(--error)] mb-3 group-hover:bg-[var(--error)]/20 transition-all">
               <Shield className="size-5" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
-              Admin Moderation
-              <ArrowRight className="size-4 text-red-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1 flex items-center justify-between">
+              Kiểm duyệt Admin
+              <ArrowRight className="size-4 text-[var(--error)] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </h3>
-            <p className="text-zinc-400 text-sm">
-              Moderator queue for reviewing submitted event drafts, approving, or rejecting.
+            <p className="text-[var(--text-muted)] text-sm">
+              Duyệt / từ chối sự kiện draft từ ban tổ chức.
             </p>
           </Link>
         </div>
       </section>
 
       {/* Events Grid */}
-      <main className="max-w-7xl mx-auto px-6 pb-24 w-full flex-1 flex flex-col justify-start">
-        <h2 className="text-2xl font-bold text-white mb-8 text-left">Featured Events</h2>
+      <main className="max-w-7xl mx-auto px-6 pb-20 w-full flex-1">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Sự kiện nổi bật</h2>
+          <span className="text-sm text-[var(--text-muted)]">
+            {filteredEvents.length} sự kiện
+          </span>
+        </div>
 
         {filteredEvents.length === 0 ? (
-          <div className="text-center py-12 border border-dashed border-zinc-800 rounded-2xl w-full">
-            <p className="text-zinc-500">No events found matching your query.</p>
+          <div className="text-center py-16 aura-card">
+            <p className="text-[var(--text-muted)]">
+              Không tìm thấy sự kiện phù hợp.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -195,8 +222,11 @@ export default function LandingPage() {
         )}
       </main>
 
-      {/* Footer Layout */}
       <Footer />
     </div>
   );
+}
+
+function cn(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(' ');
 }

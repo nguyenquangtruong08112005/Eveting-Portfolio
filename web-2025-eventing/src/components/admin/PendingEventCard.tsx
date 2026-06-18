@@ -1,89 +1,122 @@
 'use client';
 
-import React from 'react';
-import { Calendar, MapPin, X, Check } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Check, X, Calendar, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-interface PendingEvent {
-  id: string;
-  name: string;
-  description: string;
-  date: number;
-  organizerId: string;
-  venueName?: string;
-  city?: string;
-}
+import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/lib/constants';
+import type { Event } from '@/types';
 
 interface PendingEventCardProps {
-  event: PendingEvent;
-  rejectionReason: string;
-  onRejectionReasonChange: (reason: string) => void;
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
+  event: Event;
+  onApprove: (id: string) => Promise<void>;
+  onReject: (id: string, reason: string) => Promise<void>;
 }
 
-export function PendingEventCard({
-  event,
-  rejectionReason,
-  onRejectionReasonChange,
-  onApprove,
-  onReject,
-}: PendingEventCardProps) {
-  const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
-    dateStyle: 'medium',
-  });
+export function PendingEventCard({ event, onApprove, onReject }: PendingEventCardProps) {
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
+
+  const handleApprove = async () => {
+    setLoading(true);
+    try {
+      await onApprove(event.id);
+      setStatus('approved');
+    } catch { /* handled upstream */ }
+    setLoading(false);
+  };
+
+  const handleReject = async () => {
+    setLoading(true);
+    try {
+      await onReject(event.id, 'Không đạt tiêu chuẩn kiểm duyệt');
+      setStatus('rejected');
+    } catch { /* handled upstream */ }
+    setLoading(false);
+  };
+
+  if (status !== 'pending') {
+    return (
+      <div className="aura-card p-5 opacity-60">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-[var(--text-primary)] font-medium">{event.name}</p>
+          <Badge
+            className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+              status === 'approved'
+                ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
+                : 'bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30'
+            }`}
+          >
+            {status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+          </Badge>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Card className="premium-card p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 border-none ring-0">
-      <CardContent className="p-0 flex-1 text-left">
-        <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-1">ID: {event.id}</span>
-        <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
-        <p className="text-zinc-400 text-sm mb-4">{event.description}</p>
+    <div className="aura-card overflow-hidden">
+      {/* Image */}
+      {event.imageUrl && (
+        <div className="aspect-[21/9] w-full overflow-hidden bg-[var(--background)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={event.imageUrl}
+            alt={event.name}
+            className="object-cover w-full h-full"
+          />
+        </div>
+      )}
 
-        <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="size-4 text-purple-400" />
-            <span>{formattedDate}</span>
+      <div className="p-5">
+        {/* Categories */}
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          {event.category?.map((cat, idx) => (
+            <Badge
+              key={idx}
+              className="px-2 py-0.5 rounded-full bg-[var(--primary)]/8 border border-[var(--primary)]/20 text-[10px] text-[var(--primary-dark)] font-semibold uppercase tracking-wider"
+            >
+              {cat}
+            </Badge>
+          ))}
+        </div>
+
+        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">{event.name}</h3>
+        <p className="text-sm text-[var(--text-muted)] line-clamp-2 mb-4">{event.description}</p>
+
+        {/* Meta */}
+        <div className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)] mb-5">
+          <div className="flex items-center gap-2">
+            <Calendar className="size-3.5 text-[var(--primary-dark)]" />
+            <span>{formatDate(event.date)}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <MapPin className="size-4 text-cyan-400" />
-            <span>
-              {event.venueName || 'Physical'}, {event.city || 'HCM'}
-            </span>
+          <div className="flex items-center gap-2">
+            <MapPin className="size-3.5 text-[var(--secondary-blue)]" />
+            <span>{event.venueName || event.location?.address}</span>
           </div>
         </div>
-      </CardContent>
 
-      <div className="flex flex-col gap-3 min-w-[200px]">
-        {/* Rejection input */}
-        <Input
-          type="text"
-          placeholder="Rejection reason..."
-          value={rejectionReason}
-          onChange={(e) => onRejectionReasonChange(e.target.value)}
-          className="h-9 px-3 rounded-xl border border-zinc-850 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-0 focus-visible:border-red-500 transition-all text-xs"
-        />
-
-        <div className="grid grid-cols-2 gap-2">
+        {/* Actions */}
+        <div className="flex items-center gap-3">
           <Button
-            variant="destructive"
-            onClick={() => onReject(event.id)}
-            className="py-4 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer btn-tactile"
+            onClick={handleApprove}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25 border border-[var(--success)]/30 font-semibold text-xs cursor-pointer btn-tactile"
           >
-            <X className="size-3.5" />
-            Reject
+            <Check className="size-4 mr-1.5" />
+            Phê duyệt
           </Button>
           <Button
-            onClick={() => onApprove(event.id)}
-            className="py-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer border-none btn-tactile"
+            onClick={handleReject}
+            disabled={loading}
+            variant="outline"
+            className="flex-1 py-2.5 rounded-xl bg-[var(--error)]/10 text-[var(--error)] hover:bg-[var(--error)]/20 border border-[var(--error)]/30 font-semibold text-xs cursor-pointer btn-tactile"
           >
-            <Check className="size-3.5" />
-            Approve
+            <X className="size-4 mr-1.5" />
+            Từ chối
           </Button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -1,72 +1,45 @@
 'use client';
 
 import React from 'react';
-import { DollarSign, Percent, TrendingUp } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-
-interface Stats {
-  totalSales: number;
-  grossRevenue: number;
-  platformFees: number;
-  netRevenue: number;
-}
+import { DollarSign, TrendingUp, Percent, Wallet } from 'lucide-react';
+import { formatPrice } from '@/lib/constants';
+import type { OrganizerStats } from '@/types';
 
 interface StatsGridProps {
-  stats: Stats;
+  stats: OrganizerStats;
 }
+
+const statConfig = [
+  { key: 'totalSales' as const, label: 'Tổng vé bán', icon: TrendingUp, color: 'var(--primary-dark)', isCurrency: false },
+  { key: 'grossRevenue' as const, label: 'Doanh thu gộp', icon: DollarSign, color: 'var(--secondary-green)', isCurrency: true },
+  { key: 'platformFees' as const, label: 'Phí nền tảng', icon: Percent, color: 'var(--secondary-yellow)', isCurrency: true },
+  { key: 'netRevenue' as const, label: 'Doanh thu ròng', icon: Wallet, color: 'var(--primary-dark)', isCurrency: true },
+];
 
 export function StatsGrid({ stats }: StatsGridProps) {
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-      <Card className="premium-card p-6 rounded-2xl border-none ring-0">
-        <CardContent className="p-0 text-left">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Tickets Sold</span>
-            <TrendingUp className="size-4 text-purple-400" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {statConfig.map(({ key, label, icon: Icon, color, isCurrency }) => (
+        <div
+          key={key}
+          className="aura-card p-5 flex items-start gap-4"
+        >
+          <div
+            className="size-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: `color-mix(in srgb, ${color} 12%, transparent)` }}
+          >
+            <Icon className="size-5" style={{ color }} />
           </div>
-          <div className="text-2xl font-bold text-white mb-1">{stats.totalSales}</div>
-          <span className="text-[10px] text-zinc-500">+12% from last week</span>
-        </CardContent>
-      </Card>
-
-      <Card className="premium-card p-6 rounded-2xl border-none ring-0">
-        <CardContent className="p-0 text-left">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Gross Revenue</span>
-            <DollarSign className="size-4 text-cyan-400" />
+          <div>
+            <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider mb-1">
+              {label}
+            </p>
+            <p className="text-xl font-bold text-[var(--text-primary)]">
+              {isCurrency ? formatPrice(stats[key]) : stats[key].toLocaleString()}
+            </p>
           </div>
-          <div className="text-2xl font-bold text-cyan-400 mb-1">
-            {stats.grossRevenue.toLocaleString('vi-VN')} ₫
-          </div>
-          <span className="text-[10px] text-zinc-500">Platform rate configured: 5%</span>
-        </CardContent>
-      </Card>
-
-      <Card className="premium-card p-6 rounded-2xl border-none ring-0">
-        <CardContent className="p-0 text-left">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Platform Fees</span>
-            <Percent className="size-4 text-red-400" />
-          </div>
-          <div className="text-2xl font-bold text-red-400 mb-1">
-            {stats.platformFees.toLocaleString('vi-VN')} ₫
-          </div>
-          <span className="text-[10px] text-zinc-500">Calculated dynamic ledger deduction</span>
-        </CardContent>
-      </Card>
-
-      <Card className="premium-card p-6 rounded-2xl border-none ring-0">
-        <CardContent className="p-0 text-left">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Net Payout Balance</span>
-            <DollarSign className="size-4 text-green-400" />
-          </div>
-          <div className="text-2xl font-bold text-green-400 mb-1">
-            {stats.netRevenue.toLocaleString('vi-VN')} ₫
-          </div>
-          <span className="text-[10px] text-zinc-500">Available for instant withdrawal</span>
-        </CardContent>
-      </Card>
-    </section>
+        </div>
+      ))}
+    </div>
   );
 }

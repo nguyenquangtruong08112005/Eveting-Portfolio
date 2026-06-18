@@ -17,83 +17,88 @@ interface SeatGridProps {
   holdTimer: number | null;
 }
 
-export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
+const SEAT_STYLES: Record<Seat['status'], string> = {
+  available:
+    'border-[var(--surface-border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--primary-dark)] hover:text-[var(--text-primary)] hover:bg-[var(--primary)]/10',
+  held_by_you:
+    'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)] shadow-lg shadow-[var(--primary)]/30 font-bold',
+  held_by_others:
+    'border-[var(--secondary-yellow)]/40 bg-[var(--secondary-yellow)]/15 text-[var(--secondary-yellow)] cursor-not-allowed',
+  blocked:
+    'border-[var(--error)]/20 bg-[var(--error)]/8 text-[var(--error)]/40 cursor-not-allowed',
+};
+
+export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
   return (
-    <div className="flex flex-col premium-card p-8 rounded-2xl">
-      <h2 className="text-2xl font-bold text-white mb-2">Select Seats</h2>
-      <p className="text-zinc-400 text-xs mb-8">
-        Click on available seats to hold them for checkout. Holds expire in 10 minutes.
+    <div className="flex flex-col aura-card p-6">
+      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">Chọn ghế ngồi</h2>
+      <p className="text-[var(--text-muted)] text-xs mb-6">
+        Nhấn vào ghế trống để giữ chỗ. Ghế được giữ trong 10 phút.
       </p>
-      <div className="h-10 mb-6 flex items-center">
+
+      {/* Hold Timer — fixed height to prevent CLS */}
+      <div className="h-10 mb-5 flex items-center">
         {holdTimer !== null && holdTimer > 0 ? (
-          <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-300 text-xs font-semibold w-fit">
+          <div className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)]/10 border border-[var(--primary)]/30 rounded-xl text-[var(--primary-dark)] text-xs font-semibold w-fit">
             <Clock className="size-4" />
-            <span>Hold expires in: {formatTime(holdTimer)}</span>
+            <span>Hết hạn trong: {formatTime(holdTimer)}</span>
           </div>
         ) : (
-          <span className="text-zinc-500 text-[11px] font-medium italic">Select a seat to start hold timer</span>
+          <span className="text-[var(--text-muted)] text-[11px] font-medium italic">
+            Chọn ghế để bắt đầu đếm ngược
+          </span>
         )}
       </div>
 
-      {/* Stage Visual */}
-      <div className="w-full flex flex-col items-center mb-12">
-        <div className="w-[80%] h-4 bg-gradient-to-r from-purple-500 via-cyan-400 to-purple-500 rounded-full blur-[1px] opacity-80" />
-        <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-2">STAGE</span>
+      {/* Stage */}
+      <div className="w-full flex flex-col items-center mb-10">
+        <div className="w-[75%] h-3.5 bg-gradient-to-r from-[var(--primary)] via-[var(--primary-dark)] to-[var(--primary)] rounded-full opacity-70" />
+        <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.2em] font-bold mt-2">
+          SÂN KHẤU
+        </span>
       </div>
 
       {/* Seat Grid */}
       <div className="flex justify-center overflow-x-auto pb-4">
-        <div className="grid grid-cols-10 gap-3 min-w-[340px]">
-          {seats.map((seat) => {
-            let statusClass =
-              'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-purple-500 hover:text-white';
-            if (seat.status === 'held_by_you') {
-              statusClass =
-                'border-purple-500 bg-purple-600 text-white shadow-lg shadow-purple-500/35 glow-text';
-            } else if (seat.status === 'held_by_others') {
-              statusClass =
-                'border-orange-500/50 bg-orange-600/40 text-orange-200 cursor-not-allowed';
-            } else if (seat.status === 'blocked') {
-              statusClass = 'border-red-950 bg-red-950/40 text-red-700 cursor-not-allowed';
-            }
-
-            return (
-              <button
-                key={seat.id}
-                onClick={() => onSeatClick(seat)}
-                className={`size-10 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer btn-tactile ${statusClass}`}
-              >
-                {seat.rowName}
-                {seat.number}
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-10 gap-2.5 min-w-[340px]">
+          {seats.map((seat) => (
+            <button
+              key={seat.id}
+              onClick={() => onSeatClick(seat)}
+              disabled={seat.status === 'blocked' || seat.status === 'held_by_others'}
+              className={`size-9 rounded-lg border text-[11px] font-semibold flex items-center justify-center transition-all btn-tactile ${SEAT_STYLES[seat.status]}`}
+              title={`${seat.rowName}${seat.number} — ${seat.sectionName}`}
+            >
+              {seat.rowName}
+              {seat.number}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Legends */}
-      <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-8 border-t border-zinc-800/85 text-xs">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-center gap-5 mt-6 pt-6 border-t border-[var(--surface-border)] text-xs">
         <div className="flex items-center gap-2">
-          <div className="size-4 rounded bg-zinc-900 border border-zinc-850" />
-          <span className="text-zinc-400">Available</span>
+          <div className="size-3.5 rounded bg-[var(--surface)] border border-[var(--surface-border)]" />
+          <span className="text-[var(--text-muted)]">Trống</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="size-4 rounded bg-purple-600 border border-purple-500 shadow-md shadow-purple-500/35" />
-          <span className="text-zinc-300 font-medium">Selected / Held By You</span>
+          <div className="size-3.5 rounded bg-[var(--primary)] border border-[var(--primary)] shadow-sm" />
+          <span className="text-[var(--text-secondary)] font-medium">Đã chọn</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="size-4 rounded bg-orange-600/40 border border-orange-500/50" />
-          <span className="text-zinc-400">Held By Others</span>
+          <div className="size-3.5 rounded bg-[var(--secondary-yellow)]/15 border border-[var(--secondary-yellow)]/40" />
+          <span className="text-[var(--text-muted)]">Người khác giữ</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="size-4 rounded bg-red-950/40 border border-red-950" />
-          <span className="text-zinc-500">Sold / Reserved</span>
+          <div className="size-3.5 rounded bg-[var(--error)]/8 border border-[var(--error)]/20" />
+          <span className="text-[var(--text-muted)]">Đã bán</span>
         </div>
       </div>
     </div>

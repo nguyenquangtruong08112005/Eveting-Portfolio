@@ -1,69 +1,68 @@
 'use client';
 
 import React from 'react';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-
-interface OrganizerEvent {
-  id: string;
-  name: string;
-  status: string;
-  sold: number;
-  capacity: number;
-  price: number;
-}
+import { formatPrice } from '@/lib/constants';
+import type { OrganizerEvent } from '@/types';
 
 interface EventManageTableProps {
   events: OrganizerEvent[];
 }
 
+const statusStyles: Record<string, string> = {
+  active: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30',
+  draft: 'bg-[var(--secondary-yellow)]/10 text-[var(--secondary-yellow)] border-[var(--secondary-yellow)]/30',
+  published: 'bg-[var(--primary-dark)]/10 text-[var(--primary-dark)] border-[var(--primary-dark)]/30',
+  cancelled: 'bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30',
+};
+
 export function EventManageTable({ events }: EventManageTableProps) {
   return (
-    <div className="overflow-x-auto text-left">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-zinc-800 text-zinc-400 hover:bg-transparent">
-            <TableHead className="pb-3 font-semibold text-zinc-400">Event Name</TableHead>
-            <TableHead className="pb-3 font-semibold text-zinc-400">Status</TableHead>
-            <TableHead className="pb-3 font-semibold text-zinc-400">Sales / Capacity</TableHead>
-            <TableHead className="pb-3 font-semibold text-right text-zinc-400">Price</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {events.map((evt) => (
-            <TableRow key={evt.id} className="text-zinc-300 border-zinc-800/50 hover:bg-zinc-900/10">
-              <TableCell className="py-4 font-semibold text-white">{evt.name}</TableCell>
-              <TableCell className="py-4">
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[var(--surface-border)]">
+            <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              Sự kiện
+            </th>
+            <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              Trạng thái
+            </th>
+            <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              Đã bán
+            </th>
+            <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              Giá vé
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((event) => (
+            <tr
+              key={event.id}
+              className="border-b border-[var(--surface-border)] hover:bg-[var(--surface-hover)] transition-colors"
+            >
+              <td className="py-3 px-4 text-[var(--text-primary)] font-medium">{event.name}</td>
+              <td className="py-3 px-4">
                 <Badge
-                  variant={evt.status === 'active' ? 'default' : 'outline'}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                    evt.status === 'active'
-                      ? 'border-green-500/20 bg-green-500/5 text-green-400'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                    statusStyles[event.status] || statusStyles.draft
                   }`}
                 >
-                  {evt.status}
+                  {event.status}
                 </Badge>
-              </TableCell>
-              <TableCell className="py-4">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">{evt.sold}</span>
-                  <span className="text-zinc-500">/ {evt.capacity}</span>
-                  <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-purple-500"
-                      style={{ width: `${(evt.sold / evt.capacity) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="py-4 text-right font-bold text-cyan-400">
-                {evt.price.toLocaleString('vi-VN')} ₫
-              </TableCell>
-            </TableRow>
+              </td>
+              <td className="py-3 px-4 text-right text-[var(--text-secondary)]">
+                <span className="text-[var(--text-primary)] font-semibold">{event.sold}</span>
+                <span className="text-[var(--text-muted)]"> / {event.capacity}</span>
+              </td>
+              <td className="py-3 px-4 text-right text-[var(--primary-dark)] font-semibold">
+                {formatPrice(event.price)}
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 }

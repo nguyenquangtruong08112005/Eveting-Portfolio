@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, User, Shield, Compass, LogIn } from 'lucide-react';
+import { Flame, User, Shield, LayoutDashboard, LogIn, Menu } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -23,51 +23,65 @@ export function Navbar({
   isOrganizerPage = false,
 }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-[var(--surface-border)] bg-[var(--background)]/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-white hover:opacity-90 transition-all">
-          <Sparkles className="size-6 text-purple-400 glow-text" />
+        {/* Logo */}
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 font-extrabold text-xl tracking-tight text-[var(--text-primary)] hover:opacity-90 transition-opacity"
+        >
+          <div className="size-8 rounded-lg bg-gradient-to-br from-[#F76B10] to-[#FF9C5B] flex items-center justify-center">
+            <Flame className="size-4 text-[var(--on-primary)]" />
+          </div>
           <span>
-            Aura<span className="text-purple-400">Events</span>
+            Aura<span className="text-[var(--primary-dark)]">Events</span>
           </span>
           {isAdminPage && (
-            <Badge variant="destructive" className="ml-2 uppercase text-[9px] font-bold tracking-widest px-2.5">
+            <Badge className="ml-1 uppercase text-[9px] font-bold tracking-widest px-2 py-0.5 bg-[var(--error)]/15 text-[var(--error)] border-[var(--error)]/30">
               Admin
             </Badge>
           )}
           {isOrganizerPage && (
-            <Badge variant="secondary" className="ml-2 uppercase text-[9px] font-bold tracking-widest px-2.5 border-purple-500/30 bg-purple-500/5 text-purple-300">
+            <Badge className="ml-1 uppercase text-[9px] font-bold tracking-widest px-2 py-0.5 bg-[var(--primary)]/10 text-[var(--primary-dark)] border-[var(--primary)]/30">
               Organizer
             </Badge>
           )}
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
-          <Link href="/" className="text-zinc-300 hover:text-white transition-colors">
-            Home
+        {/* Navigation Links */}
+        <nav className="hidden md:flex items-center gap-1">
+          <Link
+            href="/"
+            className="px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]/60 rounded-lg transition-all"
+          >
+            Trang chủ
           </Link>
           {userRole === 'organizer' && (
-            <Link href="/organizer/dashboard" className="hover:text-white transition-colors flex items-center gap-1.5">
-              <Compass className="size-4 text-purple-400" /> Organizer Dashboard
+            <Link
+              href="/organizer/dashboard"
+              className="px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-dark)] hover:bg-[var(--primary)]/5 rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <LayoutDashboard className="size-3.5" />
+              Dashboard
             </Link>
           )}
           {userRole === 'admin' && (
-            <Link href="/admin/moderation" className="hover:text-white transition-colors flex items-center gap-1.5 text-purple-300">
-              <Shield className="size-4" /> Admin Moderation
-            </Link>
-          )}
-          {userToken && userRole !== 'admin' && userRole !== 'organizer' && (
-            <Link href="/attendee/events/evt_1" className="hover:text-white transition-colors flex items-center gap-1.5 text-cyan-400">
-              <Compass className="size-4" /> Seat Holds Pilot
+            <Link
+              href="/admin/moderation"
+              className="px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--error)] hover:bg-[var(--error)]/5 rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <Shield className="size-3.5" />
+              Kiểm duyệt
             </Link>
           )}
         </nav>
 
-        <div className="flex items-center gap-4">
+        {/* Auth Actions */}
+        <div className="flex items-center gap-3">
           {userToken ? (
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-purple-500/30 bg-purple-500/5 text-xs text-purple-300 font-normal capitalize">
-                <User className="size-3.5" />
+            <>
+              <Badge className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--surface-border)] text-xs text-[var(--text-secondary)] font-medium capitalize">
+                <User className="size-3.5 text-[var(--primary-dark)]" />
                 <span>{userRole || 'Attendee'}</span>
               </Badge>
               {onLogout && (
@@ -75,22 +89,22 @@ export function Navbar({
                   variant="outline"
                   size="sm"
                   onClick={onLogout}
-                  className="rounded-xl font-semibold text-zinc-300 hover:text-white cursor-pointer btn-tactile"
+                  className="rounded-lg font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] border-[var(--surface-border)] cursor-pointer btn-tactile"
                 >
-                  Log out
+                  Đăng xuất
                 </Button>
               )}
-            </div>
+            </>
           ) : (
             <Link
               href="/login"
               className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "bg-white text-black hover:bg-zinc-200 border-none rounded-xl font-semibold cursor-pointer flex items-center gap-1.5 btn-tactile"
+                buttonVariants({ variant: "default", size: "sm" }),
+                "btn-primary-gradient rounded-lg font-semibold cursor-pointer flex items-center gap-1.5 btn-tactile px-4 border-none"
               )}
             >
               <LogIn className="size-3.5" />
-              Sign In
+              Đăng nhập
             </Link>
           )}
         </div>
