@@ -4,6 +4,7 @@ import React from 'react';
 import { Receipt, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 interface LedgerEntry {
   id: string;
@@ -49,7 +50,9 @@ export function LedgerEntries({ entries }: LedgerEntriesProps) {
                 <span>-{led.fee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
-              <div className="flex justify-between items-center pt-2 border-t border-zinc-800/80 text-green-400 font-bold">
+              <Separator className="bg-zinc-800/80 my-1" />
+
+              <div className="flex justify-between items-center text-green-400 font-bold">
                 <span>Net Credit:</span>
                 <span>+{led.net.toLocaleString('vi-VN')} ₫</span>
               </div>

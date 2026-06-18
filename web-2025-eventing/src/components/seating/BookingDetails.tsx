@@ -5,6 +5,7 @@ import { Calendar, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 interface BookingDetailsProps {
   eventName: string;
@@ -59,7 +60,9 @@ export function BookingDetails({
           </div>
         </div>
 
-        <div className="border-t border-zinc-800/80 pt-6 mb-6">
+        <Separator className="bg-zinc-800/80 my-6" />
+
+        <div className="mb-6">
           <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider block mb-3">
             Selected Seats
           </label>
@@ -80,7 +83,9 @@ export function BookingDetails({
           )}
         </div>
 
-        <div className="border-t border-zinc-800/80 pt-6 mb-8 text-sm text-zinc-450">
+        <Separator className="bg-zinc-800/80 my-6" />
+
+        <div className="mb-8 text-sm text-zinc-450">
           <div className="flex items-center justify-between text-zinc-400 mb-2">
             <span>Subtotal</span>
             <span>{subtotal.toLocaleString('vi-VN')} ₫</span>
@@ -89,7 +94,10 @@ export function BookingDetails({
             <span>Handling Fee</span>
             <span>{handlingFee.toLocaleString('vi-VN')} ₫</span>
           </div>
-          <div className="flex items-center justify-between pt-4 border-t border-zinc-800/85">
+          
+          <Separator className="bg-zinc-800/80 my-4" />
+
+          <div className="flex items-center justify-between pt-2">
             <span className="text-sm text-white font-semibold">Total Amount</span>
             <span className="text-lg font-bold text-cyan-400">{total.toLocaleString('vi-VN')} ₫</span>
           </div>

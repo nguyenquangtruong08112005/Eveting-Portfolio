@@ -64,7 +64,7 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
               <button
                 key={seat.id}
                 onClick={() => onSeatClick(seat)}
-                className={`w-10 h-10 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${statusClass}`}
+                className={`size-10 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${statusClass}`}
               >
                 {seat.rowName}
                 {seat.number}
@@ -77,19 +77,19 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
       {/* Legends */}
       <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-8 border-t border-zinc-800/85 text-xs">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-zinc-900 border border-zinc-850" />
+          <div className="size-4 rounded bg-zinc-900 border border-zinc-850" />
           <span className="text-zinc-400">Available</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-purple-600 border border-purple-500 shadow-md shadow-purple-500/35" />
+          <div className="size-4 rounded bg-purple-600 border border-purple-500 shadow-md shadow-purple-500/35" />
           <span className="text-zinc-300 font-medium">Selected / Held By You</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-orange-600/40 border border-orange-500/50" />
+          <div className="size-4 rounded bg-orange-600/40 border border-orange-500/50" />
           <span className="text-zinc-400">Held By Others</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-red-950/40 border border-red-950" />
+          <div className="size-4 rounded bg-red-950/40 border border-red-950" />
           <span className="text-zinc-500">Sold / Reserved</span>
         </div>
       </div>
