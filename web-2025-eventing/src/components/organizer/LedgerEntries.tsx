@@ -25,7 +25,7 @@ export function LedgerEntries({ entries }: LedgerEntriesProps) {
     <Card className="premium-card p-6 rounded-2xl flex flex-col justify-between border-none ring-0">
       <CardContent className="p-0 text-left">
         <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-1.5">
-          <Receipt className="h-5 w-5 text-purple-400" />
+          <Receipt className="size-5 text-purple-400" />
           Ledger Payout Logs
         </h3>
 
@@ -63,10 +63,10 @@ export function LedgerEntries({ entries }: LedgerEntriesProps) {
 
       <Button
         variant="outline"
-        className="w-full mt-6 py-5 rounded-xl border border-zinc-800 hover:bg-zinc-900 transition-all font-semibold text-xs tracking-wider uppercase text-zinc-300 flex items-center justify-center gap-1.5 cursor-pointer"
+        className="w-full mt-6 py-5 rounded-xl border border-zinc-800 hover:bg-zinc-900 transition-all font-semibold text-xs tracking-wider uppercase text-zinc-300 flex items-center justify-center gap-1.5 cursor-pointer btn-tactile"
       >
         Withdraw All Funds
-        <ArrowUpRight className="h-4 w-4" />
+        <ArrowUpRight className="size-4" />
       </Button>
     </Card>
   );

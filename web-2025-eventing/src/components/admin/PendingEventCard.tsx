@@ -44,11 +44,11 @@ export function PendingEventCard({
 
         <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
           <div className="flex items-center gap-1.5">
-            <Calendar className="h-4 w-4 text-purple-400" />
+            <Calendar className="size-4 text-purple-400" />
             <span>{formattedDate}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <MapPin className="h-4 w-4 text-cyan-400" />
+            <MapPin className="size-4 text-cyan-400" />
             <span>
               {event.venueName || 'Physical'}, {event.city || 'HCM'}
             </span>
@@ -63,23 +63,23 @@ export function PendingEventCard({
           placeholder="Rejection reason..."
           value={rejectionReason}
           onChange={(e) => onRejectionReasonChange(e.target.value)}
-          className="h-9 px-3 rounded-xl border border-zinc-800 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-0 focus-visible:border-red-500 transition-all text-xs"
+          className="h-9 px-3 rounded-xl border border-zinc-850 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-0 focus-visible:border-red-500 transition-all text-xs"
         />
 
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="destructive"
             onClick={() => onReject(event.id)}
-            className="py-4 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+            className="py-4 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer btn-tactile"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="size-3.5" />
             Reject
           </Button>
           <Button
             onClick={() => onApprove(event.id)}
-            className="py-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer border-none"
+            className="py-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer border-none btn-tactile"
           >
-            <Check className="h-3.5 w-3.5" />
+            <Check className="size-3.5" />
             Approve
           </Button>
         </div>

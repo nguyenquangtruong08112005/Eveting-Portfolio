@@ -22,7 +22,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
         <CardContent className="p-0 text-left">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Tickets Sold</span>
-            <TrendingUp className="h-4 w-4 text-purple-400" />
+            <TrendingUp className="size-4 text-purple-400" />
           </div>
           <div className="text-2xl font-bold text-white mb-1">{stats.totalSales}</div>
           <span className="text-[10px] text-zinc-500">+12% from last week</span>
@@ -33,7 +33,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
         <CardContent className="p-0 text-left">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Gross Revenue</span>
-            <DollarSign className="h-4 w-4 text-cyan-400" />
+            <DollarSign className="size-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold text-cyan-400 mb-1">
             {stats.grossRevenue.toLocaleString('vi-VN')} ₫
@@ -46,7 +46,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
         <CardContent className="p-0 text-left">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Platform Fees</span>
-            <Percent className="h-4 w-4 text-red-400" />
+            <Percent className="size-4 text-red-400" />
           </div>
           <div className="text-2xl font-bold text-red-400 mb-1">
             {stats.platformFees.toLocaleString('vi-VN')} ₫
@@ -59,7 +59,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
         <CardContent className="p-0 text-left">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Net Payout Balance</span>
-            <DollarSign className="h-4 w-4 text-green-400" />
+            <DollarSign className="size-4 text-green-400" />
           </div>
           <div className="text-2xl font-bold text-green-400 mb-1">
             {stats.netRevenue.toLocaleString('vi-VN')} ₫

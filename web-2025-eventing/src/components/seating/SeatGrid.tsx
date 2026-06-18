@@ -30,13 +30,16 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
       <p className="text-zinc-400 text-xs mb-8">
         Click on available seats to hold them for checkout. Holds expire in 10 minutes.
       </p>
-
-      {holdTimer !== null && holdTimer > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-300 text-xs font-semibold mb-6 w-fit">
-          <Clock className="size-4" />
-          <span>Hold expires in: {formatTime(holdTimer)}</span>
-        </div>
-      )}
+      <div className="h-10 mb-6 flex items-center">
+        {holdTimer !== null && holdTimer > 0 ? (
+          <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-300 text-xs font-semibold w-fit">
+            <Clock className="size-4" />
+            <span>Hold expires in: {formatTime(holdTimer)}</span>
+          </div>
+        ) : (
+          <span className="text-zinc-500 text-[11px] font-medium italic">Select a seat to start hold timer</span>
+        )}
+      </div>
 
       {/* Stage Visual */}
       <div className="w-full flex flex-col items-center mb-12">
