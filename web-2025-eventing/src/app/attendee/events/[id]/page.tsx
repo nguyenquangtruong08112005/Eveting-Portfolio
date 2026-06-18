@@ -3,8 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import { Calendar, MapPin, Sparkles, AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
+import { SeatGrid } from '@/components/seating/SeatGrid';
+import { BookingDetails } from '@/components/seating/BookingDetails';
 
 interface Seat {
   id: string;
@@ -26,10 +29,15 @@ export default function EventBookingPage() {
   const [holdTimer, setHoldTimer] = useState<number | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    setUserToken(localStorage.getItem('token'));
+    setUserRole(localStorage.getItem('role'));
+
     // 1. Setup mock/real event details
     const loadEvent = async () => {
       try {
@@ -136,6 +144,15 @@ export default function EventBookingPage() {
     };
   }, [eventId]);
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('uid');
+    setUserToken(null);
+    setUserRole(null);
+    router.push('/login');
+  };
+
   // Handle seat clicks
   const handleSeatClick = async (seat: Seat) => {
     if (seat.status === 'blocked' || seat.status === 'held_by_others') {
@@ -233,9 +250,7 @@ export default function EventBookingPage() {
       });
 
       if (res.ok) {
-        const orderData = await res.json();
         setInfoMessage('Seats booked successfully! Redirecting to payment...');
-        // Simulate redirect to callback
         setTimeout(() => {
           router.push('/');
         }, 2000);
@@ -262,97 +277,20 @@ export default function EventBookingPage() {
     );
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
-    <div className="flex-1 flex flex-col relative bg-[#09090b]">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-white">
-            <Sparkles className="h-6 w-6 text-purple-400 glow-text" />
-            <span>Aura<span className="text-purple-400">Events</span></span>
-          </Link>
-          <Link href="/" className="text-xs text-zinc-400 hover:text-white transition-all">
-            Back to Home
-          </Link>
-        </div>
-      </header>
+    <div className="flex-1 flex flex-col relative bg-[#09090b] min-h-screen">
+      {/* Navbar Component */}
+      <Navbar userToken={userToken} userRole={userRole} onLogout={handleLogout} />
 
       {/* Main Body */}
       <main className="max-w-7xl mx-auto px-6 py-12 w-full flex-grow grid grid-cols-1 lg:grid-cols-3 gap-12 text-left">
         {/* Left Side: Seat Map */}
-        <section className="lg:col-span-2 flex flex-col premium-card p-8 rounded-2xl">
-          <h2 className="text-2xl font-bold text-white mb-2">Select Seats</h2>
-          <p className="text-zinc-400 text-xs mb-8">Click on available seats to hold them for checkout. Holds expire in 10 minutes.</p>
-
-          {holdTimer !== null && holdTimer > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-300 text-xs font-semibold mb-6">
-              <Clock className="h-4 w-4" />
-              <span>Hold expires in: {formatTime(holdTimer)}</span>
-            </div>
-          )}
-
-          {/* Stage Visual */}
-          <div className="w-full flex flex-col items-center mb-12">
-            <div className="w-[80%] h-4 bg-gradient-to-r from-purple-500 via-cyan-400 to-purple-500 rounded-full blur-[1px] opacity-80" />
-            <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-2">STAGE</span>
-          </div>
-
-          {/* Seat Grid */}
-          <div className="flex justify-center overflow-x-auto pb-4">
-            <div className="grid grid-cols-10 gap-3 min-w-[340px]">
-              {seats.map(seat => {
-                let statusClass = 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-purple-500 hover:text-white';
-                if (seat.status === 'held_by_you') {
-                  statusClass = 'border-purple-500 bg-purple-600 text-white shadow-lg shadow-purple-500/35 glow-text';
-                } else if (seat.status === 'held_by_others') {
-                  statusClass = 'border-orange-500/50 bg-orange-600/40 text-orange-200 cursor-not-allowed';
-                } else if (seat.status === 'blocked') {
-                  statusClass = 'border-red-950 bg-red-950/40 text-red-700 cursor-not-allowed';
-                }
-
-                return (
-                  <button
-                    key={seat.id}
-                    onClick={() => handleSeatClick(seat)}
-                    className={`w-10 h-10 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${statusClass}`}
-                  >
-                    {seat.rowName}{seat.number}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legends */}
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-8 border-t border-zinc-800 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-zinc-900 border border-zinc-800" />
-              <span className="text-zinc-400">Available</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-purple-600 border border-purple-500 shadow-md shadow-purple-500/35" />
-              <span className="text-zinc-300 font-medium">Selected / Held By You</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-orange-600/40 border border-orange-500/50" />
-              <span className="text-zinc-400">Held By Others</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-red-950/40 border border-red-950" />
-              <span className="text-zinc-500">Sold / Reserved</span>
-            </div>
-          </div>
+        <section className="lg:col-span-2">
+          <SeatGrid seats={seats} onSeatClick={handleSeatClick} holdTimer={holdTimer} />
         </section>
 
         {/* Right Side: Booking Panel */}
         <section className="flex flex-col gap-6">
-          {/* Messages */}
           {errorMessage && (
             <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-start gap-2 text-red-400 text-xs">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -367,69 +305,22 @@ export default function EventBookingPage() {
             </div>
           )}
 
-          <div className="premium-card p-6 rounded-2xl">
-            <h3 className="text-xl font-bold text-white mb-6">Booking Details</h3>
-
-            <div className="flex flex-col gap-4 mb-8">
-              <div className="text-white text-lg font-bold line-clamp-1">{event.name}</div>
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <Calendar className="h-4 w-4 text-purple-400" />
-                <span>{new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <MapPin className="h-4 w-4 text-cyan-400" />
-                <span>{event.venueName || event.location?.address}, {event.city || 'HCM'}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-zinc-800 pt-6 mb-6">
-              <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider block mb-3">Selected Seats</label>
-              {selectedSeats.length === 0 ? (
-                <span className="text-xs text-zinc-500 italic block">No seats selected yet.</span>
-              ) : (
-                <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto">
-                  {selectedSeats.map(id => (
-                    <span key={id} className="px-3 py-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 text-xs text-purple-300 font-semibold uppercase">
-                      {id.replace('seat_', '').replace('_', '')}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-zinc-800 pt-6 mb-8">
-              <div className="flex items-center justify-between text-sm text-zinc-400 mb-2">
-                <span>Subtotal</span>
-                <span>
-                  {selectedSeats.length > 0
-                    ? ((selectedSeats.length * event.minPrice).toLocaleString('vi-VN') + ' ₫')
-                    : '0 ₫'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm text-zinc-400 mb-4">
-                <span>Handling Fee</span>
-                <span>0 ₫</span>
-              </div>
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
-                <span className="text-sm text-white font-semibold">Total Amount</span>
-                <span className="text-lg font-bold text-cyan-400">
-                  {selectedSeats.length > 0
-                    ? ((selectedSeats.length * event.minPrice).toLocaleString('vi-VN') + ' ₫')
-                    : '0 ₫'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleCheckout}
-              disabled={selectedSeats.length === 0}
-              className="w-full py-3.5 rounded-xl bg-purple-600 text-white hover:bg-purple-500 font-bold text-sm tracking-wide transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55"
-            >
-              Proceed to Book
-            </button>
-          </div>
+          <BookingDetails
+            eventName={event.name}
+            eventDate={event.date}
+            venueName={event.venueName}
+            address={event.location?.address}
+            city={event.city}
+            selectedSeats={selectedSeats}
+            minPrice={event.minPrice}
+            onCheckout={handleCheckout}
+            disabled={loading}
+          />
         </section>
       </main>
+
+      {/* Footer Component */}
+      <Footer />
     </div>
   );
 }

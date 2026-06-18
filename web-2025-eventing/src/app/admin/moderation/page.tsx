@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Calendar, MapPin, Check, X, ShieldAlert, AlertCircle, CheckCircle } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ShieldAlert, AlertCircle, CheckCircle } from 'lucide-react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
+import { PendingEventCard } from '@/components/admin/PendingEventCard';
 
 interface PendingEvent {
   id: string;
@@ -15,7 +18,11 @@ interface PendingEvent {
 }
 
 export default function AdminModerationPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
   const [pendingEvents, setPendingEvents] = useState<PendingEvent[]>([
     {
       id: 'evt_pending_1',
@@ -43,6 +50,9 @@ export default function AdminModerationPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    setUserToken(token);
+    setUserRole(role);
     
     // Fetch real pending events from admin endpoint
     fetch('http://localhost:3000/admin/events/pending', {
@@ -58,6 +68,15 @@ export default function AdminModerationPage() {
 
     setLoading(false);
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('uid');
+    setUserToken(null);
+    setUserRole(null);
+    router.push('/login');
+  };
 
   const handleApprove = async (eventId: string) => {
     const token = localStorage.getItem('token');
@@ -124,20 +143,9 @@ export default function AdminModerationPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col relative bg-[#09090b]">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-white">
-            <Sparkles className="h-6 w-6 text-purple-400 glow-text" />
-            <span>Aura<span className="text-purple-400">Events</span></span>
-            <span className="text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded-full border border-red-500/30 bg-red-500/5 text-red-300 ml-2">ADMIN</span>
-          </div>
-          <Link href="/" className="text-xs text-zinc-400 hover:text-white transition-all">
-            Back to Home
-          </Link>
-        </div>
-      </header>
+    <div className="flex-1 flex flex-col relative bg-[#09090b] min-h-screen">
+      {/* Navbar Component */}
+      <Navbar userToken={userToken} userRole={userRole} onLogout={handleLogout} isAdminPage />
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-12 w-full flex-grow text-left">
@@ -167,56 +175,23 @@ export default function AdminModerationPage() {
         ) : (
           <div className="space-y-6">
             {pendingEvents.map((event) => (
-              <article key={event.id} className="premium-card p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex-1">
-                  <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-1">ID: {event.id}</span>
-                  <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
-                  <p className="text-zinc-400 text-sm mb-4">{event.description}</p>
-
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-purple-400" />
-                      <span>{new Date(event.date).toLocaleDateString('en-US', { dateStyle: 'medium' })}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4 text-cyan-400" />
-                      <span>{event.venueName || 'Physical'}, {event.city || 'HCM'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 min-w-[200px]">
-                  {/* Rejection input */}
-                  <input
-                    type="text"
-                    placeholder="Rejection reason..."
-                    value={rejectionReasons[event.id] || ''}
-                    onChange={(e) => setRejectionReasons({ ...rejectionReasons, [event.id]: e.target.value })}
-                    className="px-3 py-2 rounded-xl border border-zinc-800 bg-zinc-900/50 text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 transition-all text-xs"
-                  />
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleReject(event.id)}
-                      className="py-2.5 px-3 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => handleApprove(event.id)}
-                      className="py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Approve
-                    </button>
-                  </div>
-                </div>
-              </article>
+              <PendingEventCard
+                key={event.id}
+                event={event}
+                rejectionReason={rejectionReasons[event.id] || ''}
+                onRejectionReasonChange={(reason) =>
+                  setRejectionReasons({ ...rejectionReasons, [event.id]: reason })
+                }
+                onApprove={handleApprove}
+                onReject={handleReject}
+              />
             ))}
           </div>
         )}
       </main>
+
+      {/* Footer Component */}
+      <Footer />
     </div>
   );
 }
