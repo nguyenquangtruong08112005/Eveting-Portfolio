@@ -6,6 +6,9 @@ const ELASTIC_INDEX = 'events';
 const { fcmService, helper: notifHelper } = require('@/modules/notifications');
 const { STATUS, VISIBILITY, LIFECYCLE, isTransitionAllowed } = require('@/modules/events/domain/event-lifecycle');
 const { BadRequestError } = require('@/shared/errors');
+const { transaction: dbTransaction } = require('@/providers/database/postgres.client');
+const eventPublisher = require('@/shared/events/event-publisher');
+const outboxProcessor = require('@/shared/events/outbox-processor');
 
 const buildElasticData = async (eventData) => {
     let featuredProfileNames = [];
@@ -70,34 +73,31 @@ const approveEvent = async (eventId) => {
         lastUpdatedAt: new Date().getTime()
     };
 
-    await eventRepository.updateEvent(eventId, updates);
-    const newEventData = { ...eventData, ...updates };
+    await dbTransaction(async (transaction) => {
+        await eventRepository.updateEvent(eventId, updates, transaction);
 
-    const featuredProfileIds = newEventData.featuredProfileIds || [];
-    const title = "Sự kiện mới!";
-    const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
-    const payloadData = notifHelper.buildPayloadData("new_event", eventId);
+        await eventPublisher.publish('search_index', {
+            action: 'index',
+            eventId: eventId
+        }, transaction);
 
-    featuredProfileIds.forEach(artistId => {
-        fcmService.sendToTopic(notifHelper.buildTopicName('artist', artistId), title, body, payloadData);
+        const featuredProfileIds = eventData.featuredProfileIds || [];
+        const title = "Sự kiện mới!";
+        const body = `${eventData.name || 'Sự kiện'} vừa được công bố. Đặt vé ngay!`;
+        const payloadData = notifHelper.buildPayloadData("new_event", eventId);
+
+        for (const artistId of featuredProfileIds) {
+            await eventPublisher.publish('notification', {
+                channel: 'push',
+                topic: notifHelper.buildTopicName('artist', artistId),
+                title,
+                body,
+                data: payloadData
+            }, transaction);
+        }
     });
 
-    if (esClient) {
-        try {
-            const fullEventData = { ...eventData, ...updates };
-
-            const elasticData = await buildElasticData(fullEventData);
-
-            await esClient.index({
-                index: ELASTIC_INDEX,
-                id: eventId,
-                body: elasticData
-            });
-            console.log(`✅ [Admin] Approved & Indexed event: ${eventId}`);
-        } catch (error) {
-            console.error(`❌ [Admin] Failed to index approved event: ${eventId}`, error);
-        }
-    }
+    outboxProcessor.triggerProcess();
 
     return { success: true, message: "Event approved and published." };
 };
@@ -113,19 +113,24 @@ const rejectEvent = async (eventId, reason) => {
         throw new BadRequestError(`Cannot reject event with current lifecycle status "${label}". Event must be submitted first.`);
     }
 
-    await eventRepository.updateEvent(eventId, {
+    const updates = {
         status: STATUS.REJECTED,
         lifecycleStatus: LIFECYCLE.REJECTED,
         rejectReason: reason,
         rejectedAt: new Date().getTime(),
         lastUpdatedAt: new Date().getTime()
+    };
+
+    await dbTransaction(async (transaction) => {
+        await eventRepository.updateEvent(eventId, updates, transaction);
+
+        await eventPublisher.publish('search_index', {
+            action: 'delete',
+            eventId: eventId
+        }, transaction);
     });
 
-    if (esClient) {
-        try {
-            await esClient.delete({ index: ELASTIC_INDEX, id: eventId }).catch(() => { });
-        } catch (e) { }
-    }
+    outboxProcessor.triggerProcess();
 
     return { success: true, message: "Event rejected." };
 };

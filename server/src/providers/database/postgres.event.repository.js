@@ -309,7 +309,8 @@ const getEventEntriesByOrganizer = async (organizerId) => {
     return entries;
 };
 
-const createEvent = async (eventId, eventData) => {
+const createEvent = async (eventId, eventData, transaction = null) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const matchingData = Object.assign({}, eventData);
     delete matchingData.id;
     delete matchingData.lifecycleStatus;
@@ -318,7 +319,7 @@ const createEvent = async (eventId, eventData) => {
     const category = eventData.category || [];
     const tags = eventData.tags || [];
 
-    await query(
+    await client.query(
         `INSERT INTO events (
             id, name, description, image_url, banner_url, featured_profile_ids,
             category, tags, date, end_date, event_type, online_url, location,

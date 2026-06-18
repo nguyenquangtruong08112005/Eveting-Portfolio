@@ -20,6 +20,8 @@ const logger = require('@/shared/logger');
 const { sortTicketsByPriorityAndDate, buildPagination, mapTicketWithEvent, mapTicketDetailResponse } = require('./helpers/ticket-mappers');
 const { generateTicketQR } = require('./helpers/qr-code.helper');
 const { applyPromotion } = require('./helpers/promotion-validator.helper');
+const eventPublisher = require('@/shared/events/event-publisher');
+const outboxProcessor = require('@/shared/events/outbox-processor');
 
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
     const allTickets = await ticketRepository.getTicketsByUserId(userId);
@@ -185,7 +187,7 @@ const cancelPendingTicket = async (ticketId) => {
 };
 
 const confirmTicketPayment = async (ticketId) => {
-    return ticketRepository.runTransaction(async (transaction) => {
+    const result = await ticketRepository.runTransaction(async (transaction) => {
         const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
 
         if (!ticketData) {
@@ -258,10 +260,39 @@ const confirmTicketPayment = async (ticketId) => {
         }
         // ── End shadow payment_attempt, order status, and ledger update ──
 
+        // ── Publish notification event to outbox ──
+        try {
+            const userProfileResult = await transaction.query('SELECT email, name FROM user_profiles WHERE id = $1', [ticketData.userId]);
+            const email = userProfileResult.rows[0]?.email || 'customer@example.com';
+            const name = userProfileResult.rows[0]?.name || 'Customer';
+
+            await eventPublisher.publish('notification', {
+                channel: 'email',
+                target: email,
+                title: 'Ticket Booking Successful',
+                body: `Hello ${name}, your ticket payment for event ${ticketData.eventId} was confirmed. Your ticket ID is ${ticketId}.`
+            }, transaction);
+
+            await eventPublisher.publish('notification', {
+                channel: 'socket',
+                target: `user_${ticketData.userId}`,
+                event: 'ticket_paid',
+                title: 'Ticket Confirmed',
+                body: `Your ticket payment was confirmed!`,
+                data: { ticketId, eventId: ticketData.eventId }
+            }, transaction);
+        } catch (err) {
+            logger.error(`[NotificationOutbox] Failed to publish outbox event: ${err.message}`);
+        }
+
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
 
         return { ...ticketData, status: 'paid' };
     });
+
+    outboxProcessor.triggerProcess();
+
+    return result;
 };
 
 const getTicketDetailsById = async (ticketId, requestingUserId) => {

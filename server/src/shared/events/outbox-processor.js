@@ -3,13 +3,17 @@ const { getIo } = require('@/shared/socket/socket-server');
 const fcmService = require('@/modules/notifications/infrastructure/providers/fcm.service');
 const logger = require('@/shared/logger');
 const cron = require('node-cron');
+const esClient = require('@/shared/config/elasticsearch.config');
+const { buildElasticData } = require('@/modules/events/application/helpers/event-mappers');
+const eventRepository = require('@/providers/database/event.repository');
+const cacheProvider = require('@/shared/cache/cache-provider');
 
 let isProcessing = false;
 
 // Registry of event processors by type
 const PROCESSORS = {
     notification: async (payload) => {
-        const { channel, target, title, body, data } = payload;
+                const { channel, target, title, body, data } = payload;
         if (channel === 'push') {
             if (payload.topic) {
                 await fcmService.sendToTopic(payload.topic, title, body, data);
@@ -23,13 +27,72 @@ const PROCESSORS = {
             }
         } else if (channel === 'email') {
             logger.info(`[Email Dispatcher Mock] Sending email to ${target}: ${title} - ${body}`);
+        } else if (channel === 'event_update') {
+            const { notifyAttendeesAboutUpdate } = require('@/modules/events/application/helpers/notification-sender');
+            await notifyAttendeesAboutUpdate(payload.eventId, payload.eventName);
+        } else if (channel === 'event_cancellation') {
+            const { notifyAttendeesAboutCancellation } = require('@/modules/events/application/helpers/notification-sender');
+            await notifyAttendeesAboutCancellation(payload.eventId, payload.eventName);
         } else {
             logger.warn(`[Outbox Processor] Unknown notification channel: ${channel}`);
         }
     },
     search_index: async (payload) => {
-        // Will be fully wired in P1.7-S2
-        logger.info(`[Elastic Search Index Projector Mock] Processing search sync for event ${payload.eventId} (action: ${payload.action})`);
+        const { action, eventId } = payload;
+        const ELASTIC_INDEX = 'events';
+
+        // Invalidate cache actively on any update
+        try {
+            await cacheProvider.del(`cache:event:${eventId}`);
+            logger.info(`[Cache Invalidation] Invalidated cache: cache:event:${eventId}`);
+        } catch (cacheErr) {
+            logger.warn(`[Cache Invalidation] Failed to invalidate cache for ${eventId}: ${cacheErr.message}`);
+        }
+
+        if (!esClient) {
+            logger.warn(`[Elastic Search Index Projector] esClient is not configured. Skipping.`);
+            return;
+        }
+
+        if (action === 'delete') {
+            try {
+                await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
+                logger.info(`[Elastic Search Index Projector] Deleted event ${eventId} from search index.`);
+            } catch (error) {
+                if (error.meta && error.meta.statusCode === 404) {
+                    logger.info(`[Elastic Search Index Projector] Event ${eventId} was already deleted or not found in index.`);
+                } else {
+                    throw error;
+                }
+            }
+        } else if (action === 'index') {
+            const eventData = await eventRepository.getEventById(eventId);
+            if (!eventData) {
+                try {
+                    await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
+                } catch (e) {}
+                logger.info(`[Elastic Search Index Projector] Event ${eventId} not found in DB or inactive. Removed from index.`);
+                return;
+            }
+
+            const STATUS = { ACTIVE: 'active' };
+            const VISIBILITY = { PUBLIC: 'public' };
+            if (eventData.status !== STATUS.ACTIVE || eventData.visibility !== VISIBILITY.PUBLIC) {
+                try {
+                    await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
+                } catch (e) {}
+                logger.info(`[Elastic Search Index Projector] Event ${eventId} is status=${eventData.status}, visibility=${eventData.visibility}. Removed from index.`);
+                return;
+            }
+
+            const elasticData = await buildElasticData(eventData);
+            await esClient.index({
+                index: ELASTIC_INDEX,
+                id: eventId,
+                body: elasticData
+            });
+            logger.info(`[Elastic Search Index Projector] Indexed event ${eventId} successfully.`);
+        }
     }
 };
 
@@ -96,7 +159,6 @@ function triggerProcess() {
 }
 
 function startCronJob() {
-    // Run every 30 seconds
     cron.schedule('*/30 * * * * *', () => {
         processPending().catch(err => logger.error(`[Outbox Processor] Cron run failed: ${err.message}`));
     });

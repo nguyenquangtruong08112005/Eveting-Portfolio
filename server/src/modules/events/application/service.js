@@ -3,6 +3,10 @@ const { calculateMinPrice } = require('@/utils/tickets/calculateMinPrice.tickets
 const esClient = require('@/shared/config/elasticsearch.config');
 const { fcmService } = require('@/modules/notifications');
 const { BadRequestError, NotFoundError, ForbiddenError, ServiceUnavailableError } = require('@/shared/errors');
+const { transaction: dbTransaction } = require('@/providers/database/postgres.client');
+const eventPublisher = require('@/shared/events/event-publisher');
+const outboxProcessor = require('@/shared/events/outbox-processor');
+const cacheProvider = require('@/shared/cache/cache-provider');
 
 const eventRepository = require('@/providers/database/event.repository');
 const venueRepository = require('@/providers/database/venue.repository');
@@ -37,6 +41,27 @@ const getAllEvents = async (page = 1, limit = 10) => {
 };
 
 const getEventById = async (eventId, requestingUser = null) => {
+    const cacheKey = `cache:event:${eventId}`;
+    try {
+        const cachedDataStr = await cacheProvider.get(cacheKey);
+        if (cachedDataStr) {
+            const cachedEvent = JSON.parse(cachedDataStr);
+            let isOwnerOrAdmin = false;
+            if (requestingUser) {
+                const isAdmin = requestingUser.roles?.includes('organizer') || requestingUser.roles?.includes('admin');
+                const isOwner = cachedEvent.organizerId === requestingUser.uid;
+                isOwnerOrAdmin = isAdmin || isOwner;
+            }
+            if (!isOwnerOrAdmin) {
+                if (isPublicDetailVisible(cachedEvent.status, cachedEvent.visibility)) return cachedEvent;
+                if (cachedEvent.visibility === VISIBILITY.UNLISTED && requestingUser) return cachedEvent;
+                return null;
+            }
+        }
+    } catch (err) {
+        console.error(`[Cache] Error reading event cache: ${err.message}`);
+    }
+
     const { exists, id, data: eventData } = await eventRepository.getEventRawById(eventId);
     if (!exists || eventData.status === STATUS.CANCELLED) return null;
 
@@ -53,7 +78,7 @@ const getEventById = async (eventId, requestingUser = null) => {
 
     let isOwnerOrAdmin = false;
     if (requestingUser) {
-        const isAdmin = requestingUser.roles?.includes('organizer');
+        const isAdmin = requestingUser.roles?.includes('organizer') || requestingUser.roles?.includes('admin');
         const isOwner = eventData.organizerId === requestingUser.uid;
         isOwnerOrAdmin = isAdmin || isOwner;
     }
@@ -71,8 +96,16 @@ const getEventById = async (eventId, requestingUser = null) => {
         videoUrl: eventData.videoUrl, isOutdoor: eventData.isOutdoor, status: eventData.status,
         visibility: eventData.visibility, requiredAge: eventData.requiredAge, sponsors: eventData.sponsors,
         minPrice: eventData.minPrice, featuredProfiles: featuredProfilesData,
-        ticketTypes: mapPublicTicketTypes(eventData.ticketTypes), venue: mapPublicVenue(venueData)
+        ticketTypes: mapPublicTicketTypes(eventData.ticketTypes), venue: mapPublicVenue(venueData),
+        organizerId: eventData.organizerId
     };
+
+    // Cache the public event view
+    try {
+        await cacheProvider.set(cacheKey, JSON.stringify(publicEventView), 3600);
+    } catch (err) {
+        console.error(`[Cache] Error setting event cache: ${err.message}`);
+    }
 
     if (isPublicDetailVisible(eventData.status, eventData.visibility)) return publicEventView;
     if (eventData.visibility === VISIBILITY.UNLISTED && requestingUser) return publicEventView;
@@ -138,20 +171,32 @@ const createEvent = async (eventData, organizerId) => {
 
     const isDraft = eventData.saveAsDraft === true;
     const eventToPersist = { ...newEventData, lifecycleStatus: isDraft ? LIFECYCLE.DRAFT : LIFECYCLE.SUBMITTED };
-    await eventRepository.createEvent(eventId, eventToPersist);
 
-    if (!isDraft) {
-        const topic = `organizer_${organizerId}`;
-        const title = "Sự kiện mới!";
-        const body = `${newEventData.name} vừa được công bố. Đặt vé ngay!`;
-        const data = { eventId: eventId, type: "new_event" };
+    await dbTransaction(async (transaction) => {
+        await eventRepository.createEvent(eventId, eventToPersist, transaction);
 
-        if (newEventData.featuredProfileIds) {
-            newEventData.featuredProfileIds.forEach(artistId => {
-                fcmService.sendToTopic(`artist_${artistId}`, "Idol có show mới!", `${newEventData.name}`, data);
-            });
+        await eventPublisher.publish('search_index', {
+            action: 'index',
+            eventId: eventId
+        }, transaction);
+
+        if (!isDraft) {
+            const data = { eventId: eventId, type: "new_event" };
+            if (newEventData.featuredProfileIds) {
+                for (const artistId of newEventData.featuredProfileIds) {
+                    await eventPublisher.publish('notification', {
+                        channel: 'push',
+                        topic: `artist_${artistId}`,
+                        title: "Idol có show mới!",
+                        body: `${newEventData.name}`,
+                        data
+                    }, transaction);
+                }
+            }
         }
-    }
+    });
+
+    outboxProcessor.triggerProcess();
 
     return newEventData;
 };
@@ -177,30 +222,30 @@ const updateEvent = async (eventId, eventData) => {
 
     delete updatePayload.id; delete updatePayload.organizerId; delete updatePayload.createdAt;
 
-    await eventRepository.updateEvent(eventId, updatePayload);
-    const fullEventData = await eventRepository.getEventById(eventId);
+    let fullEventData;
+    await dbTransaction(async (transaction) => {
+        await eventRepository.updateEvent(eventId, updatePayload, transaction);
+        fullEventData = await eventRepository.getEventInTransaction(transaction, eventId);
 
-    if (exists) {
-        const shouldNotify = hasImportantChanges(oldDataSafe, fullEventData);
-        if (shouldNotify) {
-            notifyAttendeesAboutUpdate(eventId, fullEventData.name).catch(err =>
-                console.error("Background notification failed:", err)
-            );
-        }
-    }
+        await eventPublisher.publish('search_index', {
+            action: 'index',
+            eventId: eventId
+        }, transaction);
 
-    if (esClient) {
-        try {
-            if (fullEventData.status !== STATUS.ACTIVE || fullEventData.visibility === VISIBILITY.PRIVATE) {
-                await esClient.delete({ index: ELASTIC_INDEX, id: eventId }).catch(() => { });
-            } else {
-                const elasticData = await buildElasticData(fullEventData);
-                await esClient.index({ index: ELASTIC_INDEX, id: eventId, body: elasticData });
+        if (exists) {
+            const shouldNotify = hasImportantChanges(oldDataSafe, fullEventData);
+            if (shouldNotify) {
+                await eventPublisher.publish('notification', {
+                    channel: 'event_update',
+                    eventId: eventId,
+                    eventName: fullEventData.name
+                }, transaction);
             }
-        } catch (error) {
-            console.error(`❌ [Elastic] Failed to update event: ${eventId}`, error);
         }
-    }
+    });
+
+    outboxProcessor.triggerProcess();
+
     return fullEventData;
 };
 
@@ -209,19 +254,25 @@ const cancelEvent = async (eventId) => {
     const eventName = exists ? eventData.name : 'Sự kiện';
     const now = new Date().getTime();
 
-    await eventRepository.updateEvent(eventId, { status: STATUS.CANCELLED, lifecycleStatus: LIFECYCLE.CANCELLED, cancelledAt: now, lastUpdatedAt: now });
+    let fullEventData;
+    await dbTransaction(async (transaction) => {
+        await eventRepository.updateEvent(eventId, { status: STATUS.CANCELLED, lifecycleStatus: LIFECYCLE.CANCELLED, cancelledAt: now, lastUpdatedAt: now }, transaction);
+        fullEventData = await eventRepository.getEventInTransaction(transaction, eventId);
 
-    if (esClient) {
-        try {
-            await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
-        } catch (error) {
-            if (error.meta && error.meta.statusCode !== 404) console.error(`❌ [Elastic] Failed to delete event: ${eventId}`, error);
-        }
-    }
+        await eventPublisher.publish('search_index', {
+            action: 'delete',
+            eventId: eventId
+        }, transaction);
 
-    await notifyAttendeesAboutCancellation(eventId, eventName);
+        await eventPublisher.publish('notification', {
+            channel: 'event_cancellation',
+            eventId: eventId,
+            eventName: eventName
+        }, transaction);
+    });
 
-    const fullEventData = await eventRepository.getEventById(eventId);
+    outboxProcessor.triggerProcess();
+
     return fullEventData;
 };
 
