@@ -430,7 +430,7 @@ async function run() {
   } finally {
     // Cleanup: drop smoke user and org
     try {
-      await pool.query('DELETE FROM audit_logs WHERE actor_id = $1', [userId]);
+      await pool.query('DELETE FROM audit_logs WHERE user_id = $1', [userId]);
       await pool.query('DELETE FROM organization_memberships WHERE organization_id = $1', [orgId]);
       await pool.query('DELETE FROM organizations WHERE id = $1', [orgId]);
       await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]);

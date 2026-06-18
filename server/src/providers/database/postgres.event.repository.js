@@ -447,6 +447,48 @@ const getPublicEventsPage = async (page, limit) => {
     return { entries, totalItems };
 };
 
+const searchPublicEvents = async (searchString, page, limit) => {
+    const offset = (page - 1) * limit;
+
+    let sql = `FROM events WHERE visibility = $1 AND status = $2`;
+    const params = [VISIBILITY.PUBLIC, STATUS.ACTIVE];
+    let idx = 3;
+
+    if (searchString) {
+        sql += ` AND (name ILIKE $${idx} OR description ILIKE $${idx} OR city ILIKE $${idx} OR venue_name ILIKE $${idx})`;
+        params.push(`%${searchString}%`);
+        idx++;
+    }
+
+    const countResult = await query(`SELECT COUNT(*)::int AS count ${sql}`, params);
+    const totalItems = countResult.rows[0].count;
+
+    const result = await query(
+        `SELECT * ${sql} ORDER BY date ASC LIMIT $${idx} OFFSET $${idx+1}`,
+        [...params, limit, offset]
+    );
+
+    const entries = [];
+    result.rows.forEach(row => {
+        const fullDoc = rowToFirebaseDoc(row);
+        const data = {};
+        const selectedFields = [
+            "id", "name", "date", "imageUrl", "bannerUrl", "videoUrl",
+            "location", "city", "venueName", "eventType", "minPrice"
+        ];
+        selectedFields.forEach(field => {
+            if (field === 'id') {
+                data.id = row.id;
+            } else if (fullDoc && fullDoc[field] !== undefined) {
+                data[field] = fullDoc[field];
+            }
+        });
+        entries.push({ id: row.id, data });
+    });
+
+    return { entries, totalItems };
+};
+
 const queryActivePublicEventsByGeoBounds = async (bounds) => {
     const promises = [];
     for (const b of bounds) {
@@ -487,6 +529,7 @@ module.exports = {
     createEvent,
     getEventRawById,
     getPublicEventsPage,
+    searchPublicEvents,
     queryActivePublicEventsByGeoBounds,
     getEventLifecycleOwnership,
 };

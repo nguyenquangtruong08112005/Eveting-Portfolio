@@ -301,34 +301,44 @@ const submitDraft = async (eventId, requestingUserId) => {
 };
 
 const searchEvents = async (queryParams) => {
-    if (!esClient) {
-        console.error("Elasticsearch unavailable.");
-        throw new ServiceUnavailableError("Dịch vụ tìm kiếm gián đoạn.");
-    }
     const page = parseInt(queryParams.page) || 1;
-    const { query, sort, offset, limit } = buildSearchQuery(queryParams);
+    const limit = parseInt(queryParams.limit) || 10;
+    const searchString = queryParams.q || '';
 
-    try {
-        const response = await esClient.search({
-            index: ELASTIC_INDEX,
-            from: offset,
-            size: limit,
-            body: { query, sort }
-        });
-        const totalItems = response.hits.total.value;
-        const events = response.hits.hits.map(hit => {
-            const data = hit._source;
-            return {
-                id: hit._id, name: data.name, date: data.date, imageUrl: data.imageUrl, bannerUrl: data.bannerUrl,
-                videoUrl: data.videoUrl, location: data.location, city: data.city, venueName: data.venueName,
-                eventType: data.eventType, minPrice: data.minPrice,
-            };
-        });
-        return { events, pagination: { currentPage: page, limit: limit, totalPages: Math.ceil(totalItems / limit), totalItems: totalItems } };
-    } catch (e) {
-        console.error("Lỗi tìm kiếm:", e.meta?.body?.error || e.message || e);
-        throw new Error("Lỗi máy chủ tìm kiếm.");
+    // 1. Try Elasticsearch first
+    if (esClient) {
+        const { query: esQuery, sort: esSort, offset, limit: esLimit } = buildSearchQuery(queryParams);
+        try {
+            const response = await esClient.search({
+                index: ELASTIC_INDEX,
+                from: offset,
+                size: esLimit,
+                body: { query: esQuery, sort: esSort }
+            });
+            const totalItems = response.hits.total.value;
+            const events = response.hits.hits.map(hit => {
+                const data = hit._source;
+                return {
+                    id: hit._id, name: data.name, date: data.date, imageUrl: data.imageUrl, bannerUrl: data.bannerUrl,
+                    videoUrl: data.videoUrl, location: data.location, city: data.city, venueName: data.venueName,
+                    eventType: data.eventType, minPrice: data.minPrice,
+                };
+            });
+            return { events, pagination: { currentPage: page, limit: esLimit, totalPages: Math.ceil(totalItems / esLimit), totalItems: totalItems } };
+        } catch (e) {
+            console.warn("Elasticsearch search failed, falling back to database: ", e.message || e);
+        }
     }
+
+    // 2. Fallback to PostgreSQL relational query
+    const { entries, totalItems } = await eventRepository.searchPublicEvents(searchString, page, limit);
+    const events = entries.map(({ id, data }) => ({
+        id, name: data.name, date: data.date, imageUrl: data.imageUrl, bannerUrl: data.bannerUrl,
+        videoUrl: data.videoUrl, location: data.location, city: data.city || null, venueName: data.venueName || null,
+        eventType: data.eventType || 'physical', minPrice: data.minPrice !== undefined ? data.minPrice : null,
+    }));
+
+    return { events, pagination: { currentPage: page, limit: limit, totalPages: Math.ceil(totalItems / limit), totalItems: totalItems } };
 };
 
 const getRecommendations = async (userId, limit = 10) => {
