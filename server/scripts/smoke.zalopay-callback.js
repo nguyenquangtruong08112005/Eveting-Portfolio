@@ -181,6 +181,15 @@ async function run() {
     const attemptRows = (await query('SELECT status FROM payment_attempts WHERE id = $1', [testPaymentAttemptId])).rows;
     assert('payment attempt status transitioned to "succeeded"', attemptRows[0].status === 'succeeded');
 
+    const ledgerRows = (await query('SELECT * FROM ledger_entries WHERE order_id = $1', [testOrderId])).rows;
+    assert('ledger entry was created', ledgerRows.length === 1);
+    if (ledgerRows.length === 1) {
+        const entry = ledgerRows[0];
+        assert('ledger gross amount is correct', Number(entry.gross_amount) === 150000);
+        assert('ledger platform fee matches default 5%', Number(entry.platform_fee) === 7500);
+        assert('ledger net amount is correct', Number(entry.net_amount) === 142500);
+    }
+
     console.log('\n  [Sending Duplicate Callback (Idempotency Check)]');
     const duplicateResponse = await client.post('/payments/callback', {
         data: callbackDataStr,
@@ -192,6 +201,7 @@ async function run() {
     assert('duplicate callback response message is "success"', duplicateResponse.data.return_message === 'success');
 
     console.log('\n  [Cleanup]');
+    await query('DELETE FROM ledger_entries WHERE order_id = $1', [testOrderId]);
     await query('UPDATE tickets SET order_id = NULL, order_item_id = NULL, payment_attempt_id = NULL WHERE id = $1', [testTicketId]);
     await query('DELETE FROM payment_attempts WHERE order_id = $1', [testOrderId]);
     await query('DELETE FROM order_items WHERE order_id = $1', [testOrderId]);

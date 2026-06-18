@@ -411,6 +411,10 @@ module.exports = {
     createPaymentAttemptAndLinkTicketAtomic,
     getPaymentAttemptByProviderOrderId,
     updateOrderStatusInTransaction,
+    createLedgerEntryInTransaction,
+    getOrganizerSettingsInTransaction,
+    createOrganizerSettings,
+    getOrderInTransaction,
 };
 
 async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null) {
@@ -456,5 +460,65 @@ async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction =
         failureReason: r.failure_reason,
         createdAt: r.created_at != null ? Number(r.created_at) : null,
         updatedAt: r.updated_at != null ? Number(r.updated_at) : null,
+    };
+}
+
+async function createLedgerEntryInTransaction(tx, entry) {
+    const client = getClient(tx);
+    await client.query(
+        `INSERT INTO ledger_entries (id, order_id, organizer_id, gross_amount, platform_fee, net_amount, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [entry.id, entry.orderId, entry.organizerId, entry.grossAmount, entry.platformFee, entry.netAmount, entry.createdAt || Date.now()]
+    );
+}
+
+async function getOrganizerSettingsInTransaction(tx, organizerId) {
+    const client = getClient(tx);
+    const result = await client.query(
+        `SELECT * FROM organizer_settings WHERE organizer_id = $1`,
+        [organizerId]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+        organizerId: row.organizer_id,
+        platformFeeRate: Number(row.platform_fee_rate),
+        createdAt: Number(row.created_at)
+    };
+}
+
+async function createOrganizerSettings(settings) {
+    await query(
+        `INSERT INTO organizer_settings (organizer_id, platform_fee_rate, created_at)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (organizer_id) DO UPDATE SET platform_fee_rate = $2`,
+        [settings.organizerId, settings.platformFeeRate, settings.createdAt || Date.now()]
+    );
+}
+
+async function getOrderInTransaction(tx, orderId) {
+    const client = getClient(tx);
+    const orderResult = await client.query('SELECT * FROM orders WHERE id = $1', [orderId]);
+    if (orderResult.rows.length === 0) return null;
+    const row = orderResult.rows[0];
+    return {
+        id: row.id,
+        userId: row.user_id,
+        eventId: row.event_id,
+        organizerId: row.organizer_id,
+        status: row.status,
+        subtotalAmount: row.subtotal_amount != null ? Number(row.subtotal_amount) : 0,
+        discountAmount: row.discount_amount != null ? Number(row.discount_amount) : 0,
+        feeAmount: row.fee_amount != null ? Number(row.fee_amount) : 0,
+        totalAmount: row.total_amount != null ? Number(row.total_amount) : 0,
+        currency: row.currency,
+        idempotencyKey: row.idempotency_key,
+        notes: row.notes,
+        expiresAt: row.expires_at != null ? Number(row.expires_at) : null,
+        paidAt: row.paid_at != null ? Number(row.paid_at) : null,
+        cancelledAt: row.cancelled_at != null ? Number(row.cancelled_at) : null,
+        createdAt: row.created_at != null ? Number(row.created_at) : null,
+        updatedAt: row.updated_at != null ? Number(row.updated_at) : null,
+        rawData: row.raw_data || {}
     };
 }

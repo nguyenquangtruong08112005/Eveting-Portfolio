@@ -219,7 +219,7 @@ const confirmTicketPayment = async (ticketId) => {
             dailyTimestamp: todayTimestamp
         });
 
-        // ── Shadow payment_attempt and order status update ──
+        // ── Shadow payment_attempt, order status, and ledger update ──
         try {
             const link = await orderRepository.getTicketOrderLinkInTransaction(transaction, ticketId);
             if (link) {
@@ -231,12 +231,32 @@ const confirmTicketPayment = async (ticketId) => {
                 }
                 if (link.orderId) {
                     await orderRepository.updateOrderStatusInTransaction(transaction, link.orderId, ORDER_STATUS.PAID, Date.now());
+
+                    const orderData = await orderRepository.getOrderInTransaction(transaction, link.orderId);
+                    if (orderData) {
+                        const settings = await orderRepository.getOrganizerSettingsInTransaction(transaction, orderData.organizerId);
+                        const platformFeeRate = settings ? settings.platformFeeRate : 0.05;
+
+                        const grossAmount = Number(orderData.totalAmount || 0);
+                        const platformFee = Number((grossAmount * platformFeeRate).toFixed(2));
+                        const netAmount = Number((grossAmount - platformFee).toFixed(2));
+
+                        await orderRepository.createLedgerEntryInTransaction(transaction, {
+                            id: `led_${uuidv4()}`,
+                            orderId: orderData.id,
+                            organizerId: orderData.organizerId,
+                            grossAmount,
+                            platformFee,
+                            netAmount,
+                            createdAt: Date.now()
+                        });
+                    }
                 }
             }
         } catch (err) {
-            logger.error(`[ShadowPayment] Failed to update payment or order status for ticket ${ticketId}: ${err.message}`);
+            logger.error(`[ShadowPayment] Failed to update payment, order, or ledger for ticket ${ticketId}: ${err.message}`);
         }
-        // ── End shadow payment_attempt and order status update ──
+        // ── End shadow payment_attempt, order status, and ledger update ──
 
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
 
