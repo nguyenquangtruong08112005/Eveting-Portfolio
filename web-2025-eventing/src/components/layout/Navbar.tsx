@@ -26,7 +26,7 @@ export function Navbar({
     <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-white hover:opacity-90 transition-all">
-          <Sparkles className="h-6 w-6 text-purple-400 glow-text" />
+          <Sparkles className="size-6 text-purple-400 glow-text" />
           <span>
             Aura<span className="text-purple-400">Events</span>
           </span>
@@ -48,17 +48,17 @@ export function Navbar({
           </Link>
           {userRole === 'organizer' && (
             <Link href="/organizer/dashboard" className="hover:text-white transition-colors flex items-center gap-1.5">
-              <Compass className="h-4 w-4 text-purple-400" /> Organizer Dashboard
+              <Compass className="size-4 text-purple-400" /> Organizer Dashboard
             </Link>
           )}
           {userRole === 'admin' && (
             <Link href="/admin/moderation" className="hover:text-white transition-colors flex items-center gap-1.5 text-purple-300">
-              <Shield className="h-4 w-4" /> Admin Moderation
+              <Shield className="size-4" /> Admin Moderation
             </Link>
           )}
           {userToken && userRole !== 'admin' && userRole !== 'organizer' && (
             <Link href="/attendee/events/evt_1" className="hover:text-white transition-colors flex items-center gap-1.5 text-cyan-400">
-              <Compass className="h-4 w-4" /> Seat Holds Pilot
+              <Compass className="size-4" /> Seat Holds Pilot
             </Link>
           )}
         </nav>
@@ -67,7 +67,7 @@ export function Navbar({
           {userToken ? (
             <div className="flex items-center gap-3">
               <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-purple-500/30 bg-purple-500/5 text-xs text-purple-300 font-normal capitalize">
-                <User className="h-3.5 w-3.5" />
+                <User className="size-3.5" />
                 <span>{userRole || 'Attendee'}</span>
               </Badge>
               {onLogout && (
@@ -75,7 +75,7 @@ export function Navbar({
                   variant="outline"
                   size="sm"
                   onClick={onLogout}
-                  className="rounded-xl font-semibold text-zinc-300 hover:text-white cursor-pointer"
+                  className="rounded-xl font-semibold text-zinc-300 hover:text-white cursor-pointer btn-tactile"
                 >
                   Log out
                 </Button>
@@ -86,10 +86,10 @@ export function Navbar({
               href="/login"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "bg-white text-black hover:bg-zinc-200 border-none rounded-xl font-semibold cursor-pointer flex items-center gap-1.5"
+                "bg-white text-black hover:bg-zinc-200 border-none rounded-xl font-semibold cursor-pointer flex items-center gap-1.5 btn-tactile"
               )}
             >
-              <LogIn className="h-3.5 w-3.5" />
+              <LogIn className="size-3.5" />
               Sign In
             </Link>
           )}

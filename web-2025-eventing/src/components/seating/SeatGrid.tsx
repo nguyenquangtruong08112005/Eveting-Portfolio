@@ -33,7 +33,7 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
 
       {holdTimer !== null && holdTimer > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-300 text-xs font-semibold mb-6 w-fit">
-          <Clock className="h-4 w-4" />
+          <Clock className="size-4" />
           <span>Hold expires in: {formatTime(holdTimer)}</span>
         </div>
       )}
@@ -64,7 +64,7 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
               <button
                 key={seat.id}
                 onClick={() => onSeatClick(seat)}
-                className={`size-10 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${statusClass}`}
+                className={`size-10 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer btn-tactile ${statusClass}`}
               >
                 {seat.rowName}
                 {seat.number}

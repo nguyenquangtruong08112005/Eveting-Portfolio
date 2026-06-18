@@ -49,11 +49,11 @@ export function BookingDetails({
         <div className="flex flex-col gap-4 mb-8">
           <div className="text-white text-lg font-bold line-clamp-1">{eventName}</div>
           <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <Calendar className="h-4 w-4 text-purple-400" />
+            <Calendar className="size-4 text-purple-400" />
             <span>{formattedDate}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <MapPin className="h-4 w-4 text-cyan-400" />
+            <MapPin className="size-4 text-cyan-400" />
             <span>
               {venueName || address}, {city || 'HCM'}
             </span>
@@ -106,7 +106,7 @@ export function BookingDetails({
         <Button
           onClick={onCheckout}
           disabled={disabled || selectedSeats.length === 0}
-          className="w-full py-6 rounded-xl bg-purple-600 text-white hover:bg-purple-500 font-bold text-sm tracking-wide transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55 border-none"
+          className="w-full py-6 rounded-xl bg-purple-600 text-white hover:bg-purple-500 font-bold text-sm tracking-wide transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55 border-none btn-tactile"
         >
           Proceed to Book
         </Button>

@@ -111,7 +111,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative max-w-7xl mx-auto px-6 py-20 text-center flex flex-col items-center">
         <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-purple-500/20 bg-purple-500/5 text-sm text-purple-300 mb-6">
-          <Sparkles className="h-4 w-4 text-purple-400" />
+          <Sparkles className="size-4 text-purple-400" />
           <span>Redefining Live Entertainment Tech</span>
         </div>
         <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white max-w-4xl mb-6 leading-tight">
@@ -128,48 +128,48 @@ export default function LandingPage() {
             placeholder="Search events, cities, categories..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-7 rounded-2xl border border-zinc-800 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-1 focus-visible:ring-purple-500 focus-visible:border-purple-500 transition-all backdrop-blur-md"
+            className="w-full pl-12 pr-4 py-7 rounded-2xl border border-zinc-850 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-1 focus-visible:ring-purple-500 focus-visible:border-purple-500 transition-all backdrop-blur-md"
           />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-500" />
         </div>
       </section>
 
       {/* Quick Navigation Panels for Demo */}
       <section className="max-w-7xl mx-auto px-6 mb-16 w-full">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/attendee/events/evt_1" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left">
-            <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4 group-hover:bg-cyan-500/20 transition-all">
-              <Compass className="h-5 w-5" />
+          <Link href="/attendee/events/evt_1" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left btn-tactile">
+            <div className="size-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4 group-hover:bg-cyan-500/20 transition-all">
+              <Compass className="size-5" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
               Interactive Seating
-              <ArrowRight className="h-4 w-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="size-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </h3>
             <p className="text-zinc-400 text-sm">
               Real-time interactive seat booking, holds, and live WebSocket synchronization.
             </p>
           </Link>
 
-          <Link href="/organizer/dashboard" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left">
-            <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 group-hover:bg-purple-500/20 transition-all">
-              <User className="h-5 w-5" />
+          <Link href="/organizer/dashboard" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left btn-tactile">
+            <div className="size-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 group-hover:bg-purple-500/20 transition-all">
+              <User className="size-5" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
               Organizer Panel
-              <ArrowRight className="h-4 w-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="size-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </h3>
             <p className="text-zinc-400 text-sm">
               Manage ticket prices, check balances, and view dynamic platform fee ledger payouts.
             </p>
           </Link>
 
-          <Link href="/admin/moderation" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left">
-            <div className="h-10 w-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4 group-hover:bg-red-500/20 transition-all">
-              <Shield className="h-5 w-5" />
+          <Link href="/admin/moderation" className="premium-card p-6 rounded-2xl flex flex-col group cursor-pointer text-left btn-tactile">
+            <div className="size-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4 group-hover:bg-red-500/20 transition-all">
+              <Shield className="size-5" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
               Admin Moderation
-              <ArrowRight className="h-4 w-4 text-red-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="size-4 text-red-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </h3>
             <p className="text-zinc-400 text-sm">
               Moderator queue for reviewing submitted event drafts, approving, or rejecting.

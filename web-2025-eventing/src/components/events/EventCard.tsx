@@ -70,11 +70,11 @@ export function EventCard({ event }: EventCardProps) {
       <CardContent className="p-6 pt-0 pb-4 text-left flex-1 flex flex-col justify-end">
         <div className="flex flex-col gap-2.5 text-xs text-zinc-400">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-purple-400" />
+            <Calendar className="size-4 text-purple-400" />
             <span>{formattedDate}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-cyan-400" />
+            <MapPin className="size-4 text-cyan-400" />
             <span>
               {event.venueName || event.location.address}, {event.city || 'HCM'}
             </span>
@@ -95,11 +95,11 @@ export function EventCard({ event }: EventCardProps) {
           href={`/attendee/events/${event.id}`}
           className={cn(
             buttonVariants({ variant: "default" }),
-            "px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs tracking-wide transition-all shadow-md hover:shadow-purple-500/25 flex items-center gap-1.5 cursor-pointer border-none"
+            "px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs tracking-wide transition-all shadow-md hover:shadow-purple-500/25 flex items-center gap-1.5 cursor-pointer border-none btn-tactile"
           )}
         >
           Book Seat
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="size-3.5" />
         </Link>
       </CardFooter>
     </Card>

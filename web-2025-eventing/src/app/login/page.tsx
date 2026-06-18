@@ -60,7 +60,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md premium-card p-8 rounded-2xl relative z-10 text-left border-none ring-0">
         <CardHeader className="p-0 mb-8 flex flex-col items-center">
           <div className="flex items-center gap-2 font-bold text-2xl tracking-tight text-white mb-2 justify-center">
-            <Sparkles className="h-6 w-6 text-purple-400 glow-text" />
+            <Sparkles className="size-6 text-purple-400 glow-text" />
             <span>Aura<span className="text-purple-400">Events</span></span>
           </div>
           <CardTitle className="text-xl font-bold text-white text-center mt-2">Welcome Back</CardTitle>
@@ -85,7 +85,7 @@ export default function LoginPage() {
                     type="button"
                     variant={role === r ? 'default' : 'outline'}
                     onClick={() => setRole(r)}
-                    className={`py-5 px-3 rounded-xl border text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`py-5 px-3 rounded-xl border text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer btn-tactile ${
                       role === r 
                         ? 'border-purple-500 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20' 
                         : 'border-zinc-850 bg-zinc-900/40 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
@@ -108,7 +108,7 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-6 rounded-xl border border-zinc-850 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-0 focus-visible:border-purple-500 transition-all text-sm"
                 />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-500" />
               </div>
             </div>
 
@@ -123,17 +123,17 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   className="w-full pl-10 pr-4 py-6 rounded-xl border border-zinc-850 bg-zinc-900/50 text-white placeholder-zinc-500 focus-visible:ring-0 focus-visible:border-purple-500 transition-all text-sm"
                 />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-500" />
               </div>
             </div>
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full py-6 rounded-xl bg-purple-600 text-white hover:bg-purple-500 font-bold text-sm tracking-wide transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 border-none"
+              className="w-full py-6 rounded-xl bg-purple-600 text-white hover:bg-purple-500 font-bold text-sm tracking-wide transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55 border-none btn-tactile"
             >
               {loading ? 'Signing In...' : 'Sign In'}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="size-4" />
             </Button>
           </form>
 
