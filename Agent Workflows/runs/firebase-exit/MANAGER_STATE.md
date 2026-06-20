@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, P1.3-S1, P1.3-S2, P1.3-S3, P1.3-S4, P1.3-S5, P1.3-S6, P1.4-S1, P1.4-S2, P1.4-S3, and P1.4-S4 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, P1.3-S1, P1.3-S2, P1.3-S3, P1.3-S4, P1.3-S5, P1.3-S6, P1.4-S1, P1.4-S2, P1.4-S3, P1.4-S4, P1.5, P1.6, and P1.7 are complete on `staging`.
 
-Next phase: P1.5 Notification Observer / Outbox.
+Next phase: P1.8 Promotion, Membership, Marketing.
 
 ## Source Of Truth
 
