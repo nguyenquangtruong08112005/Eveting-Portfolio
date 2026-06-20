@@ -164,10 +164,9 @@ const getOrderById = async (orderId) => {
 };
 
 const updateOrderStatus = async (orderId, status) => {
-    await query(
-        'UPDATE orders SET status = $1, updated_at = $2 WHERE id = $3',
-        [status, Date.now(), orderId]
-    );
+    return transaction(async (client) => {
+        await applyOrderStatusUpdate(client, orderId, status);
+    });
 };
 
 const createPaymentAttempt = async (attempt) => {
@@ -434,8 +433,23 @@ module.exports = {
     getLedgerEntriesByOrganizer,
 };
 
-async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null) {
-    const client = getClient(tx);
+async function applyOrderStatusUpdate(client, orderId, status, paidAt = null) {
+    // 1. Lock and retrieve current order status
+    const result = await client.query(
+        'SELECT status FROM orders WHERE id = $1 FOR UPDATE',
+        [orderId]
+    );
+    if (result.rows.length > 0) {
+        const currentStatus = result.rows[0].status;
+        if (currentStatus !== status) {
+            const terminalStates = [ORDER_STATUS.PAID, ORDER_STATUS.CANCELLED, ORDER_STATUS.EXPIRED, ORDER_STATUS.FAILED];
+            if (terminalStates.includes(currentStatus)) {
+                throw new Error(`Invalid order status transition from terminal status '${currentStatus}' to '${status}'`);
+            }
+        }
+    }
+
+    // 2. Perform the update
     const sets = ['status = $1', 'updated_at = $2'];
     const params = [status, Date.now()];
     let idx = 3;
@@ -451,6 +465,11 @@ async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null
         `UPDATE orders SET ${sets.join(', ')} WHERE id = $${idx}`,
         params
     );
+}
+
+async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null) {
+    const client = getClient(tx);
+    await applyOrderStatusUpdate(client, orderId, status, paidAt);
 }
 
 async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction = null, lock = false) {
