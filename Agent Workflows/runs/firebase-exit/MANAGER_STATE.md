@@ -6,9 +6,9 @@ Execute the Firebase Exit plan with Codex as manager/verifier and local agents a
 
 ## Current Phase
 
-Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, P1.3-S1, P1.3-S2, and P1.3-S3 are complete on `staging`.
+Slices A through F, C6 through C12, M1 through M11, N1, N2, N3-S1 through N3-S5, N4, O1, O2, O4, O5, O6, O7, O8, O9, P1.0, P1.1-A, P1.1-B, P1.1-C, P1.2-S1, P1.2-S2, P1.2-S3, P1.2-S4, P1.2-S5, P1.2-S6, P1.3-S1, P1.3-S2, P1.3-S3, P1.3-S4, P1.3-S5, P1.3-S6, P1.4-S1, P1.4-S2, P1.4-S3, and P1.4-S4 are complete on `staging`.
 
-Next phase: P1.3-S4 inventory locking and idempotent booking to prevent generic ticket overselling. Keep dependency vulnerability remediation as a separate security-hardening follow-up before making security scans blocking.
+Next phase: P1.5 Notification Observer / Outbox.
 
 ## Source Of Truth
 
@@ -170,6 +170,12 @@ Next phase: P1.3-S4 inventory locking and idempotent booking to prevent generic 
 - `8e47796` - Add order payment foundation.
 - `0a45bf5` - Wire shadow order records.
 - `c62fecc` - Harden event raw_data updates and support repeated booking.
+- `6f399c0` - Implement idempotent bookings, inventory row-locks, and seat hold schema foundation.
+- `f314e31` - Wire database-backed seat holds to booking service and concurrent seat booking smoke.
+- `52f7a9e` - Implement payment attempt state machine, transactional webhook idempotency, and concurrent callback locking.
+- `89ba4f8` - Implement explicit order status transitions with row locking, terminal state check, and smoke tests.
+- `098dbd9` - Implement organizer balances, platform fees, transactional ledger updates, and commission calculation.
+- `6165a1c` - Add refunds and payouts state machine and schema design specification.
 
 ## Integrated Mobile Commits
 
