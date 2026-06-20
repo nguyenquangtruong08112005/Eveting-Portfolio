@@ -1,0 +1,35 @@
+# Project Workflow Guidelines (Gemini & Antigravity Memories)
+
+Whenever you receive a task or a phase to execute, you MUST strictly follow this workflow:
+
+## 1. Research and Options Analysis / Nghiên cứu và Phân tích phương án
+- Research actual reference projects, patterns, and documentation.
+- Consider and evaluate multiple options to find the most optimal design.
+- *Nghiên cứu các dự án thực tế, các pattern, và tài liệu tham khảo.*
+- *Xem xét và đánh giá các phương án để tìm giải pháp tối ưu nhất.*
+
+## 2. User Consultation Loop / Thảo luận với người dùng
+- Present options, clarify ambiguities, ask questions, and gather feedback from the user.
+- Loop this consultation process until the optimal solution is agreed upon.
+- *Trình bày phương án, làm rõ các điểm chưa rõ, hỏi người dùng và nhận phản hồi.*
+- *Lặp lại quá trình thảo luận này cho đến khi thống nhất được giải pháp tối ưu.*
+
+## 3. Implementation with Skills / Thực thi và Sử dụng công cụ
+- Leverage available agent skills, plugins, and referenced resources to implement the changes properly.
+- *Sử dụng các skill, plugin, và tài liệu liên quan để thực hiện chỉnh sửa code.*
+
+## 4. Impact Assessment and Fixes / Đánh giá ảnh hưởng và Sửa chữa
+- Check if the implementation affects other parts of the codebase, APIs, or mobile contracts.
+- Perform necessary refactoring, fixes, and regression prevention.
+- *Kiểm tra xem việc sửa đổi có ảnh hưởng đến các thành phần khác hay không.*
+- *Tiến hành sửa chữa, refactor và ngăn ngừa các lỗi regression.*
+
+## 5. Verification and Testing / Viết test và Xác minh
+- Write and run unit, integration, or smoke tests to verify the completeness and correctness of the implementation.
+- *Viết và chạy các bài test (unit test, integration test, smoke test) để chứng minh code đã hoàn thiện và chạy đúng.*
+
+## 6. Post-Implementation & Reporting / Bàn giao và Báo cáo
+- Run cleanup, synchronize index/codegraph, stage and commit files.
+- Document changes in walkthroughs and write a structured, concise completion report.
+- *Dọn dẹp dữ liệu test, sync codegraph, commit code lên git.*
+- *Cập nhật walkthrough và báo cáo chi tiết kết quả cho người dùng.*
