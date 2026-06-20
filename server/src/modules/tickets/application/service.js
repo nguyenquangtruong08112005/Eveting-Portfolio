@@ -6,6 +6,7 @@ const analyticsRepository = require('@/providers/database/analytics.repository')
 const venueRepository = require('@/providers/database/venue.repository');
 const orderRepository = require('@/providers/database/order.repository');
 const seatRepository = require('@/providers/database/seat.repository');
+const membershipRepository = require('@/providers/database/membership.repository');
 const cacheProvider = require('@/shared/cache/cache-provider');
 const { getIo } = require('@/shared/socket/socket-server');
 const { v4: uuidv4 } = require('uuid');
@@ -74,11 +75,17 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
         }
 
         const unitPrice = ticketTypeData.price;
-        let totalPrice = unitPrice * qty;
-        const originalTotalPrice = totalPrice;
+        const originalTotalPrice = unitPrice * qty;
+
+        const membership = await membershipRepository.getUserMembershipInTransaction(transaction, userId);
+        const discountPercentage = membership ? membership.discountPercentage : 0;
+        const membershipDiscountAmount = originalTotalPrice * discountPercentage;
+        const membershipDiscountedPrice = originalTotalPrice - membershipDiscountAmount;
+
+        let totalPrice = membershipDiscountedPrice;
 
         if (promoCode) {
-            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, qty, totalPrice);
+            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, qty, membershipDiscountedPrice);
             appliedPromotion = result.appliedPromotion;
             totalPrice = result.totalPrice;
         }
@@ -102,6 +109,9 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
             qrCode: qrCodeJwt,
             status: 'pending',
             purchaseDate: new Date().getTime(),
+
+            membershipDiscountAmount,
+            membershipDiscountRate: discountPercentage,
         };
 
         await ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
@@ -128,12 +138,16 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
                     organizerId: eventData.organizerId,
                     status: ORDER_STATUS.PENDING_PAYMENT,
                     subtotalAmount: originalTotalPrice,
-                    discountAmount: appliedPromotion ? originalTotalPrice - totalPrice : 0,
+                    discountAmount: originalTotalPrice - totalPrice,
                     feeAmount: 0,
                     totalAmount: totalPrice,
                     currency: 'VND',
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
+                    rawData: {
+                        membershipDiscountAmount,
+                        membershipDiscountRate: discountPercentage,
+                    }
                 });
                 await orderRepository.createOrderItemInTransaction(transaction, {
                     id: shadowOrderItemId,
@@ -228,6 +242,50 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
             quantity: 1,
             dailyTimestamp: todayTimestamp
         });
+
+        // Credit loyalty points and evaluate membership upgrade
+        try {
+            const pointsEarned = Math.floor(Number(ticketData.price || 0) / 10000);
+            if (pointsEarned > 0) {
+                const ledgerId = `ledger_${uuidv4()}`;
+                await membershipRepository.logLoyaltyPointsEntryInTransaction(transaction, {
+                    id: ledgerId,
+                    userId: ticketData.userId,
+                    points: pointsEarned,
+                    transactionType: 'ticket_purchase',
+                    referenceId: ticketData.id,
+                    createdAt: Date.now()
+                });
+
+                const userMembership = await membershipRepository.getUserMembershipInTransaction(transaction, ticketData.userId);
+                const newLifetimePoints = (userMembership ? userMembership.lifetimePoints : 0) + pointsEarned;
+
+                const tiers = await membershipRepository.getMembershipTiersInTransaction(transaction);
+                let qualifiedTier = tiers[0];
+                for (const tier of tiers) {
+                    if (newLifetimePoints >= tier.minPointsRequired) {
+                        qualifiedTier = tier;
+                    }
+                }
+
+                const currentTierId = userMembership ? userMembership.tierId : 'tier_standard';
+                const newTierId = qualifiedTier.id !== currentTierId ? qualifiedTier.id : null;
+
+                await membershipRepository.updateUserMembershipPointsAndTierInTransaction(
+                    transaction,
+                    ticketData.userId,
+                    pointsEarned,
+                    pointsEarned,
+                    newTierId
+                );
+
+                if (newTierId) {
+                    logger.info(`[Membership] User ${ticketData.userId} upgraded from ${currentTierId} to ${newTierId}`);
+                }
+            }
+        } catch (err) {
+            logger.error(`[Membership] Failed to process loyalty points / upgrade for ticket ${ticketId}: ${err.message}`);
+        }
 
         // ── Shadow payment_attempt, order status, and ledger update ──
         try {
@@ -537,11 +595,16 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
             subtotalAmount += unitPrice;
         }
 
-        totalAmount = subtotalAmount;
+        const membership = await membershipRepository.getUserMembershipInTransaction(transaction, userId);
+        const discountPercentage = membership ? membership.discountPercentage : 0;
+        const membershipDiscountAmount = subtotalAmount * discountPercentage;
+        const membershipDiscountedPrice = subtotalAmount - membershipDiscountAmount;
+
+        totalAmount = membershipDiscountedPrice;
         let appliedPromotion = null;
 
         if (promoCode) {
-            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, seatIds.length, totalAmount);
+            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, seatIds.length, membershipDiscountedPrice);
             appliedPromotion = result.appliedPromotion;
             totalAmount = result.totalPrice;
         }
@@ -565,6 +628,10 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
             currency: 'VND',
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            rawData: {
+                membershipDiscountAmount,
+                membershipDiscountRate: discountPercentage,
+            }
         });
 
         for (let i = 0; i < seatIds.length; i++) {
@@ -587,6 +654,8 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
                 qrCode: qrCodeJwt,
                 status: 'pending',
                 purchaseDate: Date.now(),
+                membershipDiscountAmount: membershipDiscountAmount / seatIds.length,
+                membershipDiscountRate: discountPercentage,
             };
 
             await ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
