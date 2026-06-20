@@ -518,6 +518,30 @@ const getEventLifecycleOwnership = async (eventId) => {
     return result.rows[0];
 };
 
+const getRecommendedEventsRelational = async (interests = [], excludeEventIds = [], limit = 10) => {
+    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND date >= $3`;
+    const params = [STATUS.ACTIVE, VISIBILITY.PUBLIC, Date.now()];
+    let idx = 4;
+
+    if (interests && interests.length > 0) {
+        sql += ` AND (category && $${idx} OR tags && $${idx})`;
+        params.push(interests);
+        idx++;
+    }
+
+    if (excludeEventIds && excludeEventIds.length > 0) {
+        sql += ` AND NOT (id = ANY($${idx}))`;
+        params.push(excludeEventIds);
+        idx++;
+    }
+
+    sql += ` ORDER BY hot_score DESC, date ASC LIMIT $${idx}`;
+    params.push(limit);
+
+    const result = await query(sql, params);
+    return result.rows.map(row => ({ id: row.id, ...rowToFirebaseDoc(row) }));
+};
+
 module.exports = {
     getEventById,
     getEventDataById,
@@ -534,4 +558,6 @@ module.exports = {
     searchPublicEvents,
     queryActivePublicEventsByGeoBounds,
     getEventLifecycleOwnership,
+    getRecommendedEventsRelational,
 };
+

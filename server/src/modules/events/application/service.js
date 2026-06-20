@@ -347,10 +347,26 @@ const getRecommendations = async (userId, limit = 10) => {
     const interests = userData.matchingPreferences?.interests || [];
     const historyIds = userData.historyEventIds || [];
 
+    const mapRelationalEvents = (eventsList) => {
+        return eventsList.map(evt => ({
+            id: evt.id,
+            name: evt.name,
+            date: evt.date,
+            imageUrl: evt.imageUrl,
+            bannerUrl: evt.bannerUrl,
+            videoUrl: evt.videoUrl,
+            location: evt.location,
+            city: evt.city || null,
+            venueName: evt.venueName || null,
+            eventType: evt.eventType || 'physical',
+            minPrice: evt.minPrice !== undefined ? evt.minPrice : null,
+        }));
+    };
+
     if (interests.length === 0) {
         try {
-            const result = await searchEvents({ date: 'upcoming', limit: limit });
-            return result.events;
+            const fallbackEvents = await eventRepository.getRecommendedEventsRelational([], historyIds, limit);
+            return mapRelationalEvents(fallbackEvents);
         } catch (error) {
             console.error("Lỗi recommendations (no interests fallback):", error.message || error);
             const fallback = await getAllEvents(1, limit);
@@ -359,8 +375,15 @@ const getRecommendations = async (userId, limit = 10) => {
     }
 
     if (!esClient) {
-        console.error("Elasticsearch client is not configured. Cannot get smart recommendations.");
-        return [];
+        console.warn("Elasticsearch client is not configured. Falling back to PostgreSQL relational recommendations.");
+        try {
+            const fallbackEvents = await eventRepository.getRecommendedEventsRelational(interests, historyIds, limit);
+            return mapRelationalEvents(fallbackEvents);
+        } catch (error) {
+            console.error("Lỗi recommendations (relational fallback):", error.message || error);
+            const fallback = await getAllEvents(1, limit);
+            return fallback.events;
+        }
     }
 
     try {
@@ -382,8 +405,15 @@ const getRecommendations = async (userId, limit = 10) => {
         });
         return events;
     } catch (error) {
-        console.error("Lỗi recommendations:", error);
-        return getAllEvents(1, limit).then(res => res.events);
+        console.error("Lỗi recommendations (falling back to relational):", error);
+        try {
+            const fallbackEvents = await eventRepository.getRecommendedEventsRelational(interests, historyIds, limit);
+            return mapRelationalEvents(fallbackEvents);
+        } catch (fallbackError) {
+            console.error("Lỗi recommendations (nested relational fallback):", fallbackError.message || fallbackError);
+            const fallback = await getAllEvents(1, limit);
+            return fallback.events;
+        }
     }
 };
 
