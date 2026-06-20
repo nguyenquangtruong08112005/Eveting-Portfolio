@@ -229,6 +229,22 @@ async function applyPaymentAttemptUpdate(client, attemptId, updates) {
     let idx = 1;
 
     if (updates.status !== undefined) {
+        // Enforce state machine transition guards
+        const currentResult = await client.query(
+            'SELECT status FROM payment_attempts WHERE id = $1 FOR UPDATE',
+            [attemptId]
+        );
+        if (currentResult.rows.length > 0) {
+            const currentStatus = currentResult.rows[0].status;
+            const newStatus = updates.status;
+            if (currentStatus !== newStatus) {
+                const terminalStates = [PAYMENT_STATUS.SUCCEEDED, PAYMENT_STATUS.FAILED, PAYMENT_STATUS.CANCELLED];
+                if (terminalStates.includes(currentStatus)) {
+                    throw new Error(`Invalid payment attempt transition from terminal status '${currentStatus}' to '${newStatus}'`);
+                }
+            }
+        }
+
         sets.push(`status = $${idx}`);
         params.push(updates.status);
         idx++;
@@ -437,12 +453,12 @@ async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null
     );
 }
 
-async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction = null) {
+async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction = null, lock = false) {
     const client = getClient(transaction);
-    const result = await client.query(
-        'SELECT * FROM payment_attempts WHERE provider_order_id = $1',
-        [providerOrderId]
-    );
+    const sql = lock 
+        ? 'SELECT * FROM payment_attempts WHERE provider_order_id = $1 FOR UPDATE'
+        : 'SELECT * FROM payment_attempts WHERE provider_order_id = $1';
+    const result = await client.query(sql, [providerOrderId]);
     if (result.rows.length === 0) return null;
     const r = result.rows[0];
     return {

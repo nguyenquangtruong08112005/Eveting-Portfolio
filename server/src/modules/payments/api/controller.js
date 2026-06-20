@@ -66,20 +66,42 @@ const handleZaloPayCallback = async (req, res) => {
             console.warn("[ZaloPay Callback] Invalid MAC signature!");
             result.return_code = -1;
             result.return_message = "mac not equal";
-        } else {
-            const { data: dataStr } = req.body;
-            const dataObj = JSON.parse(dataStr);
+            return res.json(result);
+        }
 
-            const appTransId = dataObj.app_trans_id;
-            const zpTransId = dataObj.zp_trans_id;
+        const { data: dataStr } = req.body;
+        const dataObj = JSON.parse(dataStr);
 
-            // Enforce webhook idempotency
-            const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(appTransId);
-            if (existingAttempt && existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
+        const appTransId = dataObj.app_trans_id;
+        const zpTransId = dataObj.zp_trans_id;
+
+        const callbackResult = await ticketRepository.runTransaction(async (tx) => {
+            // Lock the payment attempt row
+            const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(appTransId, tx, true);
+            if (!existingAttempt) {
+                console.warn(`[ZaloPay Callback] Payment attempt for provider order ${appTransId} not found.`);
+                return {
+                    return_code: 0,
+                    return_message: "payment attempt not found"
+                };
+            }
+
+            // Webhook Idempotency Check
+            if (existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
                 console.log(`[ZaloPay Callback] Transaction ${appTransId} already succeeded. Skipping.`);
-                result.return_code = 1;
-                result.return_message = "success";
-                return res.json(result);
+                return {
+                    return_code: 1,
+                    return_message: "success"
+                };
+            }
+
+            // State Machine Guard Check (Terminal states block)
+            if (existingAttempt.status === PAYMENT_STATUS.FAILED || existingAttempt.status === PAYMENT_STATUS.CANCELLED) {
+                console.warn(`[ZaloPay Callback] Transaction ${appTransId} is in terminal state '${existingAttempt.status}'. Cannot overwrite.`);
+                return {
+                    return_code: 0,
+                    return_message: `Cannot overwrite terminal status: ${existingAttempt.status}`
+                };
             }
 
             const embedData = JSON.parse(dataObj.embed_data);
@@ -87,19 +109,22 @@ const handleZaloPayCallback = async (req, res) => {
 
             console.log(`[ZaloPay Callback] Success Verified. Ticket: ${ticketId}, ZaloID: ${zpTransId}`);
 
-            await ticketService.confirmTicketPayment(ticketId, zpTransId);
+            await ticketService.confirmTicketPayment(ticketId, zpTransId, tx);
 
-            result.return_code = 1;
-            result.return_message = "success";
-        }
+            return {
+                return_code: 1,
+                return_message: "success"
+            };
+        });
+
+        return res.json(callbackResult);
 
     } catch (error) {
         console.error("[ZaloPay Callback] Exception:", error);
         result.return_code = 0;
         result.return_message = error.message;
+        return res.json(result);
     }
-
-    return res.json(result);
 };
 
 const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
@@ -113,14 +138,36 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
 
     const queryResult = await paymentService.queryZaloPayOrder(ticket.zaloAppTransId);
 
-    if (queryResult.return_code === 1) {
-        await ticketService.confirmTicketPayment(ticketId, queryResult.zp_trans_id || "re-query");
-        return res.json({ status: 'paid', raw: queryResult });
-    } else if (queryResult.return_code === 2) {
-        return res.json({ status: 'failed', raw: queryResult });
-    }
+    const result = await ticketRepository.runTransaction(async (tx) => {
+        // Lock the payment attempt row
+        const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(ticket.zaloAppTransId, tx, true);
+        if (!existingAttempt) {
+            throw new NotFoundError('Payment attempt not found.');
+        }
 
-    return res.json({ status: 'pending', zalo_code: queryResult.return_code });
+        // State Machine Guard check
+        if (existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
+            return { status: 'paid', message: "Paid confirmed (already succeeded)", raw: queryResult };
+        }
+        if (existingAttempt.status === PAYMENT_STATUS.FAILED) {
+            return { status: 'failed', message: "Payment failed (already failed)", raw: queryResult };
+        }
+        if (existingAttempt.status === PAYMENT_STATUS.CANCELLED) {
+            return { status: 'cancelled', message: "Payment cancelled (already cancelled)", raw: queryResult };
+        }
+
+        if (queryResult.return_code === 1) {
+            await ticketService.confirmTicketPayment(ticketId, queryResult.zp_trans_id || "re-query", tx);
+            return { status: 'paid', raw: queryResult };
+        } else if (queryResult.return_code === 2) {
+            await ticketService.failTicketPayment(ticketId, 'ZaloPay reported failure', tx);
+            return { status: 'failed', raw: queryResult };
+        }
+
+        return { status: 'pending', zalo_code: queryResult.return_code };
+    });
+
+    return res.json(result);
 });
 
 module.exports = {

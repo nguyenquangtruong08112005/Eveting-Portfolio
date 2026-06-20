@@ -187,8 +187,8 @@ const cancelPendingTicket = async (ticketId) => {
     });
 };
 
-const confirmTicketPayment = async (ticketId) => {
-    const result = await ticketRepository.runTransaction(async (transaction) => {
+const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
+    const execute = async (transaction) => {
         const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
 
         if (!ticketData) {
@@ -227,10 +227,14 @@ const confirmTicketPayment = async (ticketId) => {
             const link = await orderRepository.getTicketOrderLinkInTransaction(transaction, ticketId);
             if (link) {
                 if (link.paymentAttemptId) {
-                    await orderRepository.updatePaymentAttemptInTransaction(transaction, link.paymentAttemptId, {
+                    const paymentUpdates = {
                         status: PAYMENT_STATUS.SUCCEEDED,
                         completedAt: Date.now(),
-                    });
+                    };
+                    if (zpTransId) {
+                        paymentUpdates.providerTransactionId = zpTransId;
+                    }
+                    await orderRepository.updatePaymentAttemptInTransaction(transaction, link.paymentAttemptId, paymentUpdates);
                 }
                 if (link.orderId) {
                     await orderRepository.updateOrderStatusInTransaction(transaction, link.orderId, ORDER_STATUS.PAID, Date.now());
@@ -289,11 +293,64 @@ const confirmTicketPayment = async (ticketId) => {
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
 
         return { ...ticketData, status: 'paid' };
-    });
+    };
+
+    let result;
+    if (tx) {
+        result = await execute(tx);
+    } else {
+        result = await ticketRepository.runTransaction(execute);
+    }
 
     outboxProcessor.triggerProcess();
 
     return result;
+};
+
+const failTicketPayment = async (ticketId, reason = 'Payment failed', tx = null) => {
+    const execute = async (transaction) => {
+        const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
+        if (!ticketData) {
+            throw new NotFoundError('Ticket not found.');
+        }
+
+        if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
+            console.log(`Ticket ${ticketId} is already paid/checkedIn. Cannot fail.`);
+            return ticketData;
+        }
+
+        await ticketRepository.updateTicketInTransaction(transaction, ticketId, {
+            status: 'failed',
+            updatedAt: Date.now()
+        });
+
+        // Update shadow payment_attempt, order status
+        try {
+            const link = await orderRepository.getTicketOrderLinkInTransaction(transaction, ticketId);
+            if (link) {
+                if (link.paymentAttemptId) {
+                    await orderRepository.updatePaymentAttemptInTransaction(transaction, link.paymentAttemptId, {
+                        status: PAYMENT_STATUS.FAILED,
+                        failureReason: reason,
+                        completedAt: Date.now(),
+                    });
+                }
+                if (link.orderId) {
+                    await orderRepository.updateOrderStatusInTransaction(transaction, link.orderId, ORDER_STATUS.FAILED, null);
+                }
+            }
+        } catch (err) {
+            logger.error(`[ShadowPayment] Failed to fail payment or order for ticket ${ticketId}: ${err.message}`);
+        }
+
+        return { ...ticketData, status: 'failed' };
+    };
+
+    if (tx) {
+        return execute(tx);
+    } else {
+        return ticketRepository.runTransaction(execute);
+    }
 };
 
 const getTicketDetailsById = async (ticketId, requestingUserId) => {
@@ -547,6 +604,7 @@ module.exports = {
     bookTicket,
     cancelPendingTicket,
     confirmTicketPayment,
+    failTicketPayment,
     getTicketDetailsById,
     holdSeat,
     releaseSeat,

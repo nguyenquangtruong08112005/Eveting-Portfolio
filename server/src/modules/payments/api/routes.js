@@ -19,4 +19,12 @@ router.post(
     paymentController.handleZaloPayCallback
 );
 
+router.post(
+    '/check-status',
+    verifyAuthToken,
+    body('ticketId').notEmpty().withMessage('ticketId is required'),
+    validateRequest,
+    paymentController.manualCheckPaymentStatus
+);
+
 module.exports = router;
