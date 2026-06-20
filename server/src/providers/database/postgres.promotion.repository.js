@@ -172,14 +172,15 @@ const deletePromotion = async (promoId) => {
 
 // NOTE: This uses the passed transaction client when provided,
 // with a global-query fallback only outside a transaction.
-const findPromoByCodeInTransaction = async (transaction, promoCode) => {
+const findPromoByCodeInTransaction = async (transaction, promoCode, lock = false) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
-    const result = await client.query(
-        `SELECT id, organizer_id, code, event_id, valid_from, valid_until,
-                usage_limit, used_count, is_public, data, created_at
-         FROM promotions WHERE code = $1 LIMIT 1`,
-        [promoCode]
-    );
+    const queryStr = `
+        SELECT id, organizer_id, code, event_id, valid_from, valid_until,
+               usage_limit, used_count, is_public, data, created_at
+        FROM promotions WHERE code = $1 LIMIT 1
+        ${lock ? 'FOR UPDATE' : ''}
+    `;
+    const result = await client.query(queryStr, [promoCode]);
     if (result.rows.length === 0) return null;
     const promo = rowToPromotion(result.rows[0]);
     return { ...promo, _id: promo.id };
@@ -195,6 +196,14 @@ const incrementPromotionUsedCountInTransaction = async (transaction, promoId) =>
     );
 };
 
+const decrementPromotionUsedCountInTransaction = async (transaction, promoId) => {
+    const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
+    await client.query(
+        'UPDATE promotions SET used_count = CASE WHEN used_count > 0 THEN used_count - 1 ELSE 0 END WHERE id = $1',
+        [promoId]
+    );
+};
+
 module.exports = {
     getActivePromotions,
     getPromotionsByOrganizer,
@@ -206,4 +215,5 @@ module.exports = {
     deletePromotion,
     findPromoByCodeInTransaction,
     incrementPromotionUsedCountInTransaction,
+    decrementPromotionUsedCountInTransaction,
 };

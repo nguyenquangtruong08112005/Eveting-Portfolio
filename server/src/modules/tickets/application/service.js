@@ -182,6 +182,13 @@ const cancelPendingTicket = async (ticketId) => {
 
         await eventRepository.incrementEventTicketTypeAvailableInTransaction(transaction, ticketData.eventId, ticketData.type, 1);
 
+        if (ticketData.appliedPromoCode) {
+            const promo = await promotionRepository.findPromoByCodeInTransaction(transaction, ticketData.appliedPromoCode);
+            if (promo) {
+                await promotionRepository.decrementPromotionUsedCountInTransaction(transaction, promo._id || promo.id);
+            }
+        }
+
         console.log(`Ticket ${ticketId} cancelled, 1 ticket of type ${ticketData.type} returned to event ${ticketData.eventId}.`);
         return { ...ticketData, status: 'cancelled' };
     });
@@ -323,6 +330,13 @@ const failTicketPayment = async (ticketId, reason = 'Payment failed', tx = null)
             status: 'failed',
             updatedAt: Date.now()
         });
+
+        if (ticketData.appliedPromoCode) {
+            const promo = await promotionRepository.findPromoByCodeInTransaction(transaction, ticketData.appliedPromoCode);
+            if (promo) {
+                await promotionRepository.decrementPromotionUsedCountInTransaction(transaction, promo._id || promo.id);
+            }
+        }
 
         // Update shadow payment_attempt, order status
         try {
@@ -524,10 +538,16 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
         }
 
         totalAmount = subtotalAmount;
+        let appliedPromotion = null;
 
         if (promoCode) {
             const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, seatIds.length, totalAmount);
+            appliedPromotion = result.appliedPromotion;
             totalAmount = result.totalPrice;
+        }
+
+        if (appliedPromotion) {
+            await promotionRepository.incrementPromotionUsedCountInTransaction(transaction, appliedPromotion._id || appliedPromotion.id);
         }
 
         const shadowOrderId = `ord_${uuidv4()}`;

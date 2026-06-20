@@ -1,7 +1,7 @@
 const { ConflictError } = require('@/shared/errors');
 
 async function applyPromotion(promotionRepository, transaction, promoCode, eventId, qty, totalPrice) {
-  const foundPromo = await promotionRepository.findPromoByCodeInTransaction(transaction, promoCode);
+  const foundPromo = await promotionRepository.findPromoByCodeInTransaction(transaction, promoCode, true);
 
   if (!foundPromo) return { appliedPromotion: null, totalPrice };
 
