@@ -30,6 +30,8 @@ Whenever you receive a task or a phase to execute, you MUST strictly follow this
 
 ## 6. Post-Implementation & Reporting / Bàn giao và Báo cáo
 - Run cleanup, synchronize index/codegraph, stage and commit files.
+- Save and document all slices, implementations, and phases (including walkthroughs, implementation plans, and run notes) under the directory [Agent Workflows/runs/business-redesign/](file:///d:/01_university/year3/semester-5/mobile/final/Agent%20Workflows/runs/business-redesign).
 - Document changes in walkthroughs and write a structured, concise completion report.
 - *Dọn dẹp dữ liệu test, sync codegraph, commit code lên git.*
+- *Lưu và tài liệu hóa tất cả các slice, implementation, và phase (bao gồm walkthrough, implementation plan, và run note) vào thư mục [Agent Workflows/runs/business-redesign/](file:///d:/01_university/year3/semester-5/mobile/final/Agent%20Workflows/runs/business-redesign).*
 - *Cập nhật walkthrough và báo cáo chi tiết kết quả cho người dùng.*
