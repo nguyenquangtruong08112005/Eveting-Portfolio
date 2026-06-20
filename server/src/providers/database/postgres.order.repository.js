@@ -431,6 +431,10 @@ module.exports = {
     createOrganizerSettings,
     getOrderInTransaction,
     getLedgerEntriesByOrganizer,
+    getOrganizerBalance,
+    getOrganizerBalanceInTransaction,
+    getPlatformFeeBalance,
+    getPlatformFeeBalanceInTransaction,
 };
 
 async function applyOrderStatusUpdate(client, orderId, status, paidAt = null) {
@@ -506,6 +510,80 @@ async function createLedgerEntryInTransaction(tx, entry) {
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [entry.id, entry.orderId, entry.organizerId, entry.grossAmount, entry.platformFee, entry.netAmount, entry.createdAt || Date.now()]
     );
+
+    // Update organizer balance
+    await client.query(
+        `INSERT INTO organizer_balances (organizer_id, balance, updated_at)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (organizer_id)
+         DO UPDATE SET balance = organizer_balances.balance + EXCLUDED.balance, updated_at = EXCLUDED.updated_at`,
+        [entry.organizerId, entry.netAmount, Date.now()]
+    );
+
+    // Update platform fee balance
+    await client.query(
+        `INSERT INTO platform_fees (id, balance, updated_at)
+         VALUES ('platform', $1, $2)
+         ON CONFLICT (id)
+         DO UPDATE SET balance = platform_fees.balance + EXCLUDED.balance, updated_at = EXCLUDED.updated_at`,
+        [entry.platformFee, Date.now()]
+    );
+}
+
+async function getOrganizerBalance(organizerId) {
+    const result = await query(
+        'SELECT balance, updated_at as "updatedAt" FROM organizer_balances WHERE organizer_id = $1',
+        [organizerId]
+    );
+    if (result.rows.length === 0) {
+        return { balance: 0, updatedAt: 0 };
+    }
+    return {
+        balance: Number(result.rows[0].balance),
+        updatedAt: Number(result.rows[0].updated_at)
+    };
+}
+
+async function getOrganizerBalanceInTransaction(tx, organizerId) {
+    const client = getClient(tx);
+    const result = await client.query(
+        'SELECT balance, updated_at as "updatedAt" FROM organizer_balances WHERE organizer_id = $1',
+        [organizerId]
+    );
+    if (result.rows.length === 0) {
+        return { balance: 0, updatedAt: 0 };
+    }
+    return {
+        balance: Number(result.rows[0].balance),
+        updatedAt: Number(result.rows[0].updated_at)
+    };
+}
+
+async function getPlatformFeeBalance() {
+    const result = await query(
+        "SELECT balance, updated_at as \"updatedAt\" FROM platform_fees WHERE id = 'platform'"
+    );
+    if (result.rows.length === 0) {
+        return { balance: 0, updatedAt: 0 };
+    }
+    return {
+        balance: Number(result.rows[0].balance),
+        updatedAt: Number(result.rows[0].updated_at)
+    };
+}
+
+async function getPlatformFeeBalanceInTransaction(tx) {
+    const client = getClient(tx);
+    const result = await client.query(
+        "SELECT balance, updated_at as \"updatedAt\" FROM platform_fees WHERE id = 'platform'"
+    );
+    if (result.rows.length === 0) {
+        return { balance: 0, updatedAt: 0 };
+    }
+    return {
+        balance: Number(result.rows[0].balance),
+        updatedAt: Number(result.rows[0].updated_at)
+    };
 }
 
 async function getLedgerEntriesByOrganizer(organizerId) {
