@@ -1,5 +1,6 @@
 const ticketRepository = require('@/providers/database/ticket.repository');
 const eventRepository = require('@/providers/database/event.repository');
+const { query } = require('@/providers/database/postgres.client');
 const promotionRepository = require('@/providers/database/promotion.repository');
 const analyticsRepository = require('@/providers/database/analytics.repository');
 const venueRepository = require('@/providers/database/venue.repository');
@@ -323,51 +324,95 @@ const getTicketDetailsById = async (ticketId, requestingUserId) => {
 };
 
 const holdSeat = async (userId, eventId, seatId) => {
-    const seat = await seatRepository.getSeatById(seatId);
-    if (!seat) {
-        throw new NotFoundError('Seat not found.');
-    }
-    if (seat.status !== 'available') {
-        throw new ConflictError('Seat is not available.');
-    }
+    return ticketRepository.runTransaction(async (transaction) => {
+        const seat = await seatRepository.getSeatById(seatId);
+        if (!seat) {
+            throw new NotFoundError('Seat not found.');
+        }
+        if (seat.status !== 'available') {
+            throw new ConflictError('Seat is not available.');
+        }
 
-    const holdKey = `hold:event:${eventId}:seat:${seatId}`;
-    const existingHold = await cacheProvider.get(holdKey);
-    if (existingHold) {
-        throw new ConflictError('Seat is currently held by another user.');
-    }
+        const now = Date.now();
 
-    const expiresAt = Date.now() + 600000;
-    await cacheProvider.set(holdKey, JSON.stringify({ userId, expiresAt }), 600);
+        // Release expired holds on this seat for this event first
+        await transaction.query(
+            `UPDATE seat_holds 
+             SET status = 'released' 
+             WHERE event_id = $1 AND seat_id = $2 AND status = 'held' AND expires_at <= $3`,
+            [eventId, seatId, now]
+        );
 
-    const io = getIo();
-    if (io) {
-        io.to(`event_${eventId}`).emit('seat:held', { eventId, seatId, expiresAt });
-    }
+        // Check if there is an active (unexpired) hold on this seat
+        const activeHold = await seatRepository.getActiveHoldForSeat(eventId, seatId);
+        if (activeHold) {
+            if (activeHold.userId === userId) {
+                // Already held by this user, return same hold data
+                return { success: true, eventId, seatId, expiresAt: activeHold.expiresAt };
+            }
+            throw new ConflictError('Seat is currently held by another user.');
+        }
 
-    return { success: true, eventId, seatId, expiresAt };
+        // Check if seat is already sold
+        const ticketResult = await transaction.query(
+            `SELECT id FROM tickets WHERE event_id = $1 AND seat = $2 AND status != 'cancelled'`,
+            [eventId, seatId]
+        );
+        if (ticketResult.rows.length > 0) {
+            throw new ConflictError('Seat is already sold.');
+        }
+
+        const holdId = `hold_${uuidv4()}`;
+        const expiresAt = now + 600000; // 10 minutes TTL
+
+        await seatRepository.createSeatHold({
+            id: holdId,
+            eventId,
+            seatId,
+            userId,
+            heldAt: now,
+            expiresAt,
+            status: 'held',
+            createdAt: now
+        }, transaction);
+
+        // Set fallback Redis key
+        const holdKey = `hold:event:${eventId}:seat:${seatId}`;
+        await cacheProvider.set(holdKey, JSON.stringify({ userId, expiresAt }), 600);
+
+        const io = getIo();
+        if (io) {
+            io.to(`event_${eventId}`).emit('seat:held', { eventId, seatId, expiresAt });
+        }
+
+        return { success: true, eventId, seatId, expiresAt };
+    });
 };
 
 const releaseSeat = async (userId, eventId, seatId) => {
-    const holdKey = `hold:event:${eventId}:seat:${seatId}`;
-    const holdDataStr = await cacheProvider.get(holdKey);
-    if (!holdDataStr) {
-        return { success: true, message: 'No active hold found.' };
-    }
+    return ticketRepository.runTransaction(async (transaction) => {
+        const activeHold = await seatRepository.getActiveHoldForSeat(eventId, seatId);
+        if (!activeHold) {
+            return { success: true, message: 'No active hold found.' };
+        }
 
-    const holdData = JSON.parse(holdDataStr);
-    if (holdData.userId !== userId) {
-        throw new ForbiddenError('You do not own the hold on this seat.');
-    }
+        if (activeHold.userId !== userId) {
+            throw new ForbiddenError('You do not own the hold on this seat.');
+        }
 
-    await cacheProvider.del(holdKey);
+        await seatRepository.releaseSeatHold(activeHold.id, transaction);
 
-    const io = getIo();
-    if (io) {
-        io.to(`event_${eventId}`).emit('seat:released', { eventId, seatId });
-    }
+        // Delete Redis key
+        const holdKey = `hold:event:${eventId}:seat:${seatId}`;
+        await cacheProvider.del(holdKey);
 
-    return { success: true, eventId, seatId };
+        const io = getIo();
+        if (io) {
+            io.to(`event_${eventId}`).emit('seat:released', { eventId, seatId });
+        }
+
+        return { success: true, eventId, seatId };
+    });
 };
 
 const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
@@ -386,14 +431,13 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
         let subtotalAmount = 0;
 
         for (const seatId of seatIds) {
-            const holdKey = `hold:event:${eventId}:seat:${seatId}`;
-            const holdDataStr = await cacheProvider.get(holdKey);
-            if (!holdDataStr) {
+            // Find active hold in DB
+            const activeHold = await seatRepository.getActiveHoldForSeat(eventId, seatId);
+            if (!activeHold) {
                 throw new ConflictError(`Seat ${seatId} hold has expired or does not exist.`);
             }
 
-            const holdData = JSON.parse(holdDataStr);
-            if (holdData.userId !== userId) {
+            if (activeHold.userId !== userId) {
                 throw new ForbiddenError(`You do not own the hold on seat ${seatId}.`);
             }
 
@@ -402,7 +446,15 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
                 throw new ConflictError(`Seat ${seatId} is no longer available.`);
             }
 
+            // Convert hold to sold in DB
+            await seatRepository.convertHoldToSold(activeHold.id, transaction);
+
+            // Set seat status to blocked for backward-compatibility with tests
             await seatRepository.updateSeatStatus(seatId, 'blocked', transaction);
+
+            // Clean up cache
+            const holdKey = `hold:event:${eventId}:seat:${seatId}`;
+            await cacheProvider.del(holdKey);
 
             const ticketType = 'standard';
             const ticketTypeData = eventData.ticketTypes[ticketType];
@@ -412,8 +464,6 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
 
             const unitPrice = Number(ticketTypeData.price);
             subtotalAmount += unitPrice;
-
-            await cacheProvider.del(holdKey);
         }
 
         totalAmount = subtotalAmount;
