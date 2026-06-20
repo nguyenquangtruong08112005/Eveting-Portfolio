@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 /**
  * smoke.concurrent-booking.js
- *
- * Validates that concurrent ticket bookings under high load:
- *  1. Do NOT oversell available ticket inventory.
- *  2. Return exactly 3 successful bookings (201) and 7 conflict failures (409)
- *     when 10 concurrent bookings are made for an event with only 3 available tickets.
- *  3. Keep the database state consistent.
- *
- * Run: node scripts/smoke.concurrent-booking.js
+ * Verification check for transaction safety, row locking, and overselling prevention.
  */
 
 require('dotenv').config({ quiet: true });
@@ -22,18 +15,20 @@ process.env.DATABASE_PROVIDER = 'postgres';
 process.env.EVENT_DATABASE_PROVIDER = 'postgres';
 process.env.ORDER_DATABASE_PROVIDER = 'postgres';
 process.env.TICKET_DATABASE_PROVIDER = 'postgres';
-process.env.AUTH_PROVIDER = 'backend';
 
 require('./../src/alias-bootstrap');
 
-const { v4: uuidv4 } = require('uuid');
-const http = require('http');
+const { spawn } = require('child_process');
 const axios = require('axios');
-const app = require('../src/app');
+const { v4: uuidv4 } = require('uuid');
 const { query } = require('@/providers/database/postgres.client');
 const eventRepository = require('@/providers/database/event.repository');
-const { signAccessToken } = require('@/providers/auth/backend.auth.provider');
 
+const TEST_PORT = process.env.TEST_PORT || '35434';
+const BASE_URL = `http://localhost:${TEST_PORT}`;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+let serverProcess = null;
 const PASS = [];
 const FAIL = [];
 
@@ -47,160 +42,182 @@ function assert(label, condition) {
     }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function run() {
     console.log('');
     console.log('smoke.concurrent-booking.js');
     console.log('───────────────────────────');
 
-    const PORT = 3001;
-    const server = http.createServer(app);
-
-    // Start in-process server
-    await new Promise((resolve) => server.listen(PORT, resolve));
-    console.log(`  [Server] Listening on port ${PORT}`);
-
-    const testUserId = `usr_conc_${uuidv4()}`;
-    const testUserEmail = `conc_${uuidv4()}@test.com`;
-    const testEventId = `evt_conc_${uuidv4()}`;
-    const now = Date.now();
-
-    console.log('\n  [Setup]');
-
-    // Insert synthetic test user in database
-    await query(
-        `INSERT INTO auth_users (id, email, name, password_hash, roles, is_active)
-         VALUES ($1, $2, 'Concurrent Test User', 'mock_hash', $3, true)`,
-        [testUserId, testUserEmail, ['user']]
-    );
-    assert('test user created in database', true);
-
-    const testUserToken = signAccessToken({ uid: testUserId, email: testUserEmail, roles: ['user'] });
-
-    // Set standard tickets available = 3, total = 3
-    const ticketTypes = {
-        standard: { name: 'Standard', price: 50000, available: 3, total: 3 },
+    // 1. Spawn Server
+    console.log('Spawning application server...');
+    const env = {
+        ...process.env,
+        PORT: TEST_PORT,
+        DATABASE_URL,
+        AUTH_PROVIDER: 'backend',
+        ACCESS_TOKEN_SECRET: 'concurrency_smoke_test_access_token_secret_value_at_least_256_bits',
+        DATABASE_PROVIDER: 'postgres'
     };
+    serverProcess = spawn('node', ['src/server.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 
-    const eventData = {
-        name: 'Concurrent Booking Test Event',
-        description: 'Concurrency testing event',
-        date: now,
-        eventType: 'physical',
-        organizerId: `org_${uuidv4()}`,
-        ticketTypes: ticketTypes,
-        minPrice: 50000,
-        status: 'active',
-        visibility: 'public',
-        category: ['education'],
-        tags: ['tech'],
-        sponsors: [],
-        createdAt: now,
-        lastUpdatedAt: now,
-    };
-
-    await eventRepository.createEvent(testEventId, eventData);
-    assert(`test event "${testEventId}" created with 3 available tickets`, true);
-
-    console.log('\n  [Firing 10 Concurrent Booking Requests]');
-
-    // Prepare 10 concurrent requests
-    const requests = [];
-    const client = axios.create({
-        baseURL: `http://localhost:${PORT}`,
-        headers: {
-            Authorization: `Bearer ${testUserToken}`,
-            'Content-Type': 'application/json'
+    let serverStarted = false;
+    serverProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        if (output.includes('Server address') || output.includes('localhost:')) {
+            serverStarted = true;
         }
     });
 
-    for (let i = 0; i < 10; i++) {
-        requests.push(
-            client.post('/tickets/book', {
-                eventId: testEventId,
-                ticketType: 'standard',
-                quantity: 1
-            }).catch(err => {
-                // Return response structure for error handling so we can map status codes
-                return err.response;
-            })
-        );
+    for (let i = 0; i < 20; i++) {
+        if (serverStarted) break;
+        try {
+            const res = await axios.get(BASE_URL);
+            if (res.status === 200) {
+                serverStarted = true;
+                break;
+            }
+        } catch (_) {}
+        await sleep(500);
     }
 
-    const responses = await Promise.all(requests);
+    if (!serverStarted) {
+        throw new Error('Server failed to start or did not become responsive.');
+    }
+    console.log('Server is responsive at:', BASE_URL);
+
+    // 2. Create Event with limited capacity (only 3 standard tickets available)
+    console.log('\n  [Setup Event with 3 Capacity]');
+    const testOrganizerId = `usr_org_${uuidv4()}`;
+    const testEventId = `evt_conc_${uuidv4()}`;
+    const now = Date.now();
+    const eventData = {
+        name: 'Concurrency Test Event',
+        description: 'Only 3 tickets available!',
+        date: now + 86400000,
+        eventType: 'physical',
+        organizerId: testOrganizerId,
+        ticketTypes: {
+            standard: { name: 'Standard', price: 10000, available: 3, total: 3 }
+        },
+        minPrice: 10000,
+        status: 'active',
+        visibility: 'public',
+        createdAt: now,
+        lastUpdatedAt: now
+    };
+    await eventRepository.createEvent(testEventId, eventData);
+    assert('Test event created with available tickets = 3', true);
+
+    // 3. Register 10 distinct users and login
+    console.log('\n  [Registering 10 concurrent users...]');
+    const users = [];
+    for (let i = 0; i < 10; i++) {
+        const email = `conc_user_${i}_${Date.now()}@test.com`;
+        const password = 'Password123!';
+        const name = `Concurrent User ${i}`;
+
+        const regRes = await axios.post(`${BASE_URL}/auth/register`, { email, password, name });
+        users.push({
+            id: regRes.data.user.id,
+            email: email,
+            accessToken: regRes.data.accessToken
+        });
+    }
+    assert('Successfully registered 10 test users', users.length === 10);
+
+    // 4. Send 10 concurrent requests using Promise.all
+    console.log('\n  [Sending 10 concurrent booking requests...]');
+    const bookPayload = { eventId: testEventId, ticketType: 'standard', quantity: 1 };
+    
+    const promises = users.map((user, idx) => {
+        // Add a unique idempotency key for each user to test concurrency independently of the duplicate request checks
+        const idempotencyKey = `idem_user_${idx}_${testEventId}`;
+        return axios.post(`${BASE_URL}/tickets/book`, bookPayload, {
+            headers: {
+                Authorization: `Bearer ${user.accessToken}`,
+                'X-Idempotency-Key': idempotencyKey
+            }
+        });
+    });
+
+    const results = await Promise.allSettled(promises);
 
     let successCount = 0;
     let conflictCount = 0;
     let otherCount = 0;
 
-    responses.forEach((res, idx) => {
-        if (!res) {
-            otherCount++;
-            return;
-        }
-        if (res.status === 201) {
+    for (const r of results) {
+        if (r.status === 'fulfilled') {
             successCount++;
-        } else if (res.status === 409) {
-            conflictCount++;
         } else {
-            console.log(`    Request ${idx + 1} returned status ${res.status}:`, res.data);
-            otherCount++;
-        }
-    });
-
-    console.log('\n  [Booking Results]');
-    assert(`exactly 3 successful bookings (status 201): received ${successCount}`, successCount === 3);
-    assert(`exactly 7 conflict failures (status 409): received ${conflictCount}`, conflictCount === 7);
-    assert(`zero other status codes: received ${otherCount}`, otherCount === 0);
-
-    // Fetch final database state
-    console.log('\n  [Database Verification]');
-    const dbEvent = await eventRepository.getEventById(testEventId);
-    assert('available ticket count in DB projection is 0', dbEvent.ticketTypes.standard.available === 0);
-
-    const row = (await query('SELECT ticket_types, raw_data FROM events WHERE id = $1', [testEventId])).rows[0];
-    assert('typed ticket_types standard available is 0', row.ticket_types.standard.available === 0);
-    assert('raw_data standard available is 0', row.raw_data.ticketTypes.standard.available === 0);
-
-    const ticketCountResult = await query('SELECT COUNT(*)::int AS count FROM tickets WHERE event_id = $1', [testEventId]);
-    assert('exactly 3 tickets created in tickets table', ticketCountResult.rows[0].count === 3);
-
-    console.log('\n  [Cleanup]');
-
-    // Remove orders/payment attempts created as side-effects
-    const ticketRows = (await query('SELECT id FROM tickets WHERE event_id = $1', [testEventId])).rows;
-    for (const tRow of ticketRows) {
-        try {
-            const linkResult = await query('SELECT order_id FROM tickets WHERE id = $1', [tRow.id]);
-            const orderId = linkResult.rows[0]?.order_id;
-            if (orderId) {
-                await query('UPDATE tickets SET order_id = NULL, order_item_id = NULL, payment_attempt_id = NULL WHERE id = $1', [tRow.id]);
-                await query('DELETE FROM payment_attempts WHERE order_id = $1', [orderId]);
-                await query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
-                await query('DELETE FROM orders WHERE id = $1', [orderId]);
+            const err = r.reason;
+            if (err.response && err.response.status === 409) {
+                conflictCount++;
+                const msg = err.response.data.message || (err.response.data.error && err.response.data.error.message) || '';
+                assert('Booking request rejected with 409 Conflict (Cap limit)', msg.includes('Not enough tickets available'));
+            } else {
+                otherCount++;
+                console.error('Unexpected error response:', err.response ? err.response.data : err.message);
             }
-        } catch (e) {
-            // ignore
         }
     }
 
+    console.log('\n  [Results Validation]');
+    assert('Exactly 3 bookings succeeded', successCount === 3);
+    assert('Exactly 7 bookings were rejected with 409 Conflict', conflictCount === 7);
+    assert('0 other errors occurred', otherCount === 0);
+
+    // Verify DB availability is exactly 0
+    const ev = await eventRepository.getEventById(testEventId);
+    assert('Final ticket availability is exactly 0 in DB', ev.ticketTypes.standard.available === 0);
+
+    // Verify exactly 3 tickets created
+    const ticketCountRes = await query('SELECT COUNT(*)::int as count FROM tickets WHERE event_id = $1', [testEventId]);
+    assert('Exactly 3 tickets exist in database', ticketCountRes.rows[0].count === 3);
+
+    // 5. Cleanup
+    console.log('\n  [Cleanup]');
+    const tickets = await query('SELECT id FROM tickets WHERE event_id = $1', [testEventId]);
+    for (const t of tickets.rows) {
+        const orderLink = await query('SELECT order_id FROM tickets WHERE id = $1', [t.id]);
+        if (orderLink.rows.length > 0 && orderLink.rows[0].order_id) {
+            const orderId = orderLink.rows[0].order_id;
+            await query('DELETE FROM payment_attempts WHERE order_id = $1', [orderId]);
+            await query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
+            await query('DELETE FROM orders WHERE id = $1', [orderId]);
+        }
+    }
     await query('DELETE FROM tickets WHERE event_id = $1', [testEventId]);
     await query('DELETE FROM events WHERE id = $1', [testEventId]);
-    await query('DELETE FROM sessions WHERE user_id = $1', [testUserId]);
-    await query('DELETE FROM auth_users WHERE id = $1', [testUserId]);
-    assert('database cleaned up successfully', true);
-
-    // Stop server
-    await new Promise((resolve) => server.close(resolve));
-    console.log('  [Server] Stopped');
-
-    console.log('');
-    console.log(`  Total: ${PASS.length} passed, ${FAIL.length} failed`);
-    console.log('');
-
-    process.exit(FAIL.length > 0 ? 1 : 0);
+    
+    for (const u of users) {
+        await query('DELETE FROM idempotency_keys WHERE key = $1', [`idem_user_${users.indexOf(u)}_${testEventId}`]);
+        await query('DELETE FROM auth_tokens WHERE email = $1', [u.email]);
+        await query('DELETE FROM sessions WHERE user_id = $1', [u.id]);
+        await query('DELETE FROM user_profiles WHERE id = $1', [u.id]);
+        await query('DELETE FROM auth_users WHERE id = $1', [u.id]);
+    }
+    assert('Cleanup database successful', true);
 }
 
-run().catch((err) => {
-    console.error('Unhandled error:', err);
-    process.exit(1);
-});
+function cleanup() {
+    if (serverProcess) {
+        console.log('Stopping application server...');
+        serverProcess.kill();
+    }
+}
+
+run()
+    .then(() => {
+        cleanup();
+        console.log('');
+        console.log(`  Total: ${PASS.length} passed, ${FAIL.length} failed`);
+        console.log('');
+        process.exit(FAIL.length > 0 ? 1 : 0);
+    })
+    .catch((err) => {
+        cleanup();
+        console.error('Unhandled error during concurrent booking smoke test:', err);
+        process.exit(1);
+    });

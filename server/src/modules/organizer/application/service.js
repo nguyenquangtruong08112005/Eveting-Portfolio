@@ -5,6 +5,7 @@ const userRepository = require('@/providers/database/user.repository');
 const eventRepository = require('@/providers/database/event.repository');
 const analyticsRepository = require('@/providers/database/analytics.repository');
 const organizerRepository = require('@/providers/database/organizer.repository');
+const orderRepository = require('@/providers/database/order.repository');
 const ticketService = require('@/modules/tickets').service;
 
 const { mapAttendees } = require('./attendee.helper');
@@ -62,7 +63,36 @@ const getOrganizerProfile = async (userId) => {
 };
 
 const getMyEvents = async (organizerId, page = 1, limit = 20, status) => {
-    return await eventRepository.getEventsByOrganizerId(organizerId, { page, limit, status });
+    const events = await eventRepository.getEventsByOrganizerId(organizerId, { page, limit, status });
+    const enrichedEvents = [];
+    for (const event of events) {
+        const { data: rawEventData } = await eventRepository.getEventRawById(event.id);
+        const tickets = await ticketRepository.getAttendeeTicketsByEventId(event.id);
+        const soldCount = tickets.reduce((sum, t) => sum + (t.quantity || 1), 0);
+
+        let totalCapacity = 0;
+        if (rawEventData && rawEventData.ticketTypes) {
+            for (const typeKey in rawEventData.ticketTypes) {
+                totalCapacity += rawEventData.ticketTypes[typeKey].capacity || 0;
+            }
+        }
+
+        const price = rawEventData ? (rawEventData.minPrice || 0) : 0;
+
+        enrichedEvents.push({
+            id: event.id,
+            name: event.name,
+            status: event.status,
+            sold: soldCount,
+            capacity: totalCapacity || rawEventData?.capacity || 0,
+            price: price
+        });
+    }
+    return enrichedEvents;
+};
+
+const getLedger = async (organizerId) => {
+    return await orderRepository.getLedgerEntriesByOrganizer(organizerId);
 };
 
 const getOrganizerStats = async (organizerId) => {
@@ -127,5 +157,5 @@ const broadcastNotification = async (eventId, title, message, organizerId) => {
 module.exports = {
     getAttendeesByEventId, checkInByQr, registerOrganizer, getOrganizerProfile,
     getMyEvents, getOrganizerStats, updateOrganizerProfile, importAttendees,
-    exportAttendees, broadcastNotification
+    exportAttendees, broadcastNotification, getLedger
 };

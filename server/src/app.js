@@ -57,6 +57,14 @@ app.use('/auth', authRouter);
 app.use('/api/auth', authRouter);
 app.use('/storage', storageRouter);
 
+// BFF Route Prefixes
+app.use('/api/web/auth', authRouter);
+app.use('/api/web/events', eventsRouter);
+app.use('/api/web/tickets', ticketsRouter);
+app.use('/api/web/payments', paymentsRouter);
+app.use('/api/organizer', organizerRouter);
+app.use('/api/admin', adminRouter);
+
 // GET /public/:key(*) - Serve files from the active storage provider (e.g. local in-memory)
 app.get('/public/:key(*)', async (req, res) => {
   try {

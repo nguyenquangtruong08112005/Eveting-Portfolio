@@ -16,6 +16,8 @@ router.use(isOrganizer);
 
 router.get('/me', organizerController.getOrganizerProfile);
 
+router.get('/ledger', organizerController.getLedger);
+
 router.put('/me', organizerController.updateOrganizerProfile);
 
 router.get('/me/events', [

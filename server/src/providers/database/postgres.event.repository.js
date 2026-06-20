@@ -432,7 +432,8 @@ const getPublicEventsPage = async (page, limit) => {
         const data = {};
         const selectedFields = [
             "id", "name", "date", "imageUrl", "bannerUrl", "videoUrl",
-            "location", "city", "venueName", "eventType", "minPrice"
+            "location", "city", "venueName", "eventType", "minPrice",
+            "category", "tags"
         ];
         selectedFields.forEach(field => {
             if (field === 'id') {
@@ -474,7 +475,8 @@ const searchPublicEvents = async (searchString, page, limit) => {
         const data = {};
         const selectedFields = [
             "id", "name", "date", "imageUrl", "bannerUrl", "videoUrl",
-            "location", "city", "venueName", "eventType", "minPrice"
+            "location", "city", "venueName", "eventType", "minPrice",
+            "category", "tags"
         ];
         selectedFields.forEach(field => {
             if (field === 'id') {

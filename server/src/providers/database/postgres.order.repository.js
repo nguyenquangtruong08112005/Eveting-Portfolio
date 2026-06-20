@@ -415,6 +415,7 @@ module.exports = {
     getOrganizerSettingsInTransaction,
     createOrganizerSettings,
     getOrderInTransaction,
+    getLedgerEntriesByOrganizer,
 };
 
 async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null) {
@@ -470,6 +471,30 @@ async function createLedgerEntryInTransaction(tx, entry) {
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [entry.id, entry.orderId, entry.organizerId, entry.grossAmount, entry.platformFee, entry.netAmount, entry.createdAt || Date.now()]
     );
+}
+
+async function getLedgerEntriesByOrganizer(organizerId) {
+    const result = await query(
+        `SELECT le.id, le.order_id as "orderId", le.organizer_id as "organizerId", 
+                le.gross_amount as gross, le.platform_fee as fee, le.net_amount as net, 
+                le.created_at as date, e.name as "eventName"
+         FROM ledger_entries le
+         JOIN orders o ON le.order_id = o.id
+         JOIN events e ON o.event_id = e.id
+         WHERE le.organizer_id = $1
+         ORDER BY le.created_at DESC`,
+        [organizerId]
+    );
+    return result.rows.map(row => ({
+        id: row.id,
+        orderId: row.orderId,
+        organizerId: row.organizerId,
+        gross: Number(row.gross),
+        fee: Number(row.fee),
+        net: Number(row.net),
+        date: Number(row.date),
+        eventName: row.eventName
+    }));
 }
 
 async function getOrganizerSettingsInTransaction(tx, organizerId) {

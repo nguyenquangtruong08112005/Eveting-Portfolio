@@ -10,7 +10,14 @@ const REQUIRED_METHODS = [
   'getSeatMapById',
   'getSeatsByMapId',
   'updateSeatStatus',
-  'getSeatById'
+  'getSeatById',
+  'createSeatHold',
+  'getSeatHold',
+  'getActiveHoldForSeat',
+  'releaseSeatHold',
+  'releaseExpiredHolds',
+  'convertHoldToSold',
+  'getSeatsWithStatuses'
 ];
 
 function validateAdapter(adapter) {

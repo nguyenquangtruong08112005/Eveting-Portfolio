@@ -4,6 +4,7 @@ const { body, param } = require('express-validator');
 const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const ticketController = require('@/modules/tickets/api/controller');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
+const idempotency = require('@/shared/middleware/idempotency.middleware');
 
 router.get('/',
     verifyAuthToken,
@@ -12,6 +13,7 @@ router.get('/',
 
 router.post('/book',
     verifyAuthToken,
+    idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('ticketType').notEmpty().withMessage('ticketType is required'),
     body('quantity').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('quantity must be a positive integer'),
@@ -45,6 +47,7 @@ router.post('/release-seat',
 
 router.post('/book-held-seats',
     verifyAuthToken,
+    idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('seatIds').isArray({ min: 1 }).withMessage('seatIds must be a non-empty array'),
     body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),

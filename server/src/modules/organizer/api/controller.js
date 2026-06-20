@@ -145,6 +145,11 @@ const broadcastNotification = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, sentTo: result.count });
 });
 
+const getLedger = asyncHandler(async (req, res) => {
+    const entries = await organizerService.getLedger(req.user.uid);
+    res.status(200).json({ entries });
+});
+
 module.exports = {
     verifyEventOwnership,
     checkInByQr,
@@ -157,5 +162,6 @@ module.exports = {
     getEventAttendees,
     importAttendees,
     exportAttendees,
-    broadcastNotification
+    broadcastNotification,
+    getLedger
 };

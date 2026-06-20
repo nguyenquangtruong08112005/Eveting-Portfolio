@@ -110,7 +110,7 @@ async function run() {
         imageUrl: { type: 'keyword' },
         bannerUrl: { type: 'keyword' },
         videoUrl: { type: 'keyword' },
-        location: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
+        location: { properties: { latitude: { type: 'double' }, longitude: { type: 'double' } } },
         venueName: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
         eventType: { type: 'text', fields: { keyword: { type: 'keyword', ignore_above: 256 } } },
       },
