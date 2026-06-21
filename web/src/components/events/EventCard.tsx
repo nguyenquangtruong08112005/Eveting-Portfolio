@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, ArrowRight, Globe } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { SafeImage } from '@/components/shared/SafeImage';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -14,24 +15,20 @@ interface EventCardProps {
   event: Event;
 }
 
-// Map English category tags to Vietnamese labels for display
-const CATEGORY_LABELS: Record<string, string> = {
-  music: 'Âm nhạc',
+// Fallback labels for tags not in i18n messages
+const CATEGORY_FALLBACKS: Record<string, string> = {
   concert: 'Concert',
   edm: 'EDM',
   'hip-hop': 'Hip-Hop',
   'v-pop': 'V-Pop',
-  art: 'Nghệ thuật',
   exhibition: 'Triển lãm',
   culture: 'Văn hóa',
   festival: 'Festival',
   food: 'Ẩm thực',
   conference: 'Hội nghị',
-  tech: 'Công nghệ',
   expo: 'Triển lãm',
   business: 'Kinh doanh',
   networking: 'Networking',
-  sports: 'Thể thao',
   wellness: 'Wellness',
   nightlife: 'Nightlife',
   performance: 'Biểu diễn',
@@ -44,15 +41,53 @@ const CATEGORY_LABELS: Record<string, string> = {
   fashion: 'Thời trang',
 };
 
-function localizeCategory(cat: string): string {
-  return CATEGORY_LABELS[cat.toLowerCase()] || cat;
-}
+// Map DB category tags to i18n category keys
+const TAG_TO_I18N_KEY: Record<string, string> = {
+  music: 'music',
+  concert: 'music',
+  edm: 'music',
+  'hip-hop': 'music',
+  'v-pop': 'music',
+  pop: 'music',
+  art: 'arts',
+  exhibition: 'arts',
+  culture: 'arts',
+  fashion: 'arts',
+  sports: 'sports',
+  marathon: 'sports',
+  running: 'sports',
+  fitness: 'sports',
+  yoga: 'sports',
+  conference: 'workshop',
+  expo: 'workshop',
+  business: 'workshop',
+  networking: 'workshop',
+  tech: 'workshop',
+  education: 'workshop',
+  nightlife: 'other',
+  dj: 'other',
+  club: 'other',
+  party: 'other',
+  festival: 'other',
+  esports: 'other',
+  gaming: 'other',
+  online: 'other',
+};
 
 export function EventCard({ event }: EventCardProps) {
+  const t = useTranslations('navbar.categories');
   const isFree = event.minPrice === 0 || event.minPrice === null || event.minPrice === undefined;
   const isOnline = event.eventType === 'online';
   const displayCategories = (event.category ?? []).slice(0, 2);
   const [mounted, setMounted] = React.useState(false);
+
+  function localizeCategory(cat: string): string {
+    const key = TAG_TO_I18N_KEY[cat.toLowerCase()];
+    if (key) {
+      try { return t(key); } catch { /* fallback */ }
+    }
+    return CATEGORY_FALLBACKS[cat.toLowerCase()] || cat;
+  }
 
   React.useEffect(() => {
     setMounted(true);
