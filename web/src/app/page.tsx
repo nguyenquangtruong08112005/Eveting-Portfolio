@@ -95,8 +95,8 @@ function LandingPageContent() {
       const day = d.getDay();
       return day === 0 || day === 5 || day === 6; // Fri, Sat, Sun
     } else {
-      // Show events in the database timeline: e.g. June or July
-      return d.getMonth() === 5 || d.getMonth() === 6;
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }
   }).slice(0, 4);
 
