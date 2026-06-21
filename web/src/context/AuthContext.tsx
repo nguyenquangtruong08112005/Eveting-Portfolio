@@ -1,19 +1,9 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
+import type { AuthState, AuthContextType } from '@/types/auth';
 
-export interface AuthState {
-  token: string | null;
-  role: string | null;
-  uid: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-export interface AuthContextType extends AuthState {
-  login: (token: string, role: string, uid: string, refreshToken?: string) => void;
-  logout: () => void;
-}
+export type { AuthState, AuthContextType };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

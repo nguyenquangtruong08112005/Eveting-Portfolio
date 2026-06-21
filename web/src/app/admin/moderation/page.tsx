@@ -12,10 +12,7 @@ import { formatDate } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
-
-interface RejectedEvent extends Event {
-  reason: string;
-}
+import type { RejectedEvent } from '@/types';
 
 export default function AdminModerationPage() {
   const { token } = useAuth();

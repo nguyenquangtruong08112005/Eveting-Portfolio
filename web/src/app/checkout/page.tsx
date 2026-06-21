@@ -13,10 +13,7 @@ import { enrichEvent } from '@/lib/constants';
 import { BillingForm } from '@/components/checkout/BillingForm';
 import { PaymentMethods } from '@/components/checkout/PaymentMethods';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
-
-interface TicketQuantities {
-  [key: string]: number;
-}
+import type { TicketQuantities } from '@/types';
 
 function CheckoutPageContent() {
   const router = useRouter();

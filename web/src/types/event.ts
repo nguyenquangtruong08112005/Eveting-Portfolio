@@ -31,3 +31,13 @@ export interface Event {
     }
   >;
 }
+
+export interface RejectedEvent extends Event {
+  reason: string;
+}
+
+export interface Destination {
+  name: string;
+  query: string;
+  eventCount: number;
+}

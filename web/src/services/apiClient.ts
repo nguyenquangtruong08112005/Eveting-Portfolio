@@ -1,3 +1,5 @@
+import type { RequestMethod, RequestOptions } from '@/types/api';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export class HttpError extends Error {
@@ -10,13 +12,6 @@ export class HttpError extends Error {
     this.status = status;
     this.body = body;
   }
-}
-
-type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-
-interface RequestOptions {
-  body?: unknown;
-  headers?: Record<string, string>;
 }
 
 export async function request<T>(

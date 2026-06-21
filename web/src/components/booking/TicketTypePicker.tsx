@@ -4,14 +4,9 @@ import React from 'react';
 import { Minus, Plus, Ticket, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/constants';
+import type { TicketType } from '@/types';
 
-export interface TicketType {
-  key: string;
-  name: string;
-  price: number;
-  available: number;
-  quantity?: number;
-}
+export type { TicketType };
 
 interface TicketTypePickerProps {
   ticketTypes: TicketType[];

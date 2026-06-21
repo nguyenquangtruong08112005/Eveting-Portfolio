@@ -1,14 +1,7 @@
 import { request } from './apiClient';
-import { Ticket, BackendSeat } from '@/types';
+import type { Ticket, BackendSeat, VoucherResult } from '@/types';
 
-export interface VoucherResult {
-  valid: boolean;
-  discountType?: string;
-  discountValue?: number;
-  discountAmount?: number;
-  maxDiscount?: number;
-  message: string;
-}
+export type { VoucherResult };
 
 export class TicketService {
   static async getEventSeats(eventId: string): Promise<BackendSeat[]> {

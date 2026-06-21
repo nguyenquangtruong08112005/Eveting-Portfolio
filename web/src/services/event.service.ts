@@ -1,11 +1,7 @@
 import { request, requestCached } from './apiClient';
-import { Event } from '@/types';
+import type { Event, Destination } from '@/types';
 
-export interface Destination {
-  name: string;
-  query: string;
-  eventCount: number;
-}
+export type { Destination };
 
 export class EventService {
   static async list(): Promise<{ events: Event[] }> {
