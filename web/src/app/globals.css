@@ -1,0 +1,351 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@custom-variant light (&:not(.dark));
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — Light & Dark Theme
+   Primary: Coral Orange (#FF8F66)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Core palette (Light) ─────────────────────────────────────────── */
+  --primary: #FF8F66;
+  --primary-dark: #FF7043;
+  --primary-container: #FFE8DD;
+  --on-primary: #FFFFFF;
+
+  --background: #F8F9FC;
+  --foreground: #1A1D23;
+  --surface: #FFFFFF;
+  --surface-hover: #F0F2F7;
+  --surface-border: rgba(0, 0, 0, 0.08);
+
+  /* ── Secondary ────────────────────────────────────────────────────── */
+  --secondary-yellow: #D4A017;
+  --secondary-blue: #2563eb;
+  --secondary-green: #16a34a;
+
+  /* ── Semantic ─────────────────────────────────────────────────────── */
+  --info: #0891b2;
+  --success: #16a34a;
+  --warning: #D4A017;
+  --error: #dc2626;
+
+  /* ── Text ──────────────────────────────────────────────────────────── */
+  --text-primary: #1A1D23;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+
+  /* ── shadcn overrides (Light) ─────────────────────────────────────── */
+  --card: #FFFFFF;
+  --card-foreground: #1A1D23;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1D23;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0F2F7;
+  --secondary-foreground: #1A1D23;
+  --muted: #F0F2F7;
+  --muted-foreground: #6B7280;
+  --accent: #F0F2F7;
+  --accent-foreground: #1A1D23;
+  --destructive: #dc2626;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(0, 0, 0, 0.08);
+  --input: rgba(0, 0, 0, 0.08);
+  --ring: #FF8F66;
+
+  --radius: 0.5rem;
+
+  /* ── Sidebar tokens (Light) ────────────────────────────────────────── */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1D23;
+  --sidebar-primary: #FF8F66;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F0F2F7;
+  --sidebar-accent-foreground: #1A1D23;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #FF8F66;
+
+  /* ── Chart (Light) ──────────────────────────────────────────────────── */
+  --chart-1: #FF8F66;
+  --chart-2: #FF7043;
+  --chart-3: #0891b2;
+  --chart-4: #2563eb;
+  --chart-5: #dc2626;
+}
+
+.dark {
+  /* ── Core palette (Dark) ──────────────────────────────────────────── */
+  --primary: #FF8F66;
+  --primary-dark: #FF7043;
+  --primary-container: #3E1C0A;
+  --on-primary: #12141A;
+
+  --background: #12141A;
+  --foreground: #E8EAED;
+  --surface: #1E212B;
+  --surface-hover: #262A36;
+  --surface-border: rgba(255, 255, 255, 0.08);
+
+  /* ── Secondary ────────────────────────────────────────────────────── */
+  --secondary-yellow: #fcc025;
+  --secondary-blue: #3b82f6;
+  --secondary-green: #6bdba3;
+
+  /* ── Semantic ─────────────────────────────────────────────────────── */
+  --info: #52dcbe;
+  --success: #2dc275;
+  --warning: #fcc025;
+  --error: #ffb4ab;
+
+  /* ── Text ──────────────────────────────────────────────────────────── */
+  --text-primary: #E8EAED;
+  --text-secondary: #B0B3B8;
+  --text-muted: #869488;
+
+  /* ── shadcn overrides (Dark) ──────────────────────────────────────── */
+  --card: #1E212B;
+  --card-foreground: #E8EAED;
+  --popover: #1E212B;
+  --popover-foreground: #E8EAED;
+  --primary-foreground: #12141A;
+  --secondary: #262A36;
+  --secondary-foreground: #E8EAED;
+  --muted: #262A36;
+  --muted-foreground: #B0B3B8;
+  --accent: #262A36;
+  --accent-foreground: #E8EAED;
+  --destructive: #ffb4ab;
+  --destructive-foreground: #690005;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #FF8F66;
+
+  /* ── Sidebar tokens (Dark) ────────────────────────────────────────── */
+  --sidebar: #12141A;
+  --sidebar-foreground: #E8EAED;
+  --sidebar-primary: #FF8F66;
+  --sidebar-primary-foreground: #12141A;
+  --sidebar-accent: #262A36;
+  --sidebar-accent-foreground: #E8EAED;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #FF8F66;
+
+  /* ── Chart (Dark) ──────────────────────────────────────────────────── */
+  --chart-1: #FF8F66;
+  --chart-2: #FF7043;
+  --chart-3: #52dcbe;
+  --chart-4: #3b82f6;
+  --chart-5: #ffb4ab;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════ */
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CARD SYSTEM — Elevated light surfaces
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.aura-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aura-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 10px 25px rgba(255, 143, 102, 0.15);
+  transform: translateY(-2px);
+}
+
+.glass-card {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--surface-border);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #FF8F66 0%, #FF7043 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BUTTON MICRO-INTERACTIONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.btn-tactile {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.btn-tactile:active {
+  transform: scale(0.97);
+}
+
+.btn-primary-gradient {
+  background: linear-gradient(135deg, #FF8F66 0%, #FF7043 100%);
+  color: #12141A;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 20px rgba(255, 143, 102, 0.2);
+}
+
+.btn-primary-gradient:hover {
+  background: linear-gradient(135deg, #ffa485 0%, #ff855e 100%);
+  box-shadow: 0 6px 28px rgba(255, 143, 102, 0.35);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BACKGROUND AMBIENCE — orange glow instead of green
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.glow-orange {
+  box-shadow: 0 0 60px -15px rgba(255, 143, 102, 0.15);
+}
+
+.glow-text-orange {
+  text-shadow: 0 0 20px rgba(255, 143, 102, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCROLLBAR — warm dark theme
+   ═══════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulse-warm {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-warm {
+  animation: pulse-warm 3s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TAILWIND / SHADCN THEME BRIDGE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --font-heading: var(--font-inter);
+  --font-sans: var(--font-inter);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

@@ -1,0 +1,325 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  AlertCircle,
+} from 'lucide-react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
+import { TicketTypePicker, TicketType } from '@/components/booking/TicketTypePicker';
+import { SeatGrid } from '@/components/seating/SeatGrid';
+import { TicketService } from '@/services/ticket.service';
+import { Seat, BackendSeat } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { EventService } from '@/services/event.service';
+import { enrichEvent, formatPrice } from '@/lib/constants';
+import { EventHeader } from '@/components/events/EventHeader';
+import { EventInfoContent } from '@/components/events/EventInfoContent';
+
+export default function EventDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const eventId = params.id as string;
+  const { token } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [event, setEvent] = useState<any>(null);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Seat booking states
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [holdTimer, setHoldTimer] = useState<number | null>(null);
+  const seatPrice = 150000;
+
+  const isSeatingEvent = event && ['sân khấu', 'concert', 'nhạc sống', 'music', 'theater'].some(
+    cat => event.name?.toLowerCase().includes(cat) || event.category?.some((c: string) => c.toLowerCase().includes(cat))
+  );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Initialize Seats for Seating Event
+  useEffect(() => {
+    if (event && isSeatingEvent) {
+      TicketService.getEventSeats(eventId)
+        .then((data) => {
+          if (data && data.length > 0) {
+            const mappedSeats: Seat[] = data.map((s: BackendSeat) => ({
+              id: s.id,
+              rowName: s.rowName,
+              number: s.seatNumber,
+              status: (s.status === 'held' ? 'held_by_others' : (s.status === 'sold' ? 'blocked' : s.status)) as Seat['status'],
+              sectionName: s.sectionName || 'Standard Section'
+            }));
+            setSeats(mappedSeats);
+            } else {
+              setSeats([]);
+              setErrorMessage('Không thể tải sơ đồ ghế ngồi: dữ liệu trống.');
+            }
+          })
+          .catch(() => {
+            setSeats([]);
+            setErrorMessage('Không thể kết nối đến máy chủ để tải sơ đồ ghế ngồi.');
+          });
+    }
+  }, [event, isSeatingEvent, eventId]);
+
+  // Seat hold countdown
+  useEffect(() => {
+    if (holdTimer === null) return;
+    if (holdTimer === 0) {
+      setSeats((prev) =>
+        prev.map((s) => (s.status === 'held_by_you' ? { ...s, status: 'available' } : s))
+      );
+      setHoldTimer(null);
+      setErrorMessage('Thời gian giữ ghế đã hết hạn.');
+      return;
+    }
+    const t = setInterval(() => {
+      setHoldTimer((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [holdTimer]);
+
+  // Load event
+  useEffect(() => {
+    const loadEvent = async () => {
+      try {
+        const data = await EventService.getById(eventId);
+        const enriched = enrichEvent(data);
+        setEvent(enriched);
+
+        // Parse ticketTypes from API response
+        if (data.ticketTypes && typeof data.ticketTypes === 'object') {
+          const types: TicketType[] = Object.entries(data.ticketTypes).map(
+            ([key, val]: [string, any]) => ({
+              key,
+              name: key,
+              price: val.price ?? 0,
+              available: val.available !== undefined ? val.available : (val.quantity !== undefined ? val.quantity : 999),
+            })
+          );
+          setTicketTypes(types);
+        }
+      } catch {
+        setEvent(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEvent();
+  }, [eventId]);
+
+  const handleQuantityChange = (key: string, qty: number) => {
+    setQuantities((prev) => ({ ...prev, [key]: qty }));
+  };
+
+  const handleSeatClick = async (clickedSeat: Seat) => {
+    setErrorMessage(null);
+    if (clickedSeat.status === 'available') {
+      try {
+        await TicketService.holdSeat(eventId, clickedSeat.id);
+        setSeats((prevSeats) =>
+          prevSeats.map((s) => (s.id === clickedSeat.id ? { ...s, status: 'held_by_you' as const } : s))
+        );
+        if (holdTimer === null) {
+          setHoldTimer(600);
+        }
+      } catch (error: any) {
+        setErrorMessage(error?.response?.data?.message || error?.message || 'Không thể giữ ghế này.');
+      }
+    } else if (clickedSeat.status === 'held_by_you') {
+      try {
+        await TicketService.releaseSeat(eventId, clickedSeat.id);
+        setSeats((prevSeats) => {
+          const nextSeats = prevSeats.map((s) => (s.id === clickedSeat.id ? { ...s, status: 'available' as const } : s));
+          const remainingSelected = nextSeats.some(ps => ps.status === 'held_by_you');
+          if (!remainingSelected) {
+            setHoldTimer(null);
+          }
+          return nextSeats;
+        });
+      } catch (error: any) {
+        setErrorMessage(error?.response?.data?.message || error?.message || 'Không thể giải phóng ghế.');
+      }
+    }
+  };
+
+  const selectedSeats = seats.filter((s) => s.status === 'held_by_you');
+  const totalSeatPrice = selectedSeats.length * seatPrice;
+
+  const handleCheckout = () => {
+    if (isSeatingEvent) {
+      if (selectedSeats.length === 0) {
+        setErrorMessage('Vui lòng chọn ít nhất một ghế.');
+        return;
+      }
+      router.push(
+        `/checkout?eventId=${eventId}&seats=${encodeURIComponent(
+          selectedSeats.map((s) => s.id).join(',')
+        )}&price=${seatPrice}`
+      );
+    } else {
+      const totalItems = Object.values(quantities).reduce((s, q) => s + q, 0);
+      if (totalItems === 0) {
+        setErrorMessage('Vui lòng chọn ít nhất một vé.');
+        return;
+      }
+      router.push(
+        `/checkout?eventId=${eventId}&tickets=${encodeURIComponent(
+          JSON.stringify(quantities)
+        )}`
+      );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-[var(--text-muted)] text-sm">Đang tải thông tin sự kiện...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
+        <Navbar />
+        <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-md glass-card rounded-2xl p-8 border border-white/5 bg-[#1E212B]">
+            <AlertCircle className="size-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-zinc-200 text-lg font-bold">Không tìm thấy sự kiện</h2>
+            <p className="text-zinc-500 text-sm mt-1 mb-6">
+              Sự kiện bạn yêu cầu không tồn tại, đã bị gỡ bỏ hoặc kết nối đến máy chủ thất bại.
+            </p>
+            <Link
+              href="/"
+              className="inline-block px-6 py-2.5 rounded-xl btn-primary-gradient text-xs font-bold text-[#12141A] border-none"
+            >
+              Quay lại trang chủ
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
+      <Navbar />
+
+      {/* Banner Image */}
+      <EventHeader event={event} />
+
+      {/* Back nav */}
+      <div className="max-w-7xl mx-auto px-6 mt-4 w-full">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[var(--text-primary)] transition-colors"
+        >
+          <ArrowLeft className="size-3.5" />
+          Quay lại danh sách sự kiện
+        </Link>
+      </div>
+
+      {/* Main content: 7:5 layout */}
+      <main className="max-w-7xl mx-auto px-6 py-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left: Event info (7/12) */}
+        <EventInfoContent event={event} mounted={mounted} />
+
+        {/* Right: Ticket Picker (5/12) ── sticky */}
+        <section className="lg:col-span-5">
+          <div className="lg:sticky lg:top-24 space-y-4">
+            {/* Error message */}
+            {errorMessage && (
+              <div className="p-3 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-xl flex items-start gap-2 text-[var(--error)] text-xs">
+                <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Ticket type picker or SeatGrid */}
+            {isSeatingEvent ? (
+              <div className="space-y-4">
+                <SeatGrid
+                  seats={seats}
+                  onSeatClick={handleSeatClick}
+                  holdTimer={holdTimer}
+                />
+                
+                {/* Booking details panel */}
+                <div className="glass-card rounded-xl p-5 bg-[#1E212B] border border-white/10">
+                  <h3 className="text-sm font-bold text-white mb-3">Thông tin đặt vé</h3>
+                  {selectedSeats.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs text-zinc-400">
+                        <span>Ghế đã chọn ({selectedSeats.length})</span>
+                        <span className="font-bold text-[var(--primary)]">
+                          {selectedSeats.map(s => `${s.rowName}${s.number}`).join(', ')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-zinc-400">
+                        <span>Đơn giá</span>
+                        <span>{formatPrice(seatPrice)} / ghế</span>
+                      </div>
+                      <div className="border-t border-white/5 pt-3 flex justify-between text-sm font-bold text-white">
+                        <span>Tổng cộng</span>
+                        <span className="text-[var(--primary)]">{formatPrice(totalSeatPrice)}</span>
+                      </div>
+                      
+                      <button
+                        onClick={handleCheckout}
+                        className="w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[#12141A] border-none font-bold mt-4"
+                      >
+                        Tiếp tục thanh toán
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-500 italic">Vui lòng chọn ít nhất một ghế ngồi để tiếp tục.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <TicketTypePicker
+                ticketTypes={ticketTypes}
+                quantities={quantities}
+                onQuantityChange={handleQuantityChange}
+                onCheckout={handleCheckout}
+                disabled={false}
+              />
+            )}
+
+            {/* Login prompt if not authenticated */}
+            {!token && (
+              <div className="glass-card rounded-xl p-4 text-center bg-[#18181A]/50 border border-white/5">
+                <p className="text-xs text-zinc-400 mb-2">
+                  Bạn đang đặt vé dưới danh nghĩa khách vãng lai.
+                </p>
+                <Link
+                  href="/login"
+                  className="text-xs text-[var(--primary)] font-bold hover:underline"
+                >
+                  Đăng nhập tài khoản để tích điểm & xem vé của tôi
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

@@ -1,0 +1,62 @@
+{
+  "common": {
+    "app_name": "Eventing",
+    "app_tagline": "ing",
+    "search_placeholder": "What are you looking for?",
+    "search_button": "Search",
+    "create_event": "Create Event",
+    "my_tickets": "My Tickets",
+    "moderation": "Moderation",
+    "login_register": "Login | Register",
+    "logout": "Log out",
+    "admin_badge": "Admin",
+    "org_badge": "Org",
+    "language": "Language",
+    "theme_light": "Switch to light theme",
+    "theme_dark": "Switch to dark theme"
+  },
+  "navbar": {
+    "categories": {
+      "music": "Live Music",
+      "arts": "Theater & Arts",
+      "sports": "Sports",
+      "workshop": "Workshops",
+      "tours": "Tours & Experiences",
+      "other": "Other"
+    }
+  },
+  "footer": {
+    "language": "Language",
+    "hotline": "Hotline",
+    "hotline_hours": "Mon - Sun (8:00 - 23:00)",
+    "email": "Email",
+    "office": "Head Office",
+    "office_address": "12th Floor, Viettel Building, 285 Cach Mang Thang Tam, Ward 12, District 10, Ho Chi Minh City",
+    "for_customers": "For Customers",
+    "customer_terms": "Terms of Service for Customers",
+    "for_organizers": "For Organizers",
+    "organizer_terms": "Terms of Service for Organizers",
+    "about_company": "About Us",
+    "policies": [
+      "Operating Regulations",
+      "Privacy Policy",
+      "Dispute Resolution Mechanism",
+      "Payment Security Policy",
+      "Return and Inspection Policy",
+      "Shipping and Delivery Conditions",
+      "Payment Methods"
+    ],
+    "customer_app": "Eventing App",
+    "organizer_app": "Check-in App for Organizers",
+    "download_on": "Download on",
+    "download_from": "Get it on",
+    "follow_us": "Follow us",
+    "platform_tagline": "Vietnam's leading event ticketing & management platform",
+    "copyright": "© 2026 Eventing. All rights reserved.",
+    "company_name": "Eventing Co., Ltd.",
+    "company_rep": "Legal Representative: Nguyen Van A",
+    "company_cert": "Business Registration No: 0313605444, first issued on 07/01/2016 by Ho Chi Minh City Department of Planning and Investment",
+    "registered": "REGISTERED",
+    "registered_dept": "MINISTRY OF INDUSTRY AND TRADE"
+  }
+}

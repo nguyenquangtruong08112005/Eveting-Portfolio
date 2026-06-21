@@ -1,0 +1,62 @@
+{
+  "common": {
+    "app_name": "Eventing",
+    "app_tagline": "ing",
+    "search_placeholder": "Bạn tìm gì hôm nay?",
+    "search_button": "Tìm kiếm",
+    "create_event": "Tạo sự kiện",
+    "my_tickets": "Vé của tôi",
+    "moderation": "Kiểm duyệt",
+    "login_register": "Đăng nhập | Đăng ký",
+    "logout": "Đăng xuất",
+    "admin_badge": "Admin",
+    "org_badge": "Org",
+    "language": "Ngôn ngữ",
+    "theme_light": "Chuyển giao diện sáng",
+    "theme_dark": "Chuyển giao diện tối"
+  },
+  "navbar": {
+    "categories": {
+      "music": "Nhạc sống",
+      "arts": "Sân khấu & Nghệ thuật",
+      "sports": "Thể thao",
+      "workshop": "Hội thảo & Workshop",
+      "tours": "Tham quan & Trải nghiệm",
+      "other": "Khác"
+    }
+  },
+  "footer": {
+    "language": "Ngôn ngữ",
+    "hotline": "Hotline",
+    "hotline_hours": "Thứ 2 - Chủ Nhật (8:00 - 23:00)",
+    "email": "Email",
+    "office": "Văn phòng chính",
+    "office_address": "Tầng 12, Tòa nhà Viettel, 285 Cách Mạng Tháng Tám, Phường 12, Quận 10, TP. Hồ Chí Minh",
+    "for_customers": "Dành cho Khách hàng",
+    "customer_terms": "Điều khoản sử dụng cho khách hàng",
+    "for_organizers": "Dành cho Ban Tổ chức",
+    "organizer_terms": "Điều khoản sử dụng cho ban tổ chức",
+    "about_company": "Về công ty chúng tôi",
+    "policies": [
+      "Quy chế hoạt động",
+      "Chính sách bảo mật thông tin",
+      "Cơ chế giải quyết tranh chấp/ khiếu nại",
+      "Chính sách bảo mật thanh toán",
+      "Chính sách đổi trả và kiểm hàng",
+      "Điều kiện vận chuyển và giao nhận",
+      "Phương thức thanh toán"
+    ],
+    "customer_app": "Ứng dụng Eventing",
+    "organizer_app": "Ứng dụng check-in cho Ban tổ chức",
+    "download_on": "Tải về trên",
+    "download_from": "Tải ứng dụng trên",
+    "follow_us": "Follow us",
+    "platform_tagline": "Nền tảng quản lý và phân phối vé sự kiện hàng đầu Việt Nam",
+    "copyright": "© 2026 Eventing. All rights reserved.",
+    "company_name": "Công ty TNHH Eventing",
+    "company_rep": "Đại diện theo pháp luật: Nguyễn Văn A",
+    "company_cert": "Giấy chứng nhận đăng ký doanh nghiệp số: 0313605444, cấp lần đầu ngày 07/01/2016 bởi Sở Kế Hoạch và Đầu Tư TP. Hồ Chí Minh",
+    "registered": "ĐÃ ĐĂNG KÝ",
+    "registered_dept": "BỘ CÔNG THƯƠNG"
+  }
+}
