@@ -89,7 +89,7 @@ function CheckoutPageContent() {
       .finally(() => setLoading(false));
   }, [eventId, router]);
 
-  const handleApplyVoucher = () => {
+  const handleApplyVoucher = async () => {
     setVoucherError('');
     setVoucherSuccess('');
     if (!voucherCode.trim()) {
@@ -97,16 +97,16 @@ function CheckoutPageContent() {
       return;
     }
 
-    const code = voucherCode.toUpperCase().trim();
-    if (code === 'EVENTING20') {
-      const amt = Math.round(subtotal * 0.2);
-      setDiscount(amt);
-      setVoucherSuccess(t('voucher_applied_20'));
-    } else if (code === 'WELCOME10') {
-      const amt = Math.min(50000, Math.round(subtotal * 0.1));
-      setDiscount(amt);
-      setVoucherSuccess(t('voucher_applied_10'));
-    } else {
+    try {
+      const result = await TicketService.validateVoucher(voucherCode, subtotal, eventId);
+      if (result.valid) {
+        setDiscount(result.discountAmount || 0);
+        setVoucherSuccess(result.message);
+      } else {
+        setVoucherError(result.message);
+        setDiscount(0);
+      }
+    } catch {
       setVoucherError(t('voucher_invalid'));
       setDiscount(0);
     }

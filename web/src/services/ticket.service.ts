@@ -1,6 +1,15 @@
 import { request } from './apiClient';
 import { Ticket, BackendSeat } from '@/types';
 
+export interface VoucherResult {
+  valid: boolean;
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  maxDiscount?: number;
+  message: string;
+}
+
 export class TicketService {
   static async getEventSeats(eventId: string): Promise<BackendSeat[]> {
     return request<BackendSeat[]>('GET', `/api/web/tickets/event/${eventId}/seats`);
@@ -56,6 +65,12 @@ export class TicketService {
       '/api/web/payments/create-order',
       { body: { ticketId, redirectUrl } }
     );
+  }
+
+  static async validateVoucher(code: string, orderTotal: number, eventId?: string): Promise<VoucherResult> {
+    return request<VoucherResult>('POST', '/api/web/vouchers/validate', {
+      body: { code, orderTotal, eventId },
+    });
   }
 
   static async getUserTickets(): Promise<{ tickets: Ticket[] }> {
