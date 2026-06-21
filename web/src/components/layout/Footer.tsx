@@ -89,13 +89,13 @@ export function Footer() {
             <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
               <span>📞</span> {t('hotline_hours')}
             </p>
-            <p className="text-xl font-black text-[var(--primary)] tracking-wide">1900.6408</p>
+            <p className="text-xl font-black text-[var(--primary)] tracking-wide">{process.env.NEXT_PUBLIC_HOTLINE}</p>
           </div>
 
           <div className="space-y-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('email')}</h4>
             <p className="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors flex items-center gap-1.5">
-              <span>✉</span> support@eventing.vn
+              <span>✉</span> {process.env.NEXT_PUBLIC_EMAIL}
             </p>
           </div>
 
@@ -160,10 +160,10 @@ export function Footer() {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2.5">{t('follow_us')}</h4>
             <div className="flex gap-2.5 text-[var(--text-muted)]">
-              <a href="#" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-blue-600 hover:text-white transition-all"><FacebookIcon /></a>
-              <a href="#" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-pink-600 hover:text-white transition-all flex items-center justify-center"><InstagramIcon /></a>
-              <a href="#" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-black hover:text-white transition-all flex items-center justify-center"><TikTokIcon /></a>
-              <a href="#" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-blue-700 hover:text-white transition-all"><LinkedInIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-blue-600 hover:text-white transition-all"><FacebookIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-pink-600 hover:text-white transition-all flex items-center justify-center"><InstagramIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_TIKTOK_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-black hover:text-white transition-all flex items-center justify-center"><TikTokIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_LINKEDIN_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-blue-700 hover:text-white transition-all"><LinkedInIcon /></a>
             </div>
           </div>
 
