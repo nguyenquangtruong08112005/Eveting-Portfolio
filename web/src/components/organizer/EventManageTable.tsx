@@ -3,6 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
 import { formatPrice } from '@/lib/constants';
 import { Loader2, Send, XCircle } from 'lucide-react';
 import type { OrganizerEvent } from '@/types';
@@ -24,21 +25,23 @@ const statusStyles: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-400 border border-red-500/20',
 };
 
-const statusLabels: Record<string, string> = {
-  active: 'Hoạt động',
-  draft: 'Bản nháp',
-  submitted: 'Chờ duyệt',
-  pending: 'Chờ duyệt',
-  approved: 'Đã duyệt',
-  published: 'Đã đăng',
-  cancelled: 'Đã hủy',
+const statusKeyMap: Record<string, string> = {
+  active: 'status_active',
+  draft: 'status_draft',
+  submitted: 'status_submitted',
+  pending: 'status_pending',
+  approved: 'status_approved',
+  published: 'status_published',
+  cancelled: 'status_cancelled',
 };
 
 export function EventManageTable({ events, onSubmitDraft, onCancel, actionLoadingId }: EventManageTableProps) {
+  const t = useTranslations('organizer_table');
+
   if (events.length === 0) {
     return (
       <div className="py-12 text-center text-zinc-500 text-sm border border-dashed border-white/5 rounded-xl">
-        Chưa có sự kiện nào được tạo.
+        {t('empty')}
       </div>
     );
   }
@@ -49,19 +52,19 @@ export function EventManageTable({ events, onSubmitDraft, onCancel, actionLoadin
         <thead>
           <tr className="border-b border-white/5 text-zinc-400">
             <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider">
-              Sự kiện
+              {t('col_event')}
             </th>
             <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider">
-              Trạng thái
+              {t('col_status')}
             </th>
             <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider">
-              Tỉ lệ vé bán
+              {t('col_ticket_ratio')}
             </th>
             <th className="text-right py-3.5 px-4 text-xs font-bold uppercase tracking-wider">
-              Giá vé
+              {t('col_price')}
             </th>
             <th className="text-right py-3.5 px-4 text-xs font-bold uppercase tracking-wider">
-              Thao tác
+              {t('col_actions')}
             </th>
           </tr>
         </thead>
@@ -87,7 +90,7 @@ export function EventManageTable({ events, onSubmitDraft, onCancel, actionLoadin
                       statusStyles[event.status] || statusStyles.draft
                     }`}
                   >
-                    {statusLabels[event.status] || event.status}
+                    {t(statusKeyMap[event.status] || event.status)}
                   </Badge>
                 </td>
                 
@@ -126,7 +129,7 @@ export function EventManageTable({ events, onSubmitDraft, onCancel, actionLoadin
                         ) : (
                           <Send className="size-3 mr-1" />
                         )}
-                        Gửi duyệt
+                        {t('submit_review')}
                       </Button>
                     )}
                     
@@ -143,7 +146,7 @@ export function EventManageTable({ events, onSubmitDraft, onCancel, actionLoadin
                         ) : (
                           <XCircle className="size-3 mr-1" />
                         )}
-                        Hủy
+                        {t('cancel')}
                       </Button>
                     )}
                   </div>

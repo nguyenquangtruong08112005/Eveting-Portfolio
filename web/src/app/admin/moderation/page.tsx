@@ -13,8 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
 import type { RejectedEvent } from '@/types';
+import { useTranslations } from 'next-intl';
 
 export default function AdminModerationPage() {
+  const t = useTranslations('moderation');
   const { token } = useAuth();
   const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
   const [approvedEvents, setApprovedEvents] = useState<Event[]>([]);
@@ -41,7 +43,7 @@ export default function AdminModerationPage() {
       })
       .catch((err: any) => {
         console.error('Failed to load pending events:', err);
-        setErrorMessage(err.message || 'Không thể tải danh sách sự kiện chờ duyệt từ máy chủ.');
+        setErrorMessage(err.message || t('load_error'));
       })
       .finally(() => setLoading(false));
   }, [token]);
@@ -52,7 +54,7 @@ export default function AdminModerationPage() {
     const event = pendingEvents.find((e) => e.id === eventId);
     try {
       if (!token) {
-        throw new Error('Chưa đăng nhập hoặc phiên làm việc hết hạn.');
+        throw new Error(t('auth_error'));
       }
       await AdminService.approveEvent(eventId);
       setSuccessMessage(`Đã phê duyệt sự kiện "${event?.name || ''}" thành công.`);
@@ -62,7 +64,7 @@ export default function AdminModerationPage() {
       setPendingEvents((prev) => prev.filter((e) => e.id !== eventId));
     } catch (err: any) {
       console.error('Approve error:', err);
-      setErrorMessage(err.message || `Lỗi phê duyệt sự kiện: "${event?.name || ''}".`);
+        setErrorMessage(err.message || t('approve_error', { name: event?.name || '' }));
       throw err; // Propagate to subcomponent
     }
   };
@@ -73,7 +75,7 @@ export default function AdminModerationPage() {
     const event = pendingEvents.find((e) => e.id === eventId);
     try {
       if (!token) {
-        throw new Error('Chưa đăng nhập hoặc phiên làm việc hết hạn.');
+        throw new Error(t('auth_error'));
       }
       await AdminService.rejectEvent(eventId, reason);
       setSuccessMessage(`Đã từ chối sự kiện "${event?.name || ''}".`);
@@ -83,7 +85,7 @@ export default function AdminModerationPage() {
       setPendingEvents((prev) => prev.filter((e) => e.id !== eventId));
     } catch (err: any) {
       console.error('Reject error:', err);
-      setErrorMessage(err.message || `Lỗi từ chối sự kiện: "${event?.name || ''}".`);
+      setErrorMessage(err.message || t('reject_error', { name: event?.name || '' }));
       throw err; // Propagate to subcomponent
     }
   };
@@ -98,9 +100,9 @@ export default function AdminModerationPage() {
           <div>
             <h1 className="text-2xl font-black text-[var(--text-primary)] flex items-center gap-3 tracking-tight">
               <ShieldAlert className="size-7 text-[var(--primary)]" />
-              Bảng kiểm duyệt của Admin
+              {t('title')}
             </h1>
-            <p className="text-xs text-zinc-400 mt-1">Quản lý và phê duyệt các sự kiện mới đăng tải từ Ban tổ chức</p>
+            <p className="text-xs text-zinc-400 mt-1">{t('subtitle')}</p>
           </div>
           <Badge className="px-3 py-1 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-xs font-bold text-[var(--primary)] shrink-0 self-start md:self-center">
             Quyền hạn: Admin Hệ thống
@@ -115,7 +117,7 @@ export default function AdminModerationPage() {
               <Clock className="size-5 text-[var(--primary)]" />
             </div>
             <div>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Chờ kiểm duyệt</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{t('pending_label')}</span>
               <span className="text-xl font-black text-white">{pendingEvents.length}</span>
             </div>
           </div>
@@ -126,7 +128,7 @@ export default function AdminModerationPage() {
               <ShieldCheck className="size-5 text-green-400" />
             </div>
             <div>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Đã duyệt (Phiên này)</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{t('approved_label')}</span>
               <span className="text-xl font-black text-green-400">{approvedEvents.length}</span>
             </div>
           </div>
@@ -137,7 +139,7 @@ export default function AdminModerationPage() {
               <Ban className="size-5 text-red-400" />
             </div>
             <div>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Từ chối (Phiên này)</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{t('rejected_label')}</span>
               <span className="text-xl font-black text-red-400">{rejectedEvents.length}</span>
             </div>
           </div>
@@ -183,7 +185,7 @@ export default function AdminModerationPage() {
                 : "bg-[#1E212B] text-zinc-400 hover:text-white"
             )}
           >
-            Hàng đợi chờ duyệt ({pendingEvents.length})
+            {t('tab_pending')} ({pendingEvents.length})
           </button>
           <button
             onClick={() => setActiveTab('approved')}
@@ -194,7 +196,7 @@ export default function AdminModerationPage() {
                 : "bg-[#1E212B] text-zinc-400 hover:text-white"
             )}
           >
-            Lịch sử đã duyệt ({approvedEvents.length})
+            {t('tab_approved')} ({approvedEvents.length})
           </button>
           <button
             onClick={() => setActiveTab('rejected')}
@@ -205,19 +207,19 @@ export default function AdminModerationPage() {
                 : "bg-[#1E212B] text-zinc-400 hover:text-white"
             )}
           >
-            Nhật ký từ chối ({rejectedEvents.length})
+            {t('tab_rejected')} ({rejectedEvents.length})
           </button>
         </div>
 
         {/* Main List Display */}
         {loading ? (
-          <div className="text-center py-20 text-zinc-500 text-sm">Đang tải danh sách kiểm duyệt...</div>
+          <div className="text-center py-20 text-zinc-500 text-sm">{t('loading')}</div>
         ) : activeTab === 'pending' ? (
           pendingEvents.length === 0 ? (
             <div className="text-center py-16 bg-[#1E212B] border border-white/5 rounded-2xl">
               <ShieldCheck className="size-12 text-zinc-600 mx-auto mb-4 opacity-50" />
-              <p className="text-zinc-300 font-bold">Hàng đợi trống</p>
-              <p className="text-zinc-500 text-xs mt-1">Tất cả các sự kiện gửi lên từ đối tác đều đã được phê duyệt.</p>
+              <p className="text-zinc-300 font-bold">{t('empty_queue')}</p>
+              <p className="text-zinc-500 text-xs mt-1">{t('empty_queue_desc')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -234,7 +236,7 @@ export default function AdminModerationPage() {
         ) : activeTab === 'approved' ? (
           approvedEvents.length === 0 ? (
             <div className="text-center py-16 bg-[#1E212B] border border-white/5 rounded-2xl">
-              <p className="text-zinc-500 text-sm italic">Chưa duyệt sự kiện nào trong phiên làm việc này.</p>
+              <p className="text-zinc-500 text-sm italic">{t('empty_approved')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -257,7 +259,7 @@ export default function AdminModerationPage() {
         ) : (
           rejectedEvents.length === 0 ? (
             <div className="text-center py-16 bg-[#1E212B] border border-white/5 rounded-2xl">
-              <p className="text-zinc-500 text-sm italic">Không có sự kiện nào bị từ chối trong phiên làm việc này.</p>
+              <p className="text-zinc-500 text-sm italic">{t('empty_rejected')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

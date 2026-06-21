@@ -10,12 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthService } from '@/services/auth.service';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslations } from 'next-intl';
 
 
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const t = useTranslations('auth');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,7 @@ export default function LoginPage() {
       login(data.accessToken, data.user.roles[0], data.user.id, data.refreshToken);
       router.push('/');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin đăng nhập.');
+      setError(err?.response?.data?.message || t('login_error'));
     } finally {
       setLoading(false);
     }
@@ -54,10 +56,10 @@ export default function LoginPage() {
             </span>
           </Link>
           <CardTitle className="text-xl font-bold text-[var(--text-primary)] text-center mt-1">
-            Đăng nhập
+            {t('login')}
           </CardTitle>
           <CardDescription className="text-zinc-400 text-sm text-center mt-1">
-            Đăng nhập để mua vé và quản lý sự kiện
+            {t('login_subtitle')}
           </CardDescription>
         </CardHeader>
 
@@ -72,7 +74,7 @@ export default function LoginPage() {
             {/* Email */}
             <div>
               <Label className="text-xs text-[var(--text-secondary)] uppercase font-semibold tracking-wider block mb-2">
-                Email
+                {t('email')}
               </Label>
               <div className="relative">
                 <Input
@@ -90,7 +92,7 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <Label className="text-xs text-[var(--text-secondary)] uppercase font-semibold tracking-wider block mb-2">
-                Mật khẩu
+                {t('password')}
               </Label>
               <div className="relative">
                 <Input
@@ -110,7 +112,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55 border-none btn-tactile font-bold text-[#12141A]"
             >
-              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              {loading ? t('logging_in') : t('login')}
               <ArrowRight className="size-4" />
             </Button>
           </form>
@@ -118,16 +120,16 @@ export default function LoginPage() {
           {/* Demo hint */}
           <div className="mt-5 p-3 bg-[#131313]/40 rounded-xl border border-white/10">
             <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
-              <span className="font-semibold text-zinc-400">Demo:</span>{' '}
-              Email chứa &quot;admin&quot; → Admin · chứa &quot;org&quot; → Organizer · còn lại → Attendee
+              <span className="font-semibold text-zinc-400">{t('demo')}</span>{' '}
+              {t('admin_hint')} · {t('org_hint')}
             </p>
           </div>
 
           <div className="mt-6 pt-6 border-t border-white/10 text-center">
             <p className="text-zinc-500 text-xs">
-              Chưa có tài khoản?{' '}
+              {t('no_account')}{' '}
               <Link href="/register" className="text-[var(--primary)] hover:underline font-medium">
-                Tạo tài khoản
+                {t('create_account')}
               </Link>
             </p>
           </div>

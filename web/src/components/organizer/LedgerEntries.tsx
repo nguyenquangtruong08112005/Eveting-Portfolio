@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Receipt } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { formatPrice, formatShortDate } from '@/lib/constants';
 import type { LedgerEntry } from '@/types';
 
@@ -10,6 +11,7 @@ interface LedgerEntriesProps {
 }
 
 export function LedgerEntries({ entries }: LedgerEntriesProps) {
+  const t = useTranslations('ledger');
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -20,12 +22,12 @@ export function LedgerEntries({ entries }: LedgerEntriesProps) {
     <div className="bg-[#1E212B] border border-white/5 p-5 rounded-2xl shadow-xl flex flex-col h-full">
       <div className="flex items-center gap-2 mb-5">
         <Receipt className="size-4.5 text-[var(--primary)]" />
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Lịch sử giao dịch</h3>
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('title')}</h3>
       </div>
 
       <div className="space-y-3 overflow-y-auto max-h-[400px] pr-1.5 scrollbar-hide flex-1">
         {entries.length === 0 ? (
-          <div className="text-center py-10 text-zinc-500 text-xs italic">Không có giao dịch phát sinh.</div>
+          <div className="text-center py-10 text-zinc-500 text-xs italic">{t('empty')}</div>
         ) : (
           entries.map((entry) => (
             <div
@@ -38,7 +40,7 @@ export function LedgerEntries({ entries }: LedgerEntriesProps) {
                     {entry.eventName}
                   </p>
                   <p className="text-[10px] text-zinc-500 mt-1">
-                    Mã đơn: <span className="font-mono text-zinc-400">{entry.orderId}</span>
+                    {t('order_id')} <span className="font-mono text-zinc-400">{entry.orderId}</span>
                   </p>
                   <p className="text-[9px] text-zinc-500 mt-0.5">
                     {mounted ? formatShortDate(entry.date) : '...'}
@@ -50,8 +52,8 @@ export function LedgerEntries({ entries }: LedgerEntriesProps) {
               </div>
 
               <div className="border-t border-white/5 pt-2 flex items-center justify-between text-[9px] text-zinc-400">
-                <span>Gộp: <span className="text-zinc-300 font-semibold">{formatPrice(entry.gross)}</span></span>
-                <span>Phí (5%): <span className="text-red-400 font-semibold">-{formatPrice(entry.fee)}</span></span>
+                <span>{t('gross')} <span className="text-zinc-300 font-semibold">{formatPrice(entry.gross)}</span></span>
+                <span>{t('fee')} <span className="text-red-400 font-semibold">-{formatPrice(entry.fee)}</span></span>
               </div>
             </div>
           ))

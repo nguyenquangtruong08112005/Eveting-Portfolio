@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthService } from '@/services/auth.service';
+import { useTranslations } from 'next-intl';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations('auth');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +30,7 @@ export default function RegisterPage() {
       await AuthService.register(name, email, password, 'user');
       router.push('/login');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đăng ký thất bại. Vui lòng thử lại.');
+      setError(err instanceof Error ? err.message : t('register_error'));
     } finally {
       setLoading(false);
     }
@@ -51,10 +53,10 @@ export default function RegisterPage() {
             </span>
           </Link>
           <CardTitle className="text-xl font-bold text-[var(--text-primary)] text-center mt-1">
-            Tạo tài khoản
+            {t('create_account')}
           </CardTitle>
           <CardDescription className="text-zinc-400 text-sm text-center mt-1">
-            Đăng ký để khám phá và mua vé sự kiện
+            {t('register_subtitle')}
           </CardDescription>
         </CardHeader>
 
@@ -69,7 +71,7 @@ export default function RegisterPage() {
             {/* Name */}
             <div>
               <Label className="text-xs text-[var(--text-secondary)] uppercase font-semibold tracking-wider block mb-2">
-                Họ và tên
+                {t('full_name')}
               </Label>
               <div className="relative">
                 <Input
@@ -87,7 +89,7 @@ export default function RegisterPage() {
             {/* Email */}
             <div>
               <Label className="text-xs text-[var(--text-secondary)] uppercase font-semibold tracking-wider block mb-2">
-                Email
+                {t('email')}
               </Label>
               <div className="relative">
                 <Input
@@ -105,7 +107,7 @@ export default function RegisterPage() {
             {/* Password */}
             <div>
               <Label className="text-xs text-[var(--text-secondary)] uppercase font-semibold tracking-wider block mb-2">
-                Mật khẩu
+                {t('password')}
               </Label>
               <div className="relative">
                 <Input
@@ -125,16 +127,16 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55 border-none btn-tactile font-bold text-[#12141A]"
             >
-              {loading ? 'Đang tạo tài khoản...' : 'Đăng ký'}
+              {loading ? t('creating_account') : t('register')}
               <ArrowRight className="size-4" />
             </Button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-white/10 text-center">
             <p className="text-zinc-500 text-xs">
-              Đã có tài khoản?{' '}
+              {t('have_account')}{' '}
               <Link href="/login" className="text-[var(--primary)] hover:underline font-medium">
-                Đăng nhập
+                {t('login')}
               </Link>
             </p>
           </div>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Minus, Plus, Ticket, ShoppingCart } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/constants';
 import type { TicketType } from '@/types';
@@ -49,6 +50,7 @@ export function TicketTypePicker({
   disabled = false,
   maxPerType = 10,
 }: TicketTypePickerProps) {
+  const t = useTranslations('ticket_picker');
   const totalItems = Object.values(quantities).reduce((sum, q) => sum + q, 0);
   const totalPrice = ticketTypes.reduce(
     (sum, t) => sum + t.price * (quantities[t.key] || 0),
@@ -61,10 +63,10 @@ export function TicketTypePicker({
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-2 mb-1">
           <Ticket className="size-4 text-[var(--primary)]" />
-          <h3 className="text-base font-bold text-[var(--text-primary)]">Chọn loại vé</h3>
+          <h3 className="text-base font-bold text-[var(--text-primary)]">{t('title')}</h3>
         </div>
         <p className="text-xs text-zinc-400">
-          Chọn loại vé và số lượng bạn muốn mua
+          {t('subtitle')}
         </p>
       </div>
 
@@ -97,9 +99,9 @@ export function TicketTypePicker({
                   </p>
                   <p className="text-[11px] text-zinc-400 mt-1">
                     {isSoldOut ? (
-                      <span className="text-[var(--error)] font-semibold">Hết vé</span>
+                      <span className="text-[var(--error)] font-semibold">{t('sold_out')}</span>
                     ) : (
-                      ticket.available === 999 ? 'Đang mở bán' : `Còn ${ticket.available.toLocaleString()} vé`
+                      ticket.available === 999 ? t('on_sale') : t('remaining', { n: ticket.available.toLocaleString() })
                     )}
                   </p>
                 </div>
@@ -142,7 +144,7 @@ export function TicketTypePicker({
         {totalItems > 0 && (
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-[var(--text-secondary)]">
-              {totalItems} vé
+              {totalItems} {t('ticket_counter')}
             </span>
             <span className="text-xl font-extrabold text-[var(--text-primary)]">
               {formatPrice(totalPrice)}
@@ -155,7 +157,7 @@ export function TicketTypePicker({
           className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 border-none btn-tactile font-bold text-[#00210f]"
         >
           <ShoppingCart className="size-4" />
-          {totalItems === 0 ? 'Chọn vé để tiếp tục' : `Mua ${totalItems} vé · ${formatPrice(totalPrice)}`}
+          {totalItems === 0 ? t('select_to_continue') : t('buy_summary', { count: totalItems, price: formatPrice(totalPrice) })}
         </Button>
       </div>
     </div>

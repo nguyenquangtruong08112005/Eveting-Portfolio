@@ -18,8 +18,10 @@ import { EventService } from '@/services/event.service';
 import { enrichEvent, formatPrice } from '@/lib/constants';
 import { EventHeader } from '@/components/events/EventHeader';
 import { EventInfoContent } from '@/components/events/EventInfoContent';
+import { useTranslations } from 'next-intl';
 
 export default function EventDetailPage() {
+  const t = useTranslations('event_detail');
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
@@ -61,12 +63,12 @@ export default function EventDetailPage() {
             setSeats(mappedSeats);
             } else {
               setSeats([]);
-              setErrorMessage('Không thể tải sơ đồ ghế ngồi: dữ liệu trống.');
+              setErrorMessage(t('seat_load_error'));
             }
           })
           .catch(() => {
             setSeats([]);
-            setErrorMessage('Không thể kết nối đến máy chủ để tải sơ đồ ghế ngồi.');
+            setErrorMessage(t('seat_connect_error'));
           });
     }
   }, [event, isSeatingEvent, eventId]);
@@ -79,13 +81,13 @@ export default function EventDetailPage() {
         prev.map((s) => (s.status === 'held_by_you' ? { ...s, status: 'available' } : s))
       );
       setHoldTimer(null);
-      setErrorMessage('Thời gian giữ ghế đã hết hạn.');
+      setErrorMessage(t('hold_expired'));
       return;
     }
-    const t = setInterval(() => {
+    const interval = setInterval(() => {
       setHoldTimer((prev) => (prev !== null ? prev - 1 : null));
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(interval);
   }, [holdTimer]);
 
   // Load event
@@ -134,7 +136,7 @@ export default function EventDetailPage() {
           setHoldTimer(600);
         }
       } catch (error: any) {
-        setErrorMessage(error?.response?.data?.message || error?.message || 'Không thể giữ ghế này.');
+        setErrorMessage(error?.response?.data?.message || error?.message || t('hold_seat_error'));
       }
     } else if (clickedSeat.status === 'held_by_you') {
       try {
@@ -148,7 +150,7 @@ export default function EventDetailPage() {
           return nextSeats;
         });
       } catch (error: any) {
-        setErrorMessage(error?.response?.data?.message || error?.message || 'Không thể giải phóng ghế.');
+        setErrorMessage(error?.response?.data?.message || error?.message || t('release_seat_error'));
       }
     }
   };
@@ -159,7 +161,7 @@ export default function EventDetailPage() {
   const handleCheckout = () => {
     if (isSeatingEvent) {
       if (selectedSeats.length === 0) {
-        setErrorMessage('Vui lòng chọn ít nhất một ghế.');
+        setErrorMessage(t('select_seat_error'));
         return;
       }
       router.push(
@@ -170,7 +172,7 @@ export default function EventDetailPage() {
     } else {
       const totalItems = Object.values(quantities).reduce((s, q) => s + q, 0);
       if (totalItems === 0) {
-        setErrorMessage('Vui lòng chọn ít nhất một vé.');
+        setErrorMessage(t('select_ticket_error'));
         return;
       }
       router.push(
@@ -186,7 +188,7 @@ export default function EventDetailPage() {
       <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
-          <div className="text-[var(--text-muted)] text-sm">Đang tải thông tin sự kiện...</div>
+          <div className="text-[var(--text-muted)] text-sm">{t('loading')}</div>
         </div>
       </div>
     );
@@ -199,15 +201,15 @@ export default function EventDetailPage() {
         <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-md glass-card rounded-2xl p-8 border border-white/5 bg-[#1E212B]">
             <AlertCircle className="size-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-zinc-200 text-lg font-bold">Không tìm thấy sự kiện</h2>
+            <h2 className="text-zinc-200 text-lg font-bold">{t('not_found')}</h2>
             <p className="text-zinc-500 text-sm mt-1 mb-6">
-              Sự kiện bạn yêu cầu không tồn tại, đã bị gỡ bỏ hoặc kết nối đến máy chủ thất bại.
+              {t('not_found_desc')}
             </p>
             <Link
               href="/"
               className="inline-block px-6 py-2.5 rounded-xl btn-primary-gradient text-xs font-bold text-[#12141A] border-none"
             >
-              Quay lại trang chủ
+              {t('back_home')}
             </Link>
           </div>
         </div>
@@ -261,21 +263,21 @@ export default function EventDetailPage() {
                 
                 {/* Booking details panel */}
                 <div className="glass-card rounded-xl p-5 bg-[#1E212B] border border-white/10">
-                  <h3 className="text-sm font-bold text-white mb-3">Thông tin đặt vé</h3>
+                  <h3 className="text-sm font-bold text-white mb-3">{t('booking_info')}</h3>
                   {selectedSeats.length > 0 ? (
                     <div className="space-y-3">
                       <div className="flex justify-between text-xs text-zinc-400">
-                        <span>Ghế đã chọn ({selectedSeats.length})</span>
+                        <span>{t('selected_seats', { count: selectedSeats.length })}</span>
                         <span className="font-bold text-[var(--primary)]">
                           {selectedSeats.map(s => `${s.rowName}${s.number}`).join(', ')}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-zinc-400">
-                        <span>Đơn giá</span>
+                        <span>{t('unit_price')}</span>
                         <span>{formatPrice(seatPrice)} / ghế</span>
                       </div>
                       <div className="border-t border-white/5 pt-3 flex justify-between text-sm font-bold text-white">
-                        <span>Tổng cộng</span>
+                        <span>{t('total')}</span>
                         <span className="text-[var(--primary)]">{formatPrice(totalSeatPrice)}</span>
                       </div>
                       
@@ -283,7 +285,7 @@ export default function EventDetailPage() {
                         onClick={handleCheckout}
                         className="w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[#12141A] border-none font-bold mt-4"
                       >
-                        Tiếp tục thanh toán
+                        {t('continue_payment')}
                       </button>
                     </div>
                   ) : (
@@ -305,13 +307,13 @@ export default function EventDetailPage() {
             {!token && (
               <div className="glass-card rounded-xl p-4 text-center bg-[#18181A]/50 border border-white/5">
                 <p className="text-xs text-zinc-400 mb-2">
-                  Bạn đang đặt vé dưới danh nghĩa khách vãng lai.
+                  {t('guest_hint')}
                 </p>
                 <Link
                   href="/login"
                   className="text-xs text-[var(--primary)] font-bold hover:underline"
                 >
-                  Đăng nhập tài khoản để tích điểm & xem vé của tôi
+                  {t('login_hint')}
                 </Link>
               </div>
             )}

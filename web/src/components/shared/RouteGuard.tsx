@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
 
 interface RouteGuardProps {
@@ -10,6 +11,7 @@ interface RouteGuardProps {
 }
 
 export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
+  const t = useTranslations('common');
   const router = useRouter();
   const { role, isAuthenticated, isLoading } = useAuth();
 
@@ -34,7 +36,7 @@ export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
     return (
       <div className="bg-[#12141A] min-h-screen text-zinc-400 flex flex-col items-center justify-center gap-3">
         <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        <span className="text-xs font-bold tracking-wider uppercase text-zinc-500">Đang kiểm tra quyền truy cập...</span>
+        <span className="text-xs font-bold tracking-wider uppercase text-zinc-500">{t('loading')}</span>
       </div>
     );
   }

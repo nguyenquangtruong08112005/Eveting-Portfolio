@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EventService } from '@/services/event.service';
+import { useTranslations } from 'next-intl';
 
 interface TicketTier {
   name: string;
@@ -20,6 +21,7 @@ interface TicketTier {
 const CATEGORY_OPTIONS = ['Âm nhạc', 'Nghệ thuật', 'Nightlife', 'Thể thao', 'Công nghệ'];
 
 export default function NewEventPage() {
+  const t = useTranslations('organizer');
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -77,7 +79,7 @@ export default function NewEventPage() {
 
   const handleSubmit = async (saveAsDraft: boolean) => {
     if (!name || !dateInput) {
-      setErrorMsg('Vui lòng điền tên sự kiện và ngày bắt đầu tổ chức.');
+      setErrorMsg(t('error_required_fields'));
       return;
     }
 
@@ -120,7 +122,7 @@ export default function NewEventPage() {
         router.push('/organizer/dashboard');
       }, 1500);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Có lỗi xảy ra khi khởi tạo sự kiện. Vui lòng thử lại.');
+      setErrorMsg(err.message || t('create_error'));
       setLoading(false);
     }
   };
@@ -137,7 +139,7 @@ export default function NewEventPage() {
             className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="size-3.5" />
-            Quay lại bảng điều khiển
+            {t('back_to_dashboard')}
           </Link>
         </div>
 
@@ -145,10 +147,10 @@ export default function NewEventPage() {
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
             <Sparkles className="size-6 text-[var(--primary)]" />
-            Khởi Tạo Sự Kiện Mới
+            {t('new_event_title')}
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Đăng ký và cấu hình các thông số cho sự kiện đối tác của bạn
+            {t('new_event_subtitle')}
           </p>
         </div>
 
@@ -162,9 +164,9 @@ export default function NewEventPage() {
         {success ? (
           <div className="p-10 bg-[#1E212B] border border-white/5 rounded-2xl text-center flex flex-col items-center justify-center gap-4 shadow-xl">
             <CheckCircle2 className="size-16 text-green-400 animate-bounce" />
-            <h2 className="text-xl font-bold text-white">Khởi tạo thành công!</h2>
+            <h2 className="text-xl font-bold text-white">{t('create_success')}</h2>
             <p className="text-zinc-400 text-sm max-w-sm">
-              Sự kiện của bạn đã được lưu lại và đồng bộ thành công lên hệ thống. Đang chuyển hướng về trang quản lý...
+              {t('create_success_msg')}
             </p>
           </div>
         ) : (
@@ -173,12 +175,12 @@ export default function NewEventPage() {
             <section className="bg-[#1E212B] border border-white/5 p-6 rounded-2xl shadow-xl space-y-5">
               <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-3">
                 <FileText className="size-4 text-[var(--primary)]" />
-                1. Thông tin cơ bản
+                1. {t('step_basics')}
               </h2>
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">Tên sự kiện *</Label>
+                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_name')}</Label>
                   <Input
                     type="text"
                     required
@@ -190,7 +192,7 @@ export default function NewEventPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">Mô tả sự kiện</Label>
+                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_description')}</Label>
                   <textarea
                     placeholder="Mô tả chi tiết nội dung sự kiện, lịch trình biểu diễn và các lưu ý..."
                     rows={4}
@@ -202,7 +204,7 @@ export default function NewEventPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">Link ảnh đại diện (Square)</Label>
+                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_image')}</Label>
                     <Input
                       type="url"
                       placeholder="https://example.com/image.jpg"
@@ -212,7 +214,7 @@ export default function NewEventPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">Link ảnh bìa (Banner URL)</Label>
+                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_banner')}</Label>
                     <Input
                       type="url"
                       placeholder="https://example.com/banner.jpg"
@@ -222,7 +224,7 @@ export default function NewEventPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">Link video quảng bá (Trailer/Youtube)</Label>
+                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_video')}</Label>
                     <Input
                       type="url"
                       placeholder="https://youtube.com/watch?v=..."
@@ -234,7 +236,7 @@ export default function NewEventPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">Danh mục sự kiện</Label>
+                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_category')}</Label>
                   <div className="flex flex-wrap gap-2 pt-1">
                     {CATEGORY_OPTIONS.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
@@ -262,13 +264,13 @@ export default function NewEventPage() {
             <section className="bg-[#1E212B] border border-white/5 p-6 rounded-2xl shadow-xl space-y-5">
               <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-3">
                 <Calendar className="size-4 text-[var(--primary)]" />
-                2. Thời gian & Địa điểm
+                2. {t('step_time_location')}
               </h2>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">Thời gian bắt đầu tổ chức *</Label>
+                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_start_date')}</Label>
                     <Input
                       type="datetime-local"
                       required
@@ -278,7 +280,7 @@ export default function NewEventPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">Thời gian kết thúc (Không bắt buộc)</Label>
+                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_end_date')}</Label>
                     <Input
                       type="datetime-local"
                       value={endDateInput}
@@ -289,7 +291,7 @@ export default function NewEventPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">Hình thức tổ chức</Label>
+                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_event_type')}</Label>
                   <div className="flex gap-4 pt-1">
                     <button
                       type="button"
@@ -300,7 +302,7 @@ export default function NewEventPage() {
                           : 'bg-[#12141A] border-white/10 text-zinc-400 hover:text-white'
                       }`}
                     >
-                      Sự kiện trực tiếp (Offline)
+                      {t('event_type_physical')}
                     </button>
                     <button
                       type="button"
@@ -311,7 +313,7 @@ export default function NewEventPage() {
                           : 'bg-[#12141A] border-white/10 text-zinc-400 hover:text-white'
                       }`}
                     >
-                      Sự kiện trực tuyến (Online)
+                      {t('event_type_online')}
                     </button>
                   </div>
                 </div>
@@ -320,7 +322,7 @@ export default function NewEventPage() {
                   <div className="space-y-4 pt-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs text-zinc-400 block mb-1.5">Tên địa điểm (Sân vận động, Nhà hát...)</Label>
+                        <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_venue')}</Label>
                         <Input
                           type="text"
                           placeholder="Ví dụ: Nhà hát Lớn Hà Nội"
@@ -330,7 +332,7 @@ export default function NewEventPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-zinc-400 block mb-1.5">Thành phố</Label>
+                        <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_city')}</Label>
                         <Input
                           type="text"
                           placeholder="Ví dụ: Hà Nội"
@@ -341,7 +343,7 @@ export default function NewEventPage() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-zinc-400 block mb-1.5">Địa chỉ cụ thể</Label>
+                      <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_address')}</Label>
                       <Input
                         type="text"
                         placeholder="Ví dụ: 01 Tràng Tiền, Hoàn Kiếm, Hà Nội"
@@ -353,7 +355,7 @@ export default function NewEventPage() {
                   </div>
                 ) : (
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">Đường dẫn tham dự trực tuyến (URL Live stream/Zoom)</Label>
+                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_online_url')}</Label>
                     <Input
                       type="url"
                       placeholder="https://zoom.us/j/... hoặc https://youtube.com/live/..."
@@ -371,7 +373,7 @@ export default function NewEventPage() {
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <Ticket className="size-4 text-[var(--primary)]" />
-                  3. Giá vé & Hạng vé
+                  3. {t('step_pricing')}
                 </h2>
                 <button
                   type="button"
@@ -379,7 +381,7 @@ export default function NewEventPage() {
                   className="flex items-center gap-1 text-[11px] font-bold text-[var(--primary)] hover:underline cursor-pointer"
                 >
                   <Plus className="size-3.5" />
-                  Thêm hạng vé
+                  {t('add_ticket_tier')}
                 </button>
               </div>
 
@@ -389,7 +391,7 @@ export default function NewEventPage() {
                     <div className="flex-1 space-y-4 w-full">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="sm:col-span-1">
-                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Tên hạng vé *</Label>
+                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">{t('field_ticket_name')}</Label>
                           <Input
                             type="text"
                             required
@@ -400,7 +402,7 @@ export default function NewEventPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Giá vé (VNĐ) *</Label>
+                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">{t('field_ticket_price')}</Label>
                           <Input
                             type="number"
                             required
@@ -410,7 +412,7 @@ export default function NewEventPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Số lượng vé mở bán *</Label>
+                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">{t('field_ticket_quantity')}</Label>
                           <Input
                             type="number"
                             required
@@ -446,7 +448,7 @@ export default function NewEventPage() {
                 variant="outline"
                 className="flex-1 py-6 bg-transparent hover:bg-white/5 border border-white/10 text-white font-bold text-sm rounded-xl cursor-pointer"
               >
-                {loading ? 'Đang xử lý...' : 'Lưu dưới dạng bản nháp'}
+                {loading ? t('processing') : t('save_draft')}
               </Button>
               <Button
                 type="button"
@@ -454,7 +456,7 @@ export default function NewEventPage() {
                 disabled={loading}
                 className="flex-1 py-6 rounded-xl btn-primary-gradient text-sm font-black tracking-wide text-[#12141A] border-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-orange-500/10"
               >
-                {loading ? 'Đang xử lý...' : 'Gửi yêu cầu phê duyệt'}
+                {loading ? t('processing') : t('submit_review')}
               </Button>
             </div>
           </div>

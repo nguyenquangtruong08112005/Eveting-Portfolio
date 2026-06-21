@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Calendar, MapPin, Globe } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/constants';
 import type { Event } from '@/types';
@@ -33,6 +34,8 @@ interface EventInfoContentProps {
 }
 
 export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
+  const t = useTranslations('event_info');
+
   return (
     <section className="lg:col-span-7 space-y-6">
       {/* Category badges */}
@@ -64,8 +67,8 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
             </p>
             <p className="text-zinc-400 text-xs mt-0.5">
               {event?.endDate
-                ? `Kết thúc: ${mounted ? formatDate(event.endDate) : '...'}`
-                : 'Thời gian cụ thể sẽ được thông báo'}
+                ? `${t('ends_at')} ${mounted ? formatDate(event.endDate) : '...'}`
+                : t('time_tbd')}
             </p>
           </div>
         </div>
@@ -74,7 +77,7 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
           <MapPin className="size-4 text-[var(--primary)] shrink-0" />
           <div>
             <p className="text-[var(--text-primary)] font-medium">
-              {event?.venueName || event?.venue?.name || 'Địa điểm'}
+              {event?.venueName || event?.venue?.name || t('venue')}
             </p>
             <p className="text-zinc-400 text-xs mt-0.5">
               {event?.venue?.addressDetails
@@ -87,7 +90,7 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
         {event?.eventType === 'online' && (
           <div className="flex items-center gap-3 text-sm">
             <Globe className="size-4 text-[var(--primary)] shrink-0" />
-            <p className="text-[var(--text-primary)] font-medium">Sự kiện trực tuyến</p>
+            <p className="text-[var(--text-primary)] font-medium">{t('online_event')}</p>
           </div>
         )}
       </div>
@@ -95,10 +98,10 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
       {/* Description */}
       <div className="glass-card rounded-xl p-5 bg-[#18181A]/70 border border-white/10">
         <h2 className="text-base font-bold text-[var(--text-primary)] mb-3">
-          Giới thiệu sự kiện
+          {t('intro')}
         </h2>
         <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-line">
-          {event?.description || 'Thông tin chi tiết sẽ được cập nhật sớm.'}
+          {event?.description || t('intro_hint')}
         </p>
       </div>
 
@@ -107,9 +110,9 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
         <div className="glass-card rounded-xl p-5 bg-[var(--primary)]/5 border border-[var(--primary)]/20 mt-4 flex items-start gap-3">
           <Globe className="size-5 text-[var(--primary)] shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-bold text-white mb-1">Sự kiện trực tuyến</h4>
+            <h4 className="text-sm font-bold text-white mb-1">{t('online_event')}</h4>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Đây là sự kiện online. Sau khi thanh toán vé thành công, bạn sẽ nhận được đường dẫn (link) tham dự và hướng dẫn chi tiết qua email đăng ký tài khoản.
+              {t('online_notice')}
             </p>
           </div>
         </div>
@@ -119,7 +122,7 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
       {event?.eventType === 'physical' && (
         <div className="glass-card rounded-xl p-5 bg-[#18181A]/70 border border-white/10 mt-6">
           <h2 className="text-base font-bold text-[var(--text-primary)] mb-3">
-            Bản đồ địa điểm
+            {t('venue_map')}
           </h2>
           <div className="w-full h-[250px] overflow-hidden rounded-xl bg-zinc-800 border border-white/5">
             <iframe
@@ -137,7 +140,7 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
       {event?.venue?.nearby && event.venue.nearby.length > 0 && (
         <div className="glass-card rounded-xl p-5 bg-[#18181A]/70 border border-white/10 mt-6">
           <h2 className="text-base font-bold text-[var(--text-primary)] mb-3">
-            Địa điểm lân cận
+            {t('nearby')}
           </h2>
           <div className="flex flex-wrap gap-2">
             {event.venue.nearby.map((place: string, idx: number) => (

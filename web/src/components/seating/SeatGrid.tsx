@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Seat } from '@/types';
 
 interface SeatGridProps {
@@ -28,11 +29,13 @@ const SEAT_STYLES: Record<Seat['status'], string> = {
 };
 
 export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
+  const t = useTranslations('seat_grid');
+
   return (
     <div className="flex flex-col aura-card p-6">
-      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">Chọn ghế ngồi</h2>
+      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">{t('title')}</h2>
       <p className="text-[var(--text-muted)] text-xs mb-6">
-        Nhấn vào ghế trống để giữ chỗ. Ghế được giữ trong 10 phút.
+        {t('instruction')}
       </p>
 
       {/* Hold Timer — fixed height to prevent CLS */}
@@ -40,11 +43,11 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
         {holdTimer !== null && holdTimer > 0 ? (
           <div className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)]/10 border border-[var(--primary)]/30 rounded-xl text-[var(--primary-dark)] text-xs font-semibold w-fit">
             <Clock className="size-4" />
-            <span>Hết hạn trong: {formatTime(holdTimer)}</span>
+            <span>{t('expires_in')} {formatTime(holdTimer)}</span>
           </div>
         ) : (
           <span className="text-[var(--text-muted)] text-[11px] font-medium italic">
-            Chọn ghế để bắt đầu đếm ngược
+            {t('timer_hint')}
           </span>
         )}
       </div>
@@ -53,7 +56,7 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
       <div className="w-full flex flex-col items-center mb-10">
         <div className="w-[75%] h-3.5 bg-gradient-to-r from-[var(--primary)] via-[var(--primary-dark)] to-[var(--primary)] rounded-full opacity-70" />
         <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.2em] font-bold mt-2">
-          SÂN KHẤU
+          {t('stage')}
         </span>
       </div>
 
@@ -79,19 +82,19 @@ export function SeatGrid({ seats, onSeatClick, holdTimer }: SeatGridProps) {
       <div className="flex flex-wrap items-center justify-center gap-5 mt-6 pt-6 border-t border-[var(--surface-border)] text-xs">
         <div className="flex items-center gap-2">
           <div className="size-3.5 rounded bg-[var(--surface)] border border-[var(--surface-border)]" />
-          <span className="text-[var(--text-muted)]">Trống</span>
+          <span className="text-[var(--text-muted)]">{t('available')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="size-3.5 rounded bg-[var(--primary)] border border-[var(--primary)] shadow-sm" />
-          <span className="text-[var(--text-secondary)] font-medium">Đã chọn</span>
+          <span className="text-[var(--text-secondary)] font-medium">{t('selected')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="size-3.5 rounded bg-[var(--secondary-yellow)]/15 border border-[var(--secondary-yellow)]/40" />
-          <span className="text-[var(--text-muted)]">Người khác giữ</span>
+          <span className="text-[var(--text-muted)]">{t('held_by_others')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="size-3.5 rounded bg-[var(--error)]/8 border border-[var(--error)]/20" />
-          <span className="text-[var(--text-muted)]">Đã bán</span>
+          <span className="text-[var(--text-muted)]">{t('sold')}</span>
         </div>
       </div>
     </div>

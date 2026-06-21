@@ -16,6 +16,7 @@ interface HeroCarouselProps {
 export function HeroCarousel({ events }: HeroCarouselProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const t = useTranslations('home');
+  const tCommon = useTranslations('common');
 
   // Take the first 3 published/active events to feature
   const slides = events.slice(0, 3);
@@ -72,7 +73,7 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="size-4 text-[var(--primary)]" />
-                  <span>{slide.venueName || slide.location?.address || 'Chưa xác định'}</span>
+                  <span>{slide.venueName || slide.location?.address || tCommon('unknown')}</span>
                 </div>
               </div>
               <div className="flex items-center gap-4">

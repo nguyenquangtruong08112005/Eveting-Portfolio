@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Check, X, Calendar, MapPin } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/constants';
@@ -15,6 +16,7 @@ interface PendingEventCardProps {
 }
 
 export function PendingEventCard({ event, onApprove, onReject }: PendingEventCardProps) {
+  const t = useTranslations('admin_card');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
@@ -28,11 +30,11 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
   };
 
   const handleReject = async () => {
-    const reason = prompt('Nhập lý do từ chối sự kiện:', 'Không đạt tiêu chuẩn kiểm duyệt');
+    const reason = prompt(t('reject_prompt'), t('reject_default'));
     if (reason === null) return; // cancelled
     const trimmed = reason.trim();
     if (!trimmed) {
-      alert('Vui lòng nhập lý do từ chối.');
+      alert(t('reject_empty'));
       return;
     }
     setLoading(true);
@@ -55,7 +57,7 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
                 : 'bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30'
             }`}
           >
-            {status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+            {status === 'approved' ? t('approved') : t('rejected')}
           </Badge>
         </div>
       </div>
@@ -112,7 +114,7 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
             className="flex-1 py-2.5 rounded-xl bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25 border border-[var(--success)]/30 font-semibold text-xs cursor-pointer btn-tactile"
           >
             <Check className="size-4 mr-1.5" />
-            Phê duyệt
+            {t('approve')}
           </Button>
           <Button
             onClick={handleReject}
@@ -121,7 +123,7 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
             className="flex-1 py-2.5 rounded-xl bg-[var(--error)]/10 text-[var(--error)] hover:bg-[var(--error)]/20 border border-[var(--error)]/30 font-semibold text-xs cursor-pointer btn-tactile"
           >
             <X className="size-4 mr-1.5" />
-            Từ chối
+            {t('reject')}
           </Button>
         </div>
       </div>

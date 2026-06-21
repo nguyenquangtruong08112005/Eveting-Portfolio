@@ -14,10 +14,12 @@ import { EventService } from '@/services/event.service';
 import { formatDate, enrichEvent } from '@/lib/constants';
 import type { Ticket, Event } from '@/types';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 
 
 export default function MyTicketsPage() {
+  const t = useTranslations('my_tickets');
   const router = useRouter();
   const { token } = useAuth();
 
@@ -117,10 +119,10 @@ export default function MyTicketsPage() {
           <div>
             <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
               <TicketIcon className="size-6 text-[var(--primary)]" />
-              Vé của tôi
+              {t('title')}
             </h1>
             <p className="text-xs text-zinc-400 mt-1">
-              Bạn có {tickets.length} vé điện tử đã mua
+              {t('ticket_count', { count: tickets.length })}
             </p>
           </div>
           <button
@@ -129,22 +131,22 @@ export default function MyTicketsPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-xs text-zinc-400 hover:text-white transition-all cursor-pointer"
           >
             <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
-            Làm mới
+            {t('refresh')}
           </button>
         </div>
 
         {tickets.length === 0 ? (
           <div className="text-center py-20 bg-[#1E212B] rounded-2xl border border-white/5 p-8">
             <TicketIcon className="size-12 text-zinc-600 mx-auto mb-4 opacity-50" />
-            <h3 className="text-zinc-300 text-lg font-bold">Không tìm thấy vé</h3>
+            <h3 className="text-zinc-300 text-lg font-bold">{t('no_tickets')}</h3>
             <p className="text-zinc-500 text-sm mt-1 max-w-sm mx-auto mb-6">
-              Bạn chưa mua vé sự kiện nào hoặc đơn hàng chưa hoàn thành.
+              {t('empty_hint')}
             </p>
             <Link
               href="/"
               className="inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl btn-primary-gradient text-sm font-semibold text-[#12141A] border-none cursor-pointer btn-tactile font-bold"
             >
-              Khám phá sự kiện ngay
+              {t('explore_events')}
             </Link>
           </div>
         ) : (
@@ -174,35 +176,35 @@ export default function MyTicketsPage() {
                           </Badge>
                           {ticket.seatId && (
                             <Badge className="bg-[#fcc025]/10 border border-[#fcc025]/20 text-[9px] text-[#fcc025] font-bold uppercase tracking-wider px-2 py-0.5">
-                              Ghế {ticket.seatId}
+                              {t('seat_label', { seatId: ticket.seatId })}
                             </Badge>
                           )}
                           <Badge className={cn(
                             "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border",
                             ticket.status === 'active' ? "bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)]" : "bg-zinc-800 border-zinc-700 text-zinc-500"
                           )}>
-                            {ticket.status === 'active' ? 'Có hiệu lực' : ticket.status === 'used' ? 'Đã sử dụng' : 'Đã hủy'}
+                            {ticket.status === 'active' ? t('active') : ticket.status === 'used' ? t('used') : t('cancelled')}
                           </Badge>
                         </div>
                         
                         <h3 className="text-base font-extrabold text-white leading-snug hover:text-[var(--primary)] transition-colors">
-                          {eventInfo?.name || 'Sự kiện chưa xác định'}
+                          {eventInfo?.name || t('unknown_event')}
                         </h3>
                         
                         <div className="flex flex-col gap-1.5 mt-3 text-xs text-zinc-400">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="size-3.5 text-[var(--primary)]" />
-                            <span>{eventInfo ? formatDate(eventInfo.date) : 'Đang cập nhật...'}</span>
+                            <span>{eventInfo ? formatDate(eventInfo.date) : t('loading_event')}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <MapPin className="size-3.5 text-[var(--primary)]" />
-                            <span className="truncate max-w-[320px]">{eventInfo?.venueName || 'Đang cập nhật...'}</span>
+                            <span className="truncate max-w-[320px]">{eventInfo?.venueName || t('loading_event')}</span>
                           </div>
                         </div>
                       </div>
                       
                       <p className="text-[10px] text-zinc-500 mt-4">
-                        Ngày mua: {formatDate(ticket.purchasedAt)}
+                        {t('purchase_date')} {formatDate(ticket.purchasedAt)}
                       </p>
                     </div>
                   </div>
@@ -235,7 +237,7 @@ export default function MyTicketsPage() {
                         className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all border-none"
                       >
                         <Printer className="size-3.5" />
-                        In vé
+                        {t('print_ticket')}
                       </button>
                       
                       <Link
