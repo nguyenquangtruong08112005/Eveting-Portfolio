@@ -1,0 +1,10 @@
+# Source code repos (managed separately)
+web-2025-eventing/
+Server-2025-Eventing/
+Mobile-2025-Eventing/
+Mobile-2025-Eventing-Organizer/
+
+# IDE & tooling
+.vscode/
+.agent-workspaces/
+.antigravitycli/
