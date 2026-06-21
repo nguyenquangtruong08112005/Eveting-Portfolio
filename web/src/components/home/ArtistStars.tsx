@@ -7,15 +7,6 @@ import { useTranslations } from 'next-intl';
 import { ProfileService } from '@/services/profile.service';
 import type { FeaturedProfile } from '@/types';
 
-const PORTRAITS: Record<string, string> = {
-  'Hà Anh Tuấn': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-  'Rap Việt All-Stars': 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
-  'Dàn DJ Ravolution': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-  'Dàn diễn giả TEDx Da Nang': 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80',
-  'Chuyên gia Google': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
-  'Riot Games': 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=80'
-};
-
 interface ArtistStarsProps {
   onSelectArtist: (name: string) => void;
 }
@@ -91,7 +82,7 @@ export function ArtistStars({ onSelectArtist }: ArtistStarsProps) {
 
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide relative z-10 px-4">
         {profiles.map((profile) => {
-          const imageUrl = PORTRAITS[profile.name] || profile.imageUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80';
+          const imageUrl = profile.imageUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80';
           
           return (
             <div

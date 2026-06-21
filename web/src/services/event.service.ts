@@ -1,9 +1,19 @@
 import { request, requestCached } from './apiClient';
 import { Event } from '@/types';
 
+export interface Destination {
+  name: string;
+  query: string;
+  eventCount: number;
+}
+
 export class EventService {
   static async list(): Promise<{ events: Event[] }> {
     return requestCached<{ events: Event[] }>('GET', '/api/web/events?limit=50');
+  }
+
+  static async getDestinations(limit = 10): Promise<{ destinations: Destination[] }> {
+    return requestCached<{ destinations: Destination[] }>('GET', `/api/web/events/destinations?limit=${limit}`);
   }
 
   static async getById(id: string): Promise<Event> {
