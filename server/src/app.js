@@ -16,6 +16,7 @@ var adminRouter = require('@/modules/admin').router;
 var authRouter = require('@/modules/auth').router;
 var membershipsRouter = require('@/modules/memberships').router;
 var storageRouter = require('@/modules/storage').router;
+var vouchersRouter = require('@/modules/vouchers/api/routes');
 var activeStorageProvider = require('@/providers/storage');
 const { observabilityMiddleware, metricsHandler } = require('@/shared/middleware/observability.middleware');
 const { notFoundHandler, globalErrorHandler } = require('@/shared/middleware/error.middleware');
@@ -64,6 +65,7 @@ app.use('/api/web/events', eventsRouter);
 app.use('/api/web/tickets', ticketsRouter);
 app.use('/api/web/payments', paymentsRouter);
 app.use('/api/web/memberships', membershipsRouter);
+app.use('/api/web/vouchers', vouchersRouter);
 app.use('/api/organizer', organizerRouter);
 app.use('/api/admin', adminRouter);
 
