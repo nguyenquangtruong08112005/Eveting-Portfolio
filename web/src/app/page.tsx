@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { SafeImage } from '@/components/shared/SafeImage';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Search,
   MapPin,
@@ -27,10 +28,11 @@ import { PopularDestinations } from '@/components/home/PopularDestinations';
 function LandingPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('home');
 
   const [events, setEvents] = useState<Event[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Tất cả');
+  const [activeCategory, setActiveCategory] = useState(t('all'));
   const [loading, setLoading] = useState(true);
 
   // Sync with searchParams
@@ -42,7 +44,7 @@ function LandingPageContent() {
       else setSearchQuery('');
       
       if (cat) setActiveCategory(cat);
-      else setActiveCategory('Tất cả');
+      else setActiveCategory(t('all'));
     }
   }, [searchParams]);
 
@@ -115,26 +117,26 @@ function LandingPageContent() {
       <HeroCarousel events={events} />
 
       {/* If filtering or searching, show results directly instead of subsections */}
-      {searchQuery || activeCategory !== 'Tất cả' ? (
+      {searchQuery || activeCategory !== t('all') ? (
         <main className="max-w-7xl mx-auto px-6 py-12 w-full flex-1">
           <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
             <div>
               <h1 className="text-2xl font-black text-[var(--text-primary)]">
-                {activeCategory === 'Tất cả' ? 'Kết quả tìm kiếm' : activeCategory}
+                {activeCategory === t('all') ? t('search_results') : activeCategory}
               </h1>
               <p className="text-xs text-zinc-400 mt-1">
-                Tìm thấy {filteredEvents.length} sự kiện cho &quot;{searchQuery || activeCategory}&quot;
+                {t('events_found', { count: filteredEvents.length, query: searchQuery || activeCategory })}
               </p>
             </div>
             <button
               onClick={() => {
                 setSearchQuery('');
-                setActiveCategory('Tất cả');
+                setActiveCategory(t('all'));
                 router.push('/');
               }}
               className="text-xs font-bold text-[var(--primary)] hover:underline"
             >
-              Xóa bộ lọc
+              {t('clear_filter')}
             </button>
           </div>
 
@@ -155,10 +157,10 @@ function LandingPageContent() {
             <div className="text-center py-24 bg-[#1E212B] rounded-2xl border border-white/5">
               <Search className="size-12 text-zinc-600 mx-auto mb-4 opacity-50" />
               <p className="text-zinc-300 text-lg font-bold">
-                Không tìm thấy sự kiện nào
+                {t('no_events')}
               </p>
               <p className="text-zinc-500 text-sm mt-1 max-w-sm mx-auto">
-                Hãy thử kiểm tra lại chính tả hoặc chuyển sang danh mục khác để khám phá thêm.
+                {t('no_events_hint')}
               </p>
             </div>
           ) : (
@@ -188,7 +190,7 @@ function LandingPageContent() {
           <section className="max-w-7xl mx-auto px-6 py-8 w-full">
             <h3 className="text-lg font-extrabold text-[var(--text-primary)] mb-6 tracking-tight flex items-center gap-2">
               <Sparkles className="size-5 text-[var(--primary)]" />
-              Sự kiện đặc biệt
+              {t('special_events')}
             </h3>
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -273,7 +275,7 @@ function LandingPageContent() {
           {/* ── 3. Trending Events Section (Sự kiện xu hướng) ── */}
           <section className="max-w-7xl mx-auto px-6 py-8 w-full">
             <h3 className="text-lg font-extrabold text-[var(--text-primary)] mb-6 tracking-tight flex items-center gap-2">
-              <span className="text-2xl">🔥</span> Sự kiện xu hướng
+              <span className="text-2xl">🔥</span> {t('trending_events')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {trendingEvents.map((event, idx) => (
@@ -338,7 +340,7 @@ function LandingPageContent() {
                       : "bg-[#1E212B] text-zinc-400 hover:text-white"
                   )}
                 >
-                  Cuối tuần này
+                  {t('weekend')}
                 </button>
                 <button
                   onClick={() => setWeekendTab('month')}
@@ -349,11 +351,11 @@ function LandingPageContent() {
                       : "bg-[#1E212B] text-zinc-400 hover:text-white"
                   )}
                 >
-                  Tháng này
+                  {t('this_month')}
                 </button>
               </div>
               <span className="text-xs text-zinc-400 flex items-center gap-1">
-                Hiển thị các sự kiện gần nhất
+                {t('showing_recent')}
               </span>
             </div>
 
@@ -392,13 +394,13 @@ function LandingPageContent() {
           <section className="max-w-7xl mx-auto px-6 py-8 w-full">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                Nhạc sống
+                {t('live_music')}
               </h3>
               <button
                 onClick={() => setActiveCategory('Âm nhạc')}
                 className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
               >
-                Xem thêm <ChevronRight className="size-3.5" />
+                {t('see_more')} <ChevronRight className="size-3.5" />
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -414,13 +416,13 @@ function LandingPageContent() {
           <section className="max-w-7xl mx-auto px-6 py-8 w-full">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                Sân khấu & Nghệ thuật
+                {t('theater_arts')}
               </h3>
               <button
                 onClick={() => setActiveCategory('Nghệ thuật')}
                 className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
               >
-                Xem thêm <ChevronRight className="size-3.5" />
+                {t('see_more')} <ChevronRight className="size-3.5" />
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -458,13 +460,13 @@ function LandingPageContent() {
           <section className="max-w-7xl mx-auto px-6 py-8 w-full">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                Hội thảo & Workshop
+                {t('workshops')}
               </h3>
               <button
                 onClick={() => setActiveCategory('Nightlife')}
                 className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
               >
-                Xem thêm <ChevronRight className="size-3.5" />
+                {t('see_more')} <ChevronRight className="size-3.5" />
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -480,13 +482,13 @@ function LandingPageContent() {
           <section className="max-w-7xl mx-auto px-6 py-8 w-full">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                Khoa học & Công nghệ
+                {t('tech_science')}
               </h3>
               <button
                 onClick={() => setActiveCategory('Công nghệ')}
                 className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
               >
-                Xem thêm <ChevronRight className="size-3.5" />
+                {t('see_more')} <ChevronRight className="size-3.5" />
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

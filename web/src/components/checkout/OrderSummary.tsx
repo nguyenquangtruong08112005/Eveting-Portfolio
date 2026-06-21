@@ -3,6 +3,7 @@
 import React from 'react';
 import { Ticket, Calendar, MapPin, Sparkles, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatPrice, formatDate } from '@/lib/constants';
@@ -38,13 +39,15 @@ export function OrderSummary({
   processing,
   seatPrice,
 }: OrderSummaryProps) {
+  const t = useTranslations('checkout');
+
   return (
     <div className="glass-card rounded-2xl p-6 bg-[#1E212B] border border-white/5 space-y-6">
       {/* Event Details Card */}
       <div className="space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2 border-b border-white/5 pb-3">
           <Ticket className="size-5 text-[var(--primary)]" />
-          Tóm Tắt Đơn Hàng
+          {t('order_summary')}
         </h3>
 
         {event && (
@@ -71,27 +74,27 @@ export function OrderSummary({
 
       {/* Tickets List */}
       <div className="space-y-2.5">
-        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Danh sách vé đặt</h4>
+        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{t('ticket_list')}</h4>
         <div className="space-y-2">
           {selectedSeats.length > 0 ? (
             <div className="flex justify-between items-center text-xs p-2 bg-[#131313]/30 rounded-lg border border-white/5">
               <div>
-                <p className="font-bold text-white">Vé ghế ngồi (Seating)</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5">Số ghế: {selectedSeats.join(', ')}</p>
+                <p className="font-bold text-white">{t('seating_ticket')}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">{t('seat_numbers', { seats: selectedSeats.join(', ') })}</p>
               </div>
               <span className="font-bold text-zinc-300">
                 {selectedSeats.length} x {formatPrice(seatPrice)}
               </span>
             </div>
           ) : (
-            selectedTickets.map((t, idx) => (
+            selectedTickets.map((ticket, idx) => (
               <div key={idx} className="flex justify-between items-center text-xs p-2 bg-[#131313]/30 rounded-lg border border-white/5">
                 <div>
-                  <p className="font-bold text-white">Vé {t.name}</p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Loại số lượng (Quantity)</p>
+                  <p className="font-bold text-white">{t('ticket_type', { name: ticket.name })}</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">{t('ticket_qty')}</p>
                 </div>
                 <span className="font-bold text-zinc-300">
-                  {t.qty} x {formatPrice(t.price)}
+                  {ticket.qty} x {formatPrice(ticket.price)}
                 </span>
               </div>
             ))
@@ -101,11 +104,11 @@ export function OrderSummary({
 
       {/* Voucher Input */}
       <div className="pt-2 border-t border-white/5 space-y-2">
-        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Khuyến mãi / Voucher</h4>
+        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{t('voucher_section')}</h4>
         <div className="flex gap-2">
           <Input
             type="text"
-            placeholder="MÃ GIẢM GIÁ (VD: EVENTING20)"
+            placeholder={t('voucher_placeholder')}
             value={voucherCode}
             onChange={(e) => setVoucherCode(e.target.value)}
             disabled={processing}
@@ -117,7 +120,7 @@ export function OrderSummary({
             disabled={processing}
             className="bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs px-4 py-5 rounded-xl transition-all cursor-pointer border-none"
           >
-            Áp dụng
+            {t('apply')}
           </Button>
         </div>
 
@@ -132,24 +135,24 @@ export function OrderSummary({
       {/* Price breakdown */}
       <div className="border-t border-white/5 pt-4 space-y-2.5 text-xs">
         <div className="flex justify-between text-zinc-400">
-          <span>Tạm tính</span>
+          <span>{t('subtotal')}</span>
           <span className="font-semibold text-white">{formatPrice(subtotal)}</span>
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-emerald-400 font-medium">
-            <span>Giảm giá khuyến mãi</span>
+            <span>{t('discount')}</span>
             <span>-{formatPrice(discount)}</span>
           </div>
         )}
         <div className="flex justify-between text-zinc-400">
-          <span>Phí dịch vụ</span>
-          <span className="text-emerald-500 font-bold">Miễn phí</span>
+          <span>{t('service_fee')}</span>
+          <span className="text-emerald-500 font-bold">{t('free')}</span>
         </div>
 
         <div className="border-t border-white/5 pt-3.5 flex justify-between items-end">
           <div>
-            <span className="text-xs font-bold text-white block mb-0.5">Tổng thanh toán</span>
-            <span className="text-[10px] text-zinc-500">Đã bao gồm VAT nếu có</span>
+            <span className="text-xs font-bold text-white block mb-0.5">{t('total')}</span>
+            <span className="text-[10px] text-zinc-500">{t('vat_note')}</span>
           </div>
           <span className="text-xl font-black text-[var(--primary)]">{formatPrice(total)}</span>
         </div>
@@ -161,13 +164,13 @@ export function OrderSummary({
         disabled={processing || subtotal === 0}
         className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wider font-bold uppercase flex items-center justify-center gap-2 cursor-pointer border-none shadow-lg shadow-orange-500/10 btn-tactile text-[#12141A] disabled:opacity-50"
       >
-        {processing ? 'Đang tạo giao dịch...' : 'Thanh Toán Ngay'}
+        {processing ? t('processing') : t('pay_now')}
       </Button>
 
       {/* SSL seal */}
       <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-[10px] pt-1">
         <ShieldCheck className="size-4 text-[var(--primary)]" />
-        <span>Thanh toán bảo mật SSL 256-bit</span>
+        <span>{t('ssl_secure')}</span>
       </div>
     </div>
   );

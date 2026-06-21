@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 const DESTINATIONS = [
   {
@@ -30,10 +31,12 @@ interface PopularDestinationsProps {
 }
 
 export function PopularDestinations({ onSelectCity }: PopularDestinationsProps) {
+  const t = useTranslations('home');
+
   return (
     <section className="max-w-7xl mx-auto px-6 py-10 w-full">
       <h3 className="text-lg font-extrabold text-[var(--text-primary)] mb-6 tracking-tight">
-        Điểm đến thú vị
+        {t('popular_destinations')}
       </h3>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {DESTINATIONS.map((city) => (

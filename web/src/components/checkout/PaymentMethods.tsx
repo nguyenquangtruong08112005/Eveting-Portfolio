@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CreditCard, Wallet } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface PaymentMethodsProps {
@@ -10,11 +11,13 @@ interface PaymentMethodsProps {
 }
 
 export function PaymentMethods({ paymentMethod, setPaymentMethod }: PaymentMethodsProps) {
+  const t = useTranslations('checkout');
+
   return (
     <div className="glass-card rounded-2xl p-6 bg-[#1E212B] border border-white/5 space-y-4">
       <h3 className="text-base font-bold text-white flex items-center gap-2 border-b border-white/5 pb-3">
         <CreditCard className="size-5 text-[var(--primary)]" />
-        Phương Thức Thanh Toán
+        {t('payment_title')}
       </h3>
 
       <div className="space-y-3">
@@ -40,8 +43,8 @@ export function PaymentMethods({ paymentMethod, setPaymentMethod }: PaymentMetho
                 ZP
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Ví điện tử ZaloPay</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5">Khuyên dùng, liên kết trực tiếp ứng dụng</p>
+                <p className="text-xs font-bold text-white">{t('zalopay')}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">{t('zalopay_hint')}</p>
               </div>
             </div>
           </div>
@@ -70,8 +73,8 @@ export function PaymentMethods({ paymentMethod, setPaymentMethod }: PaymentMetho
                 <CreditCard className="size-4.5 text-zinc-400" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Thẻ tín dụng quốc tế</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5 font-medium">Visa, Mastercard, JCB, Amex</p>
+                <p className="text-xs font-bold text-white">{t('credit_card')}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5 font-medium">{t('credit_card_hint')}</p>
               </div>
             </div>
           </div>
@@ -99,8 +102,8 @@ export function PaymentMethods({ paymentMethod, setPaymentMethod }: PaymentMetho
                 <Wallet className="size-4.5 text-zinc-400" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Thẻ ATM nội địa</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5">Thanh toán qua cổng Napas với 40+ ngân hàng</p>
+                <p className="text-xs font-bold text-white">{t('atm_card')}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">{t('atm_hint')}</p>
               </div>
             </div>
           </div>

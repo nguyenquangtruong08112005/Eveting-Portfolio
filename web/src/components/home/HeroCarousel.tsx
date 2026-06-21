@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { CalendarDays, MapPin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { formatDate } from '@/lib/constants';
@@ -14,6 +15,7 @@ interface HeroCarouselProps {
 
 export function HeroCarousel({ events }: HeroCarouselProps) {
   const [activeSlide, setActiveSlide] = useState(0);
+  const t = useTranslations('home');
 
   // Take the first 3 published/active events to feature
   const slides = events.slice(0, 3);
@@ -29,7 +31,7 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
   if (slides.length === 0) {
     return (
       <section className="relative w-full h-[300px] flex items-center justify-center bg-[#0a0a0c] border-b border-white/10">
-        <div className="text-zinc-500 text-sm">Không có sự kiện tiêu biểu nào</div>
+        <div className="text-zinc-500 text-sm">{t('no_featured_events')}</div>
       </section>
     );
   }
@@ -81,13 +83,13 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
                     "btn-primary-gradient rounded-xl font-bold px-8 py-5 text-sm shadow-xl shadow-orange-500/10 btn-tactile border-none"
                   )}
                 >
-                  Đặt vé ngay
+                  {t('book_now')}
                 </Link>
                 <Link
                   href={`/attendee/events/${slide.id}`}
                   className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold px-8 py-3 rounded-xl transition-all text-sm"
                 >
-                  Chi tiết
+                  {t('details')}
                 </Link>
               </div>
             </div>

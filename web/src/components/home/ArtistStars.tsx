@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { ProfileService } from '@/services/profile.service';
 import type { FeaturedProfile } from '@/types';
 
@@ -22,6 +23,7 @@ interface ArtistStarsProps {
 export function ArtistStars({ onSelectArtist }: ArtistStarsProps) {
   const [profiles, setProfiles] = useState<FeaturedProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = useTranslations('home');
 
   useEffect(() => {
     ProfileService.list(1, 15)
@@ -80,10 +82,10 @@ export function ArtistStars({ onSelectArtist }: ArtistStarsProps) {
       <div className="flex justify-between items-center mb-6 relative z-10 px-4">
         <h3 className="text-lg font-extrabold flex items-center gap-2 text-[var(--text-primary)] tracking-tight">
           <Star className="size-5 text-[var(--primary)] fill-[var(--primary)]" />
-          Nghệ sĩ & Diễn giả nổi bật
+          {t('featured_artists')}
         </h3>
         <span className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors cursor-pointer flex items-center gap-0.5">
-          Xem thêm <ChevronRight className="size-3.5" />
+          {t('see_more')} <ChevronRight className="size-3.5" />
         </span>
       </div>
 

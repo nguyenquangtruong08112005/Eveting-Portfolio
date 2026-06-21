@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
@@ -20,6 +21,7 @@ interface TicketQuantities {
 function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('checkout');
 
   const eventId = searchParams?.get('eventId') || '';
   const seatsParam = searchParams?.get('seats') || '';
@@ -91,7 +93,7 @@ function CheckoutPageContent() {
     setVoucherError('');
     setVoucherSuccess('');
     if (!voucherCode.trim()) {
-      setVoucherError('Vui lòng nhập mã giảm giá.');
+      setVoucherError(t('voucher_empty'));
       return;
     }
 
@@ -99,13 +101,13 @@ function CheckoutPageContent() {
     if (code === 'EVENTING20') {
       const amt = Math.round(subtotal * 0.2);
       setDiscount(amt);
-      setVoucherSuccess('Đã áp dụng voucher giảm giá 20% thành công!');
+      setVoucherSuccess(t('voucher_applied_20'));
     } else if (code === 'WELCOME10') {
       const amt = Math.min(50000, Math.round(subtotal * 0.1));
       setDiscount(amt);
-      setVoucherSuccess('Đã áp dụng voucher chào mừng 10% (tối đa 50k) thành công!');
+      setVoucherSuccess(t('voucher_applied_10'));
     } else {
-      setVoucherError('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+      setVoucherError(t('voucher_invalid'));
       setDiscount(0);
     }
   };
@@ -113,7 +115,7 @@ function CheckoutPageContent() {
   const handlePayment = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!name || !email || !phone) {
-      setErrorMsg('Vui lòng điền đầy đủ thông tin cá nhân.');
+      setErrorMsg(t('fill_info'));
       return;
     }
 
@@ -134,7 +136,7 @@ function CheckoutPageContent() {
 
       const ticket = bookingResult?.tickets?.[0];
       if (!ticket || !ticket.id) {
-        throw new Error('Không nhận được mã vé từ hệ thống đặt chỗ.');
+        throw new Error(t('no_ticket'));
       }
       const ticketId = ticket.id;
 
@@ -145,13 +147,13 @@ function CheckoutPageContent() {
         if (payment.order_url) {
           window.location.href = payment.order_url;
         } else {
-          throw new Error('Hệ thống thanh toán không trả về liên kết giao dịch.');
+          throw new Error(t('no_payment_url'));
         }
       } else {
-        throw new Error('Phương thức thanh toán bằng Thẻ quốc tế/ATM chưa được cấu hình. Vui lòng thanh toán qua ZaloPay.');
+        throw new Error(t('payment_not_configured'));
       }
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tạo giao dịch. Vui lòng thử lại.');
+      setErrorMsg(err.response?.data?.message || err.message || t('error_generic'));
       setProcessing(false);
     }
   };
@@ -160,7 +162,7 @@ function CheckoutPageContent() {
     return (
       <div className="flex-grow flex flex-col items-center justify-center bg-[var(--background)] min-h-[400px]">
         <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin mb-3" />
-        <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Đang tải hóa đơn đặt vé...</span>
+        <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider">{t('loading')}</span>
       </div>
     );
   }
@@ -172,15 +174,15 @@ function CheckoutPageContent() {
         <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-md glass-card rounded-2xl p-8 border border-white/5 bg-[#1E212B]">
             <AlertCircle className="size-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-zinc-200 text-lg font-bold">Không tìm thấy thông tin sự kiện</h2>
+            <h2 className="text-zinc-200 text-lg font-bold">{t('event_not_found')}</h2>
             <p className="text-zinc-500 text-sm mt-1 mb-6">
-              Sự kiện bạn yêu cầu thanh toán không tồn tại hoặc đã bị hủy.
+              {t('event_not_found_desc')}
             </p>
             <Link
               href="/"
               className="inline-block px-6 py-2.5 rounded-xl btn-primary-gradient text-xs font-bold text-[#12141A] border-none"
             >
-              Quay lại trang chủ
+              {t('back_home')}
             </Link>
           </div>
         </div>
@@ -200,7 +202,7 @@ function CheckoutPageContent() {
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
-          Quay lại trang chi tiết sự kiện
+          {t('back_to_event')}
         </Link>
       </div>
 
