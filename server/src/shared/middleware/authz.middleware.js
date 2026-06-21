@@ -90,12 +90,27 @@ function auditLog(action, resourceType, idParamName = 'id') {
   return async function(req, res, next) {
     const originalSend = res.json.bind(res);
     res.json = function(body) {
-      const userId = req.user ? (req.user.uid || req.user.id || req.user.user_id) : null;
-      const resourceId = req.params[idParamName] || 
+      const userId = req.user ? (req.user.uid || req.user.id || req.user.user_id) : 'system';
+      let resourceId = req.params[idParamName] || 
                          req.body[idParamName] || 
                          req.query[idParamName] || 
                          (body && body[idParamName]) || 
+                         (req.user ? (req.user.uid || req.user.id || req.user.user_id) : '') ||
                          '';
+                         
+      // Fallback nested extraction for webhooks (e.g. ZaloPay callbacks)
+      if (!resourceId && req.body && req.body.data && idParamName === 'ticketId') {
+        try {
+          const dataObj = JSON.parse(req.body.data);
+          if (dataObj.embed_data) {
+            const embedData = typeof dataObj.embed_data === 'string' ? JSON.parse(dataObj.embed_data) : dataObj.embed_data;
+            resourceId = embedData.ticket_id || embedData.ticketId || '';
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+
       if (userId && resourceId) {
         const metadata = {
           method: req.method,

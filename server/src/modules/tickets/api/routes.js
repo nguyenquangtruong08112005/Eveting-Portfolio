@@ -5,6 +5,8 @@ const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
 const ticketController = require('@/modules/tickets/api/controller');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 const idempotency = require('@/shared/middleware/idempotency.middleware');
+const { bookingLimiter } = require('@/shared/middleware/rateLimit.middleware');
+const { auditLog } = require('@/shared/middleware/authz.middleware');
 
 router.get('/',
     verifyAuthToken,
@@ -13,6 +15,8 @@ router.get('/',
 
 router.post('/book',
     verifyAuthToken,
+    bookingLimiter,
+    auditLog('ticket:book', 'ticket', 'id'),
     idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('ticketType').notEmpty().withMessage('ticketType is required'),
@@ -31,6 +35,8 @@ router.get('/:ticketId',
 
 router.post('/hold-seat',
     verifyAuthToken,
+    bookingLimiter,
+    auditLog('seat:hold', 'event', 'eventId'),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('seatId').notEmpty().withMessage('seatId is required'),
     validateRequest,
@@ -39,6 +45,8 @@ router.post('/hold-seat',
 
 router.post('/release-seat',
     verifyAuthToken,
+    bookingLimiter,
+    auditLog('seat:release', 'event', 'eventId'),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('seatId').notEmpty().withMessage('seatId is required'),
     validateRequest,
@@ -47,12 +55,21 @@ router.post('/release-seat',
 
 router.post('/book-held-seats',
     verifyAuthToken,
+    bookingLimiter,
+    auditLog('seat:book-held', 'event', 'eventId'),
     idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('seatIds').isArray({ min: 1 }).withMessage('seatIds must be a non-empty array'),
     body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),
     validateRequest,
     ticketController.bookHeldSeats
+);
+
+router.get('/event/:eventId/seats',
+    verifyAuthToken,
+    param('eventId').notEmpty().withMessage('eventId is required'),
+    validateRequest,
+    ticketController.getSeatsWithStatuses
 );
 
 module.exports = router;

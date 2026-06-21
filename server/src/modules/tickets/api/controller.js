@@ -53,6 +53,12 @@ const bookHeldSeats = asyncHandler(async (req, res) => {
     res.status(201).json(result);
 });
 
+const getSeatsWithStatuses = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const result = await ticketService.getSeatsWithStatuses(eventId);
+    res.status(200).json(result);
+});
+
 module.exports = {
     getCurrentUserTickets,
     bookTicket,
@@ -60,4 +66,5 @@ module.exports = {
     holdSeat,
     releaseSeat,
     bookHeldSeats,
+    getSeatsWithStatuses,
 };

@@ -44,7 +44,18 @@ const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
 
     const ticketsWithEventDetails = await Promise.all(paginatedTickets.map(async (ticketData) => {
         const eventData = await eventRepository.getEventById(ticketData.eventId);
-        return mapTicketWithEvent(ticketData, eventData);
+        
+        // Generate a fresh dynamic expiring QR token for the ticket validation
+        const dynamicQrCode = generateTicketQR(
+            ticketData.id,
+            ticketData.userId,
+            ticketData.eventId,
+            ticketData.quantity || 1,
+            process.env.QR_CODE_TTL || '1h'
+        );
+        const ticketWithDynamicQr = { ...ticketData, qrCode: dynamicQrCode };
+        
+        return mapTicketWithEvent(ticketWithDynamicQr, eventData);
     }));
 
     return {
@@ -444,12 +455,22 @@ const getTicketDetailsById = async (ticketId, requestingUserId) => {
         throw new ForbiddenError('You do not have permission to view this ticket.');
     }
 
+    // Generate a fresh dynamic expiring QR token for the ticket validation
+    const dynamicQrCode = generateTicketQR(
+        ticketData.id,
+        ticketData.userId,
+        ticketData.eventId,
+        ticketData.quantity || 1,
+        process.env.QR_CODE_TTL || '1h'
+    );
+    const ticketWithDynamicQr = { ...ticketData, qrCode: dynamicQrCode };
+
     let venueData = null;
     if (eventData.venueId) {
         venueData = await venueRepository.getVenueById(eventData.venueId);
     }
 
-    return mapTicketDetailResponse(ticketData, eventData, venueData);
+    return mapTicketDetailResponse(ticketWithDynamicQr, eventData, venueData);
 };
 
 const holdSeat = async (userId, eventId, seatId) => {
@@ -688,6 +709,10 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
     });
 };
 
+const getSeatsWithStatuses = async (eventId) => {
+    return await seatRepository.getSeatsWithStatuses(eventId);
+};
+
 module.exports = {
     getTicketsByUserId,
     bookTicket,
@@ -698,4 +723,5 @@ module.exports = {
     holdSeat,
     releaseSeat,
     bookHeldSeats,
+    getSeatsWithStatuses,
 };

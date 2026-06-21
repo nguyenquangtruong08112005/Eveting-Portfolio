@@ -4,13 +4,14 @@ const { param, body, query } = require('express-validator');
 const { verifyAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
 const organizerController = require('@/modules/organizer/api/controller');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
+const { auditLog } = require('@/shared/middleware/authz.middleware');
 
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.use(verifyAuthToken);
 
-router.post('/register', organizerController.registerOrganizer);
+router.post('/register', auditLog('organizer:register', 'organizer', 'userId'), organizerController.registerOrganizer);
 
 router.use(isOrganizer);
 
@@ -48,7 +49,7 @@ router.get(
     organizerController.getEventAttendees
 );
 
-router.post('/check-in-qr', organizerController.checkInByQr);
+router.post('/check-in-qr', auditLog('ticket:check-in', 'ticket', 'qrToken'), organizerController.checkInByQr);
 
 router.post(
     '/events/:eventId/attendees/import',
@@ -58,6 +59,7 @@ router.post(
     ],
     organizerController.verifyEventOwnership,
     upload.single('file'),
+    auditLog('attendees:import', 'event', 'eventId'),
     organizerController.importAttendees
 );
 
@@ -68,6 +70,7 @@ router.get(
         validateRequest
     ],
     organizerController.verifyEventOwnership,
+    auditLog('attendees:export', 'event', 'eventId'),
     organizerController.exportAttendees
 );
 
@@ -80,6 +83,7 @@ router.post(
         validateRequest
     ],
     organizerController.verifyEventOwnership,
+    auditLog('notification:broadcast', 'event', 'eventId'),
     organizerController.broadcastNotification
 );
 

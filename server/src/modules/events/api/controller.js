@@ -106,6 +106,12 @@ const submitDraftController = asyncHandler(async (req, res) => {
   res.status(200).json(result);
 });
 
+const getDestinations = asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 10;
+  const destinations = await eventService.getDestinations(limit);
+  res.status(200).json({ destinations });
+});
+
 module.exports = {
   getAllEvents,
   getEventById,
@@ -116,5 +122,6 @@ module.exports = {
   searchEvents,
   findNearbyEvents,
   getRecommendations,
-  getEventWeather
+  getEventWeather,
+  getDestinations
 };

@@ -179,6 +179,9 @@ var updateUser = async function (userId, updateData, fcmToken) {
     } else {
       // attempt direct snake_case conversion
       var snake = key.replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); });
+      if (!/^[a-z0-9_]+$/.test(snake)) {
+        throw new Error('Invalid column name: ' + key);
+      }
       sets.push(snake + ' = $' + idx);
       params.push(updateData[key]);
       idx++;
@@ -390,6 +393,17 @@ var addOrganizerRoleToUser = async function (userId, organizerData) {
     );
   }
 
+  await query(
+    `UPDATE auth_users
+     SET roles = CASE
+       WHEN 'organizer' = ANY(roles) THEN roles
+       ELSE array_append(roles, 'organizer')
+     END,
+     updated_at = NOW()
+     WHERE id = $1`,
+    [userId]
+  );
+
   var updated = await getUserDataById(userId);
   return updated;
 };
@@ -424,6 +438,9 @@ var updateUserFields = async function (userId, updateData) {
       continue;
     } else {
       var snake = key.replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); });
+      if (!/^[a-z0-9_]+$/.test(snake)) {
+        throw new Error('Invalid column name: ' + key);
+      }
       sets.push(snake + ' = $' + idx);
       params.push(updateData[key]);
     }

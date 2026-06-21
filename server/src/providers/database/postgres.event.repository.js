@@ -542,6 +542,23 @@ const getRecommendedEventsRelational = async (interests = [], excludeEventIds = 
     return result.rows.map(row => ({ id: row.id, ...rowToFirebaseDoc(row) }));
 };
 
+const getPopularDestinations = async (limit = 10) => {
+    const result = await query(
+        `SELECT city, COUNT(*)::int AS event_count
+         FROM events
+         WHERE status = 'published' AND visibility = 'public' AND city IS NOT NULL AND city != ''
+         GROUP BY city
+         ORDER BY event_count DESC
+         LIMIT $1`,
+        [limit]
+    );
+    return result.rows.map(row => ({
+        name: row.city,
+        query: row.city,
+        eventCount: row.event_count,
+    }));
+};
+
 module.exports = {
     getEventById,
     getEventDataById,
@@ -559,5 +576,6 @@ module.exports = {
     queryActivePublicEventsByGeoBounds,
     getEventLifecycleOwnership,
     getRecommendedEventsRelational,
+    getPopularDestinations,
 };
 

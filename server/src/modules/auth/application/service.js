@@ -164,7 +164,7 @@ async function socialLogin({ email, name, role, profilePicUrl }) {
   }
 
   if (!user) {
-    const unusablePassword = `social:${email}:${Date.now()}:${Math.random()}`;
+    const unusablePassword = `social:${email}:${Date.now()}:${crypto.randomBytes(32).toString('hex')}`;
     const passwordHash = await backendAuthProvider.hashPassword(unusablePassword);
     const uid = await authRepository.createUser({
       email,
@@ -226,14 +226,13 @@ async function socialLogin({ email, name, role, profilePicUrl }) {
 }
 
 async function googleLogin({ idToken, role }) {
-  const bypass = process.env.AUTH_SOCIAL_DEV_BYPASS === 'true' && process.env.NODE_ENV === 'development';
+  const bypass = process.env.AUTH_SOCIAL_DEV_BYPASS === 'true' && 
+                 process.env.NODE_ENV === 'development' && 
+                 idToken && 
+                 idToken.startsWith('mock_google_token_');
   if (bypass) {
-    let email = 'bypass_google_user@example.com';
-    let name = 'Bypass Google User';
-    if (idToken.startsWith('mock_google_token_')) {
-      email = idToken.replace('mock_google_token_', '') + '@example.com';
-      name = 'Mock Google User';
-    }
+    const email = idToken.replace('mock_google_token_', '') + '@example.com';
+    const name = 'Mock Google User';
     return await socialLogin({ email, name, role, profilePicUrl: '' });
   }
 
@@ -264,14 +263,13 @@ async function googleLogin({ idToken, role }) {
 }
 
 async function facebookLogin({ accessToken, role }) {
-  const bypass = process.env.AUTH_SOCIAL_DEV_BYPASS === 'true' && process.env.NODE_ENV === 'development';
+  const bypass = process.env.AUTH_SOCIAL_DEV_BYPASS === 'true' && 
+                 process.env.NODE_ENV === 'development' && 
+                 accessToken && 
+                 accessToken.startsWith('mock_facebook_token_');
   if (bypass) {
-    let email = 'bypass_facebook_user@example.com';
-    let name = 'Bypass Facebook User';
-    if (accessToken.startsWith('mock_facebook_token_')) {
-      email = accessToken.replace('mock_facebook_token_', '') + '@example.com';
-      name = 'Mock Facebook User';
-    }
+    const email = accessToken.replace('mock_facebook_token_', '') + '@example.com';
+    const name = 'Mock Facebook User';
     return await socialLogin({ email, name, role, profilePicUrl: '' });
   }
 

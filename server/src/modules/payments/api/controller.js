@@ -9,7 +9,7 @@ const { PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
 const logger = require('@/shared/logger');
 
 const createPaymentOrder = asyncHandler(async (req, res) => {
-    const { ticketId } = req.body;
+    const { ticketId, redirectUrl } = req.body;
     const userId = req.user.uid;
 
     const ticket = await ticketRepository.getTicketById(ticketId);
@@ -19,7 +19,13 @@ const createPaymentOrder = asyncHandler(async (req, res) => {
         throw new ConflictError(`Ticket not payable (status: ${ticket.status}).`);
     }
 
-    const zaloResponse = await paymentService.createZaloPayOrder(ticket);
+    let finalRedirectUrl = redirectUrl;
+    if (redirectUrl && (redirectUrl.startsWith('http://localhost') || redirectUrl.startsWith('http://127.0.0.1'))) {
+        const appPublicUrl = process.env.APP_PUBLIC_URL || 'http://localhost:3000';
+        finalRedirectUrl = `${appPublicUrl}/payments/redirect-handler?targetUrl=${encodeURIComponent(redirectUrl)}`;
+    }
+
+    const zaloResponse = await paymentService.createZaloPayOrder(ticket, finalRedirectUrl);
 
     await ticketRepository.updateTicket(ticketId, {
         zaloAppTransId: zaloResponse.app_trans_id,
@@ -170,8 +176,29 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
     return res.json(result);
 });
 
+const handleZaloPayRedirect = asyncHandler(async (req, res) => {
+    const { targetUrl } = req.query;
+    if (!targetUrl) {
+        return res.redirect('/');
+    }
+
+    try {
+        const urlObj = new URL(targetUrl);
+        for (const [key, value] of Object.entries(req.query)) {
+            if (key !== 'targetUrl') {
+                urlObj.searchParams.set(key, value);
+            }
+        }
+        return res.redirect(urlObj.toString());
+    } catch (err) {
+        logger.error(`[RedirectHandler] Invalid targetUrl: ${targetUrl}`);
+        return res.redirect('/');
+    }
+});
+
 module.exports = {
     createPaymentOrder,
     handleZaloPayCallback,
-    manualCheckPaymentStatus
+    manualCheckPaymentStatus,
+    handleZaloPayRedirect
 };

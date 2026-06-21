@@ -15,6 +15,11 @@ router.get('/search', publicApiLimiter, [
     validateRequest
 ], eventController.searchEvents);
 
+router.get('/destinations', publicApiLimiter, [
+    query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('limit must be between 1 and 50'),
+    validateRequest
+], eventController.getDestinations);
+
 router.get('/nearby', publicApiLimiter, [
     query('lat').isFloat().withMessage('lat must be a valid number'),
     query('lon').isFloat().withMessage('lon must be a valid number'),

@@ -417,6 +417,10 @@ const getRecommendations = async (userId, limit = 10) => {
     }
 };
 
+const getDestinations = async (limit = 10) => {
+    return eventRepository.getPopularDestinations(limit);
+};
+
 module.exports = {
-    getAllEvents, getEventById, createEvent, updateEvent, cancelEvent, submitDraft, findNearbyEvents, searchEvents, getRecommendations, getEventWeather
+    getAllEvents, getEventById, createEvent, updateEvent, cancelEvent, submitDraft, findNearbyEvents, searchEvents, getRecommendations, getEventWeather, getDestinations
 };

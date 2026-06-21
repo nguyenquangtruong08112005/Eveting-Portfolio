@@ -101,7 +101,10 @@ const validatePromotionCode = async (code, eventId, ticketQuantity = 1) => {
     return {
         valid: true,
         message: 'Applied.',
-        ...promo
+        code: promo.code,
+        discountType: promo.discountType,
+        discountValue: Number(promo.discountValue),
+        minTicketQuantity: promo.minTicketQuantity ? Number(promo.minTicketQuantity) : undefined,
     };
 };
 

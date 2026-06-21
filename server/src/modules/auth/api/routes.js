@@ -4,8 +4,9 @@ const { body } = require('express-validator');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 const authController = require('@/modules/auth/api/controller');
 const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
+const { authLimiter } = require('@/shared/middleware/rateLimit.middleware');
 
-router.post('/register', [
+router.post('/register', authLimiter, [
     body('email').notEmpty().isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
     body('name').optional({ values: 'null' }).isString().withMessage('Name must be a string'),
@@ -13,7 +14,7 @@ router.post('/register', [
     validateRequest
 ], authController.register);
 
-router.post('/login', [
+router.post('/login', authLimiter, [
     body('email').notEmpty().isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
     validateRequest
@@ -29,19 +30,19 @@ router.post('/logout', [
     validateRequest
 ], authController.logout);
 
-router.post('/google-login', [
+router.post('/google-login', authLimiter, [
     body('idToken').notEmpty().withMessage('Google ID token is required'),
     body('role').optional({ values: 'null' }).isIn(['user', 'organizer']).withMessage('Role must be user or organizer'),
     validateRequest
 ], authController.googleLogin);
 
-router.post('/facebook-login', [
+router.post('/facebook-login', authLimiter, [
     body('accessToken').notEmpty().withMessage('Facebook access token is required'),
     body('role').optional({ values: 'null' }).isIn(['user', 'organizer']).withMessage('Role must be user or organizer'),
     validateRequest
 ], authController.facebookLogin);
 
-router.post('/password-reset/request', [
+router.post('/password-reset/request', authLimiter, [
     body('email').notEmpty().isEmail().withMessage('Valid email is required'),
     validateRequest
 ], authController.passwordResetRequest);
@@ -52,7 +53,7 @@ router.post('/password-reset/confirm', [
     validateRequest
 ], authController.passwordResetConfirm);
 
-router.post('/email-verification/request', [
+router.post('/email-verification/request', authLimiter, [
     body('email').notEmpty().isEmail().withMessage('Valid email is required'),
     validateRequest
 ], authController.emailVerificationRequest);

@@ -4,10 +4,14 @@ const moment = require('moment');
 const config = require('@/modules/payments/infrastructure/config/zalopay.config');
 const { BadGatewayError, ServiceUnavailableError } = require('@/shared/errors');
 
-const createZaloPayOrder = async (ticket) => {
+const createZaloPayOrder = async (ticket, redirectUrl) => {
     const embed_data = {
         ticket_id: ticket.id
     };
+
+    if (redirectUrl) {
+        embed_data.redirecturl = redirectUrl;
+    }
 
     const items = [{
         itemid: ticket.eventId || "unknown_event",
@@ -38,7 +42,6 @@ const createZaloPayOrder = async (ticket) => {
         embed_data: JSON.stringify(embed_data),
         description: `Thanh toan ve ${shortTicketId}`,
         bank_code: "",
-        callback_url: config.callback_url,
     };
 
     const data = [config.app_id, order.app_trans_id, order.app_user, order.amount, order.app_time, order.embed_data, order.item].join("|");
@@ -48,7 +51,9 @@ const createZaloPayOrder = async (ticket) => {
     let result;
     try {
         console.log(`[ZaloPay] Creating order: ${app_trans_id} (Length: ${app_trans_id.length})`);
-        const { data: responseData } = await axios.post(config.endpoint, null, { params: order });
+        const { data: responseData } = await axios.post(config.endpoint, new URLSearchParams(order), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
         result = responseData;
     } catch (error) {
         console.error("[ZaloPay] API Error:", error.message);
@@ -84,7 +89,9 @@ const queryZaloPayOrder = async (app_trans_id) => {
 
     let result;
     try {
-        const { data: responseData } = await axios.post(queryEndpoint, null, { params: postData });
+        const { data: responseData } = await axios.post(queryEndpoint, new URLSearchParams(postData), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
         result = responseData;
     } catch (error) {
         console.error("[ZaloPay] Query Error:", error.message);
