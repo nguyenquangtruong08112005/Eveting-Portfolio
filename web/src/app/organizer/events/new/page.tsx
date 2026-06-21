@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Trash2, Calendar, Ticket, Sparkles, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
@@ -184,7 +184,7 @@ export default function NewEventPage() {
                   <Input
                     type="text"
                     required
-                    placeholder="Đại nhạc hội Rock Việt 2026"
+                    placeholder={t('placeholder_name')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
@@ -194,7 +194,7 @@ export default function NewEventPage() {
                 <div>
                   <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_description')}</Label>
                   <textarea
-                    placeholder="Mô tả chi tiết nội dung sự kiện, lịch trình biểu diễn và các lưu ý..."
+                    placeholder={t('placeholder_description')}
                     rows={4}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -325,7 +325,7 @@ export default function NewEventPage() {
                         <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_venue')}</Label>
                         <Input
                           type="text"
-                          placeholder="Ví dụ: Nhà hát Lớn Hà Nội"
+                          placeholder={t('placeholder_venue')}
                           value={venueName}
                           onChange={(e) => setVenueName(e.target.value)}
                           className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
@@ -335,7 +335,7 @@ export default function NewEventPage() {
                         <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_city')}</Label>
                         <Input
                           type="text"
-                          placeholder="Ví dụ: Hà Nội"
+                          placeholder={t('placeholder_city')}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
                           className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
@@ -346,7 +346,7 @@ export default function NewEventPage() {
                       <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_address')}</Label>
                       <Input
                         type="text"
-                        placeholder="Ví dụ: 01 Tràng Tiền, Hoàn Kiếm, Hà Nội"
+                        placeholder={t('placeholder_address')}
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
@@ -358,7 +358,7 @@ export default function NewEventPage() {
                     <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_online_url')}</Label>
                     <Input
                       type="url"
-                      placeholder="https://zoom.us/j/... hoặc https://youtube.com/live/..."
+                      placeholder={t('placeholder_online_url')}
                       value={onlineUrl}
                       onChange={(e) => setOnlineUrl(e.target.value)}
                       className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
@@ -395,7 +395,7 @@ export default function NewEventPage() {
                           <Input
                             type="text"
                             required
-                            placeholder="Ví dụ: VIP, Standard, Early Bird"
+                            placeholder={t('placeholder_ticket_name')}
                             value={tier.name}
                             onChange={(e) => updateTicketTier(idx, 'name', e.target.value)}
                             className="w-full bg-[#1E212B] border border-white/10 text-white rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
@@ -429,7 +429,7 @@ export default function NewEventPage() {
                         type="button"
                         onClick={() => removeTicketTier(idx)}
                         className="p-2 text-zinc-500 hover:text-red-400 rounded-lg hover:bg-white/5 transition-all cursor-pointer mb-0.5 shrink-0"
-                        title="Xóa hạng vé"
+                        title={t('remove_ticket_title')}
                       >
                         <Trash2 className="size-4" />
                       </button>

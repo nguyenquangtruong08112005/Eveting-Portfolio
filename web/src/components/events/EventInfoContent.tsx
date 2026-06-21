@@ -1,21 +1,26 @@
 'use client';
 
-import React from 'react';
 import { Calendar, MapPin, Globe } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/constants';
 import type { Event } from '@/types';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  music: 'Âm nhạc', concert: 'Concert', edm: 'EDM', 'hip-hop': 'Hip-Hop',
-  'v-pop': 'V-Pop', art: 'Nghệ thuật', exhibition: 'Triển lãm', culture: 'Văn hóa',
-  festival: 'Festival', food: 'Ẩm thực', conference: 'Hội nghị', tech: 'Công nghệ',
-  expo: 'Triển lãm', business: 'Kinh doanh', sports: 'Thể thao', wellness: 'Wellness',
-  performance: 'Biểu diễn', family: 'Gia đình', esports: 'Esports', education: 'Giáo dục',
-  pets: 'Thú cưng', online: 'Online', fashion: 'Thời trang', inspiration: 'Cảm hứng',
-  networking: 'Networking',
+const TAG_TO_I18N_KEY: Record<string, string> = {
+  music: 'music', concert: 'music', edm: 'music', 'hip-hop': 'music', 'v-pop': 'music', pop: 'music',
+  art: 'arts', exhibition: 'arts', culture: 'arts', fashion: 'arts',
+  sports: 'sports', marathon: 'sports', running: 'sports', fitness: 'sports', yoga: 'sports',
+  conference: 'workshop', expo: 'workshop', business: 'workshop', networking: 'workshop', tech: 'workshop', education: 'workshop',
+  nightlife: 'other', dj: 'other', club: 'other', party: 'other', festival: 'other', esports: 'other', gaming: 'other', online: 'other',
 };
+
+function localizeCategory(cat: string, tCat: (key: string) => string): string {
+  const key = TAG_TO_I18N_KEY[cat.toLowerCase()];
+  if (key) {
+    try { return tCat(key); } catch { /* fallback */ }
+  }
+  return cat;
+}
 
 interface EventInfoContentProps {
   event: Event & {
@@ -35,6 +40,7 @@ interface EventInfoContentProps {
 
 export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
   const t = useTranslations('event_info');
+  const tCat = useTranslations('navbar.categories');
 
   return (
     <section className="lg:col-span-7 space-y-6">
@@ -46,7 +52,7 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
               key={idx}
               className="px-2.5 py-1 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[10px] text-[var(--primary)] font-semibold uppercase tracking-wider"
             >
-              {CATEGORY_LABELS[cat.toLowerCase()] || cat}
+              {localizeCategory(cat, tCat)}
             </Badge>
           ))}
         </div>

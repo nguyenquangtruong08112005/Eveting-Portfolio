@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { User, Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';

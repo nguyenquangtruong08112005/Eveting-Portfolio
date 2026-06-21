@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { EventService, Destination } from '@/services/event.service';
+import { FALLBACK_IMAGE } from '@/lib/constants';
 
 const FALLBACK_DESTINATIONS: Destination[] = [
   { name: 'Tp. Hồ Chí Minh', query: 'Hồ Chí Minh', eventCount: 0 },
@@ -12,9 +13,9 @@ const FALLBACK_DESTINATIONS: Destination[] = [
 ];
 
 const DESTINATION_IMAGES: Record<string, string> = {
-  'Hồ Chí Minh': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&auto=format&fit=crop&q=80',
-  'Hà Nội': 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80',
-  'Đà Lạt': 'https://images.unsplash.com/photo-1549448834-8c8868e64c39?w=600&auto=format&fit=crop&q=80',
+  'Hồ Chí Minh': FALLBACK_IMAGE,
+  'Hà Nội': FALLBACK_IMAGE,
+  'Đà Lạt': FALLBACK_IMAGE,
 };
 
 interface PopularDestinationsProps {
@@ -66,7 +67,7 @@ export function PopularDestinations({ onSelectCity }: PopularDestinationsProps) 
           >
             <div
               className="absolute inset-0 bg-cover bg-center brightness-[0.5] group-hover:scale-110 transition-transform duration-700"
-              style={{ backgroundImage: `url(${DESTINATION_IMAGES[city.query] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600&auto=format&fit=crop&q=80'})` }}
+              style={{ backgroundImage: `url(${DESTINATION_IMAGES[city.query] || FALLBACK_IMAGE})` }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-col justify-end h-full">

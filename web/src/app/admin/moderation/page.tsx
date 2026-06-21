@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldAlert, AlertCircle, CheckCircle, Clock, ShieldCheck, Ban, Activity } from 'lucide-react';
 import Image from 'next/image';
 import { Navbar } from '@/components/layout/Navbar';
@@ -57,7 +57,7 @@ export default function AdminModerationPage() {
         throw new Error(t('auth_error'));
       }
       await AdminService.approveEvent(eventId);
-      setSuccessMessage(`Đã phê duyệt sự kiện "${event?.name || ''}" thành công.`);
+      setSuccessMessage(t('approve_success', { name: event?.name || '' }));
       if (event) {
         setApprovedEvents((prev) => [event, ...prev]);
       }
@@ -78,7 +78,7 @@ export default function AdminModerationPage() {
         throw new Error(t('auth_error'));
       }
       await AdminService.rejectEvent(eventId, reason);
-      setSuccessMessage(`Đã từ chối sự kiện "${event?.name || ''}".`);
+      setSuccessMessage(t('reject_success', { name: event?.name || '' }));
       if (event) {
         setRejectedEvents((prev) => [{ ...event, reason }, ...prev]);
       }
@@ -105,7 +105,7 @@ export default function AdminModerationPage() {
             <p className="text-xs text-zinc-400 mt-1">{t('subtitle')}</p>
           </div>
           <Badge className="px-3 py-1 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-xs font-bold text-[var(--primary)] shrink-0 self-start md:self-center">
-            Quyền hạn: Admin Hệ thống
+            {t('admin_badge')}
           </Badge>
         </div>
 
@@ -150,7 +150,7 @@ export default function AdminModerationPage() {
               <Activity className="size-5 text-blue-400" />
             </div>
             <div>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Kết nối Gateway</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{t('gateway')}</span>
               <span className="text-xs font-black text-blue-400 flex items-center gap-1.5 mt-0.5">
                 <span className="size-2 rounded-full bg-blue-400 animate-ping inline-block" />
                 ONLINE
@@ -249,7 +249,7 @@ export default function AdminModerationPage() {
                     <h4 className="text-sm font-bold text-white leading-tight">{event.name}</h4>
                     <p className="text-[10px] text-zinc-400 mt-1">{event.city} · {formatDate(event.date)}</p>
                     <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 font-bold text-[9px] px-2 py-0.5 rounded mt-2.5">
-                      ✓ ĐÃ PHÊ DUYỆT
+                      {t('approved_badge')}
                     </Badge>
                   </div>
                 </div>
@@ -272,7 +272,7 @@ export default function AdminModerationPage() {
                     <h4 className="text-sm font-bold text-white leading-tight">{event.name}</h4>
                     <p className="text-[10px] text-zinc-400 mt-1">{event.city} · {formatDate(event.date)}</p>
                     <p className="text-[10px] text-red-400 font-semibold mt-2.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded">
-                      Lý do từ chối: {event.reason}
+                      {t('reject_reason')} {event.reason}
                     </p>
                   </div>
                 </div>

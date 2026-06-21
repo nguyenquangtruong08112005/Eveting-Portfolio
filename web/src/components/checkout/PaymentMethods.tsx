@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { CreditCard, Wallet } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';

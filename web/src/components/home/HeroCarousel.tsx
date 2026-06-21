@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { CalendarDays, MapPin } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
-import { formatDate } from '@/lib/constants';
+import { formatDate, FALLBACK_IMAGE } from '@/lib/constants';
 import type { Event } from '@/types';
 
 interface HeroCarouselProps {
@@ -55,7 +55,7 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
           >
             <div
               className="absolute inset-0 bg-cover bg-center brightness-[0.35] scale-105 transition-transform duration-[10000ms]"
-              style={{ backgroundImage: `url(${slide.imageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&auto=format&fit=crop&q=80'})` }}
+              style={{ backgroundImage: `url(${slide.imageUrl || FALLBACK_IMAGE})` }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-[#12141A] via-[#12141A]/50 to-transparent" />
             

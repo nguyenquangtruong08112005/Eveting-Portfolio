@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Ticket, Calendar, MapPin, Sparkles, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';

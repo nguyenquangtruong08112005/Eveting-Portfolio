@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { SafeImage } from '@/components/shared/SafeImage';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -237,7 +237,7 @@ function LandingPageContent() {
                           {formatPrice(event.minPrice)}
                         </span>
                         <span className="text-[10px] text-zinc-400 group-hover:text-white transition-colors flex items-center gap-0.5">
-                          Đặt vé →
+                          {t('book_ticket')} →
                         </span>
                       </div>
                     </div>
@@ -259,15 +259,15 @@ function LandingPageContent() {
                     <span className="bg-[#FF8F66] text-[#12141A] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">VIB Partner</span>
                     <span className="text-white/60 text-xs font-semibold">| ticketbox</span>
                   </div>
-                  <h3 className="text-xl font-black text-white leading-tight">MỞ THẺ MỚI NHẬN LIỀN ƯU ĐÃI <span className="text-[#FF8F66]">500K</span></h3>
-                  <p className="text-zinc-300 text-xs mt-1">Mua vé đu idol cực hời, hoàn tiền cực khủng khi kích hoạt thành công thẻ VIB.</p>
+                  <h3 className="text-xl font-black text-white leading-tight">{t('promo_vib_title')} <span className="text-[#FF8F66]">500K</span></h3>
+                  <p className="text-zinc-300 text-xs mt-1">{t('promo_vib_body')}</p>
                 </div>
               </div>
               <Link
                 href="/checkout"
                 className="bg-[#FF8F66] text-[#12141A] font-black px-6 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all text-xs whitespace-nowrap"
               >
-                Mở Thẻ Ngay
+                {t('promo_vib_cta')}
               </Link>
             </div>
           </section>
@@ -318,7 +318,7 @@ function LandingPageContent() {
                         href={`/attendee/events/${event.id}`}
                         className="text-[10px] font-bold text-zinc-400 group-hover:text-white transition-colors flex items-center gap-0.5"
                       >
-                        Đặt vé →
+                        {t('book_ticket')} →
                       </Link>
                     </div>
                   </div>
@@ -378,14 +378,14 @@ function LandingPageContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="bg-[#FF7043] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">ShopeePay</span>
-                    <span className="text-white/60 text-xs font-semibold">| Ví Điện Tử Partner</span>
+                    <span className="text-white/60 text-xs font-semibold">| {t('promo_wallet_label')}</span>
                   </div>
-                  <h3 className="text-xl font-black text-white leading-tight">GIẢM NGAY <span className="text-[#FF8F66]">40.000Đ</span> SĂN VÉ NHANH CHÓNG</h3>
-                  <p className="text-zinc-300 text-xs mt-1">Nhập mã thanh toán ShopeePay tại bước checkout để nhận ngay chiết khấu trực tiếp.</p>
+                  <h3 className="text-xl font-black text-white leading-tight">{t('promo_shopee_title')} <span className="text-[#FF8F66]">40.000Đ</span></h3>
+                  <p className="text-zinc-300 text-xs mt-1">{t('promo_shopee_body')}</p>
                 </div>
               </div>
               <button className="bg-[#FF8F66] text-[#12141A] font-black px-6 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all text-xs whitespace-nowrap">
-                Lấy Mã Giảm Giá
+                {t('promo_shopee_cta')}
               </button>
             </div>
           </section>
@@ -446,12 +446,12 @@ function LandingPageContent() {
                     <span className="bg-[#E31A1A] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">HDBank</span>
                     <span className="text-white/60 text-xs font-semibold">| ticketbox</span>
                   </div>
-                  <h3 className="text-xl font-black text-white leading-tight">QUÉT THẺ HDBANK - RINH VÉ CỰC HỜI</h3>
-                  <p className="text-zinc-300 text-xs mt-1">Giảm ngay <span className="font-bold text-[#FF8F66]">50.000đ</span> cho đơn từ 300K | Hoàn tiền <span className="font-bold text-[#FF8F66]">500.000đ</span> cho đơn từ 3 triệu.</p>
+                  <h3 className="text-xl font-black text-white leading-tight">{t('promo_hd_title')}</h3>
+                  <p className="text-zinc-300 text-xs mt-1">{t('promo_hd_body')}</p>
                 </div>
               </div>
               <button className="bg-[#FF8F66] text-[#12141A] font-black px-6 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all text-xs whitespace-nowrap">
-                Xem Điều Khoản
+                {t('promo_hd_cta')}
               </button>
             </div>
           </section>

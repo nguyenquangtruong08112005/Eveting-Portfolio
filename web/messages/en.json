@@ -22,7 +22,17 @@
     "all": "All",
     "weekend": "This Weekend",
     "this_month": "This Month",
-    "other_location": "Other Location"
+    "other_location": "Other Location",
+    "promo_vib_title": "OPEN NEW CARD, GET INSTANT DISCOUNTS",
+    "promo_vib_body": "Great deals on concert tickets, huge cashback when you activate a VIB card.",
+    "promo_vib_cta": "Open Card Now",
+    "promo_shopee_title": "GET 40,000VND OFF, GRAB TICKETS FAST",
+    "promo_shopee_body": "Enter ShopeePay code at checkout for instant discount.",
+    "promo_shopee_cta": "Get Promo Code",
+    "promo_hd_title": "SCAN HDBANK CARD - GET HOT TICKETS",
+    "promo_hd_body": "50,000VND off orders from 300K | 500,000VND cashback on orders from 3M.",
+    "promo_hd_cta": "View Terms",
+    "promo_wallet_label": "E-Wallet Partner"
   },
   "auth": {
     "login": "Login",
@@ -162,8 +172,24 @@
     "create_success": "Created Successfully!",
     "create_success_msg": "Your event has been saved. You can make edits before submitting for review.",
     "validation_error": "Please enter an event name and start time.",
+    "error_required_fields": "Please enter an event name and start time.",
     "create_error": "An error occurred while creating the event. Please try again.",
-    "back_dashboard": "Back to Dashboard"
+    "back_dashboard": "Back to Dashboard",
+    "back_to_dashboard": "Back to Dashboard",
+    "field_start_date": "Start Time *",
+    "field_end_date": "End Time (Optional)",
+    "event_type_physical": "In-Person (Offline)",
+    "event_type_online": "Online Event",
+    "add_ticket_tier": "Add Ticket Type",
+    "field_ticket_quantity": "Quantity Available *",
+    "placeholder_name": "Rock Vietnam Festival 2026",
+    "placeholder_description": "Detailed event description, schedule, and notes...",
+    "placeholder_venue": "e.g. Hanoi Opera House",
+    "placeholder_city": "e.g. Hanoi",
+    "placeholder_address": "e.g. 01 Trang Tien, Hoan Kiem, Hanoi",
+    "placeholder_online_url": "https://zoom.us/j/... or https://youtube.com/live/...",
+    "placeholder_ticket_name": "e.g. VIP, Standard, Early Bird",
+    "remove_ticket_title": "Remove ticket type"
   },
   "event_detail": {
     "loading": "Loading event details...",
@@ -173,7 +199,9 @@
     "back_list": "Back to Events",
     "booking_info": "Booking Information",
     "selected_seats": "Selected Seats",
+    "selected_seats_count": "{count} seats selected",
     "unit_price": "Unit Price",
+    "per_seat": "/ seat",
     "total": "Total",
     "continue_payment": "Continue to Payment",
     "select_seats_hint": "Please select at least one seat to continue.",
@@ -183,9 +211,13 @@
     "seat_connect_error": "Could not connect to server. Please try again.",
     "hold_expired": "Seat hold time has expired.",
     "hold_error": "Could not hold this seat.",
+    "hold_seat_error": "Could not hold this seat.",
     "release_error": "Could not release this seat.",
+    "release_seat_error": "Could not release this seat.",
     "select_min_seats": "Please select at least one seat.",
-    "select_min_tickets": "Please select at least one ticket."
+    "select_seat_error": "Please select at least one seat.",
+    "select_min_tickets": "Please select at least one ticket.",
+    "select_ticket_error": "Please select at least one ticket."
   },
   "moderation": {
     "title": "Admin Moderation Panel",
@@ -313,7 +345,9 @@
     "unknown": "Unknown",
     "unknown_event": "Unknown Event",
     "updating": "Updating...",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "from": "From",
+    "book_now": "Book Now"
   },
   "navbar": {
     "categories": {

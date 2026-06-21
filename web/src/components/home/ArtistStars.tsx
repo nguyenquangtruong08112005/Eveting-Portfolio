@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { ProfileService } from '@/services/profile.service';
+import { FALLBACK_IMAGE } from '@/lib/constants';
 import type { FeaturedProfile } from '@/types';
 
 interface ArtistStarsProps {
@@ -82,7 +83,7 @@ export function ArtistStars({ onSelectArtist }: ArtistStarsProps) {
 
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide relative z-10 px-4">
         {profiles.map((profile) => {
-          const imageUrl = profile.imageUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80';
+          const imageUrl = profile.imageUrl || FALLBACK_IMAGE;
           
           return (
             <div

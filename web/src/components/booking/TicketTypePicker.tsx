@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Minus, Plus, Ticket, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -22,20 +21,20 @@ const TICKET_TYPE_LABELS: Record<string, string> = {
   GA: 'General Admission',
   VIP: 'VIP',
   VVIP: 'VVIP',
-  Standard: 'Vé Tiêu Chuẩn',
+  Standard: 'Standard',
   EarlyBird: 'Early Bird',
-  Entrance: 'Vé Vào Cửa',
-  Visitor: 'Vé Tham Quan',
-  Exhibitor: 'Gian Hàng',
-  FreeEntrance: 'Miễn Phí',
-  Free: 'Miễn Phí',
-  AllInclusive: 'Trọn Gói',
-  Adult: 'Người Lớn',
-  Child: 'Trẻ Em',
-  FrontRow: 'Hàng Đầu',
-  ZoneA: 'Khu A',
-  ZoneB: 'Khu B',
-  Runner: 'VĐV',
+  Entrance: 'Entrance',
+  Visitor: 'Visitor',
+  Exhibitor: 'Exhibitor',
+  FreeEntrance: 'Free',
+  Free: 'Free',
+  AllInclusive: 'All Inclusive',
+  Adult: 'Adult',
+  Child: 'Child',
+  FrontRow: 'Front Row',
+  ZoneA: 'Zone A',
+  ZoneB: 'Zone B',
+  Runner: 'Runner',
 };
 
 function getTicketLabel(key: string): string {

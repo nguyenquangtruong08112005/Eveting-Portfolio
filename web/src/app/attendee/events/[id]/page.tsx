@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -15,7 +15,7 @@ import { TicketService } from '@/services/ticket.service';
 import { Seat, BackendSeat } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { EventService } from '@/services/event.service';
-import { enrichEvent, formatPrice } from '@/lib/constants';
+import { enrichEvent, formatPrice, HOLD_TIMER_SECONDS } from '@/lib/constants';
 import { EventHeader } from '@/components/events/EventHeader';
 import { EventInfoContent } from '@/components/events/EventInfoContent';
 import { useTranslations } from 'next-intl';
@@ -37,6 +37,7 @@ export default function EventDetailPage() {
   // Seat booking states
   const [seats, setSeats] = useState<Seat[]>([]);
   const [holdTimer, setHoldTimer] = useState<number | null>(null);
+  // Default fallback price per seat (used when ticketTypes not available)
   const seatPrice = 150000;
 
   const isSeatingEvent = event && ['sân khấu', 'concert', 'nhạc sống', 'music', 'theater'].some(
@@ -133,7 +134,7 @@ export default function EventDetailPage() {
           prevSeats.map((s) => (s.id === clickedSeat.id ? { ...s, status: 'held_by_you' as const } : s))
         );
         if (holdTimer === null) {
-          setHoldTimer(600);
+          setHoldTimer(HOLD_TIMER_SECONDS);
         }
       } catch (error: any) {
         setErrorMessage(error?.response?.data?.message || error?.message || t('hold_seat_error'));
@@ -232,7 +233,7 @@ export default function EventDetailPage() {
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
-          Quay lại danh sách sự kiện
+          {t('back_list')}
         </Link>
       </div>
 
@@ -274,7 +275,7 @@ export default function EventDetailPage() {
                       </div>
                       <div className="flex justify-between text-xs text-zinc-400">
                         <span>{t('unit_price')}</span>
-                        <span>{formatPrice(seatPrice)} / ghế</span>
+                        <span>{formatPrice(seatPrice)} {t('per_seat')}</span>
                       </div>
                       <div className="border-t border-white/5 pt-3 flex justify-between text-sm font-bold text-white">
                         <span>{t('total')}</span>
@@ -289,7 +290,7 @@ export default function EventDetailPage() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs text-zinc-500 italic">Vui lòng chọn ít nhất một ghế ngồi để tiếp tục.</p>
+                    <p className="text-xs text-zinc-500 italic">{t('select_seats_hint')}</p>
                   )}
                 </div>
               </div>

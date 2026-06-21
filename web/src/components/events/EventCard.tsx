@@ -76,6 +76,7 @@ const TAG_TO_I18N_KEY: Record<string, string> = {
 
 export function EventCard({ event }: EventCardProps) {
   const t = useTranslations('navbar.categories');
+  const tCommon = useTranslations('common');
   const isFree = event.minPrice === 0 || event.minPrice === null || event.minPrice === undefined;
   const isOnline = event.eventType === 'online';
   const displayCategories = (event.category ?? []).slice(0, 2);
@@ -126,7 +127,7 @@ export function EventCard({ event }: EventCardProps) {
         )}
         {/* Price Tag */}
         <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span className="text-[10px] text-zinc-400 block leading-none">Từ</span>
+          <span className="text-[10px] text-zinc-400 block leading-none">{tCommon('from')}</span>
           <span
             className={cn(
               'text-sm font-bold',
@@ -144,7 +145,7 @@ export function EventCard({ event }: EventCardProps) {
           {event.name}
         </h3>
         <p className="text-zinc-400 text-sm line-clamp-2 mb-4 leading-relaxed">
-          {event.description || `${event.name} — sự kiện hấp dẫn tại ${event.city || 'Việt Nam'}.`}
+          {event.description || event.name}
         </p>
 
         {/* Meta */}
@@ -156,7 +157,7 @@ export function EventCard({ event }: EventCardProps) {
           <div className="flex items-center gap-2">
             <MapPin className="size-3.5 text-[var(--primary)]" />
             <span className="truncate">
-              {event.venueName || event.location?.address || 'Chưa xác định'}
+              {event.venueName || event.location?.address || tCommon('unknown')}
               {event.city ? `, ${event.city}` : ''}
             </span>
           </div>
@@ -170,7 +171,7 @@ export function EventCard({ event }: EventCardProps) {
             'w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[#00210f] border-none font-bold'
           )}
         >
-          Đặt vé ngay
+          {tCommon('book_now')}
           <ArrowRight className="size-3.5" />
         </Link>
       </div>

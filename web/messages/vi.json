@@ -22,7 +22,17 @@
     "all": "Tất cả",
     "weekend": "Cuối tuần này",
     "this_month": "Tháng này",
-    "other_location": "Vị trí khác"
+    "other_location": "Vị trí khác",
+    "promo_vib_title": "MỞ THẺ MỚI NHẬN LIỀN ƯU ĐÃI",
+    "promo_vib_body": "Mua vé đu idol cực hời, hoàn tiền cực khủng khi kích hoạt thành công thẻ VIB.",
+    "promo_vib_cta": "Mở Thẻ Ngay",
+    "promo_shopee_title": "GIẢM NGAY 40.000Đ SĂN VÉ NHANH CHÓNG",
+    "promo_shopee_body": "Nhập mã thanh toán ShopeePay tại bước checkout để nhận ngay chiết khấu trực tiếp.",
+    "promo_shopee_cta": "Lấy Mã Giảm Giá",
+    "promo_hd_title": "QUÉT THẺ HDBANK - RINH VÉ CỰC HỜI",
+    "promo_hd_body": "Giảm ngay 50.000đ cho đơn từ 300K | Hoàn tiền 500.000đ cho đơn từ 3 triệu.",
+    "promo_hd_cta": "Xem Điều Khoản",
+    "promo_wallet_label": "Ví Điện Tử Partner"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -162,8 +172,24 @@
     "create_success": "Khởi tạo thành công!",
     "create_success_msg": "Sự kiện của bạn đã được lưu lại. Bạn có thể chỉnh sửa thêm trước khi gửi duyệt.",
     "validation_error": "Vui lòng điền tên sự kiện và ngày bắt đầu tổ chức.",
+    "error_required_fields": "Vui lòng điền tên sự kiện và ngày bắt đầu tổ chức.",
     "create_error": "Có lỗi xảy ra khi khởi tạo sự kiện. Vui lòng thử lại.",
-    "back_dashboard": "Quay lại bảng điều khiển"
+    "back_dashboard": "Quay lại bảng điều khiển",
+    "back_to_dashboard": "Quay lại bảng điều khiển",
+    "field_start_date": "Thời gian bắt đầu tổ chức *",
+    "field_end_date": "Thời gian kết thúc (Không bắt buộc)",
+    "event_type_physical": "Sự kiện trực tiếp (Offline)",
+    "event_type_online": "Sự trực tuyến (Online)",
+    "add_ticket_tier": "Thêm hạng vé",
+    "field_ticket_quantity": "Số lượng vé mở bán *",
+    "placeholder_name": "Đại nhạc hội Rock Việt 2026",
+    "placeholder_description": "Mô tả chi tiết nội dung sự kiện, lịch trình biểu diễn và các lưu ý...",
+    "placeholder_venue": "Ví dụ: Nhà hát Lớn Hà Nội",
+    "placeholder_city": "Ví dụ: Hà Nội",
+    "placeholder_address": "Ví dụ: 01 Tràng Tiền, Hoàn Kiếm, Hà Nội",
+    "placeholder_online_url": "https://zoom.us/j/... hoặc https://youtube.com/live/...",
+    "placeholder_ticket_name": "Ví dụ: VIP, Standard, Early Bird",
+    "remove_ticket_title": "Xóa hạng vé"
   },
   "event_detail": {
     "loading": "Đang tải thông tin sự kiện...",
@@ -173,7 +199,9 @@
     "back_list": "Quay lại danh sách sự kiện",
     "booking_info": "Thông tin đặt vé",
     "selected_seats": "Ghế đã chọn",
+    "selected_seats_count": "{count} ghế đã chọn",
     "unit_price": "Đơn giá",
+    "per_seat": "/ ghế",
     "total": "Tổng cộng",
     "continue_payment": "Tiếp tục thanh toán",
     "select_seats_hint": "Vui lòng chọn ít nhất một ghế ngồi để tiếp tục.",
@@ -183,9 +211,13 @@
     "seat_connect_error": "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.",
     "hold_expired": "Thời gian giữ ghế đã hết hạn.",
     "hold_error": "Không thể giữ ghế này.",
+    "hold_seat_error": "Không thể giữ ghế này.",
     "release_error": "Không thể giải phóng ghế.",
+    "release_seat_error": "Không thể giải phóng ghế.",
     "select_min_seats": "Vui lòng chọn ít nhất một ghế.",
-    "select_min_tickets": "Vui lòng chọn ít nhất một vé."
+    "select_seat_error": "Vui lòng chọn ít nhất một ghế.",
+    "select_min_tickets": "Vui lòng chọn ít nhất một vé.",
+    "select_ticket_error": "Vui lòng chọn ít nhất một vé."
   },
   "moderation": {
     "title": "Bảng kiểm duyệt của Admin",
@@ -313,7 +345,9 @@
     "unknown": "Chưa xác định",
     "unknown_event": "Sự kiện chưa xác định",
     "updating": "Đang cập nhật...",
-    "refresh": "Làm mới"
+    "refresh": "Làm mới",
+    "from": "Từ",
+    "book_now": "Đặt vé ngay"
   },
   "navbar": {
     "categories": {

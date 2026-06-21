@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { DollarSign, TrendingUp, Percent, Wallet } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatPrice } from '@/lib/constants';
