@@ -93,7 +93,7 @@ export function TicketTypePicker({
                       isFree ? 'text-[var(--primary)]' : 'text-[var(--primary)]'
                     }`}
                   >
-                    {isFree ? 'Miễn phí' : formatPrice(ticket.price)}
+                    {isFree ? formatPrice(0) : formatPrice(ticket.price)}
                   </p>
                   <p className="text-[11px] text-zinc-400 mt-1">
                     {isSoldOut ? (

@@ -18,7 +18,7 @@ import { Footer } from '@/components/layout/Footer';
 import { EventCard } from '@/components/events/EventCard';
 import { Badge } from '@/components/ui/badge';
 import { EventService } from '@/services/event.service';
-import { matchCategory, enrichEvent, formatPrice } from '@/lib/constants';
+import { matchCategory, enrichEvent, formatPrice, FALLBACK_IMAGE } from '@/lib/constants';
 import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
@@ -207,7 +207,7 @@ function LandingPageContent() {
                     className="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer border border-white/5 hover:border-[var(--primary)]/30 transition-all duration-300 shadow-xl flex flex-col justify-end"
                   >
                     <SafeImage
-                      src={event.imageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80'}
+                      src={event.imageUrl || FALLBACK_IMAGE}
                       alt={event.name}
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
@@ -291,7 +291,7 @@ function LandingPageContent() {
                   {/* Poster Image */}
                   <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative border border-white/5">
                     <SafeImage
-                      src={event.imageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80'}
+                      src={event.imageUrl || FALLBACK_IMAGE}
                       alt={event.name}
                       fill
                       sizes="80px"

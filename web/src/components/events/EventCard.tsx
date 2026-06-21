@@ -8,7 +8,7 @@ import { SafeImage } from '@/components/shared/SafeImage';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { formatPrice, formatDate } from '@/lib/constants';
+import { formatPrice, formatDate, FALLBACK_IMAGE } from '@/lib/constants';
 import type { Event } from '@/types';
 
 interface EventCardProps {
@@ -98,7 +98,7 @@ export function EventCard({ event }: EventCardProps) {
       {/* Image */}
       <div className="aspect-[16/10] w-full relative overflow-hidden bg-[var(--background)]">
         <SafeImage
-          src={event.imageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80'}
+          src={event.imageUrl || FALLBACK_IMAGE}
           alt={event.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

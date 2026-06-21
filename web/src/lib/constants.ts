@@ -37,16 +37,20 @@ export const colors = {
 
 export const HOLD_TIMER_SECONDS = 600; // 10 minutes seat hold
 
-export const CURRENCY_LOCALE = 'vi-VN';
+export const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80';
 
-export function formatPrice(price: number | null | undefined): string {
-  if (price === null || price === undefined) return 'Liên hệ';
-  if (price === 0) return 'Miễn phí';
-  return price.toLocaleString(CURRENCY_LOCALE) + ' ₫';
+export const DEFAULT_CURRENCY = '₫';
+
+type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
+
+export function formatPrice(price: number | null | undefined, t?: TranslateFn): string {
+  if (price === null || price === undefined) return t ? t('common.contact') : 'Liên hệ';
+  if (price === 0) return t ? t('common.free') : 'Miễn phí';
+  return price.toLocaleString('vi-VN') + ' ' + DEFAULT_CURRENCY;
 }
 
-export function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('vi-VN', {
+export function formatDate(timestamp: number, locale = 'vi-VN'): string {
+  return new Date(timestamp).toLocaleDateString(locale, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -54,8 +58,8 @@ export function formatDate(timestamp: number): string {
   });
 }
 
-export function formatShortDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('vi-VN', {
+export function formatShortDate(timestamp: number, locale = 'vi-VN'): string {
+  return new Date(timestamp).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -63,23 +67,36 @@ export function formatShortDate(timestamp: number): string {
   });
 }
 
+// Category tags from DB → display labels (English keys, i18n-agnostic)
+// Components use useTranslations('navbar.categories') for localized labels
 export const CATEGORY_MAP: Record<string, string[]> = {
-  'Âm nhạc': ['music', 'concert', 'edm', 'pop', 'hip-hop', 'v-pop', 'show', 'âm nhạc'],
-  'Nghệ thuật': ['art', 'exhibition', 'culture', 'museum', 'nghệ thuật', 'fashion'],
-  'Nightlife': ['nightlife', 'dj', 'club', 'party', 'festival'],
-  'Thể thao': ['sports', 'marathon', 'running', 'fitness', 'yoga', 'wellness', 'thể thao'],
-  'Công nghệ': ['tech', 'conference', 'expo', 'business', 'networking', 'esports', 'gaming', 'công nghệ', 'online'],
+  music: ['music', 'concert', 'edm', 'pop', 'hip-hop', 'v-pop', 'show'],
+  arts: ['art', 'exhibition', 'culture', 'museum', 'fashion'],
+  nightlife: ['nightlife', 'dj', 'club', 'party', 'festival'],
+  sports: ['sports', 'marathon', 'running', 'fitness', 'yoga', 'wellness'],
+  tech: ['tech', 'conference', 'expo', 'business', 'networking', 'esports', 'gaming', 'online'],
+};
+
+// Map i18n category keys to DB tag slugs for filtering
+export const I18N_KEY_TO_CATEGORY: Record<string, string> = {
+  music: 'music',
+  arts: 'arts',
+  sports: 'sports',
+  workshop: 'tech',
+  tours: 'nightlife',
+  other: 'nightlife',
 };
 
 export function matchCategory(eventCategories: string[] | undefined, activeCategory: string): boolean {
-  if (activeCategory === 'Tất cả') return true;
+  if (!activeCategory || activeCategory === 'all' || activeCategory === 'Tất cả') return true;
   if (!eventCategories || eventCategories.length === 0) return false;
-  
-  const targetTags = CATEGORY_MAP[activeCategory];
-  if (!targetTags) return false;
-  
-  return eventCategories.some(cat => 
-    targetTags.includes(cat.toLowerCase()) || 
+
+  // Try matching by i18n key → DB slug
+  const slug = I18N_KEY_TO_CATEGORY[activeCategory];
+  const targetTags = CATEGORY_MAP[slug] || CATEGORY_MAP[activeCategory] || [];
+
+  return eventCategories.some(cat =>
+    targetTags.includes(cat.toLowerCase()) ||
     cat.toLowerCase() === activeCategory.toLowerCase()
   );
 }
@@ -89,10 +106,7 @@ export function enrichEvent(event: import('@/types').Event): import('@/types').E
   const isPlaceholderImage = !event.imageUrl || event.imageUrl.includes('tkbcdn.com');
   return {
     ...event,
-    imageUrl: isPlaceholderImage
-      ? `https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80`
-      : event.imageUrl,
-    description: event.description || `${event.name} — sự kiện tại ${event.city || 'Việt Nam'}.`,
+    imageUrl: isPlaceholderImage ? FALLBACK_IMAGE : event.imageUrl,
+    description: event.description || `${event.name} — event at ${event.city || 'Vietnam'}.`,
   };
 }
-
