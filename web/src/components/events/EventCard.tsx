@@ -8,7 +8,7 @@ import { SafeImage } from '@/components/shared/SafeImage';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { formatPrice, formatDate, FALLBACK_IMAGE } from '@/lib/constants';
+import { formatPrice, formatDate, FALLBACK_IMAGE, TAG_TO_I18N_KEY } from '@/lib/constants';
 import type { Event } from '@/types';
 
 interface EventCardProps {
@@ -39,39 +39,6 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
   online: 'Online',
   inspiration: 'Cảm hứng',
   fashion: 'Thời trang',
-};
-
-// Map DB category tags to i18n category keys
-const TAG_TO_I18N_KEY: Record<string, string> = {
-  music: 'music',
-  concert: 'music',
-  edm: 'music',
-  'hip-hop': 'music',
-  'v-pop': 'music',
-  pop: 'music',
-  art: 'arts',
-  exhibition: 'arts',
-  culture: 'arts',
-  fashion: 'arts',
-  sports: 'sports',
-  marathon: 'sports',
-  running: 'sports',
-  fitness: 'sports',
-  yoga: 'sports',
-  conference: 'workshop',
-  expo: 'workshop',
-  business: 'workshop',
-  networking: 'workshop',
-  tech: 'workshop',
-  education: 'workshop',
-  nightlife: 'other',
-  dj: 'other',
-  club: 'other',
-  party: 'other',
-  festival: 'other',
-  esports: 'other',
-  gaming: 'other',
-  online: 'other',
 };
 
 export function EventCard({ event }: EventCardProps) {
@@ -131,7 +98,7 @@ export function EventCard({ event }: EventCardProps) {
           <span
             className={cn(
               'text-sm font-bold',
-              isFree ? 'text-[var(--primary)]' : 'text-[var(--primary)]'
+              'text-[var(--primary)]'
             )}
           >
             {formatPrice(event.minPrice)}

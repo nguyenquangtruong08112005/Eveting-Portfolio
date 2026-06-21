@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { formatPrice, formatDate } from '@/lib/constants';
 
 interface OrderSummaryProps {
-  event: any;
+  event: import('@/types').Event | null;
   selectedSeats: string[];
   selectedTickets: { name: string; qty: number; price: number }[];
   subtotal: number;

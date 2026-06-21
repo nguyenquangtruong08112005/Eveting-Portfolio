@@ -91,7 +91,7 @@ export function TicketTypePicker({
                   </p>
                   <p
                     className={`text-lg font-bold mt-0.5 ${
-                      isFree ? 'text-[var(--primary)]' : 'text-[var(--primary)]'
+                      'text-[var(--primary)]'
                     }`}
                   >
                     {isFree ? formatPrice(0) : formatPrice(ticket.price)}

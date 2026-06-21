@@ -3,16 +3,8 @@
 import { Calendar, MapPin, Globe } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/lib/constants';
+import { formatDate, TAG_TO_I18N_KEY } from '@/lib/constants';
 import type { Event } from '@/types';
-
-const TAG_TO_I18N_KEY: Record<string, string> = {
-  music: 'music', concert: 'music', edm: 'music', 'hip-hop': 'music', 'v-pop': 'music', pop: 'music',
-  art: 'arts', exhibition: 'arts', culture: 'arts', fashion: 'arts',
-  sports: 'sports', marathon: 'sports', running: 'sports', fitness: 'sports', yoga: 'sports',
-  conference: 'workshop', expo: 'workshop', business: 'workshop', networking: 'workshop', tech: 'workshop', education: 'workshop',
-  nightlife: 'other', dj: 'other', club: 'other', party: 'other', festival: 'other', esports: 'other', gaming: 'other', online: 'other',
-};
 
 function localizeCategory(cat: string, tCat: (key: string) => string): string {
   const key = TAG_TO_I18N_KEY[cat.toLowerCase()];

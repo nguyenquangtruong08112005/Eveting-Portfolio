@@ -14,6 +14,46 @@ export class HttpError extends Error {
   }
 }
 
+// Token refresh mutex — only one refresh in flight at a time
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) throw new Error('No refresh token');
+
+    const res = await fetch(`${API_BASE}/api/web/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('role');
+      localStorage.removeItem('uid');
+      window.location.href = '/login';
+      throw new Error('Refresh failed');
+    }
+
+    const data = await res.json();
+    localStorage.setItem('token', data.accessToken);
+    if (data.refreshToken) {
+      localStorage.setItem('refreshToken', data.refreshToken);
+    }
+    return data.accessToken;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
 export async function request<T>(
   method: RequestMethod,
   path: string,
@@ -41,48 +81,23 @@ export async function request<T>(
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
-    // Auto-refresh token on 401 Unauthorized if refreshToken exists
+    // Auto-refresh token on 401 Unauthorized
     if (
       res.status === 401 &&
       path !== '/api/web/auth/refresh' &&
       path !== '/api/web/auth/login' &&
       typeof window !== 'undefined'
     ) {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        try {
-          const refreshRes = await fetch(`${API_BASE}/api/web/auth/refresh`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refreshToken }),
-          });
-
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            localStorage.setItem('token', refreshData.accessToken);
-            if (refreshData.refreshToken) {
-              localStorage.setItem('refreshToken', refreshData.refreshToken);
-            }
-            // Retry request with new token
-            headers['Authorization'] = `Bearer ${refreshData.accessToken}`;
-            res = await fetch(url, {
-              method,
-              headers,
-              body: options.body ? JSON.stringify(options.body) : undefined,
-            });
-          } else {
-            // Refresh token expired or invalid, sign out user
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('role');
-            localStorage.removeItem('uid');
-            window.location.href = '/login';
-          }
-        } catch {
-          // Allow original 401 logic to proceed if network error occurs during refresh
-        }
+      try {
+        const newToken = await refreshAccessToken();
+        headers['Authorization'] = `Bearer ${newToken}`;
+        res = await fetch(url, {
+          method,
+          headers,
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        });
+      } catch {
+        // refreshAccessToken already handles redirect on failure
       }
     }
 
@@ -106,7 +121,8 @@ export async function request<T>(
   }
 }
 
-const cache = new Map<string, { data: any; expiry: number }>();
+const cache = new Map<string, { data: unknown; expiry: number }>();
+const CACHE_MAX_SIZE = 50;
 
 export async function requestCached<T>(
   method: RequestMethod,
@@ -122,10 +138,17 @@ export async function requestCached<T>(
   const cacheKey = `${path}_${JSON.stringify(options)}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiry > Date.now()) {
-    return cached.data;
+    return cached.data as T;
   }
 
   const data = await request<T>(method, path, options);
+
+  // LRU eviction: remove oldest entry if at capacity
+  if (cache.size >= CACHE_MAX_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
+
   cache.set(cacheKey, { data, expiry: Date.now() + ttlMs });
   return data;
 }

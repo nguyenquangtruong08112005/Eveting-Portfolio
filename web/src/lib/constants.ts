@@ -67,6 +67,15 @@ export function formatShortDate(timestamp: number, locale = 'vi-VN'): string {
   });
 }
 
+// Map DB category tags to i18n category keys (navbar.categories namespace)
+export const TAG_TO_I18N_KEY: Record<string, string> = {
+  music: 'music', concert: 'music', edm: 'music', 'hip-hop': 'music', 'v-pop': 'music', pop: 'music',
+  art: 'arts', exhibition: 'arts', culture: 'arts', fashion: 'arts',
+  sports: 'sports', marathon: 'sports', running: 'sports', fitness: 'sports', yoga: 'sports',
+  conference: 'workshop', expo: 'workshop', business: 'workshop', networking: 'workshop', tech: 'workshop', education: 'workshop',
+  nightlife: 'other', dj: 'other', club: 'other', party: 'other', festival: 'other', esports: 'other', gaming: 'other', online: 'other',
+};
+
 // Category tags from DB → display labels (English keys, i18n-agnostic)
 // Components use useTranslations('navbar.categories') for localized labels
 export const CATEGORY_MAP: Record<string, string[]> = {

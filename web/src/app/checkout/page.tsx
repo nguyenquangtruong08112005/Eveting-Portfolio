@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -25,7 +26,7 @@ function CheckoutPageContent() {
   const ticketsParam = searchParams?.get('tickets') || '';
   const seatPriceParam = searchParams?.get('price') || '150000';
 
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<import('@/types').Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'zalopay' | 'card' | 'atm'>('zalopay');
   const [voucherCode, setVoucherCode] = useState('');
@@ -120,7 +121,7 @@ function CheckoutPageContent() {
     setErrorMsg('');
 
     try {
-      let bookingResult: any = null;
+      let bookingResult: { tickets?: { id: string }[] } | null = null;
       const activePromo = voucherSuccess ? voucherCode.toUpperCase().trim() : undefined;
 
       // 1. Book tickets inside the DB
@@ -149,8 +150,9 @@ function CheckoutPageContent() {
       } else {
         throw new Error(t('payment_not_configured'));
       }
-    } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || err.message || t('error_generic'));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setErrorMsg((err as { response?: { data?: { message?: string } } })?.response?.data?.message || message || t('error_generic'));
       setProcessing(false);
     }
   };
@@ -260,7 +262,7 @@ export default function CheckoutPage() {
     <Suspense fallback={
       <div className="bg-[#12141A] min-h-screen text-zinc-400 flex flex-col items-center justify-center gap-3">
         <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        <span className="text-xs font-bold tracking-wider uppercase text-zinc-500">Đang chuẩn bị cổng thanh toán...</span>
+        <span className="text-xs font-bold tracking-wider uppercase text-zinc-500">Preparing payment gateway...</span>
       </div>
     }>
       <CheckoutPageContent />

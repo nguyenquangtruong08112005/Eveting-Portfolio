@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { SafeImage } from '@/components/shared/SafeImage';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -73,7 +73,7 @@ function LandingPageContent() {
   // Filters
   const [weekendTab, setWeekendTab] = useState<'weekend' | 'month'>('weekend');
 
-  const filteredEvents = events.filter((e) => {
+  const filteredEvents = useMemo(() => events.filter((e) => {
     if (!e) return false;
     const name = e.name || '';
     const desc = e.description || '';
@@ -85,10 +85,10 @@ function LandingPageContent() {
       (e.venueName && e.venueName.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = matchCategory(e.category, activeCategory);
     return matchesSearch && matchesCategory;
-  });
+  }), [events, searchQuery, activeCategory]);
 
   // Filters for Tabs: Weekend vs Month
-  const tabFilteredEvents = events.filter((e) => {
+  const tabFilteredEvents = useMemo(() => events.filter((e) => {
     if (!e) return false;
     const d = new Date(e.date);
     if (weekendTab === 'weekend') {
@@ -98,16 +98,16 @@ function LandingPageContent() {
       const now = new Date();
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }
-  }).slice(0, 4);
+  }).slice(0, 4), [events, weekendTab]);
 
   // Split into categories for rendering
-  const musicEvents = events.filter(e => matchCategory(e.category, 'Âm nhạc')).slice(0, 4);
-  const theaterEvents = events.filter(e => matchCategory(e.category, 'Nghệ thuật')).slice(0, 4);
-  const workshopEvents = events.filter(e => matchCategory(e.category, 'Nightlife')).slice(0, 4);
-  const otherEvents = events.filter(e => matchCategory(e.category, 'Công nghệ')).slice(0, 4);
+  const musicEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Âm nhạc')).slice(0, 4), [events]);
+  const theaterEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Nghệ thuật')).slice(0, 4), [events]);
+  const workshopEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Nightlife')).slice(0, 4), [events]);
+  const otherEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Công nghệ')).slice(0, 4), [events]);
 
-  const specialEvents = events.slice(0, 5);
-  const trendingEvents = events.slice(2, 6);
+  const specialEvents = useMemo(() => events.slice(0, 5), [events]);
+  const trendingEvents = useMemo(() => events.slice(2, 6), [events]);
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">

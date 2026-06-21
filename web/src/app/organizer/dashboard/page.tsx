@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { OrganizerService } from '@/services/organizer.service';
 import { EventService } from '@/services/event.service';
 import { Badge } from '@/components/ui/badge';
-import { Plus, LayoutDashboard, Loader2 } from 'lucide-react';
+import { Plus, LayoutDashboard, Loader2, AlertCircle } from 'lucide-react';
 import type { OrganizerStats, OrganizerEvent, LedgerEntry } from '@/types';
 import { useTranslations } from 'next-intl';
 
@@ -28,6 +28,7 @@ export default function OrganizerDashboard() {
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -65,7 +66,7 @@ export default function OrganizerDashboard() {
       await loadData();
     } catch (err: any) {
       console.error('Failed to submit draft:', err);
-      alert(err.message || t('submit_draft_error'));
+      setErrorMsg(err.message || t('submit_draft_error'));
     } finally {
       setActionLoadingId(null);
     }
@@ -81,7 +82,7 @@ export default function OrganizerDashboard() {
       await loadData();
     } catch (err: any) {
       console.error('Failed to cancel event:', err);
-      alert(err.message || t('cancel_error'));
+      setErrorMsg(err.message || t('cancel_error'));
     } finally {
       setActionLoadingId(null);
     }
@@ -107,6 +108,12 @@ export default function OrganizerDashboard() {
       <Navbar isOrganizerPage />
 
       <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-grow">
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-2xl flex items-start gap-2.5 text-[var(--error)] text-sm">
+            <AlertCircle className="size-5 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
         {/* Title row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
