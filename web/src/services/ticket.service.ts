@@ -69,4 +69,16 @@ export class TicketService {
   static async getUserTickets(): Promise<{ tickets: Ticket[] }> {
     return request<{ tickets: Ticket[] }>('GET', '/api/web/tickets');
   }
+
+  static async getTicketDetails(ticketId: string): Promise<any> {
+    return request<any>('GET', `/api/web/tickets/${ticketId}`);
+  }
+
+  static async checkPaymentStatus(ticketId: string): Promise<{ status: string; message?: string }> {
+    return request<{ status: string; message?: string }>(
+      'POST',
+      '/api/web/payments/check-status',
+      { body: { ticketId } }
+    );
+  }
 }

@@ -8,6 +8,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/hooks/useAuth';
 import { EventService } from '@/services/event.service';
+import { TicketService } from '@/services/ticket.service';
 import { formatPrice, formatDate, enrichEvent } from '@/lib/constants';
 import { useTranslations } from 'next-intl';
 
@@ -23,6 +24,7 @@ function CheckoutSuccessPageContent() {
   const method = searchParams?.get('method') || 'zalopay';
 
   const [event, setEvent] = useState<any>(null);
+  const [paymentVerified, setPaymentVerified] = useState<boolean | null>(null);
 
   const paymentMethods: Record<string, string> = {
     zalopay: t('zalopay'),
@@ -44,7 +46,18 @@ function CheckoutSuccessPageContent() {
       .catch(() => {
         setEvent(null);
       });
-  }, [eventId, router]);
+
+    // Verify payment status with ZaloPay if ticketId is present
+    if (ticketId) {
+      TicketService.checkPaymentStatus(ticketId)
+        .then((result) => {
+          setPaymentVerified(result.status === 'paid');
+        })
+        .catch(() => {
+          setPaymentVerified(null);
+        });
+    }
+  }, [eventId, ticketId, router]);
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
@@ -131,7 +144,7 @@ function CheckoutSuccessPageContent() {
                 className="w-full py-3 rounded-xl btn-primary-gradient font-black text-sm tracking-wide text-[#12141A] hover:scale-[1.01] active:scale-[0.99] transition-all border-none flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/10"
               >
                 <User className="size-4" />
-                Đăng ký tài khoản để quản lý vé
+                {t('register_to_manage')}
                 <ArrowRight className="size-4" />
               </Link>
             )}

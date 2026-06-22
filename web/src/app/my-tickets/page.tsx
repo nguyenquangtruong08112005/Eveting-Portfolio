@@ -55,7 +55,8 @@ export default function MyTicketsPage() {
           userId: t.userId || '',
           seatId: t.seat || undefined,
           ticketType: t.type === 'standard' ? 'Standard' : (t.type || 'Standard'),
-          status: t.status || 'active',
+          // Map server statuses to frontend statuses
+          status: t.status === 'paid' ? 'active' : t.status === 'checkedIn' ? 'used' : t.status || 'active',
           purchasedAt: t.purchaseDate || Date.now(),
         }));
         setTickets(mappedTickets);
@@ -241,9 +242,9 @@ export default function MyTicketsPage() {
                       </button>
                       
                       <Link
-                        href={`/attendee/events/${ticket.eventId}`}
+                        href={`/my-tickets/${ticket.id}`}
                         className="px-3 py-2 bg-[var(--primary)] text-[#12141A] font-bold rounded-xl text-xs flex items-center justify-center hover:opacity-90 cursor-pointer transition-all"
-                        title="Xem trang sự kiện"
+                        title={t('view_event')}
                       >
                         <ArrowRight className="size-3.5" />
                       </Link>

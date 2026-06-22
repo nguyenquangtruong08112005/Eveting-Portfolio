@@ -140,7 +140,8 @@ function CheckoutPageContent() {
 
       // 2. Process payments depending on chosen method
       if (paymentMethod === 'zalopay') {
-        const redirectUrl = `${window.location.origin}/checkout/success?eventId=${eventId}&ticketId=${ticketId}`;
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+        const redirectUrl = `${baseUrl}/checkout/success?eventId=${eventId}&ticketId=${ticketId}`;
         const payment = await TicketService.createPaymentOrder(ticketId, redirectUrl);
         if (payment.order_url) {
           window.location.href = payment.order_url;
