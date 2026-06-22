@@ -66,6 +66,7 @@ app.use('/api/web/tickets', ticketsRouter);
 app.use('/api/web/payments', paymentsRouter);
 app.use('/api/web/memberships', membershipsRouter);
 app.use('/api/web/vouchers', vouchersRouter);
+app.use('/api/web/profiles', featuredProfileRouter);
 app.use('/api/organizer', organizerRouter);
 app.use('/api/admin', adminRouter);
 
