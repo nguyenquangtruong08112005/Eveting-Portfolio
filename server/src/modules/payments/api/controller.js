@@ -19,11 +19,9 @@ const createPaymentOrder = asyncHandler(async (req, res) => {
         throw new ConflictError(`Ticket not payable (status: ${ticket.status}).`);
     }
 
-    let finalRedirectUrl = redirectUrl;
-    if (redirectUrl && (redirectUrl.startsWith('http://localhost') || redirectUrl.startsWith('http://127.0.0.1'))) {
-        const appPublicUrl = process.env.APP_PUBLIC_URL || 'http://localhost:3000';
-        finalRedirectUrl = `${appPublicUrl}/payments/redirect-handler?targetUrl=${encodeURIComponent(redirectUrl)}`;
-    }
+    // Use redirectUrl as-is — the user's browser can access localhost directly.
+    // Only the ZaloPay callback (webhook) needs the public ngrok URL.
+    const finalRedirectUrl = redirectUrl;
 
     const zaloResponse = await paymentService.createZaloPayOrder(ticket, finalRedirectUrl);
 
