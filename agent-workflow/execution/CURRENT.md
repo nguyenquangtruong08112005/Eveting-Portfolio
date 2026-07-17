@@ -32,3 +32,11 @@ npm run db:migrate
 npm run db:smoke:order-foundation
 npm run db:audit:orphans
 ```
+
+## Git policy (standing)
+
+- **Commit often** after each phase gate (W0–W6) and after each migration band lands.
+- Server app repo: `Server-2025-Eventing` (own `.git`).
+- Monorepo docs: repo root (`agent-workflow`, `START_HERE`, etc.).
+- Apps under root `.gitignore` (`web-2025-eventing`, mobiles) have separate repos if present.
+- Do **not** push unless the user asks.
