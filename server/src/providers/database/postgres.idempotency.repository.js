@@ -1,4 +1,5 @@
 const { query } = require('./postgres.client');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
 const findIdempotencyKey = async (key) => {
     const result = await query(
@@ -11,14 +12,14 @@ const findIdempotencyKey = async (key) => {
         key: row.key,
         responseCode: row.response_code,
         responseBody: row.response_body,
-        createdAt: Number(row.created_at),
-        expiresAt: Number(row.expires_at)
+        createdAt: fromDb(row.created_at),
+        expiresAt: fromDb(row.expires_at),
     };
 };
 
 const saveIdempotencyKey = async (key, responseCode, responseBody, ttlSeconds = 86400, allowOverwrite = true) => {
-    const now = Date.now();
-    const expiresAt = now + (ttlSeconds * 1000);
+    const now = nowDb();
+    const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
     if (allowOverwrite) {
         await query(
             `INSERT INTO idempotency_keys (key, response_code, response_body, created_at, expires_at)
@@ -40,8 +41,7 @@ const saveIdempotencyKey = async (key, responseCode, responseBody, ttlSeconds = 
 };
 
 const deleteExpiredKeys = async () => {
-    const now = Date.now();
-    await query('DELETE FROM idempotency_keys WHERE expires_at < $1', [now]);
+    await query('DELETE FROM idempotency_keys WHERE expires_at < $1', [nowDb()]);
 };
 
 module.exports = {

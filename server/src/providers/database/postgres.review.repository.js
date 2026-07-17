@@ -58,7 +58,7 @@ const getReviewsByEventId = async (eventId, page = 1, limit = 10) => {
             placeholders.push('$' + (j + 1));
         }
         var userResult = await query(
-            'SELECT id, name, profile_pic_url FROM auth_users WHERE id IN (' + placeholders.join(',') + ')',
+            'SELECT a.id, p.name, p.profile_pic_url FROM auth_users a LEFT JOIN user_profiles p ON p.id = a.id WHERE a.id IN (' + placeholders.join(',') + ')',
             userIds
         );
         for (var k = 0; k < userResult.rows.length; k++) {

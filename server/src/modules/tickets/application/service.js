@@ -162,7 +162,7 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
                 });
                 await orderRepository.createOrderItemInTransaction(transaction, {
                     id: shadowOrderItemId,
-                    ticketTypeId: ticketType,
+                    ticketTypeId: ticketTypeData.id || null,
                     ticketType,
                     eventId,
                     eventName: eventData.name || null,
@@ -182,9 +182,11 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
                 throw innerErr;
             }
         } catch (err) {
-            logger.error(`[ShadowOrder] Failed to create order for ticket ${ticketId}: ${err.message}`);
+            // Portfolio V1: order is required for commerce integrity — do not swallow.
+            logger.error(`[Order] Failed to create order for ticket ${ticketId}: ${err.message}`);
+            throw err;
         }
-        // ── End shadow order wiring ──
+        // ── End order wiring ──
 
         return newTicketData;
     });
@@ -343,7 +345,13 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
 
         // ── Publish notification event to outbox ──
         try {
-            const userProfileResult = await transaction.query('SELECT email, name FROM user_profiles WHERE id = $1', [ticketData.userId]);
+            const userProfileResult = await transaction.query(
+                `SELECT a.email, p.name
+                 FROM auth_users a
+                 LEFT JOIN user_profiles p ON p.id = a.id
+                 WHERE a.id = $1`,
+                [ticketData.userId]
+            );
             const email = userProfileResult.rows[0]?.email || 'customer@example.com';
             const name = userProfileResult.rows[0]?.name || 'Customer';
 

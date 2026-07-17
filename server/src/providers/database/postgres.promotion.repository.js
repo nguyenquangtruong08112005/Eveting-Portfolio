@@ -1,4 +1,6 @@
 const { query } = require('./postgres.client');
+const eventRepository = require('./postgres.event.repository');
+const { fromDb, nowDb, toDb } = require('./time.helper');
 
 function rowToPromotion(row) {
     return {
@@ -6,12 +8,12 @@ function rowToPromotion(row) {
         organizerId: row.organizer_id,
         code: row.code,
         eventId: row.event_id,
-        validFrom: Number(row.valid_from),
-        validUntil: Number(row.valid_until),
+        validFrom: fromDb(row.valid_from),
+        validUntil: fromDb(row.valid_until),
         usageLimit: row.usage_limit,
         usedCount: row.used_count,
         isPublic: row.is_public,
-        createdAt: Number(row.created_at),
+        createdAt: fromDb(row.created_at),
         ...row.data
     };
 }
@@ -26,8 +28,7 @@ const ACTIVE_PROMOTIONS_SQL = `
 `;
 
 const getActivePromotions = async () => {
-    const now = new Date().getTime();
-    const result = await query(ACTIVE_PROMOTIONS_SQL, [now]);
+    const result = await query(ACTIVE_PROMOTIONS_SQL, [nowDb()]);
     return result.rows.map(rowToPromotion);
 };
 
@@ -55,45 +56,7 @@ const findByCode = async (code) => {
 };
 
 const getEventById = async (eventId) => {
-    const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    if (row.raw_data) {
-        return { id: row.id, ...row.raw_data };
-    }
-    return {
-        id: row.id,
-        name: row.name,
-        description: row.description || '',
-        imageUrl: row.image_url || null,
-        bannerUrl: row.banner_url || null,
-        featuredProfileIds: row.featured_profile_ids || [],
-        category: row.category || [],
-        tags: row.tags || [],
-        date: row.date != null ? Number(row.date) : null,
-        endDate: row.end_date != null ? Number(row.end_date) : null,
-        eventType: row.event_type || 'physical',
-        onlineUrl: row.online_url || null,
-        location: row.location || null,
-        geohash: row.geohash || null,
-        venueId: row.venue_id || null,
-        venueName: row.venue_name || null,
-        city: row.city || null,
-        ticketTypes: row.ticket_types || {},
-        minPrice: row.min_price != null ? Number(row.min_price) : 0,
-        videoUrl: row.video_url || '',
-        isOutdoor: row.is_outdoor || false,
-        organizerId: row.organizer_id || null,
-        status: row.status || 'pending',
-        visibility: row.visibility || 'private',
-        recurringRule: row.recurring_rule || null,
-        hotScore: row.hot_score != null ? Number(row.hot_score) : 0,
-        viewCount: row.view_count != null ? Number(row.view_count) : 0,
-        requiredAge: row.required_age != null ? Number(row.required_age) : 0,
-        sponsors: row.sponsors || [],
-        createdAt: row.created_at != null ? Number(row.created_at) : null,
-        lastUpdatedAt: row.last_updated_at != null ? Number(row.last_updated_at) : null,
-    };
+    return eventRepository.getEventById(eventId);
 };
 
 const getPromotionById = async (promoId) => {
@@ -123,7 +86,7 @@ const createPromotion = async (promoId, promoData) => {
            is_public = EXCLUDED.is_public,
            created_at = EXCLUDED.created_at,
            data = EXCLUDED.data`,
-        [promoId, organizerId, code, eventId || null, validFrom, validUntil, usageLimit, usedCount, isPublic, createdAt, JSON.stringify(rest)]
+        [promoId, organizerId, code, eventId || null, toDb(validFrom), toDb(validUntil), usageLimit, usedCount, isPublic, toDb(createdAt) || nowDb(), JSON.stringify(rest)]
     );
 };
 
@@ -139,7 +102,7 @@ const updatePromotion = async (promoId, updates) => {
     }
     if (updates.validUntil !== undefined) {
         colSets.push(`valid_until = $${idx++}`);
-        params.push(updates.validUntil);
+        params.push(toDb(updates.validUntil));
     }
     if (updates.isPublic !== undefined) {
         colSets.push(`is_public = $${idx++}`);

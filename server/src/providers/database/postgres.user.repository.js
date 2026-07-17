@@ -1,8 +1,9 @@
 var { query } = require('./postgres.client');
+var socialHelper = require('./social.helper');
+var { toDb, fromDb, nowDb } = require('./time.helper');
 
 var FIELD_MAP = {
   name: 'name',
-  email: 'email',
   profilePicUrl: 'profile_pic_url',
   coverPhotoUrl: 'cover_photo_url',
   bio: 'bio',
@@ -12,73 +13,89 @@ var FIELD_MAP = {
   followingCount: 'following_count',
   points: 'points',
   level: 'level',
-  fcmTokens: 'fcm_tokens',
-  followedProfileIds: 'followed_profile_ids',
-  historyEventIds: 'history_event_ids',
   organizerInfo: 'organizer_info',
   rawData: 'raw_data',
 };
 
-function rowToFirebaseDoc(row, includeId) {
+function rowToFirebaseDoc(row, includeId, extras) {
   if (!row) return null;
+  extras = extras || {};
   var doc = {};
   if (includeId && row.id) doc.id = row.id;
-  if (row.email) doc.email = row.email;
+  if (extras.email) doc.email = extras.email;
   if (row.name) doc.name = row.name;
   if (row.profile_pic_url) doc.profilePicUrl = row.profile_pic_url;
   if (row.cover_photo_url) doc.coverPhotoUrl = row.cover_photo_url;
   if (row.bio) doc.bio = row.bio;
-  if (row.birth_date != null) doc.birthDate = Number(row.birth_date);
-  if (row.roles && (row.roles.length !== 1 || row.roles[0] !== 'attendee')) doc.roles = row.roles;
-  if (row.created_at != null) doc.createdAt = Number(row.created_at);
-  if (row.followed_profile_ids && row.followed_profile_ids.length > 0) doc.followedProfileIds = row.followed_profile_ids;
-  if (row.history_event_ids && row.history_event_ids.length > 0) doc.historyEventIds = row.history_event_ids;
+  if (row.birth_date != null) doc.birthDate = fromDb(row.birth_date);
+  if (extras.roles && extras.roles.length) doc.roles = extras.roles;
+  if (row.created_at != null) doc.createdAt = fromDb(row.created_at);
+  var followed = extras.followedProfileIds;
+  if (followed && followed.length > 0) doc.followedProfileIds = followed;
+  var history = extras.historyEventIds;
+  if (history && history.length > 0) doc.historyEventIds = history;
   if (row.followers_count > 0) doc.followersCount = row.followers_count;
   if (row.following_count > 0) doc.followingCount = row.following_count;
   if (row.points > 0) doc.points = row.points;
   if (row.level && row.level !== 'bronze') doc.level = row.level;
-  if (row.matching_preferences && typeof row.matching_preferences === 'object' && Object.keys(row.matching_preferences).length > 0) doc.matchingPreferences = row.matching_preferences;
-  if (row.shared_media && Array.isArray(row.shared_media) && row.shared_media.length > 0) doc.sharedMedia = row.shared_media;
-  if (row.fcm_tokens && row.fcm_tokens.length > 0) doc.fcmTokens = row.fcm_tokens;
+  if (row.matching_preferences && typeof row.matching_preferences === 'object' && Object.keys(row.matching_preferences).length > 0) {
+    doc.matchingPreferences = row.matching_preferences;
+  }
+  if (row.shared_media && Array.isArray(row.shared_media) && row.shared_media.length > 0) {
+    doc.sharedMedia = row.shared_media;
+  }
+  var tokens = extras.fcmTokens;
+  if (tokens && tokens.length > 0) doc.fcmTokens = tokens;
   if (row.organizer_info) doc.organizerInfo = row.organizer_info;
   if (row.raw_data) {
-    doc = { ...doc, ...row.raw_data };
+    doc = Object.assign({}, row.raw_data, doc);
   }
   return doc;
 }
 
+async function loadAuthExtras(userId) {
+  var auth = await query('SELECT email, roles FROM auth_users WHERE id = $1', [userId]);
+  if (auth.rows.length === 0) return { email: '', roles: [] };
+  return {
+    email: auth.rows[0].email || '',
+    roles: auth.rows[0].roles || [],
+  };
+}
+
+async function hydrateUserRow(row, includeId) {
+  if (!row) return null;
+  var client = { query: query };
+  var followed = await socialHelper.loadFollowedProfileIds(client, row.id);
+  var history = await socialHelper.loadHistoryEventIds(client, row.id);
+  var tokens = await socialHelper.loadFcmTokens(client, row.id);
+  var auth = await loadAuthExtras(row.id);
+  return rowToFirebaseDoc(row, includeId, {
+    followedProfileIds: followed,
+    historyEventIds: history,
+    fcmTokens: tokens,
+    email: auth.email,
+    roles: auth.roles,
+  });
+}
+
 var getUserRoles = async function (userId) {
-  var result = await query(
-    'SELECT roles FROM user_profiles WHERE id = $1',
-    [userId]
-  );
-  if (result.rows.length === 0) return [];
-  var roles = result.rows[0].roles;
-  return roles && roles.length > 0 ? roles : [];
+  var auth = await query('SELECT roles FROM auth_users WHERE id = $1', [userId]);
+  if (auth.rows.length > 0 && auth.rows[0].roles && auth.rows[0].roles.length > 0) {
+    return auth.rows[0].roles;
+  }
+  return [];
 };
 
 var getUsersFcmTokens = async function (userIds) {
   if (!userIds || userIds.length === 0) return { recipientIds: [], tokens: [] };
-  var placeholders = [];
-  var params = [];
-  for (var i = 0; i < userIds.length; i++) {
-    placeholders.push('$' + (i + 1));
-    params.push(userIds[i]);
-  }
-  var result = await query(
-    'SELECT id, fcm_tokens FROM user_profiles WHERE id IN (' + placeholders.join(',') + ')',
-    params
-  );
+  var map = await socialHelper.loadFcmTokensForUsers({ query: query }, userIds);
   var recipientIds = [];
   var tokens = [];
-  for (var j = 0; j < result.rows.length; j++) {
-    var row = result.rows[j];
-    recipientIds.push(row.id);
-    if (row.fcm_tokens && row.fcm_tokens.length > 0) {
-      for (var k = 0; k < row.fcm_tokens.length; k++) {
-        tokens.push(row.fcm_tokens[k]);
-      }
-    }
+  for (var i = 0; i < userIds.length; i++) {
+    var uid = userIds[i];
+    recipientIds.push(uid);
+    var list = map[uid] || [];
+    for (var k = 0; k < list.length; k++) tokens.push(list[k]);
   }
   return { recipientIds: recipientIds, tokens: tokens };
 };
@@ -93,73 +110,104 @@ var createUser = async function (uid, userData) {
     fcmTokens.push(userData.fcmToken);
   }
   var rawData = Object.assign({}, userData);
+  // strip auth-only fields from profile raw payload
+  delete rawData.password;
+  delete rawData.passwordHash;
+
   await query(
     `INSERT INTO user_profiles
-       (id, email, name, profile_pic_url, cover_photo_url, bio, birth_date,
-        roles, created_at, followed_profile_ids, history_event_ids,
+       (id, name, profile_pic_url, cover_photo_url, bio, birth_date,
+        created_at,
         followers_count, following_count, points, level,
-        matching_preferences, shared_media, fcm_tokens, organizer_info, raw_data)
-     VALUES ($1, $2, $3, $4, $5, $6, $7,
+        matching_preferences, shared_media, organizer_info, raw_data)
+     VALUES ($1, $2, $3, $4, $5, $6,
+             $7,
              $8, $9, $10, $11,
-             $12, $13, $14, $15,
-             $16, $17, $18, $19, $20)
+             $12, $13, $14, $15)
      ON CONFLICT (id) DO UPDATE SET
-       email = EXCLUDED.email,
        name = EXCLUDED.name,
        profile_pic_url = EXCLUDED.profile_pic_url,
        cover_photo_url = EXCLUDED.cover_photo_url,
        bio = EXCLUDED.bio,
        birth_date = EXCLUDED.birth_date,
-       roles = EXCLUDED.roles,
-       followed_profile_ids = EXCLUDED.followed_profile_ids,
-       history_event_ids = EXCLUDED.history_event_ids,
        followers_count = EXCLUDED.followers_count,
        following_count = EXCLUDED.following_count,
        points = EXCLUDED.points,
        level = EXCLUDED.level,
        matching_preferences = EXCLUDED.matching_preferences,
        shared_media = EXCLUDED.shared_media,
-       fcm_tokens = EXCLUDED.fcm_tokens,
        organizer_info = EXCLUDED.organizer_info,
        raw_data = EXCLUDED.raw_data,
        updated_at = NOW()`,
     [
       uid,
-      userData.email || '',
       userData.name || '',
       userData.profilePicUrl || '',
       userData.coverPhotoUrl || '',
       userData.bio || '',
-      userData.birthDate != null ? Number(userData.birthDate) : null,
-      userData.roles || ['attendee'],
-      userData.createdAt != null ? Number(userData.createdAt) : Date.now(),
-      followedIds,
-      historyIds,
+      toDb(userData.birthDate),
+      toDb(userData.createdAt) || nowDb(),
       userData.followersCount != null ? Number(userData.followersCount) : 0,
       userData.followingCount != null ? Number(userData.followingCount) : 0,
       userData.points != null ? Number(userData.points) : 0,
       userData.level || 'bronze',
       JSON.stringify(matchingPrefs),
       JSON.stringify(sharedMedia),
-      fcmTokens,
       userData.organizerInfo ? JSON.stringify(userData.organizerInfo) : null,
       JSON.stringify(rawData),
     ]
   );
+
+  // roles SoT is auth_users
+  if (userData.roles && userData.roles.length) {
+    var authRoles = userData.roles.map(function (r) { return r === 'attendee' ? 'user' : r; });
+    await query(
+      `UPDATE auth_users SET roles = $1, updated_at = NOW() WHERE id = $2`,
+      [authRoles, uid]
+    );
+  }
+
+  var client = { query: query };
+  if (followedIds.length) await socialHelper.replaceFollows(client, uid, followedIds);
+  if (historyIds.length) await socialHelper.replaceHistory(client, uid, historyIds);
+  if (fcmTokens.length) await socialHelper.replaceDevices(client, uid, fcmTokens);
 };
 
 var getUserDataById = async function (userId) {
   var result = await query('SELECT * FROM user_profiles WHERE id = $1', [userId]);
   if (result.rows.length === 0) return null;
-  return rowToFirebaseDoc(result.rows[0], true);
+  return hydrateUserRow(result.rows[0], true);
 };
 
 var updateUser = async function (userId, updateData, fcmToken) {
   var sets = [];
   var params = [];
   var idx = 1;
+  var client = { query: query };
+
+  if (updateData && updateData.followedProfileIds) {
+    await socialHelper.replaceFollows(client, userId, updateData.followedProfileIds);
+  }
+  if (updateData && updateData.historyEventIds) {
+    await socialHelper.replaceHistory(client, userId, updateData.historyEventIds);
+  }
+  if (updateData && updateData.fcmTokens) {
+    await socialHelper.replaceDevices(client, userId, updateData.fcmTokens);
+  }
+
+  // email / roles go to auth_users only
+  if (updateData && updateData.email != null) {
+    await query('UPDATE auth_users SET email = $1, updated_at = NOW() WHERE id = $2', [updateData.email, userId]);
+  }
+  if (updateData && updateData.roles) {
+    var roles = updateData.roles.map(function (r) { return r === 'attendee' ? 'user' : r; });
+    await query('UPDATE auth_users SET roles = $1, updated_at = NOW() WHERE id = $2', [roles, userId]);
+  }
 
   for (var key in updateData) {
+    if (key === 'followedProfileIds' || key === 'historyEventIds' || key === 'fcmTokens' || key === 'fcmToken' || key === 'email' || key === 'roles') {
+      continue;
+    }
     if (key === 'matchingPreferences.interests') {
       sets.push('matching_preferences = jsonb_set(COALESCE(matching_preferences, \'{}\'::jsonb), \'{interests}\', $' + idx + '::jsonb)');
       params.push(JSON.stringify(updateData[key]));
@@ -169,19 +217,22 @@ var updateUser = async function (userId, updateData, fcmToken) {
       params.push(JSON.stringify(updateData[key]));
       idx++;
     } else if (key in FIELD_MAP) {
-      sets.push(FIELD_MAP[key] + ' = $' + idx);
-      params.push(updateData[key]);
+      var col = FIELD_MAP[key];
+      sets.push(col + ' = $' + idx);
+      if (col === 'birth_date' || col === 'created_at') {
+        params.push(toDb(updateData[key]));
+      } else {
+        params.push(updateData[key]);
+      }
       idx++;
-    } else if (key === 'id') {
+    } else if (key === 'id' || key === 'address') {
       continue;
-    } else if (key === 'address') {
-      // raw_data-only field, no column update needed
     } else {
-      // attempt direct snake_case conversion
       var snake = key.replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); });
       if (!/^[a-z0-9_]+$/.test(snake)) {
         throw new Error('Invalid column name: ' + key);
       }
+      if (snake === 'email' || snake === 'roles' || snake === 'followed_profile_ids' || snake === 'history_event_ids' || snake === 'fcm_tokens') continue;
       sets.push(snake + ' = $' + idx);
       params.push(updateData[key]);
       idx++;
@@ -189,15 +240,15 @@ var updateUser = async function (userId, updateData, fcmToken) {
   }
 
   if (fcmToken) {
-    sets.push('fcm_tokens = array_append(COALESCE(fcm_tokens, ARRAY[]::text[]), $' + idx + ')');
-    params.push(fcmToken);
-    idx++;
+    var existing = await socialHelper.loadFcmTokens(client, userId);
+    if (existing.indexOf(fcmToken) === -1) existing.push(fcmToken);
+    await socialHelper.replaceDevices(client, userId, existing);
   }
 
   var rawMerge = {};
-  for (var key in updateData) {
-    if (key === 'id') continue;
-    rawMerge[key] = updateData[key];
+  for (var key2 in updateData) {
+    if (key2 === 'id') continue;
+    rawMerge[key2] = updateData[key2];
   }
   if (Object.keys(rawMerge).length > 0) {
     sets.push('raw_data = COALESCE(raw_data, \'{}\'::jsonb) || $' + idx + '::jsonb');
@@ -216,31 +267,35 @@ var updateUser = async function (userId, updateData, fcmToken) {
 };
 
 var addFcmToken = async function (userId, token) {
-  await query(
-    'UPDATE user_profiles SET fcm_tokens = array_append(COALESCE(fcm_tokens, ARRAY[]::text[]), $1), updated_at = NOW() WHERE id = $2',
-    [token, userId]
-  );
+  var client = { query: query };
+  var existing = await socialHelper.loadFcmTokens(client, userId);
+  if (existing.indexOf(token) === -1) existing.push(token);
+  await socialHelper.replaceDevices(client, userId, existing);
 };
 
 var removeFcmToken = async function (userId, token) {
-  await query(
-    'UPDATE user_profiles SET fcm_tokens = array_remove(COALESCE(fcm_tokens, ARRAY[]::text[]), $1), updated_at = NOW() WHERE id = $2',
-    [token, userId]
-  );
+  var client = { query: query };
+  var existing = await socialHelper.loadFcmTokens(client, userId);
+  existing = existing.filter(function (t) { return t !== token; });
+  await socialHelper.replaceDevices(client, userId, existing);
 };
 
-var getEventsByIds = async function (eventIds) {
-  if (!eventIds || eventIds.length === 0) return [];
+var getEventsByIds = async function () {
   return [];
 };
 
 var followProfile = async function (userId, profileId) {
-  var userResult = await query('SELECT followed_profile_ids FROM user_profiles WHERE id = $1', [userId]);
+  var userResult = await query('SELECT id FROM user_profiles WHERE id = $1', [userId]);
   if (userResult.rows.length === 0) throw new Error('User not found.');
-  var followed = userResult.rows[0].followed_profile_ids || [];
-  if (followed.indexOf(profileId) !== -1) {
+
+  var existing = await query(
+    'SELECT 1 FROM user_follows WHERE follower_id = $1 AND followee_id = $2',
+    [userId, profileId]
+  );
+  if (existing.rows.length > 0) {
     return { alreadyFollowing: true };
   }
+
   var isFeatured = false;
   var profileResult = await query('SELECT id FROM featured_profiles WHERE id = $1', [profileId]);
   if (profileResult.rows.length > 0) {
@@ -251,9 +306,15 @@ var followProfile = async function (userId, profileId) {
       throw new Error('Profile not found.');
     }
   }
+
   await query(
-    'UPDATE user_profiles SET followed_profile_ids = array_append(followed_profile_ids, $1), following_count = following_count + 1, updated_at = NOW() WHERE id = $2',
-    [profileId, userId]
+    `INSERT INTO user_follows (follower_id, followee_id, created_at)
+     VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+    [userId, profileId, nowDb()]
+  );
+  await query(
+    'UPDATE user_profiles SET following_count = following_count + 1, updated_at = NOW() WHERE id = $1',
+    [userId]
   );
   if (isFeatured) {
     await query(
@@ -270,15 +331,24 @@ var followProfile = async function (userId, profileId) {
 };
 
 var unfollowProfile = async function (userId, profileId) {
-  var userResult = await query('SELECT followed_profile_ids FROM user_profiles WHERE id = $1', [userId]);
+  var userResult = await query('SELECT id FROM user_profiles WHERE id = $1', [userId]);
   if (userResult.rows.length === 0) throw new Error('User not found.');
-  var followed = userResult.rows[0].followed_profile_ids || [];
-  if (followed.indexOf(profileId) === -1) {
+
+  var existing = await query(
+    'SELECT 1 FROM user_follows WHERE follower_id = $1 AND followee_id = $2',
+    [userId, profileId]
+  );
+  if (existing.rows.length === 0) {
     return { notFollowing: true };
   }
+
   await query(
-    'UPDATE user_profiles SET followed_profile_ids = array_remove(followed_profile_ids, $1), following_count = GREATEST(following_count - 1, 0), updated_at = NOW() WHERE id = $2',
-    [profileId, userId]
+    'DELETE FROM user_follows WHERE follower_id = $1 AND followee_id = $2',
+    [userId, profileId]
+  );
+  await query(
+    'UPDATE user_profiles SET following_count = GREATEST(following_count - 1, 0), updated_at = NOW() WHERE id = $1',
+    [userId]
   );
   var profileResult = await query('SELECT id FROM featured_profiles WHERE id = $1', [profileId]);
   if (profileResult.rows.length > 0) {
@@ -312,40 +382,32 @@ var getUsersByIds = async function (userIds) {
   );
   var map = {};
   for (var j = 0; j < result.rows.length; j++) {
-    var doc = rowToFirebaseDoc(result.rows[j], false);
-    map[result.rows[j].id] = doc;
+    map[result.rows[j].id] = await hydrateUserRow(result.rows[j], false);
   }
   return map;
 };
 
 var findUserByEmail = async function (email) {
-  var result = await query(
-    'SELECT * FROM user_profiles WHERE email = $1 LIMIT 1',
+  var auth = await query(
+    'SELECT id FROM auth_users WHERE LOWER(email) = LOWER($1) LIMIT 1',
     [email]
   );
-  if (result.rows.length === 0) return null;
-  var row = result.rows[0];
-  return { _id: row.id, ...rowToFirebaseDoc(row, false) };
+  if (auth.rows.length === 0) return null;
+  var profile = await getUserDataById(auth.rows[0].id);
+  if (!profile) {
+    return { _id: auth.rows[0].id, email: email };
+  }
+  return Object.assign({ _id: auth.rows[0].id }, profile);
 };
 
 var getRawUserDataById = async function (userId) {
-  var result = await query('SELECT * FROM user_profiles WHERE id = $1', [userId]);
-  if (result.rows.length === 0) return null;
-  return rowToFirebaseDoc(result.rows[0], false);
+  return getUserDataById(userId);
 };
 
 var addOrganizerRoleToUser = async function (userId, organizerData) {
-  var result = await query('SELECT roles, raw_data, organizer_info FROM user_profiles WHERE id = $1', [userId]);
+  var result = await query('SELECT raw_data, organizer_info FROM user_profiles WHERE id = $1', [userId]);
   if (result.rows.length === 0) return null;
   var row = result.rows[0];
-
-  var roles = row.roles || [];
-  if (roles.indexOf('organizer') === -1) {
-    roles.push('organizer');
-  }
-  roles = roles.filter(function (item, pos, self) {
-    return self.indexOf(item) === pos;
-  });
 
   var existingCreatedAt = (row.organizer_info && row.organizer_info.createdAt) ||
                           (row.raw_data && row.raw_data.organizerInfo && row.raw_data.organizerInfo.createdAt);
@@ -362,34 +424,23 @@ var addOrganizerRoleToUser = async function (userId, organizerData) {
   }
 
   if (row.raw_data) {
-    var rawData = { ...row.raw_data };
-    var rawRoles = rawData.roles || [];
-    if (rawRoles.indexOf('organizer') === -1) {
-      rawRoles.push('organizer');
-    }
-    rawRoles = rawRoles.filter(function (item, pos, self) {
-      return self.indexOf(item) === pos;
-    });
-    rawData.roles = rawRoles;
-    rawData.organizerInfo = { ...organizerInfo };
-
+    var rawData = Object.assign({}, row.raw_data);
+    rawData.organizerInfo = Object.assign({}, organizerInfo);
     await query(
       `UPDATE user_profiles
-       SET roles = $1,
-           organizer_info = $2,
-           raw_data = $3,
+       SET organizer_info = $1,
+           raw_data = $2,
            updated_at = NOW()
-       WHERE id = $4`,
-      [roles, JSON.stringify(organizerInfo), JSON.stringify(rawData), userId]
+       WHERE id = $3`,
+      [JSON.stringify(organizerInfo), JSON.stringify(rawData), userId]
     );
   } else {
     await query(
       `UPDATE user_profiles
-       SET roles = $1,
-           organizer_info = $2,
+       SET organizer_info = $1,
            updated_at = NOW()
-       WHERE id = $3`,
-      [roles, JSON.stringify(organizerInfo), userId]
+       WHERE id = $2`,
+      [JSON.stringify(organizerInfo), userId]
     );
   }
 
@@ -404,90 +455,34 @@ var addOrganizerRoleToUser = async function (userId, organizerData) {
     [userId]
   );
 
-  var updated = await getUserDataById(userId);
-  return updated;
+  return getUserDataById(userId);
 };
 
 var updateUserFields = async function (userId, updateData) {
-  var keys = Object.keys(updateData);
-  if (keys.length === 0) return;
-  var sets = [];
-  var params = [];
-  var idx = 1;
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    // Handle Firestore-style dot notation for JSONB fields, e.g. organizerInfo.description
-    var dotIdx = key.indexOf('.');
-    if (dotIdx > 0) {
-      var topKey = key.substring(0, dotIdx);
-      var nestedKey = key.substring(dotIdx + 1);
-      if (topKey in FIELD_MAP) {
-        var col = FIELD_MAP[topKey];
-        var path = '{' + nestedKey.split('.').join(',') + '}';
-        sets.push(col + ' = jsonb_set(COALESCE(' + col + ', \'{}\'::jsonb), \'' + path + '\', $' + idx + '::jsonb)');
-        params.push(JSON.stringify(updateData[key]));
-        idx++;
-      }
-      continue;
-    }
-    if (key in FIELD_MAP) {
-      sets.push(FIELD_MAP[key] + ' = $' + idx);
-      params.push(updateData[key]);
-    } else if (key === 'id' || key === 'address') {
-      // id is excluded from rawMerge, address is raw_data-only
-      continue;
-    } else {
-      var snake = key.replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); });
-      if (!/^[a-z0-9_]+$/.test(snake)) {
-        throw new Error('Invalid column name: ' + key);
-      }
-      sets.push(snake + ' = $' + idx);
-      params.push(updateData[key]);
-    }
-    idx++;
-  }
-  var rawMerge = {};
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    if (key === 'id' || key.indexOf('.') > 0) continue;
-    rawMerge[key] = updateData[key];
-  }
-  if (Object.keys(rawMerge).length > 0) {
-    sets.push('raw_data = COALESCE(raw_data, \'{}\'::jsonb) || $' + idx + '::jsonb');
-    params.push(JSON.stringify(rawMerge));
-    idx++;
-  }
-
-  if (sets.length === 0) return;
-
-  sets.push('updated_at = NOW()');
-  params.push(userId);
-  await query(
-    'UPDATE user_profiles SET ' + sets.join(', ') + ' WHERE id = $' + idx,
-    params
-  );
+  return updateUser(userId, updateData);
 };
 
 var appendRoleToProfile = async function (userId, role) {
+  var authRole = role === 'attendee' ? 'user' : role;
   await query(
-    `UPDATE user_profiles
+    `UPDATE auth_users
      SET roles = CASE
        WHEN $2 = ANY(roles) THEN roles
        ELSE array_append(roles, $2)
      END,
      updated_at = NOW()
      WHERE id = $1`,
-    [userId, role]
+    [userId, authRole]
   );
 };
 
 var addHistoryEventIdInTransaction = async function (transaction, userId, eventId) {
-  await query(
-    `UPDATE user_profiles
-     SET history_event_ids = array_append(COALESCE(history_event_ids, ARRAY[]::text[]), $1),
-         updated_at = NOW()
-     WHERE id = $2`,
-    [eventId, userId]
+  var client = (transaction && typeof transaction.query === 'function') ? transaction : { query: query };
+  await client.query(
+    `INSERT INTO user_event_history (user_id, event_id, source, attended_at)
+     VALUES ($1, $2, 'attended', $3)
+     ON CONFLICT (user_id, event_id) DO NOTHING`,
+    [userId, eventId, nowDb()]
   );
 };
 

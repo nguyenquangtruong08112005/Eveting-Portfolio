@@ -1,4 +1,5 @@
 const { query } = require('./postgres.client');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
 function rowToMembership(row) {
     if (!row) return null;
@@ -9,7 +10,7 @@ function rowToMembership(row) {
         discountPercentage: Number(row.discount_percentage),
         pointsBalance: Number(row.points_balance),
         lifetimePoints: Number(row.lifetime_points),
-        updatedAt: Number(row.updated_at)
+        updatedAt: fromDb(row.updated_at)
     };
 }
 
@@ -21,7 +22,7 @@ function rowToTier(row) {
         minPointsRequired: Number(row.min_points_required),
         discountPercentage: Number(row.discount_percentage),
         perks: row.perks,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 }
 
@@ -33,7 +34,7 @@ function rowToLedgerEntry(row) {
         points: Number(row.points),
         transactionType: row.transaction_type,
         referenceId: row.reference_id,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 }
 
@@ -53,7 +54,7 @@ const getUserMembershipInTransaction = async (transaction, userId) => {
 
     // Check user existence first to prevent aborting transaction on foreign key violations
     const userCheck = await client.query('SELECT 1 FROM auth_users WHERE id = $1', [userId]);
-    const now = Date.now();
+    const now = nowDb();
     if (userCheck.rows.length === 0) {
         return {
             userId,
@@ -86,7 +87,7 @@ const createUserMembershipInTransaction = async (transaction, userId, tierId = '
     const userCheck = await client.query('SELECT 1 FROM auth_users WHERE id = $1', [userId]);
     if (userCheck.rows.length === 0) return;
 
-    const now = Date.now();
+    const now = nowDb();
     await client.query(
         `INSERT INTO user_memberships (user_id, tier_id, points_balance, lifetime_points, updated_at)
          VALUES ($1, $2, 0, 0, $3)
@@ -100,7 +101,7 @@ const updateUserMembershipPointsAndTierInTransaction = async (transaction, userI
     const userCheck = await client.query('SELECT 1 FROM auth_users WHERE id = $1', [userId]);
     if (userCheck.rows.length === 0) return;
 
-    const now = Date.now();
+    const now = nowDb();
     if (newTierId) {
         await client.query(
             `UPDATE user_memberships
@@ -137,7 +138,7 @@ const logLoyaltyPointsEntryInTransaction = async (transaction, entryData) => {
             entryData.points,
             entryData.transactionType,
             entryData.referenceId || null,
-            entryData.createdAt || Date.now()
+            entryData.createdAt || nowDb()
         ]
     );
 };

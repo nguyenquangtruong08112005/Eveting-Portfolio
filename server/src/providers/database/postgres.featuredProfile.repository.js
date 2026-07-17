@@ -107,7 +107,7 @@ const userHasOrganizerRole = async (userId) => {
     if (!userId) {
         return false;
     }
-    const result = await query('SELECT roles FROM user_profiles WHERE id = $1', [userId]);
+    const result = await query('SELECT roles FROM auth_users WHERE id = $1', [userId]);
     if (result.rows.length === 0) return false;
     const roles = result.rows[0].roles || [];
     return roles.includes('organizer');

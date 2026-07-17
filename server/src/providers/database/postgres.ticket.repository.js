@@ -1,4 +1,5 @@
 const { query, transaction } = require('./postgres.client');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
 const FIELD_MAP = {
     eventId: 'event_id',
@@ -44,13 +45,13 @@ function rowToTicket(row, includeDocId) {
         ticket.seat = row.seat;
         ticket.qrCode = row.qr_code;
         ticket.status = row.status;
-        if (row.purchase_date != null) ticket.purchaseDate = Number(row.purchase_date);
+        if (row.purchase_date != null) ticket.purchaseDate = fromDb(row.purchase_date);
         ticket.groupId = row.group_id;
         if (row.check_in_count != null) ticket.checkInCount = Number(row.check_in_count);
-        if (row.last_check_in_at != null) ticket.lastCheckInAt = Number(row.last_check_in_at);
-        if (row.checked_in_at != null) ticket.checkedInAt = Number(row.checked_in_at);
-        if (row.payment_time != null) ticket.paymentTime = Number(row.payment_time);
-        if (row.updated_at != null) ticket.updatedAt = Number(row.updated_at);
+        if (row.last_check_in_at != null) ticket.lastCheckInAt = fromDb(row.last_check_in_at);
+        if (row.checked_in_at != null) ticket.checkedInAt = fromDb(row.checked_in_at);
+        if (row.payment_time != null) ticket.paymentTime = fromDb(row.payment_time);
+        if (row.updated_at != null) ticket.updatedAt = fromDb(row.updated_at);
     }
     
     if (includeDocId) {
@@ -80,7 +81,12 @@ const updateTicket = async (ticketId, updates, transaction = null) => {
 
         if (key in FIELD_MAP) {
             sets.push(`${FIELD_MAP[key]} = $${idx}`);
-            params.push(updates[key]);
+            const col = FIELD_MAP[key];
+            if (['purchase_date', 'last_check_in_at', 'checked_in_at', 'payment_time', 'updated_at'].includes(col)) {
+                params.push(toDb(updates[key]));
+            } else {
+                params.push(updates[key]);
+            }
             idx++;
         } else {
             const snake = key.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
@@ -184,13 +190,13 @@ const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
             ticketData.seat || null,
             ticketData.qrCode || null,
             ticketData.status || 'pending',
-            ticketData.purchaseDate != null ? Number(ticketData.purchaseDate) : null,
+            toDb(ticketData.purchaseDate) || nowDb(),
             ticketData.groupId || null,
             ticketData.checkInCount || 0,
-            ticketData.lastCheckInAt != null ? Number(ticketData.lastCheckInAt) : null,
-            ticketData.checkedInAt != null ? Number(ticketData.checkedInAt) : null,
-            ticketData.paymentTime != null ? Number(ticketData.paymentTime) : null,
-            ticketData.updatedAt != null ? Number(ticketData.updatedAt) : null,
+            toDb(ticketData.lastCheckInAt),
+            toDb(ticketData.checkedInAt),
+            toDb(ticketData.paymentTime),
+            toDb(ticketData.updatedAt) || nowDb(),
             JSON.stringify(rawData)
         ]
     );

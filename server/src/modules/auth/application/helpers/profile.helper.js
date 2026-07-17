@@ -28,16 +28,14 @@ async function ensureUserProfileForAuthUser(_a) {
   var id = _a.id, email = _a.email, name = _a.name, roles = _a.roles;
   var existing = await userProfileRepository.getUserDataById(id);
   if (existing) return;
-  var profileRoles = (roles || []).map(function (r) { return r === 'user' ? 'attendee' : r; });
+  // name/bio/pic live on profile; email/roles live on auth_users only (042)
   await userProfileRepository.createUser(id, {
     id: id,
-    email: email,
     name: name || '',
     profilePicUrl: '',
     coverPhotoUrl: null,
     bio: '',
     birthDate: null,
-    roles: profileRoles,
     createdAt: Date.now(),
     followedProfileIds: [],
     historyEventIds: [],
@@ -48,7 +46,11 @@ async function ensureUserProfileForAuthUser(_a) {
     matchingPreferences: { interests: [], ageRange: '18-25' },
     sharedMedia: [],
     fcmTokens: [],
+    // optional: sync roles into auth if provided
+    roles: roles,
   });
+  // ensure auth email known (already set on createUser)
+  void email;
 }
 
 module.exports = { provisionAuthUserFromProfile, ensureUserProfileForAuthUser };

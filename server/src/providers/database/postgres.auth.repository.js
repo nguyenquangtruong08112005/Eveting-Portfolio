@@ -5,35 +5,68 @@ function now() {
   return new Date();
 }
 
+function mapAuthUser(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name || '',
+    password_hash: row.password_hash,
+    roles: row.roles || [],
+    profile_pic_url: row.profile_pic_url || '',
+    bio: row.bio || '',
+    is_active: row.is_active,
+    email_verified: row.email_verified,
+    created_at: row.created_at,
+  };
+}
+
 async function createUser({ id, email, name, passwordHash, roles }) {
   const userId = id || crypto.randomUUID();
   const result = await query(
-    `INSERT INTO auth_users (id, email, name, password_hash, roles)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO auth_users (id, email, password_hash, roles)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (email) DO NOTHING
      RETURNING id`,
-    [userId, email, name || '', passwordHash, roles || ['user']]
+    [userId, email, passwordHash, roles || ['user']]
   );
   if (result.rows.length === 0) {
     return null;
+  }
+  // name is profile-only (042); create/update profile display if provided
+  if (name != null && name !== '') {
+    await query(
+      `INSERT INTO user_profiles (id, name, created_at, updated_at)
+       VALUES ($1, $2, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()`,
+      [userId, name]
+    );
   }
   return userId;
 }
 
 async function findUserByEmail(email) {
   const result = await query(
-    'SELECT id, email, name, password_hash, roles, profile_pic_url, bio, is_active, email_verified, created_at FROM auth_users WHERE email = $1',
+    `SELECT a.id, a.email, a.password_hash, a.roles, a.is_active, a.email_verified, a.created_at,
+            p.name, p.profile_pic_url, p.bio
+     FROM auth_users a
+     LEFT JOIN user_profiles p ON p.id = a.id
+     WHERE a.email = $1`,
     [email]
   );
-  return result.rows.length ? result.rows[0] : null;
+  return result.rows.length ? mapAuthUser(result.rows[0]) : null;
 }
 
 async function findUserById(id) {
   const result = await query(
-    'SELECT id, email, name, password_hash, roles, profile_pic_url, bio, is_active, email_verified, created_at FROM auth_users WHERE id = $1',
+    `SELECT a.id, a.email, a.password_hash, a.roles, a.is_active, a.email_verified, a.created_at,
+            p.name, p.profile_pic_url, p.bio
+     FROM auth_users a
+     LEFT JOIN user_profiles p ON p.id = a.id
+     WHERE a.id = $1`,
     [id]
   );
-  return result.rows.length ? result.rows[0] : null;
+  return result.rows.length ? mapAuthUser(result.rows[0]) : null;
 }
 
 async function getUserRoles(userId) {
@@ -94,20 +127,25 @@ async function appendRoleToUser(userId, role) {
   );
 }
 
-
-async function saveToken({ id, tokenHash, purpose, email, expiresAt }) {
+async function saveToken({ id, tokenHash, purpose, email, expiresAt, userId = null }) {
   const tokenId = id || crypto.randomUUID();
   await query(
-    `INSERT INTO auth_tokens (id, token_hash, purpose, email, expires_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [tokenId, tokenHash, purpose, email, expiresAt]
+    `INSERT INTO auth_tokens (id, token_hash, purpose, email, expires_at, user_id)
+     VALUES (
+       $1, $2, $3, $4, $5,
+       COALESCE(
+         $6,
+         (SELECT id FROM auth_users WHERE LOWER(email) = LOWER($4) LIMIT 1)
+       )
+     )`,
+    [tokenId, tokenHash, purpose, email, expiresAt, userId]
   );
   return tokenId;
 }
 
 async function findTokenByHash(tokenHash, purpose) {
   const result = await query(
-    `SELECT id, token_hash, purpose, email, expires_at, created_at, used_at
+    `SELECT id, token_hash, purpose, email, expires_at, created_at, used_at, user_id
      FROM auth_tokens
      WHERE token_hash = $1 AND purpose = $2`,
     [tokenHash, purpose]
@@ -116,16 +154,44 @@ async function findTokenByHash(tokenHash, purpose) {
 }
 
 async function markTokenUsed(tokenId) {
-  await query(
-    'UPDATE auth_tokens SET used_at = NOW() WHERE id = $1',
-    [tokenId]
-  );
+  await query('UPDATE auth_tokens SET used_at = NOW() WHERE id = $1', [tokenId]);
 }
 
 async function verifyUserEmail(email) {
   await query(
     'UPDATE auth_users SET email_verified = true, updated_at = NOW() WHERE email = $1',
     [email]
+  );
+}
+
+async function updateUserProfileFields(userId, { name, profilePicUrl, bio } = {}) {
+  const sets = [];
+  const params = [];
+  let idx = 1;
+  if (name != null) {
+    sets.push(`name = $${idx++}`);
+    params.push(name);
+  }
+  if (profilePicUrl != null) {
+    sets.push(`profile_pic_url = $${idx++}`);
+    params.push(profilePicUrl);
+  }
+  if (bio != null) {
+    sets.push(`bio = $${idx++}`);
+    params.push(bio);
+  }
+  if (sets.length === 0) return;
+  sets.push('updated_at = NOW()');
+  params.push(userId);
+  await query(
+    `INSERT INTO user_profiles (id, name, created_at, updated_at)
+     VALUES ($${idx}, '', NOW(), NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [userId]
+  );
+  await query(
+    `UPDATE user_profiles SET ${sets.join(', ')} WHERE id = $${idx}`,
+    params
   );
 }
 
@@ -145,4 +211,6 @@ module.exports = {
   findTokenByHash,
   markTokenUsed,
   verifyUserEmail,
+  updateUserProfileFields,
+  now,
 };

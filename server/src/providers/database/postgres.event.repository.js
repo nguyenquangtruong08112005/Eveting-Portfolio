@@ -1,13 +1,15 @@
 const { query } = require('./postgres.client');
 const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
+const ticketTypesHelper = require('./ticket-types.helper');
+const socialHelper = require('./social.helper');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
-// Maps updates fields to PostgreSQL columns
+// Maps update fields to PostgreSQL columns (ticketTypes / featuredProfileIds are relational)
 const FIELD_MAP = {
     name: 'name',
     description: 'description',
     imageUrl: 'image_url',
     bannerUrl: 'banner_url',
-    featuredProfileIds: 'featured_profile_ids',
     category: 'category',
     tags: 'tags',
     date: 'date',
@@ -19,7 +21,6 @@ const FIELD_MAP = {
     venueId: 'venue_id',
     venueName: 'venue_name',
     city: 'city',
-    ticketTypes: 'ticket_types',
     minPrice: 'min_price',
     videoUrl: 'video_url',
     isOutdoor: 'is_outdoor',
@@ -37,7 +38,7 @@ const FIELD_MAP = {
     lifecycleStatus: 'lifecycle_status',
 };
 
-function rowToFirebaseDoc(row) {
+function rowToFirebaseDoc(row, extras = {}) {
     if (!row) return null;
     let data;
     if (row.raw_data) {
@@ -49,11 +50,10 @@ function rowToFirebaseDoc(row) {
             description: row.description || '',
             imageUrl: row.image_url || null,
             bannerUrl: row.banner_url || null,
-            featuredProfileIds: row.featured_profile_ids || [],
             category: row.category || [],
             tags: row.tags || [],
-            date: row.date != null ? Number(row.date) : null,
-            endDate: row.end_date != null ? Number(row.end_date) : null,
+            date: fromDb(row.date),
+            endDate: fromDb(row.end_date),
             eventType: row.event_type || 'physical',
             onlineUrl: row.online_url || null,
             location: row.location || null,
@@ -61,7 +61,6 @@ function rowToFirebaseDoc(row) {
             venueId: row.venue_id || null,
             venueName: row.venue_name || null,
             city: row.city || null,
-            ticketTypes: row.ticket_types || {},
             minPrice: row.min_price != null ? Number(row.min_price) : 0,
             videoUrl: row.video_url || '',
             isOutdoor: row.is_outdoor || false,
@@ -73,25 +72,55 @@ function rowToFirebaseDoc(row) {
             viewCount: row.view_count != null ? Number(row.view_count) : 0,
             requiredAge: row.required_age != null ? Number(row.required_age) : 0,
             sponsors: row.sponsors || [],
-            createdAt: row.created_at != null ? Number(row.created_at) : null,
-            lastUpdatedAt: row.last_updated_at != null ? Number(row.last_updated_at) : null,
+            createdAt: fromDb(row.created_at),
+            lastUpdatedAt: fromDb(row.last_updated_at),
         };
+    }
+    // Normalize time fields when raw_data path used
+    if (row.date != null) data.date = fromDb(row.date);
+    if (row.end_date != null) data.endDate = fromDb(row.end_date);
+    if (row.created_at != null) data.createdAt = fromDb(row.created_at);
+    if (row.last_updated_at != null) data.lastUpdatedAt = fromDb(row.last_updated_at);
+    data.ticketTypes = extras.ticketTypes != null ? extras.ticketTypes : (data.ticketTypes || {});
+    data.featuredProfileIds = extras.featuredProfileIds != null
+        ? extras.featuredProfileIds
+        : (data.featuredProfileIds || []);
+    // Prefer relational min price when ticket types present
+    if (extras.ticketTypes && Object.keys(extras.ticketTypes).length > 0) {
+        data.minPrice = ticketTypesHelper.minPriceFromMap(extras.ticketTypes);
     }
     delete data.id;
     return data;
 }
 
+async function hydrateEventRows(rows, client = { query }) {
+    if (!rows || rows.length === 0) return [];
+    const ids = rows.map((r) => r.id);
+    const [typesByEvent, featuredByEvent] = await Promise.all([
+        ticketTypesHelper.loadTicketTypesForEvents(client, ids),
+        socialHelper.loadFeaturedProfileIdsForEvents(client, ids),
+    ]);
+    return rows.map((row) => ({
+        id: row.id,
+        ...rowToFirebaseDoc(row, {
+            ticketTypes: typesByEvent[row.id] || {},
+            featuredProfileIds: featuredByEvent[row.id] || [],
+        }),
+    }));
+}
+
 const getEventById = async (eventId) => {
     const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
     if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return { id: row.id, ...rowToFirebaseDoc(row) };
+    const hydrated = await hydrateEventRows(result.rows);
+    return hydrated[0];
 };
 
 const getEventDataById = async (eventId) => {
-    const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
-    if (result.rows.length === 0) return null;
-    return rowToFirebaseDoc(result.rows[0]);
+    const event = await getEventById(eventId);
+    if (!event) return null;
+    const { id, ...data } = event;
+    return data;
 };
 
 const getActiveEventsInDateRange = async (startTime, endTime) => {
@@ -99,7 +128,8 @@ const getActiveEventsInDateRange = async (startTime, endTime) => {
         `SELECT * FROM events WHERE date >= $1 AND date < $2 AND status = $3`,
         [startTime, endTime, STATUS.ACTIVE]
     );
-    return result.rows.map(row => ({ ...rowToFirebaseDoc(row), _id: row.id }));
+    const hydrated = await hydrateEventRows(result.rows);
+    return hydrated.map((e) => ({ ...e, _id: e.id }));
 };
 
 const updateEvent = async (eventId, updates, transaction = null) => {
@@ -109,18 +139,36 @@ const updateEvent = async (eventId, updates, transaction = null) => {
     const params = [];
     let idx = 1;
 
-    // Group updates by DB column
-    const columnUpdates = {}; // colName => { fullVal: any, hasFullVal: boolean, dots: [ { path: string[], val: any } ] }
+    const columnUpdates = {};
     const rawMerge = {};
     const rawDots = [];
+    let fullTicketTypes = undefined;
+    const ticketTypeDots = [];
+    let fullFeatured = undefined;
 
     for (const key in updates) {
         if (key === 'id') continue;
+
+        if (key === 'ticketTypes') {
+            fullTicketTypes = updates[key];
+            if (key !== 'lifecycleStatus') rawMerge[key] = updates[key];
+            continue;
+        }
+        if (key === 'featuredProfileIds') {
+            fullFeatured = updates[key];
+            if (key !== 'lifecycleStatus') rawMerge[key] = updates[key];
+            continue;
+        }
 
         const dotIdx = key.indexOf('.');
         if (dotIdx > 0) {
             const topKey = key.substring(0, dotIdx);
             const nestedKey = key.substring(dotIdx + 1);
+            if (topKey === 'ticketTypes') {
+                ticketTypeDots.push({ path: nestedKey.split('.'), val: updates[key] });
+                rawDots.push({ path: key.split('.'), val: updates[key] });
+                continue;
+            }
             if (topKey in FIELD_MAP) {
                 const col = FIELD_MAP[topKey];
                 if (!columnUpdates[col]) {
@@ -128,22 +176,16 @@ const updateEvent = async (eventId, updates, transaction = null) => {
                 }
                 columnUpdates[col].dots.push({
                     path: nestedKey.split('.'),
-                    val: updates[key]
+                    val: updates[key],
                 });
             }
-
-            // All dot-notation updates on the event object are stored under raw_data
-            rawDots.push({
-                path: key.split('.'),
-                val: updates[key]
-            });
+            rawDots.push({ path: key.split('.'), val: updates[key] });
             continue;
         }
 
-        // Standard key
         if (key in FIELD_MAP) {
             const col = FIELD_MAP[key];
-            if (col !== 'raw_data') { // raw_data is built separately
+            if (col !== 'raw_data') {
                 if (!columnUpdates[col]) {
                     columnUpdates[col] = { hasFullVal: false, dots: [] };
                 }
@@ -152,33 +194,30 @@ const updateEvent = async (eventId, updates, transaction = null) => {
             }
         }
 
-        // Exclude lifecycleStatus from raw_data as in original logic
         if (key !== 'lifecycleStatus') {
             rawMerge[key] = updates[key];
         }
     }
 
-    // Process columns other than raw_data
     for (const col in columnUpdates) {
         const info = columnUpdates[col];
         if (info.hasFullVal) {
             let expr = `$${idx}`;
             const val = info.fullVal;
-            const isJsonb = ['location', 'ticket_types', 'recurring_rule', 'sponsors'].includes(col);
+            const isJsonb = ['location', 'recurring_rule', 'sponsors'].includes(col);
             if (isJsonb) {
                 params.push(val !== null ? JSON.stringify(val) : null);
             } else if (['date', 'end_date', 'created_at', 'last_updated_at'].includes(col)) {
-                params.push(val != null ? Number(val) : null);
+                params.push(toDb(val));
             } else {
                 params.push(val);
             }
             idx++;
 
             if (info.dots.length > 0) {
-                // If there are dot-notation updates applied on top of full value update
                 expr = `to_jsonb(${expr})`;
                 for (const dot of info.dots) {
-                    expr = `jsonb_set(${expr}, $${idx}::text[], $${idx+1}::jsonb)`;
+                    expr = `jsonb_set(${expr}, $${idx}::text[], $${idx + 1}::jsonb)`;
                     params.push(dot.path);
                     params.push(JSON.stringify(dot.val));
                     idx += 2;
@@ -186,10 +225,9 @@ const updateEvent = async (eventId, updates, transaction = null) => {
             }
             sets.push(`${col} = ${expr}`);
         } else if (info.dots.length > 0) {
-            // Only has dot-notation updates (e.g. ticketTypes.standard.available)
             let expr = `COALESCE(${col}, '{}'::jsonb)`;
             for (const dot of info.dots) {
-                expr = `jsonb_set(${expr}, $${idx}::text[], $${idx+1}::jsonb)`;
+                expr = `jsonb_set(${expr}, $${idx}::text[], $${idx + 1}::jsonb)`;
                 params.push(dot.path);
                 params.push(JSON.stringify(dot.val));
                 idx += 2;
@@ -198,7 +236,6 @@ const updateEvent = async (eventId, updates, transaction = null) => {
         }
     }
 
-    // Process raw_data column
     const hasRawMerge = Object.keys(rawMerge).length > 0;
     const hasRawDots = rawDots.length > 0;
 
@@ -214,7 +251,7 @@ const updateEvent = async (eventId, updates, transaction = null) => {
 
         if (hasRawDots) {
             for (const dot of rawDots) {
-                expr = `jsonb_set(${expr}, $${idx}::text[], $${idx+1}::jsonb)`;
+                expr = `jsonb_set(${expr}, $${idx}::text[], $${idx + 1}::jsonb)`;
                 params.push(dot.path);
                 params.push(JSON.stringify(dot.val));
                 idx += 2;
@@ -223,21 +260,51 @@ const updateEvent = async (eventId, updates, transaction = null) => {
         sets.push(`raw_data = ${expr}`);
     }
 
-    if (sets.length === 0) return;
+    if (fullTicketTypes !== undefined) {
+        await ticketTypesHelper.replaceTicketTypes(client, eventId, fullTicketTypes);
+        const mp = ticketTypesHelper.minPriceFromMap(fullTicketTypes);
+        sets.push(`min_price = $${idx}`);
+        params.push(mp);
+        idx++;
+    }
 
-    params.push(eventId);
-    await client.query(
-        `UPDATE events SET ${sets.join(', ')} WHERE id = $${idx}`,
-        params
-    );
+    for (const dot of ticketTypeDots) {
+        // path: [code, field] e.g. ['VIP', 'available']
+        const code = dot.path[0];
+        const field = dot.path[1];
+        if (field === 'available') {
+            await ticketTypesHelper.setAvailable(client, eventId, code, Number(dot.val));
+        } else if (code) {
+            // generic field update on raw_data of type row
+            await client.query(
+                `UPDATE event_ticket_types
+                 SET raw_data = jsonb_set(COALESCE(raw_data, '{}'::jsonb), $1::text[], $2::jsonb),
+                     updated_at = $3
+                 WHERE event_id = $4 AND code = $5`,
+                [[field], JSON.stringify(dot.val), nowDb(), eventId, code]
+            );
+        }
+    }
+
+    if (fullFeatured !== undefined) {
+        await socialHelper.replaceFeaturedProfiles(client, eventId, fullFeatured);
+    }
+
+    if (sets.length > 0) {
+        params.push(eventId);
+        await client.query(
+            `UPDATE events SET ${sets.join(', ')} WHERE id = $${idx}`,
+            params
+        );
+    }
 };
 
 const getEventInTransaction = async (transaction, eventId) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const result = await client.query('SELECT * FROM events WHERE id = $1 FOR UPDATE', [eventId]);
     if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return { id: row.id, ...rowToFirebaseDoc(row) };
+    const hydrated = await hydrateEventRows(result.rows, client);
+    return hydrated[0];
 };
 
 const updateEventInTransaction = async (transaction, eventId, updates) => {
@@ -246,22 +313,22 @@ const updateEventInTransaction = async (transaction, eventId, updates) => {
 
 const incrementEventTicketTypeAvailableInTransaction = async (transaction, eventId, ticketType, incrementBy) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
-    const pathTicketTypes = [ticketType, 'available'];
+    await ticketTypesHelper.incrementAvailable(client, eventId, ticketType, incrementBy);
+    // Keep raw_data in sync if present
     const pathRawData = ['ticketTypes', ticketType, 'available'];
     await client.query(
         `UPDATE events
-         SET ticket_types = jsonb_set(
-                 COALESCE(ticket_types, '{}'::jsonb),
-                 $1::text[],
-                 to_jsonb(COALESCE((ticket_types #>> $1)::int, 0) + $2)
-             ),
-             raw_data = jsonb_set(
-                 COALESCE(raw_data, '{}'::jsonb),
-                 $3::text[],
-                 to_jsonb(COALESCE((raw_data #>> $3)::int, 0) + $2)
-             )
-         WHERE id = $4`,
-        [pathTicketTypes, incrementBy, pathRawData, eventId]
+         SET raw_data = CASE
+             WHEN raw_data ? 'ticketTypes' THEN
+                 jsonb_set(
+                     COALESCE(raw_data, '{}'::jsonb),
+                     $1::text[],
+                     to_jsonb(COALESCE((raw_data #>> $1)::int, 0) + $2)
+                 )
+             ELSE raw_data
+         END
+         WHERE id = $3`,
+        [pathRawData, incrementBy, eventId]
     );
 };
 
@@ -279,19 +346,19 @@ const getEventsByOrganizerId = async (organizerId, { page = 1, limit = 20, statu
     sql += ' ORDER BY created_at DESC';
 
     const offset = (page - 1) * limit;
-    sql += ` LIMIT $${idx} OFFSET $${idx+1}`;
+    sql += ` LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(limit, offset);
 
     const result = await query(sql, params);
     const events = [];
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
         events.push({
             id: row.id,
             name: row.name,
-            date: row.date != null ? Number(row.date) : null,
+            date: fromDb(row.date),
             bannerUrl: row.banner_url,
             status: row.status,
-            viewCount: row.view_count || 0
+            viewCount: row.view_count || 0,
         });
     });
     return events;
@@ -303,8 +370,8 @@ const getEventEntriesByOrganizer = async (organizerId) => {
         [organizerId]
     );
     const entries = [];
-    result.rows.forEach(row => {
-        entries.push({ id: row.id, date: row.date != null ? Number(row.date) : null });
+    result.rows.forEach((row) => {
+        entries.push({ id: row.id, date: fromDb(row.date) });
     });
     return entries;
 };
@@ -315,28 +382,30 @@ const createEvent = async (eventId, eventData, transaction = null) => {
     delete matchingData.id;
     delete matchingData.lifecycleStatus;
 
-    const featuredProfileIds = eventData.featuredProfileIds || [];
     const category = eventData.category || [];
     const tags = eventData.tags || [];
+    const ticketTypes = eventData.ticketTypes || {};
+    const minPrice = eventData.minPrice != null
+        ? Number(eventData.minPrice)
+        : ticketTypesHelper.minPriceFromMap(ticketTypes);
 
     await client.query(
         `INSERT INTO events (
-            id, name, description, image_url, banner_url, featured_profile_ids,
+            id, name, description, image_url, banner_url,
             category, tags, date, end_date, event_type, online_url, location,
-            geohash, venue_id, venue_name, city, ticket_types, min_price,
+            geohash, venue_id, venue_name, city, min_price,
             video_url, is_outdoor, organizer_id, status, visibility,
             recurring_rule, hot_score, view_count, required_age, sponsors,
             created_at, last_updated_at, raw_data, lifecycle_status
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29,
-            $30, $31, $32, $33
+            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+            $28, $29, $30, $31
         ) ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
             image_url = EXCLUDED.image_url,
             banner_url = EXCLUDED.banner_url,
-            featured_profile_ids = EXCLUDED.featured_profile_ids,
             category = EXCLUDED.category,
             tags = EXCLUDED.tags,
             date = EXCLUDED.date,
@@ -348,7 +417,6 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             venue_id = EXCLUDED.venue_id,
             venue_name = EXCLUDED.venue_name,
             city = EXCLUDED.city,
-            ticket_types = EXCLUDED.ticket_types,
             min_price = EXCLUDED.min_price,
             video_url = EXCLUDED.video_url,
             is_outdoor = EXCLUDED.is_outdoor,
@@ -370,11 +438,10 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             eventData.description || '',
             eventData.imageUrl || null,
             eventData.bannerUrl || null,
-            featuredProfileIds,
             category,
             tags,
-            eventData.date != null ? Number(eventData.date) : null,
-            eventData.endDate != null ? Number(eventData.endDate) : null,
+            toDb(eventData.date),
+            toDb(eventData.endDate),
             eventData.eventType || 'physical',
             eventData.onlineUrl || null,
             eventData.location ? JSON.stringify(eventData.location) : null,
@@ -382,8 +449,7 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             eventData.venueId || null,
             eventData.venueName || null,
             eventData.city || null,
-            eventData.ticketTypes ? JSON.stringify(eventData.ticketTypes) : '{}',
-            eventData.minPrice != null ? Number(eventData.minPrice) : 0,
+            minPrice,
             eventData.videoUrl || '',
             eventData.isOutdoor || false,
             eventData.organizerId || null,
@@ -394,19 +460,22 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             eventData.viewCount != null ? Number(eventData.viewCount) : 0,
             eventData.requiredAge != null ? Number(eventData.requiredAge) : 0,
             eventData.sponsors ? JSON.stringify(eventData.sponsors) : '[]',
-            eventData.createdAt != null ? Number(eventData.createdAt) : null,
-            eventData.lastUpdatedAt != null ? Number(eventData.lastUpdatedAt) : null,
+            toDb(eventData.createdAt) || nowDb(),
+            toDb(eventData.lastUpdatedAt) || nowDb(),
             JSON.stringify(matchingData),
             eventData.lifecycleStatus || null,
         ]
     );
+
+    await ticketTypesHelper.replaceTicketTypes(client, eventId, ticketTypes);
+    await socialHelper.replaceFeaturedProfiles(client, eventId, eventData.featuredProfileIds || []);
 };
 
 const getEventRawById = async (eventId) => {
-    const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
-    if (result.rows.length === 0) return { exists: false, id: null, data: null };
-    const row = result.rows[0];
-    return { exists: true, id: row.id, data: rowToFirebaseDoc(row) };
+    const event = await getEventById(eventId);
+    if (!event) return { exists: false, id: null, data: null };
+    const { id, ...data } = event;
+    return { exists: true, id, data };
 };
 
 const getPublicEventsPage = async (page, limit) => {
@@ -426,23 +495,22 @@ const getPublicEventsPage = async (page, limit) => {
         [VISIBILITY.PUBLIC, STATUS.ACTIVE, limit, offset]
     );
 
-    const entries = [];
-    result.rows.forEach(row => {
-        const fullDoc = rowToFirebaseDoc(row);
+    const hydrated = await hydrateEventRows(result.rows);
+    const entries = hydrated.map((fullDoc) => {
         const data = {};
         const selectedFields = [
-            "id", "name", "date", "imageUrl", "bannerUrl", "videoUrl",
-            "location", "city", "venueName", "eventType", "minPrice",
-            "category", "tags"
+            'id', 'name', 'date', 'imageUrl', 'bannerUrl', 'videoUrl',
+            'location', 'city', 'venueName', 'eventType', 'minPrice',
+            'category', 'tags',
         ];
-        selectedFields.forEach(field => {
+        selectedFields.forEach((field) => {
             if (field === 'id') {
-                data.id = row.id;
+                data.id = fullDoc.id;
             } else if (fullDoc && fullDoc[field] !== undefined) {
                 data[field] = fullDoc[field];
             }
         });
-        entries.push({ id: row.id, data });
+        return { id: fullDoc.id, data };
     });
 
     return { entries, totalItems };
@@ -465,27 +533,26 @@ const searchPublicEvents = async (searchString, page, limit) => {
     const totalItems = countResult.rows[0].count;
 
     const result = await query(
-        `SELECT * ${sql} ORDER BY date ASC LIMIT $${idx} OFFSET $${idx+1}`,
+        `SELECT * ${sql} ORDER BY date ASC LIMIT $${idx} OFFSET $${idx + 1}`,
         [...params, limit, offset]
     );
 
-    const entries = [];
-    result.rows.forEach(row => {
-        const fullDoc = rowToFirebaseDoc(row);
+    const hydrated = await hydrateEventRows(result.rows);
+    const entries = hydrated.map((fullDoc) => {
         const data = {};
         const selectedFields = [
-            "id", "name", "date", "imageUrl", "bannerUrl", "videoUrl",
-            "location", "city", "venueName", "eventType", "minPrice",
-            "category", "tags"
+            'id', 'name', 'date', 'imageUrl', 'bannerUrl', 'videoUrl',
+            'location', 'city', 'venueName', 'eventType', 'minPrice',
+            'category', 'tags',
         ];
-        selectedFields.forEach(field => {
+        selectedFields.forEach((field) => {
             if (field === 'id') {
-                data.id = row.id;
+                data.id = fullDoc.id;
             } else if (fullDoc && fullDoc[field] !== undefined) {
                 data[field] = fullDoc[field];
             }
         });
-        entries.push({ id: row.id, data });
+        return { id: fullDoc.id, data };
     });
 
     return { entries, totalItems };
@@ -500,13 +567,15 @@ const queryActivePublicEventsByGeoBounds = async (bounds) => {
         ));
     }
     const results = await Promise.all(promises);
-    const docs = [];
+    const allRows = [];
     for (const res of results) {
-        res.rows.forEach(row => {
-            docs.push({ id: row.id, data: rowToFirebaseDoc(row) });
-        });
+        allRows.push(...res.rows);
     }
-    return docs;
+    const hydrated = await hydrateEventRows(allRows);
+    return hydrated.map((e) => {
+        const { id, ...data } = e;
+        return { id, data };
+    });
 };
 
 const getEventLifecycleOwnership = async (eventId) => {
@@ -520,7 +589,7 @@ const getEventLifecycleOwnership = async (eventId) => {
 
 const getRecommendedEventsRelational = async (interests = [], excludeEventIds = [], limit = 10) => {
     let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND date >= $3`;
-    const params = [STATUS.ACTIVE, VISIBILITY.PUBLIC, Date.now()];
+    const params = [STATUS.ACTIVE, VISIBILITY.PUBLIC, nowDb()];
     let idx = 4;
 
     if (interests && interests.length > 0) {
@@ -539,7 +608,7 @@ const getRecommendedEventsRelational = async (interests = [], excludeEventIds = 
     params.push(limit);
 
     const result = await query(sql, params);
-    return result.rows.map(row => ({ id: row.id, ...rowToFirebaseDoc(row) }));
+    return hydrateEventRows(result.rows);
 };
 
 const getPopularDestinations = async (limit = 10) => {
@@ -552,7 +621,7 @@ const getPopularDestinations = async (limit = 10) => {
          LIMIT $1`,
         [limit]
     );
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
         name: row.city,
         query: row.city,
         eventCount: row.event_count,
@@ -578,4 +647,3 @@ module.exports = {
     getRecommendedEventsRelational,
     getPopularDestinations,
 };
-

@@ -1,5 +1,6 @@
 const { query, transaction } = require('./postgres.client');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
 function getClient(tx) {
     return (tx && typeof tx.query === 'function') ? tx : { query };
@@ -45,11 +46,11 @@ async function insertOrder(client, order) {
             order.currency || 'VND',
             order.idempotencyKey || null,
             order.notes || null,
-            order.expiresAt || null,
-            order.paidAt || null,
-            order.cancelledAt || null,
-            order.createdAt || Date.now(),
-            order.updatedAt || Date.now(),
+            toDb(order.expiresAt),
+            toDb(order.paidAt),
+            toDb(order.cancelledAt),
+            toDb(order.createdAt) || nowDb(),
+            toDb(order.updatedAt) || nowDb(),
             JSON.stringify(order.rawData || {}),
         ]
     );
@@ -76,7 +77,7 @@ async function insertOrderItem(client, item, orderId) {
             item.subtotal || 0,
             item.totalAmount || 0,
             item.status || null,
-            item.createdAt || Date.now(),
+            toDb(item.createdAt) || nowDb(),
         ]
     );
 }
@@ -104,11 +105,11 @@ const getOrderById = async (orderId) => {
         currency: row.currency,
         idempotencyKey: row.idempotency_key,
         notes: row.notes,
-        expiresAt: row.expires_at != null ? Number(row.expires_at) : null,
-        paidAt: row.paid_at != null ? Number(row.paid_at) : null,
-        cancelledAt: row.cancelled_at != null ? Number(row.cancelled_at) : null,
-        createdAt: row.created_at != null ? Number(row.created_at) : null,
-        updatedAt: row.updated_at != null ? Number(row.updated_at) : null,
+        expiresAt: fromDb(row.expires_at),
+        paidAt: fromDb(row.paid_at),
+        cancelledAt: fromDb(row.cancelled_at),
+        createdAt: fromDb(row.created_at),
+        updatedAt: fromDb(row.updated_at),
         rawData: row.raw_data || {},
         items: [],
         paymentAttempts: [],
@@ -132,7 +133,7 @@ const getOrderById = async (orderId) => {
         subtotal: r.subtotal != null ? Number(r.subtotal) : 0,
         totalAmount: r.total_amount != null ? Number(r.total_amount) : 0,
         status: r.status,
-        createdAt: r.created_at != null ? Number(r.created_at) : null,
+        createdAt: fromDb(r.created_at),
     }));
 
     const attemptsResult = await query(
@@ -154,10 +155,10 @@ const getOrderById = async (orderId) => {
         requestPayload: r.request_payload || null,
         responsePayload: r.response_payload || null,
         gatewayResponse: r.gateway_response || null,
-        completedAt: r.completed_at != null ? Number(r.completed_at) : null,
+        completedAt: fromDb(r.completed_at),
         failureReason: r.failure_reason,
-        createdAt: r.created_at != null ? Number(r.created_at) : null,
-        updatedAt: r.updated_at != null ? Number(r.updated_at) : null,
+        createdAt: fromDb(r.created_at),
+        updatedAt: fromDb(r.updated_at),
     }));
 
     return order;
@@ -204,10 +205,10 @@ async function insertPaymentAttempt(client, attempt) {
             attempt.requestPayload ? JSON.stringify(attempt.requestPayload) : null,
             attempt.responsePayload ? JSON.stringify(attempt.responsePayload) : null,
             attempt.gatewayResponse ? JSON.stringify(attempt.gatewayResponse) : null,
-            attempt.completedAt || null,
+            toDb(attempt.completedAt),
             attempt.failureReason || null,
-            attempt.createdAt || Date.now(),
-            attempt.updatedAt || Date.now(),
+            toDb(attempt.createdAt) || nowDb(),
+            toDb(attempt.updatedAt) || nowDb(),
         ]
     );
 }
@@ -285,7 +286,7 @@ async function applyPaymentAttemptUpdate(client, attemptId, updates) {
     }
     if (updates.completedAt !== undefined) {
         sets.push(`completed_at = $${idx}`);
-        params.push(updates.completedAt);
+        params.push(toDb(updates.completedAt));
         idx++;
     }
     if (updates.failureReason !== undefined) {
@@ -297,7 +298,7 @@ async function applyPaymentAttemptUpdate(client, attemptId, updates) {
     if (sets.length === 0) return;
 
     sets.push(`updated_at = $${idx}`);
-    params.push(Date.now());
+    params.push(nowDb());
     idx++;
     params.push(attemptId);
 
@@ -455,7 +456,7 @@ async function applyOrderStatusUpdate(client, orderId, status, paidAt = null) {
 
     // 2. Perform the update
     const sets = ['status = $1', 'updated_at = $2'];
-    const params = [status, Date.now()];
+    const params = [status, nowDb()];
     let idx = 3;
 
     if (paidAt !== null) {
@@ -496,10 +497,10 @@ async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction =
         transactionId: r.transaction_id,
         amount: r.amount != null ? Number(r.amount) : 0,
         currency: r.currency,
-        completedAt: r.completed_at != null ? Number(r.completed_at) : null,
+        completedAt: fromDb(r.completed_at),
         failureReason: r.failure_reason,
-        createdAt: r.created_at != null ? Number(r.created_at) : null,
-        updatedAt: r.updated_at != null ? Number(r.updated_at) : null,
+        createdAt: fromDb(r.created_at),
+        updatedAt: fromDb(r.updated_at),
     };
 }
 
@@ -508,7 +509,7 @@ async function createLedgerEntryInTransaction(tx, entry) {
     await client.query(
         `INSERT INTO ledger_entries (id, order_id, organizer_id, gross_amount, platform_fee, net_amount, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [entry.id, entry.orderId, entry.organizerId, entry.grossAmount, entry.platformFee, entry.netAmount, entry.createdAt || Date.now()]
+        [entry.id, entry.orderId, entry.organizerId, entry.grossAmount, entry.platformFee, entry.netAmount, entry.createdAt || nowDb()]
     );
 
     // Update organizer balance
@@ -517,7 +518,7 @@ async function createLedgerEntryInTransaction(tx, entry) {
          VALUES ($1, $2, $3)
          ON CONFLICT (organizer_id)
          DO UPDATE SET balance = organizer_balances.balance + EXCLUDED.balance, updated_at = EXCLUDED.updated_at`,
-        [entry.organizerId, entry.netAmount, Date.now()]
+        [entry.organizerId, entry.netAmount, nowDb()]
     );
 
     // Update platform fee balance
@@ -526,7 +527,7 @@ async function createLedgerEntryInTransaction(tx, entry) {
          VALUES ('platform', $1, $2)
          ON CONFLICT (id)
          DO UPDATE SET balance = platform_fees.balance + EXCLUDED.balance, updated_at = EXCLUDED.updated_at`,
-        [entry.platformFee, Date.now()]
+        [entry.platformFee, nowDb()]
     );
 }
 
@@ -621,7 +622,7 @@ async function getOrganizerSettingsInTransaction(tx, organizerId) {
     return {
         organizerId: row.organizer_id,
         platformFeeRate: Number(row.platform_fee_rate),
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 }
 
@@ -630,7 +631,7 @@ async function createOrganizerSettings(settings) {
         `INSERT INTO organizer_settings (organizer_id, platform_fee_rate, created_at)
          VALUES ($1, $2, $3)
          ON CONFLICT (organizer_id) DO UPDATE SET platform_fee_rate = $2`,
-        [settings.organizerId, settings.platformFeeRate, settings.createdAt || Date.now()]
+        [settings.organizerId, settings.platformFeeRate, settings.createdAt || nowDb()]
     );
 }
 
@@ -652,11 +653,11 @@ async function getOrderInTransaction(tx, orderId) {
         currency: row.currency,
         idempotencyKey: row.idempotency_key,
         notes: row.notes,
-        expiresAt: row.expires_at != null ? Number(row.expires_at) : null,
-        paidAt: row.paid_at != null ? Number(row.paid_at) : null,
-        cancelledAt: row.cancelled_at != null ? Number(row.cancelled_at) : null,
-        createdAt: row.created_at != null ? Number(row.created_at) : null,
-        updatedAt: row.updated_at != null ? Number(row.updated_at) : null,
+        expiresAt: fromDb(row.expires_at),
+        paidAt: fromDb(row.paid_at),
+        cancelledAt: fromDb(row.cancelled_at),
+        createdAt: fromDb(row.created_at),
+        updatedAt: fromDb(row.updated_at),
         rawData: row.raw_data || {}
     };
 }

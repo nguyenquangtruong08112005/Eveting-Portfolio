@@ -1,4 +1,5 @@
 const { query } = require('./postgres.client');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
 function rowToNotification(row) {
     return {
@@ -9,7 +10,7 @@ function rowToNotification(row) {
         type: row.type,
         eventId: row.event_id || null,
         isRead: row.is_read,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at),
     };
 }
 
@@ -33,17 +34,12 @@ const markNotificationAsRead = async (notificationId) => {
 };
 
 const createNotification = async (notificationData) => {
+    const createdAt = toDb(notificationData.createdAt) || nowDb();
+    // Partitioned PK is (id, created_at) — plain insert (empty-dev overwrite via delete)
+    await query('DELETE FROM notifications WHERE id = $1', [notificationData.id]);
     await query(
         `INSERT INTO notifications (id, user_id, title, message, type, event_id, is_read, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (id) DO UPDATE SET
-           user_id = EXCLUDED.user_id,
-           title = EXCLUDED.title,
-           message = EXCLUDED.message,
-           type = EXCLUDED.type,
-           event_id = EXCLUDED.event_id,
-           is_read = EXCLUDED.is_read,
-           created_at = EXCLUDED.created_at`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
             notificationData.id,
             notificationData.userId,
@@ -52,7 +48,7 @@ const createNotification = async (notificationData) => {
             notificationData.type,
             notificationData.eventId || null,
             notificationData.isRead === undefined ? false : notificationData.isRead,
-            Number(notificationData.createdAt)
+            createdAt,
         ]
     );
     return notificationData;
@@ -61,5 +57,5 @@ const createNotification = async (notificationData) => {
 module.exports = {
     getNotificationsByUserId,
     markNotificationAsRead,
-    createNotification
+    createNotification,
 };
