@@ -1,0 +1,9 @@
+# Root convenience: local Postgres (+ optional ES) for Portfolio V1 demo.
+# Prefer: cd Server-2025-Eventing && npm run local:infra
+#
+# Usage from monorepo root:
+#   docker compose up -d
+#   # then set DATABASE_URL=postgres://eventing:eventing_dev_password@localhost:55432/eventing_dev
+
+include:
+  - path: Server-2025-Eventing/infra/docker/docker-compose.local.yml
