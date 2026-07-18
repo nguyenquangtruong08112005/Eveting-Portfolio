@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Required for web/Dockerfile multi-stage standalone image
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
