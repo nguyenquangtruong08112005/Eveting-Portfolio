@@ -26,25 +26,39 @@ See **[NAMING.md](NAMING.md)** for conventions.
 5. **[agent-workflow/execution/db/](agent-workflow/execution/db/)** — DB hub  
 6. **[web/DESIGN.md](web/DESIGN.md)** — web design system (pre-remake)  
 
-## Local run
+## Local run (master command)
+
+```powershell
+# From monorepo root — infra + migrate + API + web + ngrok
+npm run dev:up
+
+# Without ngrok
+npm run dev:up:no-ngrok
+
+# Stop docker infra
+npm run dev:down
+```
+
+Details: **[deploy/README.md](deploy/README.md)**
+
+Manual (two terminals):
 
 ```bash
-# Infra + API
-cd server
-npm install
-npm run local:infra
-npm run db:migrate
-npm run dev
+cd server && npm install && npm run local:infra && npm run db:migrate && npm run dev
+cd web && npm install && npm run dev -- -p 3001
+```
 
-# Web (second terminal)
-cd web
-npm install
-npm run dev
+## Docker / AWS prep
+
+```powershell
+npm run docker:up          # compose: postgres + api + web
+# Terraform / Ansible / CI-CD: see deploy/README.md
 ```
 
 ## Next product work
 
-1. Hardening leftovers (in progress)  
-2. You report mobile bugs → we fix  
-3. **Remake web** (planned)  
-4. **Redesign mobile UI** (planned)  
+1. You report mobile bugs → we fix  
+2. **Remake web**  
+3. **Redesign mobile UI**  
+4. Extend Terraform (ECR/ECS) for real AWS deploy  
+

@@ -1,0 +1,103 @@
+# Manual deploy skeleton: build images → push ECR → optional Terraform / Ansible.
+# Requires repository secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, ECR_REGISTRY
+name: Deploy AWS (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options: [staging, production]
+      run_terraform:
+        description: "run terraform apply"
+        type: boolean
+        default: false
+      run_ansible:
+        description: "run ansible deploy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push API
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE: auraevents-api
+        run: |
+          docker build -t $REGISTRY/$IMAGE:${{ github.sha }} ./server
+          docker tag $REGISTRY/$IMAGE:${{ github.sha }} $REGISTRY/$IMAGE:${{ inputs.environment }}
+          docker push $REGISTRY/$IMAGE:${{ github.sha }}
+          docker push $REGISTRY/$IMAGE:${{ inputs.environment }}
+
+      - name: Build & push Web
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE: auraevents-web
+          API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        run: |
+          docker build -t $REGISTRY/$IMAGE:${{ github.sha }} \
+            --build-arg NEXT_PUBLIC_API_URL=${API_URL:-https://api.example.com} \
+            ./web
+          docker tag $REGISTRY/$IMAGE:${{ github.sha }} $REGISTRY/$IMAGE:${{ inputs.environment }}
+          docker push $REGISTRY/$IMAGE:${{ github.sha }}
+          docker push $REGISTRY/$IMAGE:${{ inputs.environment }}
+
+  terraform:
+    needs: build-and-push
+    if: ${{ inputs.run_terraform }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+      - run: terraform init
+      - run: terraform plan -var="environment=${{ inputs.environment }}"
+      - run: terraform apply -auto-approve -var="environment=${{ inputs.environment }}"
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || inputs.environment == 'staging'
+
+  ansible:
+    needs: build-and-push
+    if: ${{ inputs.run_ansible }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Ansible (requires inventory secrets)
+        working-directory: server/infra/ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
+          pip install ansible
+          ansible-playbook -i inventory.ini playbook.yml --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }}"
+        continue-on-error: true

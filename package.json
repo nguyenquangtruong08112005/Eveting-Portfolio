@@ -1,0 +1,20 @@
+{
+  "name": "auraevents-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Master scripts for local dev (Windows-friendly)",
+  "scripts": {
+    "infra:up": "npm --prefix server run local:infra",
+    "infra:down": "npm --prefix server run local:down",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "dev:api": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev -- -p 3001",
+    "dev:up": "pwsh -File scripts/dev-up.ps1",
+    "dev:up:no-ngrok": "pwsh -File scripts/dev-up.ps1 -NoNgrok",
+    "dev:down": "pwsh -File scripts/dev-down.ps1",
+    "docker:build": "docker compose -f docker-compose.yml -f docker-compose.app.yml build",
+    "docker:up": "docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build",
+    "docker:down": "docker compose -f docker-compose.yml -f docker-compose.app.yml down",
+    "docker:logs": "docker compose -f docker-compose.yml -f docker-compose.app.yml logs -f"
+  }
+}

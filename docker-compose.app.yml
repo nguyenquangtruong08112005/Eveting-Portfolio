@@ -1,0 +1,52 @@
+# App stack (API + web) on top of local infra.
+# Usage from monorepo root:
+#   docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.app.yml run --rm api node db/migrate.js
+
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: auraevents-api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://eventing:eventing_dev_password@postgres:5432/eventing_dev
+      # Override secrets via .env at root or export before up
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-dev-access-secret-change-me-32chars}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-dev-refresh-secret-change-me-32chars}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    container_name: auraevents-web
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3001:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgres://eventing:eventing_dev_password@postgres:5432/eventing_dev
+    depends_on:
+      - postgres
+    command: ["node", "db/migrate.js"]
+    restart: "no"
