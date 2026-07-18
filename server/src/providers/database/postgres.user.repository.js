@@ -307,26 +307,12 @@ var followProfile = async function (userId, profileId) {
     }
   }
 
+  // Counters updated by DB trigger trg_user_follows_* (migration 052)
   await query(
     `INSERT INTO user_follows (follower_id, followee_id, created_at)
      VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
     [userId, profileId, nowDb()]
   );
-  await query(
-    'UPDATE user_profiles SET following_count = following_count + 1, updated_at = NOW() WHERE id = $1',
-    [userId]
-  );
-  if (isFeatured) {
-    await query(
-      'UPDATE featured_profiles SET follower_count = follower_count + 1, updated_at = NOW() WHERE id = $1',
-      [profileId]
-    );
-  } else {
-    await query(
-      'UPDATE user_profiles SET followers_count = followers_count + 1, updated_at = NOW() WHERE id = $1',
-      [profileId]
-    );
-  }
   return { alreadyFollowing: false };
 };
 
@@ -342,29 +328,11 @@ var unfollowProfile = async function (userId, profileId) {
     return { notFollowing: true };
   }
 
+  // Counters updated by DB trigger trg_user_follows_* (migration 052)
   await query(
     'DELETE FROM user_follows WHERE follower_id = $1 AND followee_id = $2',
     [userId, profileId]
   );
-  await query(
-    'UPDATE user_profiles SET following_count = GREATEST(following_count - 1, 0), updated_at = NOW() WHERE id = $1',
-    [userId]
-  );
-  var profileResult = await query('SELECT id FROM featured_profiles WHERE id = $1', [profileId]);
-  if (profileResult.rows.length > 0) {
-    await query(
-      'UPDATE featured_profiles SET follower_count = GREATEST(follower_count - 1, 0), updated_at = NOW() WHERE id = $1',
-      [profileId]
-    );
-  } else {
-    profileResult = await query('SELECT id FROM user_profiles WHERE id = $1', [profileId]);
-    if (profileResult.rows.length > 0) {
-      await query(
-        'UPDATE user_profiles SET followers_count = GREATEST(followers_count - 1, 0), updated_at = NOW() WHERE id = $1',
-        [profileId]
-      );
-    }
-  }
   return { notFollowing: false };
 };
 

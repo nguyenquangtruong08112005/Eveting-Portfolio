@@ -19,7 +19,6 @@ const FIELD_MAP = {
     checkInCount: 'check_in_count',
     lastCheckInAt: 'last_check_in_at',
     checkedInAt: 'checked_in_at',
-    paymentTime: 'payment_time',
     updatedAt: 'updated_at'
 };
 
@@ -50,7 +49,6 @@ function rowToTicket(row, includeDocId) {
         if (row.check_in_count != null) ticket.checkInCount = Number(row.check_in_count);
         if (row.last_check_in_at != null) ticket.lastCheckInAt = fromDb(row.last_check_in_at);
         if (row.checked_in_at != null) ticket.checkedInAt = fromDb(row.checked_in_at);
-        if (row.payment_time != null) ticket.paymentTime = fromDb(row.payment_time);
         if (row.updated_at != null) ticket.updatedAt = fromDb(row.updated_at);
     }
     
@@ -82,7 +80,7 @@ const updateTicket = async (ticketId, updates, transaction = null) => {
         if (key in FIELD_MAP) {
             sets.push(`${FIELD_MAP[key]} = $${idx}`);
             const col = FIELD_MAP[key];
-            if (['purchase_date', 'last_check_in_at', 'checked_in_at', 'payment_time', 'updated_at'].includes(col)) {
+            if (['purchase_date', 'last_check_in_at', 'checked_in_at', 'updated_at'].includes(col)) {
                 params.push(toDb(updates[key]));
             } else {
                 params.push(updates[key]);
@@ -153,8 +151,8 @@ const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
             id, event_id, user_id, organizer_id, type, price, original_price,
             quantity, unit_price, applied_promo_code, seat, qr_code, status,
             purchase_date, group_id, check_in_count, last_check_in_at, checked_in_at,
-            payment_time, updated_at, raw_data
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+            updated_at, raw_data
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         ON CONFLICT (id) DO UPDATE SET
             event_id = EXCLUDED.event_id,
             user_id = EXCLUDED.user_id,
@@ -173,7 +171,6 @@ const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
             check_in_count = EXCLUDED.check_in_count,
             last_check_in_at = EXCLUDED.last_check_in_at,
             checked_in_at = EXCLUDED.checked_in_at,
-            payment_time = EXCLUDED.payment_time,
             updated_at = EXCLUDED.updated_at,
             raw_data = EXCLUDED.raw_data`,
         [
@@ -195,7 +192,6 @@ const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
             ticketData.checkInCount || 0,
             toDb(ticketData.lastCheckInAt),
             toDb(ticketData.checkedInAt),
-            toDb(ticketData.paymentTime),
             toDb(ticketData.updatedAt) || nowDb(),
             JSON.stringify(rawData)
         ]

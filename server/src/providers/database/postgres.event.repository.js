@@ -1,5 +1,11 @@
 const { query } = require('./postgres.client');
-const { STATUS, VISIBILITY } = require('@/modules/events/domain/event-lifecycle');
+const {
+    STATUS,
+    VISIBILITY,
+    LIFECYCLE,
+    legacyToCanonicalStatus,
+    canonicalToLegacyStatus,
+} = require('@/modules/events/domain/event-lifecycle');
 const ticketTypesHelper = require('./ticket-types.helper');
 const socialHelper = require('./social.helper');
 const { toDb, fromDb, nowDb } = require('./time.helper');
@@ -12,8 +18,8 @@ const FIELD_MAP = {
     bannerUrl: 'banner_url',
     category: 'category',
     tags: 'tags',
-    date: 'date',
-    endDate: 'end_date',
+    date: 'start_at',
+    endDate: 'end_at',
     eventType: 'event_type',
     onlineUrl: 'online_url',
     location: 'location',
@@ -52,8 +58,8 @@ function rowToFirebaseDoc(row, extras = {}) {
             bannerUrl: row.banner_url || null,
             category: row.category || [],
             tags: row.tags || [],
-            date: fromDb(row.date),
-            endDate: fromDb(row.end_date),
+            date: fromDb(row.start_at),
+            endDate: fromDb(row.end_at),
             eventType: row.event_type || 'physical',
             onlineUrl: row.online_url || null,
             location: row.location || null,
@@ -77,8 +83,8 @@ function rowToFirebaseDoc(row, extras = {}) {
         };
     }
     // Normalize time fields when raw_data path used
-    if (row.date != null) data.date = fromDb(row.date);
-    if (row.end_date != null) data.endDate = fromDb(row.end_date);
+    if (row.start_at != null) data.date = fromDb(row.start_at);
+    if (row.end_at != null) data.endDate = fromDb(row.end_at);
     if (row.created_at != null) data.createdAt = fromDb(row.created_at);
     if (row.last_updated_at != null) data.lastUpdatedAt = fromDb(row.last_updated_at);
     data.ticketTypes = extras.ticketTypes != null ? extras.ticketTypes : (data.ticketTypes || {});
@@ -125,7 +131,7 @@ const getEventDataById = async (eventId) => {
 
 const getActiveEventsInDateRange = async (startTime, endTime) => {
     const result = await query(
-        `SELECT * FROM events WHERE date >= $1 AND date < $2 AND status = $3`,
+        `SELECT * FROM events WHERE start_at >= $1 AND start_at < $2 AND status = $3`,
         [startTime, endTime, STATUS.ACTIVE]
     );
     const hydrated = await hydrateEventRows(result.rows);
@@ -207,7 +213,7 @@ const updateEvent = async (eventId, updates, transaction = null) => {
             const isJsonb = ['location', 'recurring_rule', 'sponsors'].includes(col);
             if (isJsonb) {
                 params.push(val !== null ? JSON.stringify(val) : null);
-            } else if (['date', 'end_date', 'created_at', 'last_updated_at'].includes(col)) {
+            } else if (['start_at', 'end_at', 'created_at', 'last_updated_at'].includes(col)) {
                 params.push(toDb(val));
             } else {
                 params.push(val);
@@ -355,7 +361,7 @@ const getEventsByOrganizerId = async (organizerId, { page = 1, limit = 20, statu
         events.push({
             id: row.id,
             name: row.name,
-            date: fromDb(row.date),
+            date: fromDb(row.start_at),
             bannerUrl: row.banner_url,
             status: row.status,
             viewCount: row.view_count || 0,
@@ -366,12 +372,12 @@ const getEventsByOrganizerId = async (organizerId, { page = 1, limit = 20, statu
 
 const getEventEntriesByOrganizer = async (organizerId) => {
     const result = await query(
-        'SELECT id, date FROM events WHERE organizer_id = $1',
+        'SELECT id, start_at FROM events WHERE organizer_id = $1',
         [organizerId]
     );
     const entries = [];
     result.rows.forEach((row) => {
-        entries.push({ id: row.id, date: fromDb(row.date) });
+        entries.push({ id: row.id, date: fromDb(row.start_at) });
     });
     return entries;
 };
@@ -389,10 +395,15 @@ const createEvent = async (eventId, eventData, transaction = null) => {
         ? Number(eventData.minPrice)
         : ticketTypesHelper.minPriceFromMap(ticketTypes);
 
+    const lifecycleStatus = eventData.lifecycleStatus
+        || (eventData.status ? legacyToCanonicalStatus(eventData.status) : null)
+        || LIFECYCLE.DRAFT;
+    const legacyStatus = canonicalToLegacyStatus(lifecycleStatus);
+
     await client.query(
         `INSERT INTO events (
             id, name, description, image_url, banner_url,
-            category, tags, date, end_date, event_type, online_url, location,
+            category, tags, start_at, end_at, event_type, online_url, location,
             geohash, venue_id, venue_name, city, min_price,
             video_url, is_outdoor, organizer_id, status, visibility,
             recurring_rule, hot_score, view_count, required_age, sponsors,
@@ -408,8 +419,8 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             banner_url = EXCLUDED.banner_url,
             category = EXCLUDED.category,
             tags = EXCLUDED.tags,
-            date = EXCLUDED.date,
-            end_date = EXCLUDED.end_date,
+            start_at = EXCLUDED.start_at,
+            end_at = EXCLUDED.end_at,
             event_type = EXCLUDED.event_type,
             online_url = EXCLUDED.online_url,
             location = EXCLUDED.location,
@@ -453,7 +464,7 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             eventData.videoUrl || '',
             eventData.isOutdoor || false,
             eventData.organizerId || null,
-            eventData.status || STATUS.PENDING,
+            legacyStatus,
             eventData.visibility || VISIBILITY.PRIVATE,
             eventData.recurringRule ? JSON.stringify(eventData.recurringRule) : null,
             eventData.hotScore != null ? Number(eventData.hotScore) : 0,
@@ -463,7 +474,7 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             toDb(eventData.createdAt) || nowDb(),
             toDb(eventData.lastUpdatedAt) || nowDb(),
             JSON.stringify(matchingData),
-            eventData.lifecycleStatus || null,
+            lifecycleStatus,
         ]
     );
 
@@ -490,7 +501,7 @@ const getPublicEventsPage = async (page, limit) => {
     const result = await query(
         `SELECT * FROM events
          WHERE visibility = $1 AND status = $2
-         ORDER BY date ASC
+         ORDER BY start_at ASC
          LIMIT $3 OFFSET $4`,
         [VISIBILITY.PUBLIC, STATUS.ACTIVE, limit, offset]
     );
@@ -533,7 +544,7 @@ const searchPublicEvents = async (searchString, page, limit) => {
     const totalItems = countResult.rows[0].count;
 
     const result = await query(
-        `SELECT * ${sql} ORDER BY date ASC LIMIT $${idx} OFFSET $${idx + 1}`,
+        `SELECT * ${sql} ORDER BY start_at ASC LIMIT $${idx} OFFSET $${idx + 1}`,
         [...params, limit, offset]
     );
 
@@ -588,7 +599,7 @@ const getEventLifecycleOwnership = async (eventId) => {
 };
 
 const getRecommendedEventsRelational = async (interests = [], excludeEventIds = [], limit = 10) => {
-    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND date >= $3`;
+    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND start_at >= $3`;
     const params = [STATUS.ACTIVE, VISIBILITY.PUBLIC, nowDb()];
     let idx = 4;
 
@@ -604,7 +615,7 @@ const getRecommendedEventsRelational = async (interests = [], excludeEventIds = 
         idx++;
     }
 
-    sql += ` ORDER BY hot_score DESC, date ASC LIMIT $${idx}`;
+    sql += ` ORDER BY hot_score DESC, start_at ASC LIMIT $${idx}`;
     params.push(limit);
 
     const result = await query(sql, params);

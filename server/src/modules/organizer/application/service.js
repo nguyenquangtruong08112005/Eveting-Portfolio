@@ -44,11 +44,20 @@ const checkInByQr = async (qrToken, requestingOrganizerId) => {
         const currentCheckInCount = ticketData.checkInCount || 0;
         if (currentCheckInCount >= quantity) throw new Error(`This ticket has been checked in (${currentCheckInCount}/${quantity} times).`);
         const newCheckInCount = currentCheckInCount + 1;
-        const updates = { checkInCount: newCheckInCount, lastCheckInAt: Date.now() };
+        const now = Date.now();
+        const updates = { checkInCount: newCheckInCount, lastCheckInAt: now, checkedInAt: ticketData.checkedInAt || now };
         if (ticketData.status === 'paid') { updates.status = 'checkedIn'; }
-        ticketRepository.updateTicketInTransaction(transaction, ticketId, updates);
-        if (currentCheckInCount === 0) { userRepository.addHistoryEventIdInTransaction(transaction, userId, eventId); }
-        analyticsRepository.incrementCheckInInTransaction(transaction, eventId);
+        await ticketRepository.updateTicketInTransaction(transaction, ticketId, updates);
+        // W1: first-class check-in row
+        const checkInId = `tci_${ticketId}_${newCheckInCount}`;
+        await transaction.query(
+            `INSERT INTO ticket_check_ins (id, ticket_id, event_id, staff_user_id, checked_in_at, source)
+             VALUES ($1, $2, $3, $4, $5, 'qr')
+             ON CONFLICT (id) DO NOTHING`,
+            [checkInId, ticketId, eventId, requestingOrganizerId || null, new Date(now)]
+        );
+        if (currentCheckInCount === 0) { await userRepository.addHistoryEventIdInTransaction(transaction, userId, eventId); }
+        await analyticsRepository.incrementCheckInInTransaction(transaction, eventId);
         return { ...ticketData, status: 'checkedIn', checkInCount: newCheckInCount, quantity: quantity, remaining: quantity - newCheckInCount };
     });
 };

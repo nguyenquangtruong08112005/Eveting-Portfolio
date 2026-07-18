@@ -125,6 +125,13 @@ async function appendRoleToUser(userId, role) {
      WHERE id = $1`,
     [userId, role]
   );
+  const roleName = role === 'attendee' ? 'user' : role;
+  await query(
+    `INSERT INTO user_roles (user_id, role_id, created_at)
+     SELECT $1, r.id, NOW() FROM roles r WHERE r.name = $2
+     ON CONFLICT DO NOTHING`,
+    [userId, roleName]
+  );
 }
 
 async function saveToken({ id, tokenHash, purpose, email, expiresAt, userId = null }) {

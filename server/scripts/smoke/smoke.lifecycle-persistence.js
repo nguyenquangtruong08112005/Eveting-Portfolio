@@ -116,7 +116,7 @@ async function run() {
 
     const rejectId = sid('rej');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, created_at, last_updated_at, raw_data, lifecycle_status)
+      `INSERT INTO events (id, name, start_at, status, visibility, created_at, last_updated_at, raw_data, lifecycle_status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [rejectId, 'Reject Lifecycle Test', now + 86400000, STATUS.PENDING, VISIBILITY.PRIVATE, now, now,
        JSON.stringify({ name: 'Reject Lifecycle Test', date: now + 86400000, status: STATUS.PENDING, visibility: VISIBILITY.PRIVATE }),
@@ -142,7 +142,7 @@ async function run() {
 
     const cancelId = sid('can');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, created_at, last_updated_at, raw_data, lifecycle_status)
+      `INSERT INTO events (id, name, start_at, status, visibility, created_at, last_updated_at, raw_data, lifecycle_status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [cancelId, 'Cancel Lifecycle Test', now + 86400000, STATUS.ACTIVE, VISIBILITY.PUBLIC, now, now,
        JSON.stringify({ name: 'Cancel Lifecycle Test', date: now + 86400000, status: STATUS.ACTIVE, visibility: VISIBILITY.PUBLIC }),
@@ -176,7 +176,7 @@ async function run() {
     // pending -> submitted
     const bfPendingId = sid('bfp');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, created_at, last_updated_at, raw_data)
+      `INSERT INTO events (id, name, start_at, status, visibility, created_at, last_updated_at, raw_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [bfPendingId, 'Backfill Pending', now + 86400000, STATUS.PENDING, VISIBILITY.PRIVATE, now, now,
        JSON.stringify({ name: 'Backfill Pending', date: now + 86400000, status: STATUS.PENDING, visibility: VISIBILITY.PRIVATE })]
@@ -192,7 +192,7 @@ async function run() {
     // active -> published
     const bfActiveId = sid('bfa');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, created_at, last_updated_at, raw_data)
+      `INSERT INTO events (id, name, start_at, status, visibility, created_at, last_updated_at, raw_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [bfActiveId, 'Backfill Active', now + 86400000, STATUS.ACTIVE, VISIBILITY.PUBLIC, now, now,
        JSON.stringify({ name: 'Backfill Active', date: now + 86400000, status: STATUS.ACTIVE, visibility: VISIBILITY.PUBLIC })]
@@ -205,7 +205,7 @@ async function run() {
     // rejected -> rejected
     const bfRejectedId = sid('bfr');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, created_at, last_updated_at, raw_data)
+      `INSERT INTO events (id, name, start_at, status, visibility, created_at, last_updated_at, raw_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [bfRejectedId, 'Backfill Rejected', now + 86400000, STATUS.REJECTED, VISIBILITY.PRIVATE, now, now,
        JSON.stringify({ name: 'Backfill Rejected', date: now + 86400000, status: STATUS.REJECTED, visibility: VISIBILITY.PRIVATE })]
@@ -218,7 +218,7 @@ async function run() {
     // cancelled -> cancelled
     const bfCancelledId = sid('bfc');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, created_at, last_updated_at, raw_data)
+      `INSERT INTO events (id, name, start_at, status, visibility, created_at, last_updated_at, raw_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [bfCancelledId, 'Backfill Cancelled', now + 86400000, STATUS.CANCELLED, VISIBILITY.PRIVATE, now, now,
        JSON.stringify({ name: 'Backfill Cancelled', date: now + 86400000, status: STATUS.CANCELLED, visibility: VISIBILITY.PRIVATE })]
@@ -235,7 +235,7 @@ async function run() {
 
     const oldRowId = sid('old');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, lifecycle_status, created_at, last_updated_at, raw_data)
+      `INSERT INTO events (id, name, start_at, status, visibility, lifecycle_status, created_at, last_updated_at, raw_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [oldRowId, 'Old Format', now + 86400000, STATUS.ACTIVE, VISIBILITY.PUBLIC, LIFECYCLE.PUBLISHED, now, now,
        JSON.stringify({ name: 'Old Format', date: now + 86400000 })]
@@ -256,7 +256,7 @@ async function run() {
 
     const legacyRawId = sid('leg');
     await query(
-      `INSERT INTO events (id, name, date, status, visibility, lifecycle_status, created_at, last_updated_at, raw_data)
+      `INSERT INTO events (id, name, start_at, status, visibility, lifecycle_status, created_at, last_updated_at, raw_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [legacyRawId, 'LegacyRaw', now + 86400000, STATUS.ACTIVE, VISIBILITY.PUBLIC, LIFECYCLE.PUBLISHED, now, now,
        JSON.stringify({ name: 'LegacyRaw', date: now + 86400000, status: STATUS.ACTIVE, visibility: VISIBILITY.PUBLIC, lifecycleStatus: LIFECYCLE.PUBLISHED })]

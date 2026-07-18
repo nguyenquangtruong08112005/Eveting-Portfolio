@@ -16,7 +16,9 @@ function rowToNotification(row) {
 
 const getNotificationsByUserId = async (userId) => {
     const result = await query(
-        'SELECT * FROM notifications WHERE user_id = $1 OR user_id = \'all\' ORDER BY created_at DESC',
+        `SELECT * FROM notifications
+         WHERE user_id = $1 OR audience = 'broadcast'
+         ORDER BY created_at DESC`,
         [userId]
     );
     return result.rows.map(rowToNotification);
@@ -35,20 +37,24 @@ const markNotificationAsRead = async (notificationId) => {
 
 const createNotification = async (notificationData) => {
     const createdAt = toDb(notificationData.createdAt) || nowDb();
+    const isBroadcast = notificationData.userId === 'all' || notificationData.audience === 'broadcast';
+    const audience = isBroadcast ? 'broadcast' : 'user';
+    const userId = isBroadcast ? null : notificationData.userId;
     // Partitioned PK is (id, created_at) — plain insert (empty-dev overwrite via delete)
     await query('DELETE FROM notifications WHERE id = $1', [notificationData.id]);
     await query(
-        `INSERT INTO notifications (id, user_id, title, message, type, event_id, is_read, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `INSERT INTO notifications (id, user_id, title, message, type, event_id, is_read, created_at, audience)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
             notificationData.id,
-            notificationData.userId,
+            userId,
             notificationData.title,
             notificationData.message,
             notificationData.type,
             notificationData.eventId || null,
             notificationData.isRead === undefined ? false : notificationData.isRead,
             createdAt,
+            audience,
         ]
     );
     return notificationData;

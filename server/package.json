@@ -56,7 +56,8 @@
     "security:audit:json": "npm audit --omit=dev --audit-level=high --json",
     "db:audit:orphans": "node scripts/db/run-orphan-audit.js",
     "db:audit:fks": "node scripts/db/probes/_fk_count.js",
-    "test:unit:qr": "node scripts/ci/test-qr-generator.mjs"
+    "test:unit:qr": "node scripts/ci/test-qr-generator.mjs",
+    "job:retention": "node src/jobs/retention.job.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.800.0",

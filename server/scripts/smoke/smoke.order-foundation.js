@@ -86,8 +86,8 @@ async function run() {
     const nowDate = new Date(now);
     const eventDate = new Date(now + 86400000);
     await query(
-        `INSERT INTO events (id, name, description, date, status, visibility, organizer_id, created_at, last_updated_at, min_price)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9)
+        `INSERT INTO events (id, name, description, start_at, status, visibility, lifecycle_status, organizer_id, created_at, last_updated_at, min_price)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10)
          ON CONFLICT (id) DO NOTHING`,
         [
             smokeEventId,
@@ -96,6 +96,7 @@ async function run() {
             eventDate,
             'active',
             'public',
+            'published',
             smokeUserId,
             nowDate,
             50000,

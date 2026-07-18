@@ -76,12 +76,12 @@ async function run() {
     );
     await query(
         `INSERT INTO events (
-            id, name, description, date, event_type, organizer_id,
-            min_price, status, visibility,
+            id, name, description, start_at, event_type, organizer_id,
+            min_price, status, visibility, lifecycle_status,
             category, tags, sponsors,
             hot_score, view_count, required_age, is_outdoor,
             created_at, last_updated_at, raw_data
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
         [
             testEventId,
             'Shadow Wiring Test Event',
@@ -92,6 +92,7 @@ async function run() {
             50000,
             'active',
             'public',
+            'published',
             [],
             [],
             JSON.stringify([]),
@@ -233,12 +234,12 @@ async function run() {
     const failEventId = `evt_fail_${uuidv4()}`;
     await query(
         `INSERT INTO events (
-            id, name, description, date, event_type, organizer_id,
-            min_price, status, visibility,
+            id, name, description, start_at, event_type, organizer_id,
+            min_price, status, visibility, lifecycle_status,
             category, tags, sponsors,
             hot_score, view_count, required_age, is_outdoor,
             created_at, last_updated_at, raw_data
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
         [
             failEventId,
             'Shadow Fail Test Event',
@@ -249,6 +250,7 @@ async function run() {
             50000,
             'active',
             'public',
+            'published',
             [], [], JSON.stringify([]),
             0, 0, 0, false,
             new Date(now), new Date(now), null,
