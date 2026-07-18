@@ -1,6 +1,8 @@
-# Infrastructure Configuration
+# Infrastructure Configuration (`server/`)
 
-This directory contains configuration files and documentation for running the external dependencies of the Server-2025-Eventing application locally.
+Local dependencies + AWS deploy primitives for **AuraEvents** (`server/`).
+
+**Monorepo master scripts:** see `/deploy/README.md` and root `npm run dev:up`.
 
 ## Local Services (Docker Compose)
 
