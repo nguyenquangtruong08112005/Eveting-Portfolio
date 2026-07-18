@@ -32,4 +32,10 @@ node src/jobs/retention.job.js
 
 ## Git policy
 
-Commit after each phase gate. Server app = `Server-2025-Eventing`. Docs = monorepo root. No push unless asked.
+Commit after each phase gate.  
+Apps = `server/`, `web/`, `mobile-attendee/`, `mobile-organizer/` (each own repo).  
+Docs = monorepo root. No push unless asked.
+
+## Archive
+
+Old folder names + pre-remake tags: [`../../../archive/legacy-folder-names-2026-07/README.md`](../../../archive/legacy-folder-names-2026-07/README.md)

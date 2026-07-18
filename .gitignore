@@ -1,8 +1,17 @@
-# Source code repos (managed separately)
-web-2025-eventing/
+# Live apps (separate git repos)
+server/
+web/
+mobile-attendee/
+mobile-organizer/
+
+# Legacy names (should not reappear; ignore if residual)
 Server-2025-Eventing/
+web-2025-eventing/
 Mobile-2025-Eventing/
 Mobile-2025-Eventing-Organizer/
+
+# Archive bulky leftovers from renames (keep README only via force-add if needed)
+archive/legacy-folder-names-2026-07/leftover-*/
 
 # IDE & tooling
 .vscode/
