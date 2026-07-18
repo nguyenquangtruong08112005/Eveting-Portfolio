@@ -18,10 +18,11 @@ Closes residual items from the original seven-aspect `db-audit` after integrity 
 
 | Phase | Status |
 |---|---|
-| W0 Reorg | ✅ Done 2026-07-18 |
-| W1 Architecture | ⬜ Pending |
-| W2 Normalization | ⬜ Pending |
-| W3 Integrity | ⬜ Pending |
-| W4 Performance | ⬜ Pending |
-| W5 Naming | ⬜ Pending |
-| W6 Scalability | ⬜ Pending |
+| W0 Reorg | ✅ PASS |
+| W1 Architecture | ✅ PASS (047–049) |
+| W2 Normalization | ✅ PASS (050, 052) |
+| W3 Integrity | ✅ PASS (053–054) |
+| W4 Performance | ✅ PASS (055–056) |
+| W5 Naming | ✅ PASS (057, 059) |
+| W6 Scalability | ✅ PASS (060 + retention job) |
+| Final | [99-final-scorecard.md](99-final-scorecard.md) |
