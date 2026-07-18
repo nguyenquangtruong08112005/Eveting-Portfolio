@@ -50,8 +50,8 @@ async function findUserByEmail(email) {
     `SELECT a.id, a.email, a.password_hash, a.roles, a.is_active, a.email_verified, a.created_at,
             p.name, p.profile_pic_url, p.bio
      FROM auth_users a
-     LEFT JOIN user_profiles p ON p.id = a.id
-     WHERE a.email = $1`,
+     LEFT JOIN user_profiles p ON p.id = a.id AND p.deleted_at IS NULL
+     WHERE a.email = $1 AND a.deleted_at IS NULL`,
     [email]
   );
   return result.rows.length ? mapAuthUser(result.rows[0]) : null;
@@ -62,15 +62,28 @@ async function findUserById(id) {
     `SELECT a.id, a.email, a.password_hash, a.roles, a.is_active, a.email_verified, a.created_at,
             p.name, p.profile_pic_url, p.bio
      FROM auth_users a
-     LEFT JOIN user_profiles p ON p.id = a.id
-     WHERE a.id = $1`,
+     LEFT JOIN user_profiles p ON p.id = a.id AND p.deleted_at IS NULL
+     WHERE a.id = $1 AND a.deleted_at IS NULL`,
     [id]
   );
   return result.rows.length ? mapAuthUser(result.rows[0]) : null;
 }
 
 async function getUserRoles(userId) {
-  const result = await query('SELECT roles FROM auth_users WHERE id = $1', [userId]);
+  const fromTable = await query(
+    `SELECT r.name
+     FROM user_roles ur
+     JOIN roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [userId]
+  );
+  if (fromTable.rows.length > 0) {
+    return fromTable.rows.map((row) => row.name);
+  }
+  const result = await query(
+    'SELECT roles FROM auth_users WHERE id = $1 AND deleted_at IS NULL',
+    [userId]
+  );
   return result.rows.length ? result.rows[0].roles : [];
 }
 

@@ -79,7 +79,21 @@ async function hydrateUserRow(row, includeId) {
 }
 
 var getUserRoles = async function (userId) {
-  var auth = await query('SELECT roles FROM auth_users WHERE id = $1', [userId]);
+  // Prefer relational user_roles (W2/hardening); fall back to auth_users.roles cache
+  var fromTable = await query(
+    `SELECT r.name
+     FROM user_roles ur
+     JOIN roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [userId]
+  );
+  if (fromTable.rows.length > 0) {
+    return fromTable.rows.map(function (row) { return row.name; });
+  }
+  var auth = await query(
+    'SELECT roles FROM auth_users WHERE id = $1 AND deleted_at IS NULL',
+    [userId]
+  );
   if (auth.rows.length > 0 && auth.rows[0].roles && auth.rows[0].roles.length > 0) {
     return auth.rows[0].roles;
   }

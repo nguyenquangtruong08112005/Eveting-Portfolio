@@ -116,7 +116,10 @@ async function hydrateEventRows(rows, client = { query }) {
 }
 
 const getEventById = async (eventId) => {
-    const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+    const result = await query(
+        'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL',
+        [eventId]
+    );
     if (result.rows.length === 0) return null;
     const hydrated = await hydrateEventRows(result.rows);
     return hydrated[0];
@@ -493,14 +496,15 @@ const getPublicEventsPage = async (page, limit) => {
     const offset = (page - 1) * limit;
 
     const countResult = await query(
-        `SELECT COUNT(*)::int AS count FROM events WHERE visibility = $1 AND status = $2`,
+        `SELECT COUNT(*)::int AS count FROM events
+         WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL`,
         [VISIBILITY.PUBLIC, STATUS.ACTIVE]
     );
     const totalItems = countResult.rows[0].count;
 
     const result = await query(
         `SELECT * FROM events
-         WHERE visibility = $1 AND status = $2
+         WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
          ORDER BY start_at ASC
          LIMIT $3 OFFSET $4`,
         [VISIBILITY.PUBLIC, STATUS.ACTIVE, limit, offset]
@@ -530,7 +534,7 @@ const getPublicEventsPage = async (page, limit) => {
 const searchPublicEvents = async (searchString, page, limit) => {
     const offset = (page - 1) * limit;
 
-    let sql = `FROM events WHERE visibility = $1 AND status = $2`;
+    let sql = `FROM events WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL`;
     const params = [VISIBILITY.PUBLIC, STATUS.ACTIVE];
     let idx = 3;
 
@@ -573,7 +577,7 @@ const queryActivePublicEventsByGeoBounds = async (bounds) => {
     const promises = [];
     for (const b of bounds) {
         promises.push(query(
-            `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND geohash >= $3 AND geohash <= $4 ORDER BY geohash`,
+            `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND deleted_at IS NULL AND geohash >= $3 AND geohash <= $4 ORDER BY geohash`,
             [STATUS.ACTIVE, VISIBILITY.PUBLIC, b[0], b[1]]
         ));
     }
@@ -591,7 +595,7 @@ const queryActivePublicEventsByGeoBounds = async (bounds) => {
 
 const getEventLifecycleOwnership = async (eventId) => {
     const result = await query(
-        'SELECT id, organizer_id, lifecycle_status, status, visibility FROM events WHERE id = $1',
+        'SELECT id, organizer_id, lifecycle_status, status, visibility FROM events WHERE id = $1 AND deleted_at IS NULL',
         [eventId]
     );
     if (result.rows.length === 0) return null;
@@ -599,7 +603,7 @@ const getEventLifecycleOwnership = async (eventId) => {
 };
 
 const getRecommendedEventsRelational = async (interests = [], excludeEventIds = [], limit = 10) => {
-    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND start_at >= $3`;
+    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND deleted_at IS NULL AND start_at >= $3`;
     const params = [STATUS.ACTIVE, VISIBILITY.PUBLIC, nowDb()];
     let idx = 4;
 
@@ -626,7 +630,8 @@ const getPopularDestinations = async (limit = 10) => {
     const result = await query(
         `SELECT city, COUNT(*)::int AS event_count
          FROM events
-         WHERE status = 'published' AND visibility = 'public' AND city IS NOT NULL AND city != ''
+         WHERE status = 'published' AND visibility = 'public' AND deleted_at IS NULL
+           AND city IS NOT NULL AND city != ''
          GROUP BY city
          ORDER BY event_count DESC
          LIMIT $1`,

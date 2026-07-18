@@ -28,7 +28,7 @@ function rowToVenue(row) {
 const getAllVenues = async () => {
     const result = await query(
         `SELECT id, name, data, address, city, district, country, lat, lng, capacity
-         FROM venues ORDER BY name`
+         FROM venues WHERE deleted_at IS NULL ORDER BY name`
     );
     return result.rows.map(rowToVenue);
 };
@@ -78,7 +78,7 @@ const createVenue = async (venueId, venueData) => {
 const getVenueById = async (venueId) => {
     const result = await query(
         `SELECT id, name, data, address, city, district, country, lat, lng, capacity
-         FROM venues WHERE id = $1`,
+         FROM venues WHERE id = $1 AND deleted_at IS NULL`,
         [venueId]
     );
     if (result.rows.length === 0) return null;
