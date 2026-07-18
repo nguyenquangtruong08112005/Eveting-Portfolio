@@ -77,9 +77,9 @@ class SignUpViewModel @Inject constructor(
             if (result.isSuccess) {
                 _authState.value = AuthState.Success(result.getOrNull()!!)
             } else {
-                val errorMessage = result.exceptionOrNull()?.message
-                    ?: "An unknown error occurred."
-                _authState.value = AuthState.Error(errorMessage)
+                _authState.value = AuthState.Error(
+                    com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(result.exceptionOrNull())
+                )
             }
         }
     }

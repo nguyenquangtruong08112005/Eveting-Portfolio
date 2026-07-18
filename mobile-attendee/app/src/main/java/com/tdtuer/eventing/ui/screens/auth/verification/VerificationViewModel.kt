@@ -59,8 +59,8 @@ class VerificationViewModel @Inject constructor(
                 // Start the cooldown timer
                 startResendCooldown()
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
-                {}//Log.e("VerificationVM", "Failed to send verification email: $errorMessage")
+                val errorMessage =
+                    com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(result.exceptionOrNull())
                 _uiState.value = _uiState.value.copy(isLoading = false, error = errorMessage)
             }
         }
@@ -95,8 +95,9 @@ class VerificationViewModel @Inject constructor(
                             _uiState.value.copy(isLoading = false, isVerified = true)
                     } else {
                         val errorMessage =
-                            result.exceptionOrNull()?.message ?: "Invalid verification link"
-                        {}//Log.e("VerificationVM", "Deep link verification failed: $errorMessage")
+                            com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(
+                                result.exceptionOrNull()
+                            )
                         _uiState.value =
                             _uiState.value.copy(isLoading = false, error = errorMessage)
                     }
@@ -117,8 +118,8 @@ class VerificationViewModel @Inject constructor(
                 //Log.d("VerificationVM", "Email verification status: $isVerified")
                 _uiState.value = _uiState.value.copy(isLoading = false, isVerified = isVerified)
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
-                {}//Log.e("VerificationVM", "Failed to check verification status: $errorMessage")
+                val errorMessage =
+                    com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(result.exceptionOrNull())
                 _uiState.value = _uiState.value.copy(isLoading = false, error = errorMessage)
             }
         }

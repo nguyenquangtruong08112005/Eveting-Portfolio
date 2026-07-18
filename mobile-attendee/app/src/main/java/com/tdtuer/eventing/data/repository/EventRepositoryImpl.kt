@@ -27,6 +27,7 @@ import com.tdtuer.eventing.domain.model.Result
 import com.tdtuer.eventing.domain.model.Weather
 import com.tdtuer.eventing.domain.model.failure
 import com.tdtuer.eventing.domain.model.success
+import com.tdtuer.eventing.helpers.UserFacingErrors
 import com.tdtuer.eventing.ui.screens.postevent.MediaItem
 import com.tdtuer.eventing.ui.screens.postevent.ReviewItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -92,7 +93,7 @@ class EventRepositoryImpl @Inject constructor(
                     emit(Result.success(domainEventList))
                 } else {
                     if (localEvents.isEmpty()) {
-                        emit(Result.failure(Exception("Server error: ${response.code()}")))
+                        emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
                     }
                 }
             } catch (e: Exception) {
@@ -100,7 +101,7 @@ class EventRepositoryImpl @Inject constructor(
                 if (localEvents.isNotEmpty()) {
                     emit(Result.success(localEvents))
                 } else {
-                    emit(Result.failure(e))
+                    emit(Result.failure(UserFacingErrors.failure(e)))
                 }
             }
         } else {
@@ -141,13 +142,13 @@ class EventRepositoryImpl @Inject constructor(
             } else {
                 // Chỉ báo lỗi nếu không có dữ liệu local để hiển thị
                 if (localEvent == null) {
-                    emit(Result.failure(Exception("Event not found: ${response.code()}")))
+                    emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Event not found.")))
                 }
             }
         } catch (e: Exception) {
             // Mất mạng và không có cache -> Lỗi
             if (localEvent == null) {
-                emit(Result.failure(e))
+                emit(Result.failure(UserFacingErrors.failure(e)))
             }
         }
     }
@@ -175,7 +176,7 @@ class EventRepositoryImpl @Inject constructor(
 
                 emit(Result.success(domainList))
             } else {
-                emit(Result.failure(Exception("Server error: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
         } catch (e: Exception) {
 
@@ -202,7 +203,7 @@ class EventRepositoryImpl @Inject constructor(
                 }
                 emit(Result.success(filtered))
             } else {
-                emit(Result.failure(e))
+                emit(Result.failure(UserFacingErrors.failure(e)))
             }
         }
     }
@@ -252,7 +253,7 @@ class EventRepositoryImpl @Inject constructor(
 
                 emit(Result.success(domainList))
             } else {
-                emit(Result.failure(Exception("Server error: ${response.errorBody()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
         } catch (e: Exception) {
 
@@ -282,7 +283,7 @@ class EventRepositoryImpl @Inject constructor(
 
                 emit(Result.success(filtered))
             } else {
-                emit(Result.failure(e))
+                emit(Result.failure(UserFacingErrors.failure(e)))
             }
         }
     }
@@ -306,7 +307,7 @@ class EventRepositoryImpl @Inject constructor(
 
                 emit(Result.success(events))
             } else {
-                emit(Result.failure(Exception("Failed to get recommendations: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not load recommendations.")))
             }
         } catch (e: Exception) {
 
@@ -320,7 +321,7 @@ class EventRepositoryImpl @Inject constructor(
                 val randomEvents = localEvents.shuffled().take(limit)
                 emit(Result.success(randomEvents))
             } else {
-                emit(Result.failure(e))
+                emit(Result.failure(UserFacingErrors.failure(e)))
             }
         }
     }
@@ -341,10 +342,10 @@ class EventRepositoryImpl @Inject constructor(
                 }
                 emit(Result.success(reviews))
             } else {
-                emit(Result.failure(Exception("Error fetching reviews: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not load reviews.")))
             }
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            emit(Result.failure(UserFacingErrors.failure(e)))
         }
     }
 
@@ -357,9 +358,9 @@ class EventRepositoryImpl @Inject constructor(
             val request = PostReviewRequest(rating, comment)
             val response = apiService.postEventReview(eventId, request)
             if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Failed to post review: ${response.code()}"))
+            else Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not post your review."))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -373,10 +374,10 @@ class EventRepositoryImpl @Inject constructor(
                 }
                 emit(Result.success(mediaList))
             } else {
-                emit(Result.failure(Exception("Error fetching media")))
+                emit(Result.failure(UserFacingErrors.failure("Could not load media.")))
             }
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            emit(Result.failure(UserFacingErrors.failure(e)))
         }
     }
 
@@ -387,9 +388,9 @@ class EventRepositoryImpl @Inject constructor(
 
             val response = apiService.postEventMedia(eventId, request)
             if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Failed to upload media info"))
+            else Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not upload media."))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -398,7 +399,7 @@ class EventRepositoryImpl @Inject constructor(
             val contentResolver = context.contentResolver
             val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
             val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: throw Exception("Failed to read URI content")
+                ?: throw UserFacingErrors.failure("Could not read the selected file.")
 
             val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull(), 0, bytes.size)
 
@@ -415,10 +416,10 @@ class EventRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Multipart upload failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Upload failed. Please try again."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -490,7 +491,7 @@ class EventRepositoryImpl @Inject constructor(
                 Log.e("WeatherDebug", "❌ API Lỗi: ${response.code()} - ${response.message()}")
                 // Nếu API lỗi mà chưa có local data (hoặc cache hết hạn mà chưa emit) thì báo lỗi
                 if (localWeather == null) {
-                    emit(Result.failure(Exception("Weather info not available: ${response.code()}")))
+                    emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Weather is unavailable.")))
                 }
             }
         } catch (e: Exception) {
@@ -498,7 +499,7 @@ class EventRepositoryImpl @Inject constructor(
             // Mất mạng
             if (localWeather == null) {
                 // Nếu chưa có local data thì báo lỗi
-                emit(Result.failure(e))
+                emit(Result.failure(UserFacingErrors.failure(e)))
             } else {
                 // Nếu đã có local data (dù hết hạn), có thể vẫn muốn hiển thị nó (fallback)
                 // Ở bước 1 đã emit rồi nếu chưa hết hạn.
@@ -508,7 +509,7 @@ class EventRepositoryImpl @Inject constructor(
                     Log.d("WeatherDebug", "⚠️ Mất mạng, emit cache cũ (kể cả hết hạn).")
                     emit(Result.success(entity.weatherEntityToDomain()))
                 } else {
-                    emit(Result.failure(e))
+                    emit(Result.failure(UserFacingErrors.failure(e)))
                 }
             }
         }
@@ -522,10 +523,10 @@ class EventRepositoryImpl @Inject constructor(
                 if (response.isSuccessful && response.body() != null) {
                     emit(Result.Success(response.body()!!))
                 } else {
-                    emit(Result.Failure(Exception("Failed to load profile detail: ${response.code()}")))
+                    emit(Result.Failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not load profile.")))
                 }
             } catch (e: Exception) {
-                emit(Result.Failure(e))
+                emit(Result.failure(UserFacingErrors.failure(e)))
             }
         }
 
@@ -540,10 +541,10 @@ class EventRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Mã giảm giá không hợp lệ hoặc lỗi server."))
+                Result.failure(UserFacingErrors.failure("Invalid promotion code or server error."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -556,10 +557,10 @@ class EventRepositoryImpl @Inject constructor(
                 val domainList = dtos.map { it.toDomain() }
                 emit(Result.Success(domainList))
             } else {
-                emit(Result.Failure(Exception("Failed to load promotions")))
+                emit(Result.Failure(UserFacingErrors.failure("Could not load promotions.")))
             }
         } catch (e: Exception) {
-            emit(Result.Failure(e))
+            emit(Result.failure(UserFacingErrors.failure(e)))
         }
     }
 

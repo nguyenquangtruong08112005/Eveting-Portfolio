@@ -18,6 +18,7 @@ import com.tdtuer.eventing.data.network.model.UserDto
 import com.tdtuer.eventing.data.network.model.toDomainUser
 import com.tdtuer.eventing.domain.model.JoinedEvent
 import com.tdtuer.eventing.domain.model.User
+import com.tdtuer.eventing.helpers.UserFacingErrors
 import com.onesignal.OneSignal
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -38,7 +39,7 @@ class AuthRepositoryImpl @Inject constructor(
             tokenStore.saveTokens(accessToken, refreshToken)
             Result.success(userDto.toDomainUser())
         } else {
-            Result.failure(Exception(fallbackMessage))
+            Result.failure(UserFacingErrors.failure(fallbackMessage))
         }
     }
 
@@ -80,10 +81,10 @@ class AuthRepositoryImpl @Inject constructor(
                 val body = response.body()
                 saveBackendAuth(body, "Backend registration returned an invalid response")
             } else {
-                Result.failure(Exception("Backend registration failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not create your account. Please try again."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -97,10 +98,10 @@ class AuthRepositoryImpl @Inject constructor(
                 val body = response.body()
                 saveBackendAuth(body, "Backend login returned an invalid response")
             } else {
-                Result.failure(Exception("Backend login failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Incorrect email or password."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -111,10 +112,10 @@ class AuthRepositoryImpl @Inject constructor(
                 val body = response.body()
                 saveBackendAuth(body, "Google login returned an invalid response")
             } else {
-                Result.failure(Exception("Google login failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Google sign-in failed. Please try again."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -125,10 +126,10 @@ class AuthRepositoryImpl @Inject constructor(
                 val body = response.body()
                 saveBackendAuth(body, "Facebook login returned an invalid response")
             } else {
-                Result.failure(Exception("Facebook login failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Facebook sign-in failed. Please try again."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -165,16 +166,16 @@ class AuthRepositoryImpl @Inject constructor(
             val userResponse = apiService.getUserProfile()
             val email = if (userResponse.isSuccessful) userResponse.body()?.email else null
             if (email.isNullOrEmpty()) {
-                return Result.failure(Exception("Failed to retrieve user email for verification"))
+                return Result.failure(UserFacingErrors.failure("We could not find your email for verification."))
             }
             val response = apiService.requestEmailVerification(EmailVerificationRequest(email))
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Email verification request failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not send verification email."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -184,10 +185,10 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(response.body()?.emailVerified ?: false)
             } else {
-                Result.failure(Exception("Failed to fetch email verification status"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not check verification status."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -197,10 +198,10 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Email verification confirmation failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Invalid or expired verification code."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -219,10 +220,10 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Password reset request failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not send password reset email."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -236,10 +237,10 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Password reset confirmation failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not reset password. The link may have expired."))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(UserFacingErrors.failure(e))
         }
     }
 

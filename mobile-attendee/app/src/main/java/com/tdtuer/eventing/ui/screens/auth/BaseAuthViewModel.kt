@@ -7,6 +7,7 @@ import com.facebook.AccessToken
 import com.tdtuer.eventing.domain.usecase.authentication.GetGoogleIdTokenUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInWithFacebookUseCase
 import com.tdtuer.eventing.domain.usecase.authentication.SignInWithGoogleUseCase
+import com.tdtuer.eventing.helpers.toUserMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -44,10 +45,10 @@ abstract class BaseAuthViewModel(
                     onSocialLoginSuccess() // Gọi hook sau khi thành công
                     _authState.value = AuthState.Success(signInResult.getOrNull()!!)
                 } else {
-                    _authState.value = AuthState.Error(signInResult.exceptionOrNull()?.message ?: "Google Sign-In failed")
+                    _authState.value = AuthState.Error(signInResult.exceptionOrNull().toUserMessage())
                 }
             }.onFailure { exception ->
-                _authState.value = AuthState.Error(exception.message ?: "An unknown error occurred during Google sign-in.")
+                _authState.value = AuthState.Error(exception.toUserMessage())
             }
         }
     }
@@ -62,7 +63,7 @@ abstract class BaseAuthViewModel(
                 onSocialLoginSuccess() // Gọi hook sau khi thành công
                 _authState.value = AuthState.Success(it)
             }.onFailure {
-                _authState.value = AuthState.Error(it.message ?: "Facebook Sign-In failed")
+                _authState.value = AuthState.Error(it.toUserMessage())
             }
         }
     }

@@ -166,7 +166,7 @@ class PostEventViewModel @Inject constructor(
             }
         } else {
             _uiState.update {
-                it.copy(error = exception.message ?: "Oops something went wrong.")
+                it.copy(error = com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(exception))
             }
         }
     }

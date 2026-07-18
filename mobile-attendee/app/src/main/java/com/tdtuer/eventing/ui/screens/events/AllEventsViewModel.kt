@@ -63,7 +63,7 @@ class AllEventsViewModel @Inject constructor(
                     }
                     is Result.Failure -> {
                         _isLoading.value = false
-                        _error.value = result.exception.message ?: "An unknown error occurred"
+                        _error.value = com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(result.exception)
                     }
                 }
             }

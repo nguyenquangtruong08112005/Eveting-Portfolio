@@ -94,7 +94,7 @@ class EventDetailsViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Đã xảy ra lỗi không xác định"
+                                error = com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(result.exception)
                             )
                         }
                     }

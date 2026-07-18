@@ -125,7 +125,13 @@ class EditProfileViewModel @Inject constructor(
                 }
 
                 is Result.Failure -> {
-                    _uiState.update { it.copy(errorMessage = "Upload failed: ${result.exception.message}") }
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(
+                                result.exception
+                            )
+                        )
+                    }
                     //Log.e("EditProfile", "Upload failed", result.exception)
                 }
 
@@ -196,7 +202,13 @@ class EditProfileViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> onSuccess()
                     is Result.Failure -> {
-                        _uiState.update { it.copy(errorMessage = result.exception.message) }
+                        _uiState.update {
+                            it.copy(
+                                errorMessage = com.tdtuer.eventing.helpers.UserFacingErrors.toUserMessage(
+                                    result.exception
+                                )
+                            )
+                        }
                     }
 
                     else -> {}
