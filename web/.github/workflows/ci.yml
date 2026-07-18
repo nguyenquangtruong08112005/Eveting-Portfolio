@@ -1,0 +1,24 @@
+name: Web CI
+
+on:
+  push:
+    branches: [staging, master, main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+        continue-on-error: true
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+      - name: Docker build
+        run: docker build -t auraevents-web:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:3000 .
