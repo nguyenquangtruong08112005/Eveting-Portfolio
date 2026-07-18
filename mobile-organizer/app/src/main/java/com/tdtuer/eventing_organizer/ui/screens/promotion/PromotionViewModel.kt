@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.promotion
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.CreatePromotionRequest
@@ -42,7 +45,7 @@ class PromotionViewModel @Inject constructor(
             repository.getPromotions().collectLatest { result ->
                 when (result) {
                     is Result.Success -> _uiState.update { it.copy(isLoading = false, promotions = result.data) }
-                    is Result.Failure -> _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+                    is Result.Failure -> _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
                     else -> {}
                 }
             }
@@ -107,7 +110,7 @@ class PromotionViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, successMessage = successMsg) }
             loadPromotions() // Reload list
         } else {
-            val err = (result as Result.Failure).exception.message
+            val err = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
             _uiState.update { it.copy(isLoading = false, error = err) }
         }
     }

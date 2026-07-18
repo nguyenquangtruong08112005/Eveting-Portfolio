@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.auth
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -44,10 +47,10 @@ abstract class BaseAuthViewModel(
                     onSocialLoginSuccess() // Gọi hook sau khi thành công
                     _authState.value = AuthState.Success(signInResult.getOrNull()!!)
                 } else {
-                    _authState.value = AuthState.Error(signInResult.exceptionOrNull()?.message ?: "Google Sign-In failed")
+                    _authState.value = AuthState.Error(UserFacingErrors.toUserMessage(signInResult.exceptionOrNull()))
                 }
             }.onFailure { exception ->
-                _authState.value = AuthState.Error(exception.message ?: "An unknown error occurred during Google sign-in.")
+                _authState.value = AuthState.Error(exception.toUserMessage())
             }
         }
     }

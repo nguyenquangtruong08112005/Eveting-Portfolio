@@ -1,5 +1,7 @@
 package com.tdtuer.eventing_organizer.data.repository
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
@@ -81,7 +83,7 @@ class EventRepositoryImpl @Inject constructor(
             } else {
                 // Lỗi server (4xx, 5xx)
                 // SỬA LẠI:
-                emit(Result.failure(Exception("Server error: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
 
         } catch (e: Exception) {
@@ -97,7 +99,7 @@ class EventRepositoryImpl @Inject constructor(
                 val domainEvent = response.body()!!.toDomainModel()
                 emit(Result.success(domainEvent))
             } else {
-                emit(Result.failure(Exception("Event not found or server error: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Event not found.")))
             }
         } catch (e: Exception) {
             emit(Result.failure(e))
@@ -117,7 +119,7 @@ class EventRepositoryImpl @Inject constructor(
                 val domainList = response.body()!!.events.map { it.toDomainModel() }
                 emit(Result.success(domainList))
             } else {
-                emit(Result.failure(Exception("Server error: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
         } catch (e: Exception) {
             emit(Result.failure(e))
@@ -160,7 +162,7 @@ class EventRepositoryImpl @Inject constructor(
                 val domainList = response.body()!!.events.map { it.toDomainModel() }
                 emit(Result.success(domainList))
             } else {
-                emit(Result.failure(Exception("Server error: ${response.errorBody()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
         } catch (e: Exception) {
             emit(Result.failure(e))
@@ -184,7 +186,7 @@ class EventRepositoryImpl @Inject constructor(
                 }
                 emit(Result.success(reviews))
             } else {
-                emit(Result.failure(Exception("Error fetching reviews: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not load reviews.")))
             }
         } catch (e: Exception) {
             emit(Result.failure(e))
@@ -200,7 +202,7 @@ class EventRepositoryImpl @Inject constructor(
             val request = PostReviewRequest(rating, comment)
             val response = apiService.postEventReview(eventId, request)
             if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Failed to post review: ${response.code()}"))
+            else Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not post review."))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -217,7 +219,7 @@ class EventRepositoryImpl @Inject constructor(
                 }
                 emit(Result.success(mediaList))
             } else {
-                emit(Result.failure(Exception("Error fetching media")))
+                emit(Result.failure(UserFacingErrors.failure("Could not load media.")))
             }
         } catch (e: Exception) {
             emit(Result.failure(e))
@@ -232,7 +234,7 @@ class EventRepositoryImpl @Inject constructor(
 
             val response = apiService.postEventMedia(eventId, request)
             if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Failed to upload media info"))
+            else Result.failure(UserFacingErrors.failure("Could not upload media."))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -250,7 +252,7 @@ class EventRepositoryImpl @Inject constructor(
 
                 emit(Result.success(events))
             } else {
-                emit(Result.failure(Exception("Failed to get recommendations: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not load recommendations.")))
             }
         } catch (e: Exception) {
             // Log lỗi ra để dễ debug nếu vẫn không lên
@@ -271,7 +273,7 @@ class EventRepositoryImpl @Inject constructor(
             } else {
                 // Nếu lỗi hoặc không có weather (ví dụ sự kiện trong nhà),
                 // ta có thể emit failure hoặc đơn giản là không làm gì
-                emit(Result.failure(Exception("Weather info not available: ${response.code()}")))
+                emit(Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Weather is unavailable.")))
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -283,7 +285,7 @@ class EventRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.registerOrganizer(request)
             if (response.isSuccessful) Result.Success(Unit)
-            else Result.Failure(Exception(response.message()))
+            else Result.Failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), response.message()))
         } catch (e: Exception) {
             Result.Failure(e)
         }
@@ -296,7 +298,7 @@ class EventRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.Success(response.body()!!))
             } else {
-                emit(Result.Failure(Exception("Failed to fetch organizer profile: ${response.code()} ${response.message()}")))
+                emit(Result.Failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not load organizer profile.")))
             }
         } catch (e: Exception) {
             emit(Result.Failure(e))
@@ -310,7 +312,7 @@ class EventRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.Success(response.body()!!.data))
             } else {
-                emit(Result.Failure(Exception("Error: ${response.code()}")))
+                emit(Result.Failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
         } catch (e: Exception) {
             emit(Result.Failure(e))
@@ -324,7 +326,7 @@ class EventRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.Success(response.body()!!))
             } else {
-                emit(Result.Failure(Exception("Error: ${response.code()}")))
+                emit(Result.Failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
             }
         } catch (e: Exception) {
             emit(Result.Failure(e))

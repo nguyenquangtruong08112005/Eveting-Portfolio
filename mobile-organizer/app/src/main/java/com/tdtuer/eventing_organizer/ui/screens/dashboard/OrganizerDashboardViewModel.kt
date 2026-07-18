@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.dashboard
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
@@ -83,7 +86,7 @@ class OrganizerDashboardViewModel @Inject constructor(
                     }
                     is Result.Failure -> {
                         _uiState.update {
-                            it.copy(isLoading = false, isRefreshing = false, isLoadingMore = false, error = result.exception.message)
+                            it.copy(isLoading = false, isRefreshing = false, isLoadingMore = false, error = UserFacingErrors.toUserMessage(result.exception))
                         }
                     }
                     is Result.Loading -> { }
@@ -121,7 +124,7 @@ class OrganizerDashboardViewModel @Inject constructor(
                     loadData(isRefresh = true)
                 }
                 is Result.Failure -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.exception.message ?: "Có lỗi xảy ra khi hủy sự kiện") }
+                    _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
                 }
                 else -> {}
             }

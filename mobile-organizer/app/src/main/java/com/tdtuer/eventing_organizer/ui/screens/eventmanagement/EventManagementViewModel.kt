@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.eventmanagement
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -118,7 +121,7 @@ class EventManagementViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(isLoading = false, successMessage = successMsg) }
             } else {
-                val err = (result as Result.Failure).exception.message ?: "Có lỗi xảy ra"
+                val err = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
                 _uiState.update { it.copy(isLoading = false, error = err) }
             }
         }
@@ -172,7 +175,7 @@ class EventManagementViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, successMessage = successMsg) }
                     loadEventData()
                 } else {
-                    val err = (result as Result.Failure).exception.message ?: "Có lỗi xảy ra"
+                    val err = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
                     _uiState.update { it.copy(isLoading = false, error = err) }
                 }
             } else {
@@ -196,7 +199,7 @@ class EventManagementViewModel @Inject constructor(
                 }
             } else {
                 _uiState.update {
-                    it.copy(isLoading = false, error = "Xuất file thất bại: ${(result as Result.Failure).exception.message}")
+                    it.copy(isLoading = false, error = "Xuất file thất bại: ${UserFacingErrors.toUserMessage((result as Result.Failure).exception)}")
                 }
             }
         }

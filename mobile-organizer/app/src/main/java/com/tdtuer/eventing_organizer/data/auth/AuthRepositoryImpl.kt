@@ -18,6 +18,7 @@ import com.tdtuer.eventing_organizer.data.network.model.RemoveTokenRequest
 import com.tdtuer.eventing_organizer.data.preferences.TokenStore
 import com.onesignal.OneSignal
 import com.tdtuer.eventing_organizer.domain.model.User
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -92,17 +93,16 @@ class AuthRepositoryImpl @Inject constructor(
                 if (body != null) {
                     saveBackendAuth(body, "Backend registration returned an invalid response")
                 } else {
-                    Result.failure(Exception("Backend registration returned empty body"))
+                    Result.failure(UserFacingErrors.failure("Could not complete registration. Please try again."))
                 }
             } else {
                 if (response.code() == 409) {
                     Result.failure(UserCollisionException())
                 } else {
-                    Result.failure(Exception("Backend registration failed with code: ${response.code()}"))
+                    Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not create your account."))
                 }
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -117,13 +117,12 @@ class AuthRepositoryImpl @Inject constructor(
                 if (body != null) {
                     saveBackendAuth(body, "Backend login returned an invalid response")
                 } else {
-                    Result.failure(Exception("Backend login returned empty body"))
+                    Result.failure(UserFacingErrors.failure("Could not sign in. Please try again."))
                 }
             } else {
-                Result.failure(Exception("Backend login failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Incorrect email or password."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -135,13 +134,12 @@ class AuthRepositoryImpl @Inject constructor(
                 if (body != null) {
                     saveBackendAuth(body, "Google login returned an invalid response")
                 } else {
-                    Result.failure(Exception("Google login returned empty body"))
+                    Result.failure(UserFacingErrors.failure("Google sign-in failed. Please try again."))
                 }
             } else {
-                Result.failure(Exception("Google login failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Google sign-in failed. Please try again."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -153,13 +151,12 @@ class AuthRepositoryImpl @Inject constructor(
                 if (body != null) {
                     saveBackendAuth(body, "Facebook login returned an invalid response")
                 } else {
-                    Result.failure(Exception("Facebook login returned empty body"))
+                    Result.failure(UserFacingErrors.failure("Facebook sign-in failed. Please try again."))
                 }
             } else {
-                Result.failure(Exception("Facebook login failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Facebook sign-in failed. Please try again."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -195,16 +192,15 @@ class AuthRepositoryImpl @Inject constructor(
             val userResponse = apiService.getUserProfile()
             val email = if (userResponse.isSuccessful) userResponse.body()?.email else null
             if (email.isNullOrEmpty()) {
-                return Result.failure(Exception("Failed to retrieve user email for verification"))
+                return Result.failure(UserFacingErrors.failure("We could not find your email for verification."))
             }
             val response = authApiService.requestEmailVerification(EmailVerificationRequest(email))
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Email verification request failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not send verification email."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -214,10 +210,9 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(response.body()?.emailVerified ?: false)
             } else {
-                Result.failure(Exception("Failed to fetch email verification status"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not check verification status."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -227,10 +222,9 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Email verification confirmation failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Invalid or expired verification code."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -255,10 +249,9 @@ class AuthRepositoryImpl @Inject constructor(
                 tokenStore.clearTokens()
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Sign out all devices failed with code: ${response.code()}"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not sign out other devices."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -268,10 +261,9 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Password reset request failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not send password reset email."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 
@@ -285,10 +277,9 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Password reset confirmation failed"))
+                Result.failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string(), "Could not reset password."))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Exception) { Result.failure(UserFacingErrors.failure(e))
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.createevent
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
@@ -630,7 +633,7 @@ class CreateEventViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = (result as Result.Failure).exception.message
+                        error = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
                     )
                 }
             }

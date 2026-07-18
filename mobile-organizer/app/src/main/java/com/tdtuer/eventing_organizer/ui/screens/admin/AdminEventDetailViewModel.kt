@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.admin
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -49,7 +52,7 @@ class AdminEventDetailViewModel @Inject constructor(
                 when (result) {
                     is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                     is Result.Success -> _uiState.update { it.copy(isLoading = false, event = result.data) }
-                    is Result.Failure -> _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+                    is Result.Failure -> _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
                 }
             }
         }
@@ -75,7 +78,7 @@ class AdminEventDetailViewModel @Inject constructor(
         if (result is Result.Success) {
             _uiState.update { it.copy(isLoading = false, actionMessage = successMsg, isActionSuccess = true) }
         } else if (result is Result.Failure) {
-            _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+            _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
         }
     }
 

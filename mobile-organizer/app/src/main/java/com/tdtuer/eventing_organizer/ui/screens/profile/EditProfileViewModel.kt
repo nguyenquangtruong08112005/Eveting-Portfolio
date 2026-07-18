@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.editprofile
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -73,7 +76,7 @@ class EditProfileViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = "Failed to load profile: ${result.exception.message}"
+                                errorMessage = "Failed to load profile: ${UserFacingErrors.toUserMessage(result.exception)}"
                             )
                         }
                     }
@@ -141,7 +144,7 @@ class EditProfileViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = (result as Result.Failure).exception.message
+                        errorMessage = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
                     )
                 }
             }

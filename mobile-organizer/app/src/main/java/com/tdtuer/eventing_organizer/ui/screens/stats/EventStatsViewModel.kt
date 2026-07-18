@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.stats
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -75,7 +78,7 @@ class EventStatsViewModel @Inject constructor(
                         }
                     }
                     is Result.Failure -> {
-                        _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+                        _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
                     }
                     is Result.Loading -> {
                         _uiState.update { it.copy(isLoading = true) }

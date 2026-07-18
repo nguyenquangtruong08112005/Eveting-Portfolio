@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.auth.verification
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel

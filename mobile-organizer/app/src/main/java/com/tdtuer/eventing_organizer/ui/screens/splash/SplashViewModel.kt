@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.splash
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -75,7 +78,7 @@ class SplashViewModel @Inject constructor(
                                 }
                             } else if (result is Result.Failure) {
                                 // Xử lý an toàn khi ép kiểu
-                                Log.e("SplashViewModel", "API Error: ${result.exception.message}")
+                                Log.e("SplashViewModel", "API Error: ${UserFacingErrors.toUserMessage(result.exception)}")
                                 _destination.value = SplashNavDestination.GoToHome
                             }
                         } catch (e: Exception) {

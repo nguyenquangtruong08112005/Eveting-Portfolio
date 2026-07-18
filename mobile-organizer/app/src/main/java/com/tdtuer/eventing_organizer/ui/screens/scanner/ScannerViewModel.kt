@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.scanner
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -88,21 +91,22 @@ class ScannerViewModel @Inject constructor(
                         }
                     }
                     is Result.Failure -> {
-                        // --- LỖI KẾT NỐI / EXCEPTION ---
-                        val errorMsg = result.exception.message ?: ""
+                        val ex = result.exception
+                        val errorMsg = UserFacingErrors.toUserMessage(ex)
+                        val httpCode = (ex as? com.tdtuer.eventing_organizer.helpers.UserFacingException)?.httpCode
 
-                        // Xử lý trường hợp backend trả lỗi 409 (Conflict) qua exception
-                        val isAlreadyCheckedIn = errorMsg.contains("already been checked in", ignoreCase = true) || errorMsg.contains("Vé này đã được check-in trước đó.", ignoreCase = true)
-
-                        // "Dịch" thông báo sang tiếng Việt thân thiện
+                        val isAlreadyCheckedIn = errorMsg.contains("already been checked in", ignoreCase = true) ||
+                            errorMsg.contains("checked in", ignoreCase = true) ||
+                            httpCode == 409
 
                         val friendlyMessage = when {
                             isAlreadyCheckedIn -> "Vé này đã được sử dụng trước đó!"
-                            errorMsg.contains("403") -> "Không có quyền truy cập."
-                            errorMsg.contains("404") -> "Không tìm thấy dữ liệu."
-                            errorMsg.contains("Unable to resolve host") -> "Vui lòng kiểm tra kết nối mạng."
-                            errorMsg.contains("This ticket has been checked in") -> "Vé đã đạt số lượng check in tối đa."
-                            else -> "Có lỗi xảy ra. Vui lòng thử lại."
+                            httpCode == 403 -> "Không có quyền truy cập."
+                            httpCode == 404 -> "Không tìm thấy dữ liệu."
+                            errorMsg.contains("internet", ignoreCase = true) ||
+                                errorMsg.contains("Network", ignoreCase = true) ->
+                                "Vui lòng kiểm tra kết nối mạng."
+                            else -> errorMsg.ifBlank { "Có lỗi xảy ra. Vui lòng thử lại." }
                         }
 
                         state.copy(

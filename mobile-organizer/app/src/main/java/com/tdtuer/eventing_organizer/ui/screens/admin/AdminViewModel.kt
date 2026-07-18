@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.admin
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
@@ -41,7 +44,7 @@ class AdminViewModel @Inject constructor(
             eventRepository.getPendingEvents().collectLatest { result ->
                 when (result) {
                     is Result.Success -> _uiState.update { it.copy(isLoading = false, pendingEvents = result.data) }
-                    is Result.Failure -> _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+                    is Result.Failure -> _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
                     else -> {}
                 }
             }
@@ -69,7 +72,7 @@ class AdminViewModel @Inject constructor(
             _uiState.update { it.copy(message = successMsg) }
             loadPendingEvents()
         } else if (result is Result.Failure) {
-            _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+            _uiState.update { it.copy(isLoading = false, error = UserFacingErrors.toUserMessage(result.exception)) }
         }
     }
 

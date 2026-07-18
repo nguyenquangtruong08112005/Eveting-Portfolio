@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.editevent
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
@@ -99,7 +102,7 @@ class EditEventViewModel @Inject constructor(
                     mapEventToState(event)
                     _uiState.update { it.copy(isLoading = false) }
                 } else if (result is Result.Failure) {
-                    val errorMsg = result.exception.message ?: "Failed to load event"
+                    val errorMsg = UserFacingErrors.toUserMessage(result.exception)
                     _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
             }
@@ -336,7 +339,7 @@ class EditEventViewModel @Inject constructor(
             if (result is Result.Success) {
                 _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } else {
-                val err = (result as Result.Failure).exception.message ?: "Unknown Error"
+                val err = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
                 _uiState.update { it.copy(isLoading = false, error = err) }
             }
         }

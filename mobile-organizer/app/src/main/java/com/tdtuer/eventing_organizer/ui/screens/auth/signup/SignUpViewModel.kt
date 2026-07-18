@@ -1,5 +1,8 @@
 package com.tdtuer.eventing_organizer.ui.screens.auth.signup
 
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -144,7 +147,7 @@ class SignUpViewModel @Inject constructor(
                 _authState.value = AuthState.Success(user.copy(isOrganizer = true))
             } else {
                 // Lỗi API: Vẫn cho user đăng nhập nhưng báo lỗi phần Organizer
-                val errorMsg = (orgResult as Result.Failure).exception.message ?: "Unknown error"
+                val errorMsg = (orgResult as Result.Failure).exception.toUserMessage()
                 _authState.value = AuthState.Error("Account verified but Organizer registration failed: $errorMsg")
                 //Log.d("SignUpViewModel", "Organizer registration failed: $errorMsg")
             }
