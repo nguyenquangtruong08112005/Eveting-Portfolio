@@ -45,7 +45,7 @@ jobs:
       - name: Build & push API
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE: auraevents-api
+          IMAGE: eventing-api
         run: |
           docker build -t $REGISTRY/$IMAGE:${{ github.sha }} ./server
           docker tag $REGISTRY/$IMAGE:${{ github.sha }} $REGISTRY/$IMAGE:${{ inputs.environment }}
@@ -55,7 +55,7 @@ jobs:
       - name: Build & push Web
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE: auraevents-web
+          IMAGE: eventing-web
           API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
         run: |
           docker build -t $REGISTRY/$IMAGE:${{ github.sha }} \

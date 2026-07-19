@@ -1,9 +1,10 @@
-# Root convenience: local Postgres (+ optional ES) for Portfolio V1 demo.
+# Root convenience: local Postgres + Redis + ES for Portfolio V1 demo.
 # Prefer: cd server && npm run local:infra
 #
 # Usage from monorepo root:
 #   docker compose up -d
 #   # DATABASE_URL=postgres://eventing:eventing_dev_password@localhost:55432/eventing_dev
+#   # REDIS_URL=redis://localhost:6379
 
 include:
   - path: server/infra/docker/docker-compose.local.yml

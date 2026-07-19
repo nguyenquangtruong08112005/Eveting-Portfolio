@@ -1,6 +1,6 @@
-# AuraEvents — Start Here
+# Eventing — Start Here
 
-Portfolio monorepo for **AuraEvents** (event discovery & ticketing).
+Portfolio monorepo for **Eventing** (event discovery & ticketing).
 
 ## Apps (canonical names)
 
@@ -28,31 +28,37 @@ See **[NAMING.md](NAMING.md)** for conventions.
 
 ## Local run (master command)
 
-```powershell
-# From monorepo root — infra + migrate + API + web + ngrok
-npm run dev:up
+```bat
+REM From monorepo root (cmd.exe — avoids PowerShell script policy)
+scripts\dev-up.cmd
 
-# Without ngrok
-npm run dev:up:no-ngrok
+REM Without ngrok
+scripts\dev-up-pure.cmd
 
-# Stop docker infra
-npm run dev:down
+REM Stop docker infra
+scripts\dev-down.cmd
+```
+
+If `npm` is blocked by PowerShell policy, always use **`npm.cmd`** or the `.cmd` scripts above.
+
+```bat
+npm.cmd run dev:up
 ```
 
 Details: **[deploy/README.md](deploy/README.md)**
 
-Manual (two terminals):
+Manual (two **cmd** windows):
 
-```bash
-cd server && npm install && npm run local:infra && npm run db:migrate && npm run dev
-cd web && npm install && npm run dev -- -p 3001
+```bat
+cd server && npm.cmd install && npm.cmd run local:infra && npm.cmd run db:migrate && npm.cmd run dev
+cd web && npm.cmd install && npm.cmd run dev -- -p 3001
 ```
 
 ## Docker / AWS prep
 
-```powershell
-npm run docker:up          # compose: postgres + api + web
-# Terraform / Ansible / CI-CD: see deploy/README.md
+```bat
+npm.cmd run docker:up
+REM Terraform / Ansible / CI-CD: see deploy/README.md
 ```
 
 ## Next product work

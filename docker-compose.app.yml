@@ -8,11 +8,12 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: auraevents-api
+    container_name: eventing-api
     environment:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgres://eventing:eventing_dev_password@postgres:5432/eventing_dev
+      REDIS_URL: redis://redis:6379
       # Override secrets via .env at root or export before up
       ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-dev-access-secret-change-me-32chars}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-dev-refresh-secret-change-me-32chars}
@@ -20,6 +21,7 @@ services:
       - "3000:3000"
     depends_on:
       - postgres
+      - redis
     restart: unless-stopped
 
   web:
@@ -28,7 +30,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
-    container_name: auraevents-web
+    container_name: eventing-web
     environment:
       NODE_ENV: production
       PORT: 3000

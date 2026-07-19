@@ -1,4 +1,6 @@
-# Naming convention (AuraEvents monorepo)
+# Naming convention (Eventing monorepo)
+
+**Product name:** Eventing (not AuraEvents).
 
 ## Top-level folders (apps) — **canonical only**
 

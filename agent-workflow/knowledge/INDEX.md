@@ -1,4 +1,4 @@
-# Project Knowledge Index — AuraEvents
+# Project Knowledge Index — Eventing
 
 > **Last Updated:** 2026-07-17  
 > **Purpose:** Single entry for humans and AI agents.

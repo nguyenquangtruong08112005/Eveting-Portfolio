@@ -1,4 +1,4 @@
-# Portfolio V1 Scope — AuraEvents
+# Portfolio V1 Scope — Eventing
 
 > **Document ID:** EV-PORT-001  
 > **Version:** 1.0  

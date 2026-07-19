@@ -4,29 +4,31 @@
 
 From monorepo root (`final/`):
 
-```powershell
-# One shot: Postgres+ES, migrate, API window, Web window, ngrok tunnel to API
-npm run dev:up
+```bat
+REM Preferred (cmd — no PowerShell execution policy issues)
+scripts\dev-up.cmd
+scripts\dev-up-pure.cmd
+scripts\dev-down.cmd
 
-# Same without ngrok
-npm run dev:up:no-ngrok
-
-# Stop docker infra
-npm run dev:down
+REM or via npm.cmd
+npm.cmd run dev:up
 ```
 
-Or call scripts directly:
+**If you see** `npm.ps1 cannot be loaded because running scripts is disabled`:
 
-```powershell
-pwsh -File scripts/dev-up.ps1
-pwsh -File scripts/dev-up.ps1 -NoNgrok -ApiPort 3000
-```
+1. Do **not** type bare `npm` in PowerShell (it runs `npm.ps1`).
+2. Use **`npm.cmd`** or double-click / run from **cmd**:
+   - `scripts\dev-up.cmd`
+   - `npm.cmd run dev:up`
+3. Optional permanent fix (your user only):
+   `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 
 | Service | Default URL |
 |---|---|
 | API | http://localhost:3000 |
 | Web | http://localhost:3001 (shifted if API is 3000) |
 | Postgres | localhost:55432 / `eventing` / `eventing_dev_password` / `eventing_dev` |
+| Redis | `redis://localhost:6379` (`REDIS_URL`) |
 | ES | http://localhost:9200 |
 | ngrok | public HTTPS → API (for mobile) |
 
@@ -43,16 +45,11 @@ Point mobile `BASE_URL` at the **ngrok https** URL while developing.
 
 ## 2. Dockerized apps (local parity with deploy)
 
-```powershell
-# Infra only (postgres + es)
+```bat
 docker compose up -d
-
-# Migrate
 docker compose -f docker-compose.yml -f docker-compose.app.yml --profile tools run --rm migrate
-
-# Build & run API + web
-npm run docker:up
-# API :3000  Web :3001
+npm.cmd run docker:up
+REM API :3000  Web :3001
 ```
 
 Images:
@@ -92,7 +89,7 @@ Terraform today scaffolds VPC/SG; extend with ECR + ECS/EC2 as next slice.
 | `AWS_REGION` | e.g. `ap-southeast-1` |
 | `NEXT_PUBLIC_API_URL` | Public API base for web image |
 | `ANSIBLE_INVENTORY` | inventory.ini content |
-| ECR repositories | Create `auraevents-api`, `auraevents-web` first |
+| ECR repositories | Create `eventing-api`, `eventing-web` first |
 
 ### Manual deploy workflow
 
@@ -114,10 +111,10 @@ Actions → **Deploy AWS (manual)** → choose `staging` / `production` → opti
 ## 5. Quick command cheat sheet
 
 ```text
-npm run infra:up          # postgres + es
-npm run db:migrate
-npm run dev:up            # full local + ngrok
-npm run docker:build
-npm run docker:up
-npm run docker:down
+npm.cmd run infra:up
+npm.cmd run db:migrate
+scripts\dev-up.cmd
+npm.cmd run docker:build
+npm.cmd run docker:up
+npm.cmd run docker:down
 ```

@@ -1,6 +1,6 @@
-# AuraEvents — Event Ticketing Platform
+# Eventing — Event Ticketing Platform
 
-Full-stack **event discovery & ticketing** monorepo (portfolio / internship).
+Full-stack **Eventing** monorepo (portfolio / internship).
 
 | App | Folder | Stack |
 |---|---|---|
@@ -19,8 +19,8 @@ Full-stack **event discovery & ticketing** monorepo (portfolio / internship).
 ## Quick start
 
 ```bash
-cd server && npm install && npm run local:infra && npm run db:migrate && npm run dev
-cd web && npm install && npm run dev
+cd server && npm.cmd install && npm.cmd run local:infra && npm.cmd run db:migrate && npm.cmd run dev
+cd web && npm.cmd install && npm.cmd run dev -- -p 3001
 ```
 
 See **[DEMO.md](DEMO.md)** · **[START_HERE.md](START_HERE.md)** · **[NAMING.md](NAMING.md)**
