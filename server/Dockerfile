@@ -1,4 +1,4 @@
-# AuraEvents API — production-oriented multi-stage image
+# Eventing API — production-oriented multi-stage image
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./

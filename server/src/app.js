@@ -44,7 +44,7 @@ app.use(cookieParser());
 
 app.get('/', function(req, res) { res.send("Welcome"); });
 app.get('/health', function(req, res) {
-  res.status(200).json({ ok: true, service: 'auraevents-api', ts: new Date().toISOString() });
+  res.status(200).json({ ok: true, service: 'eventing-api', ts: new Date().toISOString() });
 });
 app.use('/users', usersRouter);
 app.use('/events', eventsRouter);

@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build API image
-        run: docker build -t auraevents-api:${{ github.sha }} .
+        run: docker build -t eventing-api:${{ github.sha }} .
       # Uncomment when ECR secrets are configured:
       # - uses: aws-actions/configure-aws-credentials@v4
       # - uses: aws-actions/amazon-ecr-login@v2

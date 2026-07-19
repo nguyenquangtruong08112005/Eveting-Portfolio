@@ -90,7 +90,10 @@ const getOrganizerProfile = asyncHandler(async (req, res) => {
 
 const getMyEvents = asyncHandler(async (req, res) => {
     const { page, limit, status } = req.query;
-    const events = await organizerService.getMyEvents(req.user.uid, Number(page), Number(limit), status);
+    // Number(undefined) === NaN → Postgres "invalid input syntax for type bigint: NaN"
+    const pageNum = Math.max(1, Number.parseInt(String(page ?? '1'), 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number.parseInt(String(limit ?? '20'), 10) || 20));
+    const events = await organizerService.getMyEvents(req.user.uid, pageNum, limitNum, status);
     res.status(200).json({ data: events });
 });
 

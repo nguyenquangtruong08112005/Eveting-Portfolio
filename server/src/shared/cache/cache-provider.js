@@ -61,7 +61,17 @@ async function initRedis() {
       isRedisConnected = true;
     });
 
+    redisClient.on('ready', () => {
+      isRedisConnected = true;
+    });
+
+    redisClient.on('end', () => {
+      isRedisConnected = false;
+    });
+
     await redisClient.connect();
+    isRedisConnected = true;
+    logger.info(`[Redis Cache Provider] Ready at ${redisUrl}`);
   } catch (err) {
     logger.warn(`[Redis Cache Provider] Initialization failed: ${err.message}. Using MemoryCache fallback.`);
     isRedisConnected = false;

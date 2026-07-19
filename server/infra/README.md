@@ -1,6 +1,6 @@
 # Infrastructure Configuration (`server/`)
 
-Local dependencies + AWS deploy primitives for **AuraEvents** (`server/`).
+Local dependencies + AWS deploy primitives for **Eventing** (`server/`).
 
 **Monorepo master scripts:** see `/deploy/README.md` and root `npm run dev:up`.
 
@@ -14,7 +14,11 @@ The local services are configured under `infra/docker/docker-compose.local.yml` 
    - User: `eventing`
    - Password: `eventing_dev_password`
    - Database: `eventing_dev`
-2. **Elasticsearch** (Port `9200` -> `9200`)
+2. **Redis** (Port `6379` -> `6379`)
+   - Image: `redis:7-alpine`
+   - Container Name: `mobile-eventing-redis`
+   - App env: `REDIS_URL=redis://localhost:6379`
+3. **Elasticsearch** (Port `9200` -> `9200`)
    - Cluster Type: `single-node`
    - Security: Disabled (for local development convenience)
 
