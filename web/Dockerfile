@@ -1,4 +1,4 @@
-# AuraEvents Web — Next.js standalone (requires next.config output: 'standalone' ideally)
+# Eventing Web — Next.js standalone
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./

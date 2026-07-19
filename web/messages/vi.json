@@ -49,6 +49,9 @@
     "full_name": "Họ và tên",
     "email": "Email",
     "password": "Mật khẩu",
+    "name_placeholder": "Nguyễn Văn A",
+    "email_placeholder": "ban@example.com",
+    "password_placeholder": "Ít nhất 6 ký tự",
     "demo": "Demo",
     "admin_hint": "Email chứa \"admin\" → Admin",
     "org_hint": "Email chứa \"organizer\" → Organizer"
@@ -112,7 +115,8 @@
     "register_to_manage": "Đăng ký tài khoản để quản lý vé",
     "security_note": "Thanh toán bảo mật bởi Eventing SSL 256-bit",
     "loading_receipt": "Đang hiển thị hóa đơn...",
-    "syncing_details": "Chi tiết sự kiện đang được đồng bộ..."
+    "syncing_details": "Chi tiết sự kiện đang được đồng bộ...",
+    "fast_badge": "Nhanh"
   },
   "my_tickets": {
     "title": "Vé của tôi",
@@ -129,7 +133,11 @@
     "loading_event": "Đang cập nhật...",
     "purchase_date": "Ngày mua:",
     "print_ticket": "In vé",
-    "view_event": "Xem trang sự kiện"
+    "view_event": "Xem trang sự kiện",
+    "qr_hint": "Xuất trình mã QR này tại cổng vào sự kiện",
+    "ticket_id": "Mã vé",
+    "price": "Giá",
+    "view_event_page": "Xem sự kiện"
   },
   "organizer": {
     "dashboard_title": "Khu vực đối tác liên kết",
@@ -189,7 +197,9 @@
     "placeholder_address": "Ví dụ: 01 Tràng Tiền, Hoàn Kiếm, Hà Nội",
     "placeholder_online_url": "https://zoom.us/j/... hoặc https://youtube.com/live/...",
     "placeholder_ticket_name": "Ví dụ: VIP, Standard, Early Bird",
-    "remove_ticket_title": "Xóa hạng vé"
+    "remove_ticket_title": "Xóa hạng vé",
+    "submit_draft_ok": "Đã gửi sự kiện để duyệt",
+    "cancel_ok": "Đã hủy sự kiện"
   },
   "event_detail": {
     "loading": "Đang tải thông tin sự kiện...",
@@ -217,7 +227,9 @@
     "select_min_seats": "Vui lòng chọn ít nhất một ghế.",
     "select_seat_error": "Vui lòng chọn ít nhất một ghế.",
     "select_min_tickets": "Vui lòng chọn ít nhất một vé.",
-    "select_ticket_error": "Vui lòng chọn ít nhất một vé."
+    "select_ticket_error": "Vui lòng chọn ít nhất một vé.",
+    "tab_reviews": "Đánh giá",
+    "tab_photos": "Ảnh"
   },
   "moderation": {
     "title": "Bảng kiểm duyệt của Admin",
@@ -322,11 +334,13 @@
     "approved": "Đã duyệt",
     "rejected": "Từ chối",
     "approve": "Phê duyệt",
-    "reject": "Từ chối"
+    "reject": "Từ chối",
+    "cancel": "Hủy"
   },
   "common": {
     "app_name": "Eventing",
-    "app_tagline": "ing",
+    "app_tagline": "",
+    "attendee_badge": "Khách",
     "search_placeholder": "Bạn tìm gì hôm nay?",
     "search_button": "Tìm kiếm",
     "create_event": "Tạo sự kiện",
@@ -347,7 +361,21 @@
     "updating": "Đang cập nhật...",
     "refresh": "Làm mới",
     "from": "Từ",
-    "book_now": "Đặt vé ngay"
+    "book_now": "Đặt vé ngay",
+    "empty_title": "Chưa có nội dung",
+    "error_title": "Đã có lỗi xảy ra",
+    "error_generic": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.",
+    "try_again": "Thử lại",
+    "mock_data_notice": "Trang này dùng dữ liệu mẫu — endpoint backend chưa sẵn sàng.",
+    "notifications": "Thông báo",
+    "account": "Tài khoản",
+    "open_menu": "Mở menu",
+    "categories_label": "Danh mục",
+    "org_dashboard": "Bảng điều khiển nhà tổ chức",
+    "back_to_site": "Về trang chủ",
+    "not_found_title": "Không tìm thấy trang",
+    "not_found_desc": "Trang bạn tìm không tồn tại hoặc đã được di chuyển.",
+    "back_home": "Về trang chủ"
   },
   "navbar": {
     "categories": {
@@ -356,7 +384,9 @@
       "sports": "Thể thao",
       "workshop": "Hội thảo & Workshop",
       "tours": "Tham quan & Trải nghiệm",
-      "other": "Khác"
+      "other": "Khác",
+      "nightlife": "Đời sống & Tiệc",
+      "tech": "Công nghệ & Esports"
     }
   },
   "footer": {
@@ -392,5 +422,91 @@
     "company_cert": "Giấy chứng nhận đăng ký doanh nghiệp số: 0313605444, cấp lần đầu ngày 07/01/2016 bởi Sở Kế Hoạch và Đầu Tư TP. Hồ Chí Minh",
     "registered": "ĐÃ ĐĂNG KÝ",
     "registered_dept": "BỘ CÔNG THƯƠNG"
+  },
+  "profile": {
+    "title": "Hồ sơ của tôi",
+    "subtitle": "Quản lý tài khoản, hội viên và nhà tổ chức đang theo dõi",
+    "saved": "Đã cập nhật hồ sơ",
+    "save_error": "Không thể lưu hồ sơ",
+    "name_label": "Họ và tên",
+    "bio_label": "Tiểu sử",
+    "interests_label": "Sở thích",
+    "interests_hint": "Phân tách bằng dấu phẩy",
+    "age_label": "Độ tuổi",
+    "email_label": "Email",
+    "save_button": "Lưu thay đổi",
+    "membership_title": "Hội viên",
+    "membership_points": "điểm",
+    "membership_no_tier": "Chưa có thẻ hội viên",
+    "membership_upgrade": "Tích điểm từ đơn hàng để mở khóa hạng và đặc quyền.",
+    "membership_benefits": "Đặc quyền",
+    "organizers_title": "Khám phá nhà tổ chức",
+    "organizers_subtitle": "Theo dõi nhà tổ chức để nhận sự kiện sớm nhất",
+    "follow": "Theo dõi",
+    "following": "Đang theo dõi",
+    "follow_success": "Đã theo dõi nhà tổ chức",
+    "unfollow_success": "Đã bỏ theo dõi nhà tổ chức",
+    "loading": "Đang tải hồ sơ..."
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "subtitle": "Cập nhật đơn hàng, sự kiện và đặc quyền",
+    "mark_all_read": "Đánh dấu đã đọc",
+    "empty": "Bạn đã xem hết thông báo",
+    "empty_desc": "Thông báo mới sẽ hiển thị tại đây.",
+    "just_now": "Vừa xong",
+    "minutes_ago": "{n} phút trước",
+    "hours_ago": "{n} giờ trước",
+    "days_ago": "{n} ngày trước",
+    "view_all": "Xem tất cả",
+    "loading": "Đang tải thông báo..."
+  },
+  "reviews": {
+    "title": "Đánh giá",
+    "subtitle": "Xem đánh giá của người tham gia",
+    "write_review": "Viết đánh giá",
+    "rating_label": "Điểm đánh giá",
+    "comment_label": "Bình luận",
+    "comment_placeholder": "Chia sẻ trải nghiệm của bạn...",
+    "submit": "Gửi đánh giá",
+    "submitting": "Đang gửi...",
+    "submitted": "Đã gửi đánh giá",
+    "submit_error": "Không thể gửi đánh giá",
+    "login_to_review": "Đăng nhập để viết đánh giá",
+    "empty": "Chưa có đánh giá",
+    "empty_desc": "Hãy là người đầu tiên chia sẻ trải nghiệm.",
+    "average": "Trung bình",
+    "reviews_count": "{n} đánh giá",
+    "no_rating": "Chưa có đánh giá",
+    "cancel": "Hủy"
+  },
+  "media": {
+    "title": "Ảnh & Video",
+    "subtitle": "Khoảnh khắc từ sự kiện",
+    "empty": "Chưa có media",
+    "empty_desc": "Ảnh và video sẽ hiển thị tại đây.",
+    "close": "Đóng"
+  },
+  "search": {
+    "title": "Tìm sự kiện",
+    "subtitle": "Tìm trải nghiệm tiếp theo",
+    "query_label": "Từ khóa",
+    "category_label": "Danh mục",
+    "city_label": "Thành phố",
+    "date_from_label": "Từ ngày",
+    "date_to_label": "Đến ngày",
+    "min_price_label": "Giá tối thiểu",
+    "max_price_label": "Giá tối đa",
+    "apply": "Áp dụng bộ lọc",
+    "reset": "Đặt lại",
+    "results_count": "Tìm thấy {n} sự kiện",
+    "no_results": "Không có sự kiện phù hợp",
+    "no_results_desc": "Thử mở rộng tìm kiếm.",
+    "prev": "Trước",
+    "next": "Tiếp",
+    "page": "Trang {n}",
+    "all_categories": "Tất cả danh mục",
+    "filters": "Bộ lọc",
+    "loading": "Đang tìm..."
   }
 }

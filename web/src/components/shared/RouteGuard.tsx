@@ -34,9 +34,9 @@ export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-[#12141A] min-h-screen text-zinc-400 flex flex-col items-center justify-center gap-3">
+      <div className="bg-[var(--background)] min-h-screen text-[var(--text-secondary)] flex flex-col items-center justify-center gap-3">
         <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        <span className="text-xs font-bold tracking-wider uppercase text-zinc-500">{t('loading')}</span>
+        <span className="text-xs font-bold tracking-wider uppercase text-[var(--text-muted)]">{t('loading')}</span>
       </div>
     );
   }

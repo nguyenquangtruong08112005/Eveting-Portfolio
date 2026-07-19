@@ -57,20 +57,20 @@ export function TicketTypePicker({
   );
 
   return (
-    <div className="glass-card rounded-xl bg-[#18181A]/70 border border-white/10 overflow-hidden">
+    <div className="glass-card rounded-xl bg-[var(--surface)] border border-[var(--surface-border)] overflow-hidden">
       {/* Header */}
-      <div className="p-5 border-b border-white/10">
+      <div className="p-5 border-b border-[var(--surface-border)]">
         <div className="flex items-center gap-2 mb-1">
           <Ticket className="size-4 text-[var(--primary)]" />
           <h3 className="text-base font-bold text-[var(--text-primary)]">{t('title')}</h3>
         </div>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-[var(--text-secondary)]">
           {t('subtitle')}
         </p>
       </div>
 
       {/* Ticket list */}
-      <div className="divide-y divide-white/10">
+      <div className="divide-y divide-[var(--surface-border)]">
         {ticketTypes.map((ticket) => {
           const qty = quantities[ticket.key] || 0;
           const isFree = ticket.price === 0;
@@ -96,7 +96,7 @@ export function TicketTypePicker({
                   >
                     {isFree ? formatPrice(0) : formatPrice(ticket.price)}
                   </p>
-                  <p className="text-[11px] text-zinc-400 mt-1">
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-1">
                     {isSoldOut ? (
                       <span className="text-[var(--error)] font-semibold">{t('sold_out')}</span>
                     ) : (
@@ -111,7 +111,7 @@ export function TicketTypePicker({
                     <button
                       onClick={() => onQuantityChange(ticket.key, Math.max(0, qty - 1))}
                       disabled={qty === 0 || disabled}
-                      className="size-8 rounded-lg border border-white/10 flex items-center justify-center text-[var(--text-secondary)] hover:bg-[#201f1f] transition-colors disabled:opacity-30 cursor-pointer"
+                      className="size-8 rounded-lg border border-[var(--surface-border)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-30 cursor-pointer"
                     >
                       <Minus className="size-3.5" />
                     </button>
@@ -126,7 +126,7 @@ export function TicketTypePicker({
                         )
                       }
                       disabled={qty >= Math.min(maxPerType, ticket.available) || disabled}
-                      className="size-8 rounded-lg border border-white/10 flex items-center justify-center text-[var(--text-secondary)] hover:bg-[#201f1f] transition-colors disabled:opacity-30 cursor-pointer"
+                      className="size-8 rounded-lg border border-[var(--surface-border)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-30 cursor-pointer"
                     >
                       <Plus className="size-3.5" />
                     </button>
@@ -139,7 +139,7 @@ export function TicketTypePicker({
       </div>
 
       {/* Summary + Checkout */}
-      <div className="p-5 border-t border-white/10 bg-black/20">
+      <div className="p-5 border-t border-[var(--surface-border)] bg-black/20">
         {totalItems > 0 && (
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-[var(--text-secondary)]">
@@ -153,7 +153,7 @@ export function TicketTypePicker({
         <Button
           onClick={onCheckout}
           disabled={totalItems === 0 || disabled}
-          className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 border-none btn-tactile font-bold text-[#00210f]"
+          className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 border-none btn-tactile font-bold text-[var(--on-primary)]"
         >
           <ShoppingCart className="size-4" />
           {totalItems === 0 ? t('select_to_continue') : t('buy_summary', { count: totalItems, price: formatPrice(totalPrice) })}

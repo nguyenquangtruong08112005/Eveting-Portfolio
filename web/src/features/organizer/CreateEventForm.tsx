@@ -136,7 +136,7 @@ export function CreateEventForm() {
         <div>
           <Link
             href="/organizer/dashboard"
-            className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
             <ArrowLeft className="size-3.5" />
             {t('back_to_dashboard')}
@@ -145,11 +145,11 @@ export function CreateEventForm() {
 
         {/* Title */}
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
+          <h1 className="text-2xl font-black text-[var(--text-primary)] flex items-center gap-2.5 tracking-tight">
             <Sparkles className="size-6 text-[var(--primary)]" />
             {t('new_event_title')}
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-[var(--text-secondary)] mt-1">
             {t('new_event_subtitle')}
           </p>
         </div>
@@ -162,81 +162,81 @@ export function CreateEventForm() {
         )}
 
         {success ? (
-          <div className="p-10 bg-[#1E212B] border border-white/5 rounded-2xl text-center flex flex-col items-center justify-center gap-4 shadow-xl">
-            <CheckCircle2 className="size-16 text-green-400 animate-bounce" />
-            <h2 className="text-xl font-bold text-white">{t('create_success')}</h2>
-            <p className="text-zinc-400 text-sm max-w-sm">
+          <div className="p-10 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-center flex flex-col items-center justify-center gap-4 shadow-xl">
+            <CheckCircle2 className="size-16 text-[var(--success)] animate-bounce" />
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">{t('create_success')}</h2>
+            <p className="text-[var(--text-secondary)] text-sm max-w-sm">
               {t('create_success_msg')}
             </p>
           </div>
         ) : (
           <div className="space-y-6">
             {/* Step 1: Basic Information */}
-            <section className="bg-[#1E212B] border border-white/5 p-6 rounded-2xl shadow-xl space-y-5">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-3">
+            <section className="bg-[var(--surface)] border border-[var(--surface-border)] p-6 rounded-2xl shadow-xl space-y-5">
+              <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2 border-b border-[var(--surface-border)] pb-3">
                 <FileText className="size-4 text-[var(--primary)]" />
                 1. {t('step_basics')}
               </h2>
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_name')}</Label>
+                  <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_name')}</Label>
                   <Input
                     type="text"
                     required
                     placeholder={t('placeholder_name')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_description')}</Label>
+                  <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_description')}</Label>
                   <textarea
                     placeholder={t('placeholder_description')}
                     rows={4}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)] focus:outline-none resize-y"
+                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)] focus:outline-none resize-y"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_image')}</Label>
+                    <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_image')}</Label>
                     <Input
                       type="url"
                       placeholder="https://example.com/image.jpg"
                       value={imageUrl}
                       onChange={(e) => setImageUrl(e.target.value)}
-                      className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-xs focus:border-[var(--primary)]"
+                      className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-xs focus:border-[var(--primary)]"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_banner')}</Label>
+                    <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_banner')}</Label>
                     <Input
                       type="url"
                       placeholder="https://example.com/banner.jpg"
                       value={bannerUrl}
                       onChange={(e) => setBannerUrl(e.target.value)}
-                      className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-xs focus:border-[var(--primary)]"
+                      className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-xs focus:border-[var(--primary)]"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_video')}</Label>
+                    <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_video')}</Label>
                     <Input
                       type="url"
                       placeholder="https://youtube.com/watch?v=..."
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
-                      className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-xs focus:border-[var(--primary)]"
+                      className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-xs focus:border-[var(--primary)]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_category')}</Label>
+                  <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_category')}</Label>
                   <div className="flex flex-wrap gap-2 pt-1">
                     {CATEGORY_OPTIONS.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
@@ -248,7 +248,7 @@ export function CreateEventForm() {
                           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer ${
                             isSelected
                               ? 'bg-[var(--primary)]/10 border-[var(--primary)]/30 text-[var(--primary)]'
-                              : 'bg-zinc-800/40 border-white/5 text-zinc-400 hover:text-white'
+                              : 'bg-[var(--surface-hover)] border-[var(--surface-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                           }`}
                         >
                           {cat}
@@ -261,8 +261,8 @@ export function CreateEventForm() {
             </section>
 
             {/* Step 2: Time & Venue */}
-            <section className="bg-[#1E212B] border border-white/5 p-6 rounded-2xl shadow-xl space-y-5">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-3">
+            <section className="bg-[var(--surface)] border border-[var(--surface-border)] p-6 rounded-2xl shadow-xl space-y-5">
+              <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2 border-b border-[var(--surface-border)] pb-3">
                 <Calendar className="size-4 text-[var(--primary)]" />
                 2. {t('step_time_location')}
               </h2>
@@ -270,28 +270,28 @@ export function CreateEventForm() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_start_date')}</Label>
+                    <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_start_date')}</Label>
                     <Input
                       type="datetime-local"
                       required
                       value={dateInput}
                       onChange={(e) => setDateInput(e.target.value)}
-                      className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                      className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_end_date')}</Label>
+                    <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_end_date')}</Label>
                     <Input
                       type="datetime-local"
                       value={endDateInput}
                       onChange={(e) => setEndDateInput(e.target.value)}
-                      className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                      className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_event_type')}</Label>
+                  <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_event_type')}</Label>
                   <div className="flex gap-4 pt-1">
                     <button
                       type="button"
@@ -299,7 +299,7 @@ export function CreateEventForm() {
                       className={`flex-1 py-3 rounded-xl border text-sm font-bold transition-all cursor-pointer ${
                         eventType === 'physical'
                           ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)]'
-                          : 'bg-[#12141A] border-white/10 text-zinc-400 hover:text-white'
+                          : 'bg-[var(--background)] border-[var(--surface-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
                       {t('event_type_physical')}
@@ -310,7 +310,7 @@ export function CreateEventForm() {
                       className={`flex-1 py-3 rounded-xl border text-sm font-bold transition-all cursor-pointer ${
                         eventType === 'online'
                           ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)]'
-                          : 'bg-[#12141A] border-white/10 text-zinc-400 hover:text-white'
+                          : 'bg-[var(--background)] border-[var(--surface-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
                       {t('event_type_online')}
@@ -322,46 +322,46 @@ export function CreateEventForm() {
                   <div className="space-y-4 pt-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_venue')}</Label>
+                        <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_venue')}</Label>
                         <Input
                           type="text"
                           placeholder={t('placeholder_venue')}
                           value={venueName}
                           onChange={(e) => setVenueName(e.target.value)}
-                          className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                          className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_city')}</Label>
+                        <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_city')}</Label>
                         <Input
                           type="text"
                           placeholder={t('placeholder_city')}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                          className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                         />
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_address')}</Label>
+                      <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_address')}</Label>
                       <Input
                         type="text"
                         placeholder={t('placeholder_address')}
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                        className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                       />
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <Label className="text-xs text-zinc-400 block mb-1.5">{t('field_online_url')}</Label>
+                    <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_online_url')}</Label>
                     <Input
                       type="url"
                       placeholder={t('placeholder_online_url')}
                       value={onlineUrl}
                       onChange={(e) => setOnlineUrl(e.target.value)}
-                      className="w-full bg-[#12141A] border border-white/10 text-white rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
+                      className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm focus:border-[var(--primary)]"
                     />
                   </div>
                 )}
@@ -369,9 +369,9 @@ export function CreateEventForm() {
             </section>
 
             {/* Step 3: Ticketing */}
-            <section className="bg-[#1E212B] border border-white/5 p-6 rounded-2xl shadow-xl space-y-5">
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <section className="bg-[var(--surface)] border border-[var(--surface-border)] p-6 rounded-2xl shadow-xl space-y-5">
+              <div className="flex items-center justify-between border-b border-[var(--surface-border)] pb-3">
+                <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
                   <Ticket className="size-4 text-[var(--primary)]" />
                   3. {t('step_pricing')}
                 </h2>
@@ -387,38 +387,38 @@ export function CreateEventForm() {
 
               <div className="space-y-4">
                 {ticketTiers.map((tier, idx) => (
-                  <div key={idx} className="p-4 bg-[#12141A] border border-white/5 rounded-xl flex flex-col md:flex-row gap-4 items-end relative">
+                  <div key={idx} className="p-4 bg-[var(--background)] border border-[var(--surface-border)] rounded-xl flex flex-col md:flex-row gap-4 items-end relative">
                     <div className="flex-1 space-y-4 w-full">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="sm:col-span-1">
-                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">{t('field_ticket_name')}</Label>
+                          <Label className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider block mb-1">{t('field_ticket_name')}</Label>
                           <Input
                             type="text"
                             required
                             placeholder={t('placeholder_ticket_name')}
                             value={tier.name}
                             onChange={(e) => updateTicketTier(idx, 'name', e.target.value)}
-                            className="w-full bg-[#1E212B] border border-white/10 text-white rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
+                            className="w-full bg-[var(--surface)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">{t('field_ticket_price')}</Label>
+                          <Label className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider block mb-1">{t('field_ticket_price')}</Label>
                           <Input
                             type="number"
                             required
                             value={tier.price}
                             onChange={(e) => updateTicketTier(idx, 'price', Number(e.target.value))}
-                            className="w-full bg-[#1E212B] border border-white/10 text-white rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
+                            className="w-full bg-[var(--surface)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">{t('field_ticket_quantity')}</Label>
+                          <Label className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider block mb-1">{t('field_ticket_quantity')}</Label>
                           <Input
                             type="number"
                             required
                             value={tier.available}
                             onChange={(e) => updateTicketTier(idx, 'available', Number(e.target.value))}
-                            className="w-full bg-[#1E212B] border border-white/10 text-white rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
+                            className="w-full bg-[var(--surface)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-2 px-3 text-xs focus:border-[var(--primary)]"
                           />
                         </div>
                       </div>
@@ -428,7 +428,7 @@ export function CreateEventForm() {
                       <button
                         type="button"
                         onClick={() => removeTicketTier(idx)}
-                        className="p-2 text-zinc-500 hover:text-red-400 rounded-lg hover:bg-white/5 transition-all cursor-pointer mb-0.5 shrink-0"
+                        className="p-2 text-[var(--text-muted)] hover:text-[var(--error)] rounded-lg hover:bg-[var(--surface-hover)] transition-all cursor-pointer mb-0.5 shrink-0"
                         title={t('remove_ticket_title')}
                       >
                         <Trash2 className="size-4" />
@@ -446,7 +446,7 @@ export function CreateEventForm() {
                 onClick={() => handleSubmit(true)}
                 disabled={loading}
                 variant="outline"
-                className="flex-1 py-6 bg-transparent hover:bg-white/5 border border-white/10 text-white font-bold text-sm rounded-xl cursor-pointer"
+                className="flex-1 py-6 bg-transparent hover:bg-[var(--surface-hover)] border border-[var(--surface-border)] text-[var(--text-primary)] font-bold text-sm rounded-xl cursor-pointer"
               >
                 {loading ? t('processing') : t('save_draft')}
               </Button>
@@ -454,7 +454,7 @@ export function CreateEventForm() {
                 type="button"
                 onClick={() => handleSubmit(false)}
                 disabled={loading}
-                className="flex-1 py-6 rounded-xl btn-primary-gradient text-sm font-black tracking-wide text-[#12141A] border-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-orange-500/10"
+                className="flex-1 py-6 rounded-xl btn-primary-gradient text-sm font-black tracking-wide text-[var(--on-primary)] border-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-orange-500/10"
               >
                 {loading ? t('processing') : t('submit_review')}
               </Button>

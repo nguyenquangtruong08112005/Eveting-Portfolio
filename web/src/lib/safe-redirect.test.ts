@@ -2,7 +2,7 @@
  * Run: node --experimental-strip-types src/lib/safe-redirect.test.ts
  * from web-2025-eventing directory.
  */
-import { isSafeExternalUrl } from './safe-redirect.ts';
+import { isSafeExternalUrl } from './safe-redirect';
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);

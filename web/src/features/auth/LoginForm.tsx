@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Flame, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { AuthService } from '@/features/auth/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from 'next-intl';
+import { BrandMark } from '@/components/shared/BrandMark';
 
 export function LoginForm() {
   const router = useRouter();
@@ -28,11 +29,27 @@ export function LoginForm() {
 
     try {
       const data = await AuthService.login(email, password);
-      const role = data.user?.roles?.[0] ?? 'attendee';
-      login(data.accessToken, role, data.user.id, data.refreshToken);
-      router.push('/');
+      // Prefer organizer/admin if present (API roles: user | organizer | admin)
+      const roles = data.user?.roles ?? [];
+      const role =
+        roles.find((r) => r === 'admin') ||
+        roles.find((r) => r === 'organizer') ||
+        roles[0] ||
+        'user';
+      // Normalize backend "user" → frontend "attendee" for any legacy checks
+      const normalizedRole = role === 'user' ? 'attendee' : role;
+      login(data.accessToken, normalizedRole, data.user.id, data.refreshToken);
+
+      if (normalizedRole === 'admin') {
+        router.push('/admin/moderation');
+      } else if (normalizedRole === 'organizer') {
+        router.push('/organizer/dashboard');
+      } else {
+        router.push('/');
+      }
     } catch (err: unknown) {
       const message =
+        (err as { message?: string; response?: { data?: { message?: string } } })?.message ||
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         t('login_error');
       setError(message);
@@ -51,16 +68,8 @@ export function LoginForm() {
 
       <Card className="w-full max-w-md rounded-xl p-8 relative z-10 border border-[var(--surface-border)] bg-[var(--surface)]/95 shadow-lg">
         <CardHeader className="p-0 mb-8 flex flex-col items-center">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 font-extrabold text-2xl tracking-tight text-[var(--text-primary)] mb-3"
-          >
-            <div className="size-9 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center">
-              <Flame className="size-4.5 text-[var(--on-primary)]" />
-            </div>
-            <span>
-              Event<span className="text-[var(--primary)]">ing</span>
-            </span>
+          <Link href="/" className="mb-3">
+            <BrandMark size="lg" />
           </Link>
           <CardTitle className="text-xl font-bold text-[var(--text-primary)] text-center mt-1">
             {t('login')}
@@ -89,10 +98,10 @@ export function LoginForm() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('email_placeholder')}
                   className={fieldClass}
                 />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--text-muted)]" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--text-muted)] pointer-events-none" />
               </div>
             </div>
 
@@ -107,10 +116,10 @@ export function LoginForm() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('password_placeholder')}
                   className={fieldClass}
                 />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--text-muted)]" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--text-muted)] pointer-events-none" />
               </div>
             </div>
 

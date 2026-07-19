@@ -1,6 +1,6 @@
 import type { RequestMethod, RequestOptions } from '@/types/api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export class HttpError extends Error {
   status: number;

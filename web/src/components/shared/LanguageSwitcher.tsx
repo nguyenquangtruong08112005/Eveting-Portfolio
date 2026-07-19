@@ -44,7 +44,7 @@ export function LanguageSwitcher() {
         className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--surface)] border border-[var(--surface-border)] rounded-full cursor-pointer hover:border-[var(--primary)]/40 transition-all select-none"
       >
         <span className="text-base leading-none">{current.flag}</span>
-        <ChevronDown className={`size-3 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`size-3 text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (

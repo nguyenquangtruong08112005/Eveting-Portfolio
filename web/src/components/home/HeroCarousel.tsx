@@ -31,8 +31,8 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
 
   if (slides.length === 0) {
     return (
-      <section className="relative w-full h-[300px] flex items-center justify-center bg-[#0a0a0c] border-b border-white/10">
-        <div className="text-zinc-500 text-sm">{t('no_featured_events')}</div>
+      <section className="relative w-full h-[300px] flex items-center justify-center bg-[var(--background)] border-b border-[var(--surface-border)]">
+        <div className="text-[var(--text-muted)] text-sm">{t('no_featured_events')}</div>
       </section>
     );
   }
@@ -40,7 +40,7 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
   const tags = ['RECOMMENDED', 'TRENDING', 'HOT EVENT'];
 
   return (
-    <section className="relative w-full h-[400px] md:h-[460px] overflow-hidden bg-[#0a0a0c] border-b border-white/10">
+    <section className="relative w-full h-[400px] md:h-[460px] overflow-hidden bg-[var(--background)] border-b border-[var(--surface-border)]">
       {slides.map((slide, index) => {
         const isActive = index === activeSlide;
         const tag = slide.tags?.[0] || tags[index % tags.length];
@@ -57,16 +57,16 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
               className="absolute inset-0 bg-cover bg-center brightness-[0.35] scale-105 transition-transform duration-[10000ms]"
               style={{ backgroundImage: `url(${slide.imageUrl || FALLBACK_IMAGE})` }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#12141A] via-[#12141A]/50 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--background)] via-[var(--background)]/50 to-transparent" />
             
             <div className="relative max-w-7xl mx-auto px-6 w-full text-white">
-              <span className="bg-gradient-to-r from-[#FF8F66] to-[#FF7043] text-[#12141A] px-3.5 py-1 rounded-full text-[10px] font-bold self-start mb-4 uppercase tracking-wider inline-block">
+              <span className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-[var(--on-primary)] px-3.5 py-1 rounded-full text-[10px] font-bold self-start mb-4 uppercase tracking-wider inline-block">
                 {tag}
               </span>
               <h2 className="text-3xl md:text-5xl font-black mb-4 max-w-2xl leading-tight tracking-tight drop-shadow-md">
                 {slide.name}
               </h2>
-              <div className="flex flex-col gap-2 mb-8 text-zinc-300 text-sm">
+              <div className="flex flex-col gap-2 mb-8 text-white/80 text-sm">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="size-4 text-[var(--primary)]" />
                   <span>{formatDate(slide.date)}</span>

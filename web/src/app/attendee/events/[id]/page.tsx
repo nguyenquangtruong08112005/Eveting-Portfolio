@@ -19,6 +19,8 @@ import { EventService } from '@/services/event.service';
 import { enrichEvent, formatPrice, HOLD_TIMER_SECONDS } from '@/lib/constants';
 import { EventHeader } from '@/components/events/EventHeader';
 import { EventInfoContent } from '@/components/events/EventInfoContent';
+import { MediaGallery } from '@/components/events/MediaGallery';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useTranslations } from 'next-intl';
 
 export default function EventDetailPage() {
@@ -201,15 +203,15 @@ export default function EventDetailPage() {
       <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
         <Navbar />
         <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-md glass-card rounded-2xl p-8 border border-white/5 bg-[#1E212B]">
-            <AlertCircle className="size-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-zinc-200 text-lg font-bold">{t('not_found')}</h2>
-            <p className="text-zinc-500 text-sm mt-1 mb-6">
+          <div className="max-w-md glass-card rounded-2xl p-8 border border-[var(--surface-border)] bg-[var(--surface)]">
+            <AlertCircle className="size-12 text-[var(--error)] mx-auto mb-4" />
+            <h2 className="text-[var(--text-primary)] text-lg font-bold">{t('not_found')}</h2>
+            <p className="text-[var(--text-muted)] text-sm mt-1 mb-6">
               {t('not_found_desc')}
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-2.5 rounded-xl btn-primary-gradient text-xs font-bold text-[#12141A] border-none"
+              className="inline-block px-6 py-2.5 rounded-xl btn-primary-gradient text-xs font-bold text-[var(--on-primary)] border-none"
             >
               {t('back_home')}
             </Link>
@@ -231,7 +233,7 @@ export default function EventDetailPage() {
       <div className="max-w-7xl mx-auto px-6 mt-4 w-full">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[var(--text-primary)] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
           {t('back_list')}
@@ -264,34 +266,34 @@ export default function EventDetailPage() {
                 />
                 
                 {/* Booking details panel */}
-                <div className="glass-card rounded-xl p-5 bg-[#1E212B] border border-white/10">
-                  <h3 className="text-sm font-bold text-white mb-3">{t('booking_info')}</h3>
+                <div className="glass-card rounded-xl p-5 bg-[var(--surface)] border border-[var(--surface-border)]">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">{t('booking_info')}</h3>
                   {selectedSeats.length > 0 ? (
                     <div className="space-y-3">
-                      <div className="flex justify-between text-xs text-zinc-400">
+                      <div className="flex justify-between text-xs text-[var(--text-secondary)]">
                         <span>{t('selected_seats', { count: selectedSeats.length })}</span>
                         <span className="font-bold text-[var(--primary)]">
                           {selectedSeats.map(s => `${s.rowName}${s.number}`).join(', ')}
                         </span>
                       </div>
-                      <div className="flex justify-between text-xs text-zinc-400">
+                      <div className="flex justify-between text-xs text-[var(--text-secondary)]">
                         <span>{t('unit_price')}</span>
                         <span>{formatPrice(seatPrice)} {t('per_seat')}</span>
                       </div>
-                      <div className="border-t border-white/5 pt-3 flex justify-between text-sm font-bold text-white">
+                      <div className="border-t border-[var(--surface-border)] pt-3 flex justify-between text-sm font-bold text-[var(--text-primary)]">
                         <span>{t('total')}</span>
                         <span className="text-[var(--primary)]">{formatPrice(totalSeatPrice)}</span>
                       </div>
                       
                       <button
                         onClick={handleCheckout}
-                        className="w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[#12141A] border-none font-bold mt-4"
+                        className="w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[var(--on-primary)] border-none font-bold mt-4"
                       >
                         {t('continue_payment')}
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs text-zinc-500 italic">{t('select_seats_hint')}</p>
+                    <p className="text-xs text-[var(--text-muted)] italic">{t('select_seats_hint')}</p>
                   )}
                 </div>
               </div>
@@ -307,8 +309,8 @@ export default function EventDetailPage() {
 
             {/* Login prompt if not authenticated */}
             {!token && (
-              <div className="glass-card rounded-xl p-4 text-center bg-[#18181A]/50 border border-white/5">
-                <p className="text-xs text-zinc-400 mb-2">
+              <div className="glass-card rounded-xl p-4 text-center bg-[var(--surface)]/80 border border-[var(--surface-border)]">
+                <p className="text-xs text-[var(--text-secondary)] mb-2">
                   {t('guest_hint')}
                 </p>
                 <Link
@@ -322,6 +324,23 @@ export default function EventDetailPage() {
           </div>
         </section>
       </main>
+
+      {/* Photos (reviews deferred to phase 2) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-12 w-full">
+        <Tabs defaultValue="photos">
+          <TabsList className="bg-[var(--surface)] border border-[var(--surface-border)] p-1 h-auto">
+            <TabsTrigger
+              value="photos"
+              className="data-[selected]:bg-[var(--primary)] data-[selected]:text-[var(--on-primary)] rounded-lg text-xs font-bold px-4 py-2"
+            >
+              {t('tab_photos')}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="photos" className="mt-6">
+            <MediaGallery eventId={eventId} />
+          </TabsContent>
+        </Tabs>
+      </section>
 
       <Footer />
     </div>

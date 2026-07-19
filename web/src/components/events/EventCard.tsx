@@ -8,38 +8,12 @@ import { SafeImage } from '@/components/shared/SafeImage';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { formatPrice, formatDate, FALLBACK_IMAGE, TAG_TO_I18N_KEY } from '@/lib/constants';
+import { formatPrice, formatDate, FALLBACK_IMAGE, localizeCategory } from '@/lib/constants';
 import type { Event } from '@/types';
 
 interface EventCardProps {
   event: Event;
 }
-
-// Fallback labels for tags not in i18n messages
-const CATEGORY_FALLBACKS: Record<string, string> = {
-  concert: 'Concert',
-  edm: 'EDM',
-  'hip-hop': 'Hip-Hop',
-  'v-pop': 'V-Pop',
-  exhibition: 'Triển lãm',
-  culture: 'Văn hóa',
-  festival: 'Festival',
-  food: 'Ẩm thực',
-  conference: 'Hội nghị',
-  expo: 'Triển lãm',
-  business: 'Kinh doanh',
-  networking: 'Networking',
-  wellness: 'Wellness',
-  nightlife: 'Nightlife',
-  performance: 'Biểu diễn',
-  family: 'Gia đình',
-  esports: 'Esports',
-  education: 'Giáo dục',
-  pets: 'Thú cưng',
-  online: 'Online',
-  inspiration: 'Cảm hứng',
-  fashion: 'Thời trang',
-};
 
 export function EventCard({ event }: EventCardProps) {
   const t = useTranslations('navbar.categories');
@@ -49,22 +23,14 @@ export function EventCard({ event }: EventCardProps) {
   const displayCategories = (event.category ?? []).slice(0, 2);
   const [mounted, setMounted] = React.useState(false);
 
-  function localizeCategory(cat: string): string {
-    const key = TAG_TO_I18N_KEY[cat.toLowerCase()];
-    if (key) {
-      try { return t(key); } catch { /* fallback */ }
-    }
-    return CATEGORY_FALLBACKS[cat.toLowerCase()] || cat;
-  }
-
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
   return (
-    <article className="glass-card rounded-xl overflow-hidden flex flex-col group h-full hover:translate-y-[-8px] transition-all duration-300 shadow-xl border border-white/10 bg-[#18181A]/70">
+    <article className="aura-card overflow-hidden flex flex-col group h-full">
       {/* Image */}
-      <div className="aspect-[16/10] w-full relative overflow-hidden bg-[var(--background)]">
+      <div className="aspect-[16/10] w-full relative overflow-hidden bg-[var(--surface-hover)]">
         <SafeImage
           src={event.imageUrl || FALLBACK_IMAGE}
           alt={event.name}
@@ -77,9 +43,9 @@ export function EventCard({ event }: EventCardProps) {
           {displayCategories.map((cat, idx) => (
             <Badge
               key={idx}
-              className="px-2.5 py-1 rounded-full bg-black/60 border border-white/10 text-[10px] text-[var(--text-secondary)] font-semibold uppercase tracking-wider backdrop-blur-md"
+              className="px-2.5 py-1 rounded-full bg-black/55 border border-white/10 text-[10px] text-white font-semibold uppercase tracking-wider backdrop-blur-md"
             >
-              {localizeCategory(cat)}
+              {localizeCategory(cat, t)}
             </Badge>
           ))}
         </div>
@@ -93,14 +59,9 @@ export function EventCard({ event }: EventCardProps) {
           </div>
         )}
         {/* Price Tag */}
-        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span className="text-[10px] text-zinc-400 block leading-none">{tCommon('from')}</span>
-          <span
-            className={cn(
-              'text-sm font-bold',
-              'text-[var(--primary)]'
-            )}
-          >
+        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/55 backdrop-blur-md border border-white/10">
+          <span className="text-[10px] text-white/70 block leading-none">{tCommon('from')}</span>
+          <span className="text-sm font-bold text-[var(--primary)]">
             {formatPrice(event.minPrice)}
           </span>
         </div>
@@ -111,7 +72,7 @@ export function EventCard({ event }: EventCardProps) {
         <h3 className="text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors line-clamp-1 mb-1.5">
           {event.name}
         </h3>
-        <p className="text-zinc-400 text-sm line-clamp-2 mb-4 leading-relaxed">
+        <p className="text-[var(--text-secondary)] text-sm line-clamp-2 mb-4 leading-relaxed">
           {event.description || event.name}
         </p>
 
@@ -135,7 +96,7 @@ export function EventCard({ event }: EventCardProps) {
           href={`/attendee/events/${event.id}`}
           className={cn(
             buttonVariants({ variant: 'default' }),
-            'w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[#00210f] border-none font-bold'
+            'w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[var(--on-primary)] border-none font-bold'
           )}
         >
           {tCommon('book_now')}

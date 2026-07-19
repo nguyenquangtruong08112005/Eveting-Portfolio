@@ -49,6 +49,9 @@
     "full_name": "Full Name",
     "email": "Email",
     "password": "Password",
+    "name_placeholder": "Nguyen Van A",
+    "email_placeholder": "you@example.com",
+    "password_placeholder": "At least 6 characters",
     "demo": "Demo",
     "admin_hint": "Email containing \"admin\" → Admin",
     "org_hint": "Email containing \"organizer\" → Organizer"
@@ -112,7 +115,8 @@
     "register_to_manage": "Register an account to manage tickets",
     "security_note": "Secure payment by Eventing SSL 256-bit",
     "loading_receipt": "Loading receipt...",
-    "syncing_details": "Event details are being synced..."
+    "syncing_details": "Event details are being synced...",
+    "fast_badge": "Fast"
   },
   "my_tickets": {
     "title": "My Tickets",
@@ -129,7 +133,11 @@
     "loading_event": "Updating...",
     "purchase_date": "Purchased:",
     "print_ticket": "Print Ticket",
-    "view_event": "View Event Page"
+    "view_event": "View Event Page",
+    "qr_hint": "Show this QR code at the venue entrance",
+    "ticket_id": "Ticket ID",
+    "price": "Price",
+    "view_event_page": "View Event"
   },
   "organizer": {
     "dashboard_title": "Partner Area",
@@ -189,7 +197,9 @@
     "placeholder_address": "e.g. 01 Trang Tien, Hoan Kiem, Hanoi",
     "placeholder_online_url": "https://zoom.us/j/... or https://youtube.com/live/...",
     "placeholder_ticket_name": "e.g. VIP, Standard, Early Bird",
-    "remove_ticket_title": "Remove ticket type"
+    "remove_ticket_title": "Remove ticket type",
+    "submit_draft_ok": "Event submitted for review",
+    "cancel_ok": "Event cancelled"
   },
   "event_detail": {
     "loading": "Loading event details...",
@@ -217,7 +227,9 @@
     "select_min_seats": "Please select at least one seat.",
     "select_seat_error": "Please select at least one seat.",
     "select_min_tickets": "Please select at least one ticket.",
-    "select_ticket_error": "Please select at least one ticket."
+    "select_ticket_error": "Please select at least one ticket.",
+    "tab_reviews": "Reviews",
+    "tab_photos": "Photos"
   },
   "moderation": {
     "title": "Admin Moderation Panel",
@@ -322,11 +334,13 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "approve": "Approve",
-    "reject": "Reject"
+    "reject": "Reject",
+    "cancel": "Cancel"
   },
   "common": {
     "app_name": "Eventing",
-    "app_tagline": "ing",
+    "app_tagline": "",
+    "attendee_badge": "Attendee",
     "search_placeholder": "What are you looking for?",
     "search_button": "Search",
     "create_event": "Create Event",
@@ -347,7 +361,21 @@
     "updating": "Updating...",
     "refresh": "Refresh",
     "from": "From",
-    "book_now": "Book Now"
+    "book_now": "Book Now",
+    "empty_title": "Nothing here yet",
+    "error_title": "Something went wrong",
+    "error_generic": "An unexpected error occurred. Please try again.",
+    "try_again": "Try again",
+    "mock_data_notice": "This view uses sample data — the backend endpoint is not yet available.",
+    "notifications": "Notifications",
+    "account": "Account",
+    "open_menu": "Open menu",
+    "categories_label": "Categories",
+    "org_dashboard": "Organizer dashboard",
+    "back_to_site": "Back to site",
+    "not_found_title": "Page not found",
+    "not_found_desc": "The page you are looking for does not exist or has been moved.",
+    "back_home": "Back to home"
   },
   "navbar": {
     "categories": {
@@ -356,8 +384,48 @@
       "sports": "Sports",
       "workshop": "Workshops",
       "tours": "Tours & Experiences",
-      "other": "Other"
+      "other": "Other",
+      "nightlife": "Nightlife & Parties",
+      "tech": "Tech & Gaming"
     }
+  },
+  "profile": {
+    "title": "My profile",
+    "subtitle": "Manage your account, membership, and followed organizers",
+    "saved": "Profile updated",
+    "save_error": "Could not save profile",
+    "name_label": "Full name",
+    "bio_label": "Bio",
+    "interests_label": "Interests",
+    "interests_hint": "Separate with commas",
+    "age_label": "Age range",
+    "email_label": "Email",
+    "save_button": "Save changes",
+    "membership_title": "Membership",
+    "membership_points": "points",
+    "membership_no_tier": "No active membership",
+    "membership_upgrade": "Earn points from purchases to unlock tiers and perks.",
+    "membership_benefits": "Benefits",
+    "organizers_title": "Discover organizers",
+    "organizers_subtitle": "Follow organizers to hear about their events first",
+    "follow": "Follow",
+    "following": "Following",
+    "follow_success": "Following organizer",
+    "unfollow_success": "Unfollowed organizer",
+    "loading": "Loading profile..."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Stay on top of your orders, events, and perks",
+    "mark_all_read": "Mark all read",
+    "empty": "You are all caught up",
+    "empty_desc": "New notifications will appear here.",
+    "just_now": "Just now",
+    "minutes_ago": "{n}m ago",
+    "hours_ago": "{n}h ago",
+    "days_ago": "{n}d ago",
+    "view_all": "View all",
+    "loading": "Loading notifications..."
   },
   "footer": {
     "language": "Language",
@@ -392,5 +460,53 @@
     "company_cert": "Business Registration No: 0313605444, first issued on 07/01/2016 by Ho Chi Minh City Department of Planning and Investment",
     "registered": "REGISTERED",
     "registered_dept": "MINISTRY OF INDUSTRY AND TRADE"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "subtitle": "See what attendees said",
+    "write_review": "Write a review",
+    "rating_label": "Your rating",
+    "comment_label": "Your comment",
+    "comment_placeholder": "Share your experience...",
+    "submit": "Submit review",
+    "submitting": "Submitting...",
+    "submitted": "Review posted",
+    "submit_error": "Could not post review",
+    "login_to_review": "Login to write a review",
+    "empty": "No reviews yet",
+    "empty_desc": "Be the first to share your experience.",
+    "average": "Average",
+    "reviews_count": "{n} reviews",
+    "no_rating": "Not rated yet",
+    "cancel": "Cancel"
+  },
+  "media": {
+    "title": "Photos & Videos",
+    "subtitle": "Moments from this event",
+    "empty": "No media yet",
+    "empty_desc": "Photos and videos will appear here.",
+    "close": "Close"
+  },
+  "search": {
+    "title": "Search events",
+    "subtitle": "Find your next experience",
+    "query_label": "Keywords",
+    "category_label": "Category",
+    "city_label": "City",
+    "date_from_label": "From",
+    "date_to_label": "To",
+    "min_price_label": "Min price",
+    "max_price_label": "Max price",
+    "apply": "Apply filters",
+    "reset": "Reset",
+    "results_count": "{n} events found",
+    "no_results": "No events match your filters",
+    "no_results_desc": "Try widening your search.",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page {n}",
+    "all_categories": "All categories",
+    "filters": "Filters",
+    "loading": "Searching..."
   }
 }

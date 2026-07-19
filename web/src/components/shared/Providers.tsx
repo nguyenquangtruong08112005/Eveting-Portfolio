@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { ThemeProvider } from './ThemeProvider';
 import { AuthProvider } from '@/context/AuthContext';
+import { ToastHost } from './ToastHost';
 import viMessages from '../../../messages/vi.json';
 import enMessages from '../../../messages/en.json';
 
@@ -45,7 +46,10 @@ export function Providers({ children }: { children: ReactNode }) {
     <LocaleCtx.Provider value={{ locale, setLocale: changeLocale }}>
       <NextIntlClientProvider locale={locale} messages={messages}>
         <ThemeProvider>
-          <AuthProvider>{ready ? children : null}</AuthProvider>
+          <AuthProvider>
+            {ready ? children : null}
+            <ToastHost />
+          </AuthProvider>
         </ThemeProvider>
       </NextIntlClientProvider>
     </LocaleCtx.Provider>

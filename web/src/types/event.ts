@@ -41,3 +41,12 @@ export interface Destination {
   query: string;
   eventCount: number;
 }
+
+export interface EventWeather {
+  tempC?: number;
+  condition?: string;
+  icon?: string;
+  humidity?: number;
+  windKph?: number;
+  forecast?: string;
+}

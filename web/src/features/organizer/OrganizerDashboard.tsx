@@ -2,21 +2,35 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import {
+  Plus,
+  LayoutDashboard,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import { AppShell, type NavItem } from '@/components/layout/AppShell';
 import { StatsGrid } from '@/components/organizer/StatsGrid';
 import { EventManageTable } from '@/components/organizer/EventManageTable';
 import { LedgerEntries } from '@/components/organizer/LedgerEntries';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { OrganizerService } from '@/features/organizer/api';
 import { EventService } from '@/features/events/api';
 import { Badge } from '@/components/ui/badge';
-import { Plus, LayoutDashboard, Loader2, AlertCircle } from 'lucide-react';
 import type { OrganizerStats, OrganizerEvent, LedgerEntry } from '@/types';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+
+const ORG_NAV: NavItem[] = [
+  { href: '/organizer/dashboard', labelKey: 'org_dashboard', icon: LayoutDashboard },
+  // Phase 3 targets:
+  // { href: '/organizer/events/new', labelKey: 'create_event', icon: Plus },
+  // { href: '/organizer/promotions', labelKey: 'promotions', icon: TicketPercent },
+];
 
 export function OrganizerDashboardView() {
   const t = useTranslations('organizer');
+  const tCommon = useTranslations('common');
   const { token } = useAuth();
   const [stats, setStats] = useState<OrganizerStats>({
     totalSales: 0,
@@ -38,15 +52,27 @@ export function OrganizerDashboardView() {
         OrganizerService.getLedger(),
       ]);
 
+      // API returns { totalRevenue, totalTicketsSold, totalEvents, upcomingEvents }
+      // UI expects { totalSales, grossRevenue, platformFees, netRevenue }
       if (statsRes.status === 'fulfilled' && statsRes.value) {
-        setStats(statsRes.value);
+        const raw = statsRes.value as OrganizerStats & {
+          totalRevenue?: number;
+          totalTicketsSold?: number;
+        };
+        setStats({
+          totalSales: Number(raw.totalSales ?? raw.totalTicketsSold ?? 0) || 0,
+          grossRevenue: Number(raw.grossRevenue ?? raw.totalRevenue ?? 0) || 0,
+          platformFees: Number(raw.platformFees ?? 0) || 0,
+          netRevenue:
+            Number(
+              raw.netRevenue ??
+                (raw.grossRevenue ?? raw.totalRevenue ?? 0) - (raw.platformFees ?? 0)
+            ) || 0,
+        });
       }
-      if (eventsRes.status === 'fulfilled' && eventsRes.value?.data) {
-        setEvents(eventsRes.value.data);
-      }
-      if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.entries) {
+      if (eventsRes.status === 'fulfilled' && eventsRes.value?.data) setEvents(eventsRes.value.data);
+      if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.entries)
         setLedgerEntries(ledgerRes.value.entries);
-      }
     } catch (error) {
       console.error('Error loading organizer dashboard data:', error);
     } finally {
@@ -61,111 +87,110 @@ export function OrganizerDashboardView() {
 
   const handleSubmitDraft = async (id: string) => {
     setActionLoadingId(id);
+    setErrorMsg('');
     try {
       await EventService.submitDraft(id);
+      toast.success(t('submit_draft_ok'));
       await loadData();
     } catch (err: any) {
-      console.error('Failed to submit draft:', err);
-      setErrorMsg(err.message || t('submit_draft_error'));
+      const msg = err.message || t('submit_draft_error');
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleCancelEvent = async (id: string) => {
-    if (!confirm(t('cancel_confirm'))) {
-      return;
-    }
+    if (!confirm(t('cancel_confirm'))) return;
     setActionLoadingId(id);
+    setErrorMsg('');
     try {
       await EventService.cancel(id);
+      toast.success(t('cancel_ok'));
       await loadData();
     } catch (err: any) {
-      console.error('Failed to cancel event:', err);
-      setErrorMsg(err.message || t('cancel_error'));
+      const msg = err.message || t('cancel_error');
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
-        <Navbar isOrganizerPage />
-        <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-grow flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="size-10 text-[var(--primary)] animate-spin" />
-            <p className="text-zinc-400 text-sm">{t('loading')}</p>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
-      <Navbar isOrganizerPage />
-
-      <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-grow">
-        {errorMsg && (
-          <div className="mb-6 p-4 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-2xl flex items-start gap-2.5 text-[var(--error)] text-sm">
-            <AlertCircle className="size-5 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-        {/* Title row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
-              <LayoutDashboard className="size-7 text-[var(--primary)]" />
-              {t('dashboard_title')}
-            </h1>
-            <p className="text-xs text-zinc-400 mt-1">
-              {t('dashboard_subtitle')}
-            </p>
-          </div>
-          
+  const body = (
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full flex-grow">
+      <PageHeader
+        title={t('dashboard_title')}
+        description={t('dashboard_subtitle')}
+        icon={<LayoutDashboard className="size-5" />}
+        actions={
           <Link
             href="/organizer/events/new"
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl btn-primary-gradient font-bold text-xs shadow-lg shadow-orange-500/10 btn-tactile text-[#12141A] border-none shrink-0 self-start sm:self-center hover:scale-[1.01] active:scale-[0.99] transition-all"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl btn-primary-gradient font-bold text-xs btn-tactile text-[var(--on-primary)] border-none shrink-0"
           >
             <Plus className="size-4" />
             {t('create_event')}
           </Link>
+        }
+      />
+
+      {errorMsg && (
+        <div
+          role="alert"
+          className="mb-6 p-4 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-2xl flex items-start gap-2.5 text-[var(--error)] text-sm"
+        >
+          <AlertCircle className="size-5 shrink-0 mt-0.5" />
+          <span>{errorMsg}</span>
         </div>
+      )}
 
-        {/* Stats Grid */}
-        <StatsGrid stats={stats} />
-
-        {/* Tables section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Event Management */}
-          <section className="lg:col-span-2 bg-[#1E212B] border border-white/5 p-6 rounded-2xl shadow-xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                {t('manage_events')}
-              </h3>
-              <Badge className="bg-[#12141A] border border-white/5 font-semibold text-zinc-400 text-[10px] px-2 py-0.5">
-                {t('active_count', { count: events.filter(e => e.status === 'active' || e.status === 'approved' || e.status === 'published').length })}
-              </Badge>
-            </div>
-            <EventManageTable
-              events={events}
-              onSubmitDraft={handleSubmitDraft}
-              onCancel={handleCancelEvent}
-              actionLoadingId={actionLoadingId}
-            />
-          </section>
-
-          {/* Ledger */}
-          <section>
-            <LedgerEntries entries={ledgerEntries} />
-          </section>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="size-10 text-[var(--primary)] animate-spin" />
+          <p className="text-[var(--text-muted)] text-sm">{t('loading')}</p>
         </div>
-      </main>
+      ) : (
+        <>
+          <StatsGrid stats={stats} />
 
-      <Footer />
-    </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <section className="lg:col-span-2 bg-[var(--surface)] border border-[var(--surface-border)] p-6 rounded-2xl">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                  {t('manage_events')}
+                </h3>
+                <Badge className="border border-[var(--surface-border)] font-semibold text-[var(--text-secondary)] text-[10px] px-2 py-0.5">
+                  {t('active_count', {
+                    count: events.filter(
+                      (e) =>
+                        e.status === 'active' ||
+                        e.status === 'approved' ||
+                        e.status === 'published'
+                    ).length,
+                  })}
+                </Badge>
+              </div>
+              <EventManageTable
+                events={events}
+                onSubmitDraft={handleSubmitDraft}
+                onCancel={handleCancelEvent}
+                actionLoadingId={actionLoadingId}
+              />
+            </section>
+
+            <section>
+              <LedgerEntries entries={ledgerEntries} />
+            </section>
+          </div>
+        </>
+      )}
+    </main>
+  );
+
+  return (
+    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+      {body}
+    </AppShell>
   );
 }

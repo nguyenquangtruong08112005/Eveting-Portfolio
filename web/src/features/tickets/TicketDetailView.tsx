@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Calendar, MapPin, Ticket, CheckCircle, Clock, XCircle, QrCode } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, CheckCircle, Clock, XCircle, QrCode } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { TicketService } from '@/features/tickets/api';
-import { formatDate, enrichEvent } from '@/lib/constants';
+import { formatDate } from '@/lib/constants';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
@@ -44,9 +44,9 @@ export function TicketDetailView() {
 
   const statusConfig = {
     paid: { label: t('active'), icon: CheckCircle, color: 'text-[var(--primary)]', bg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/20' },
-    pending: { label: 'Pending', icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20' },
-    checkedIn: { label: t('used'), icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20' },
-    cancelled: { label: t('cancelled'), icon: XCircle, color: 'text-zinc-500', bg: 'bg-zinc-800', border: 'border-zinc-700' },
+    pending: { label: 'Pending', icon: Clock, color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', border: 'border-[var(--warning)]/20' },
+    checkedIn: { label: t('used'), icon: CheckCircle, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', border: 'border-[var(--success)]/20' },
+    cancelled: { label: t('cancelled'), icon: XCircle, color: 'text-[var(--text-muted)]', bg: 'bg-[var(--surface-hover)]', border: 'border-[var(--surface-border)]' },
   };
 
   if (loading) {
@@ -54,7 +54,7 @@ export function TicketDetailView() {
       <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
         <Navbar />
         <main className="max-w-2xl mx-auto px-6 py-10 w-full flex-grow flex items-center justify-center">
-          <div className="text-zinc-500 text-sm">{t('loading_event')}</div>
+          <div className="text-[var(--text-muted)] text-sm">{t('loading_event')}</div>
         </main>
         <Footer />
       </div>
@@ -66,7 +66,7 @@ export function TicketDetailView() {
       <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
         <Navbar />
         <main className="max-w-2xl mx-auto px-6 py-10 w-full flex-grow text-center">
-          <p className="text-zinc-500 text-sm mb-4">{error || t('no_tickets')}</p>
+          <p className="text-[var(--text-muted)] text-sm mb-4">{error || t('no_tickets')}</p>
           <Link href="/my-tickets" className="text-[var(--primary)] text-xs font-bold hover:underline">
             {t('title')}
           </Link>
@@ -88,21 +88,21 @@ export function TicketDetailView() {
         {/* Back */}
         <Link
           href="/my-tickets"
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[var(--text-primary)] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
           {t('title')}
         </Link>
 
         {/* Ticket Card */}
-        <div className="rounded-2xl overflow-hidden bg-[#1E212B] border border-white/5 shadow-xl">
+        <div className="rounded-2xl overflow-hidden bg-[var(--surface)] border border-[var(--surface-border)] shadow-xl">
           {/* Event Image */}
           {event?.imageUrl && (
             <div className="aspect-[21/9] w-full overflow-hidden relative">
               <Image src={event.imageUrl} alt={event.name} fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-5 right-5">
-                <h1 className="text-xl font-extrabold text-white leading-snug">{event.name}</h1>
+                <h1 className="text-xl font-extrabold text-white leading-snug drop-shadow-md">{event.name}</h1>
               </div>
             </div>
           )}
@@ -122,13 +122,13 @@ export function TicketDetailView() {
             {/* Event Info */}
             <div className="space-y-3 text-sm">
               {event?.date && (
-                <div className="flex items-center gap-3 text-zinc-400">
+                <div className="flex items-center gap-3 text-[var(--text-secondary)]">
                   <Calendar className="size-4 text-[var(--primary)] shrink-0" />
                   <span>{formatDate(event.date)}</span>
                 </div>
               )}
               {(event?.venueName || event?.city) && (
-                <div className="flex items-center gap-3 text-zinc-400">
+                <div className="flex items-center gap-3 text-[var(--text-secondary)]">
                   <MapPin className="size-4 text-[var(--primary)] shrink-0" />
                   <span>{event.venueName}{event.city ? `, ${event.city}` : ''}</span>
                 </div>
@@ -136,23 +136,23 @@ export function TicketDetailView() {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-white/5 pt-4">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">{t('title')}</h3>
+            <div className="border-t border-[var(--surface-border)] pt-4">
+              <h3 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('title')}</h3>
 
               <div className="space-y-2.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">Ticket ID</span>
+                  <span className="text-[var(--text-secondary)]">{t('ticket_id')}</span>
                   <span className="font-mono text-[var(--text-primary)] font-bold text-xs select-all">{ticket.id}</span>
                 </div>
                 {ticket.seat && (
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">{t('seat_label', { seatId: '' }).replace(' ', '')}</span>
+                    <span className="text-[var(--text-secondary)]">{t('seat_label', { seatId: '' }).replace(' ', '')}</span>
                     <span className="font-bold text-[var(--text-primary)]">{ticket.seat}</span>
                   </div>
                 )}
                 {ticket.price !== undefined && (
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">Price</span>
+                    <span className="text-[var(--text-secondary)]">{t('price')}</span>
                     <span className="font-bold text-[var(--primary)]">
                       {ticket.price === 0 ? t('active') : `${ticket.price?.toLocaleString()} ₫`}
                     </span>
@@ -160,7 +160,7 @@ export function TicketDetailView() {
                 )}
                 {ticket.purchaseDate && (
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">{t('purchase_date')}</span>
+                    <span className="text-[var(--text-secondary)]">{t('purchase_date')}</span>
                     <span className="text-[var(--text-secondary)]">{formatDate(ticket.purchaseDate)}</span>
                   </div>
                 )}
@@ -169,11 +169,11 @@ export function TicketDetailView() {
 
             {/* QR Code placeholder */}
             {ticket.qrCode && (
-              <div className="border-t border-white/5 pt-4 text-center">
+              <div className="border-t border-[var(--surface-border)] pt-4 text-center">
                 <div className="inline-block bg-white p-4 rounded-xl">
-                  <QrCode className="size-24 text-zinc-900" />
+                  <QrCode className="size-24 text-[var(--foreground)]" />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-2">Show this QR code at the venue entrance</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-2">{t('qr_hint')}</p>
               </div>
             )}
 
@@ -183,11 +183,11 @@ export function TicketDetailView() {
                 href={`/attendee/events/${ticket.event?.id || ticket.eventId}`}
                 className="flex-1 py-2.5 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[var(--primary)] text-xs font-bold text-center hover:bg-[var(--primary)]/20 transition-colors"
               >
-                View Event
+                {t('view_event_page')}
               </Link>
               <button
                 onClick={() => window.print()}
-                className="flex-1 py-2.5 rounded-xl bg-zinc-800 border border-white/5 text-zinc-300 text-xs font-bold hover:bg-zinc-700 transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-[var(--surface-hover)] border border-[var(--surface-border)] text-[var(--text-secondary)] text-xs font-bold hover:bg-[var(--muted)] transition-colors cursor-pointer"
               >
                 {t('print_ticket')}
               </button>

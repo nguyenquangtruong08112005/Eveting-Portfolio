@@ -64,7 +64,7 @@ function CheckoutSuccessPageContent() {
       <Navbar />
 
       <main className="max-w-xl mx-auto px-6 py-12 w-full flex-grow flex flex-col justify-center">
-        <div className="glass-card rounded-2xl p-8 bg-[#1E212B] border border-white/5 text-center space-y-6 shadow-2xl relative overflow-hidden">
+        <div className="glass-card rounded-2xl p-8 bg-[var(--surface)] border border-[var(--surface-border)] text-center space-y-6 shadow-2xl relative overflow-hidden">
           {/* Decorative gradients */}
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-[var(--primary)]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[var(--primary-dark)]/10 rounded-full blur-3xl pointer-events-none" />
@@ -76,8 +76,8 @@ function CheckoutSuccessPageContent() {
 
           {/* Message */}
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">{t('payment_success')}</h1>
-            <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">
+            <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{t('payment_success')}</h1>
+            <p className="text-[var(--text-secondary)] text-xs mt-1.5 leading-relaxed">
               {t('success_message')}
             </p>
             {!token && (
@@ -88,38 +88,38 @@ function CheckoutSuccessPageContent() {
           </div>
 
           {/* Receipt Info */}
-          <div className="p-4 bg-[var(--background)] rounded-xl border border-white/5 text-left space-y-3">
-            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-white/5 pb-2">{t('booking_receipt')}</h3>
+          <div className="p-4 bg-[var(--background)] rounded-xl border border-[var(--surface-border)] text-left space-y-3">
+            <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest border-b border-[var(--surface-border)] pb-2">{t('booking_receipt')}</h3>
             
             {event ? (
               <div className="space-y-1.5">
-                <h4 className="text-sm font-bold text-white leading-tight">{event.name}</h4>
-                <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] mt-1">
+                <h4 className="text-sm font-bold text-[var(--text-primary)] leading-tight">{event.name}</h4>
+                <div className="flex items-center gap-1.5 text-[var(--text-secondary)] text-[10px] mt-1">
                   <Calendar className="size-3 text-[var(--primary)]" />
                   <span>{formatDate(event.date)}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] mt-0.5">
+                <div className="flex items-center gap-1.5 text-[var(--text-secondary)] text-[10px] mt-0.5">
                   <MapPin className="size-3 text-[var(--primary)]" />
                   <span className="truncate max-w-[300px]">{event.venueName}</span>
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-zinc-500 italic">
+              <div className="text-xs text-[var(--text-muted)] italic">
                 {t('syncing_details')}
               </div>
             )}
 
-            <div className="border-t border-white/5 pt-3 space-y-2 text-xs">
+            <div className="border-t border-[var(--surface-border)] pt-3 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-zinc-500">{t('ticket_id')}</span>
-                <span className="font-mono font-bold text-white select-all">{ticketId || t('no_info')}</span>
+                <span className="text-[var(--text-muted)]">{t('ticket_id')}</span>
+                <span className="font-mono font-bold text-[var(--text-primary)] select-all">{ticketId || t('no_info')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">{t('payment_method')}</span>
-                <span className="text-white font-medium">{paymentMethods[method] || t('zalopay')}</span>
+                <span className="text-[var(--text-muted)]">{t('payment_method')}</span>
+                <span className="text-[var(--text-primary)] font-medium">{paymentMethods[method] || t('zalopay')}</span>
               </div>
-              <div className="flex justify-between border-t border-white/5 pt-2">
-                <span className="text-zinc-500 font-bold">{t('total_payment')}</span>
+              <div className="flex justify-between border-t border-[var(--surface-border)] pt-2">
+                <span className="text-[var(--text-muted)] font-bold">{t('total_payment')}</span>
                 <span className="text-[var(--primary)] font-black">
                   {amount ? formatPrice(parseInt(amount, 10)) : t('contact')}
                 </span>
@@ -132,7 +132,7 @@ function CheckoutSuccessPageContent() {
             {token ? (
               <Link
                 href="/my-tickets"
-                className="w-full py-3 rounded-xl btn-primary-gradient font-black text-sm tracking-wide text-[#12141A] hover:scale-[1.01] active:scale-[0.99] transition-all border-none flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/10"
+                className="w-full py-3 rounded-xl btn-primary-gradient font-black text-sm tracking-wide text-[var(--on-primary)] hover:scale-[1.01] active:scale-[0.99] transition-all border-none flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/10"
               >
                 <Ticket className="size-4" />
                 {t('view_my_tickets')}
@@ -141,7 +141,7 @@ function CheckoutSuccessPageContent() {
             ) : (
               <Link
                 href="/register"
-                className="w-full py-3 rounded-xl btn-primary-gradient font-black text-sm tracking-wide text-[#12141A] hover:scale-[1.01] active:scale-[0.99] transition-all border-none flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/10"
+                className="w-full py-3 rounded-xl btn-primary-gradient font-black text-sm tracking-wide text-[var(--on-primary)] hover:scale-[1.01] active:scale-[0.99] transition-all border-none flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/10"
               >
                 <User className="size-4" />
                 {t('register_to_manage')}
@@ -151,14 +151,14 @@ function CheckoutSuccessPageContent() {
 
             <Link
               href="/"
-              className="w-full py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
+              className="w-full py-3 rounded-xl bg-[var(--surface-hover)] hover:bg-[var(--muted)] text-[var(--text-primary)] font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
             >
               <Home className="size-4" />
               {t('back_home')}
             </Link>
           </div>
 
-          <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-[10px] pt-1">
+          <div className="flex items-center justify-center gap-1.5 text-[var(--text-muted)] text-[10px] pt-1">
             <ShieldCheck className="size-3.5 text-[var(--primary)]" />
             <span>{t('security_note')}</span>
           </div>
@@ -170,14 +170,19 @@ function CheckoutSuccessPageContent() {
   );
 }
 
+function CheckoutSuccessFallback() {
+  const t = useTranslations('checkout');
+  return (
+    <div className="bg-[var(--background)] min-h-screen text-[var(--text-secondary)] flex flex-col items-center justify-center gap-3">
+      <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
+      <span className="text-xs font-bold tracking-wider uppercase text-[var(--text-muted)]">{t('loading_receipt')}</span>
+    </div>
+  );
+}
+
 export default function CheckoutSuccessPage() {
   return (
-    <Suspense fallback={
-      <div className="bg-[#12141A] min-h-screen text-zinc-400 flex flex-col items-center justify-center gap-3">
-        <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        <span className="text-xs font-bold tracking-wider uppercase text-zinc-500">Đang hiển thị hóa đơn...</span>
-      </div>
-    }>
+    <Suspense fallback={<CheckoutSuccessFallback />}>
       <CheckoutSuccessPageContent />
     </Suspense>
   );

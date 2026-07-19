@@ -18,12 +18,22 @@ import { Footer } from '@/components/layout/Footer';
 import { EventCard } from '@/components/events/EventCard';
 import { Badge } from '@/components/ui/badge';
 import { EventService } from '@/features/events/api';
-import { matchCategory, enrichEvent, formatPrice, FALLBACK_IMAGE } from '@/lib/constants';
+import {
+  matchCategory,
+  enrichEvent,
+  formatPrice,
+  FALLBACK_IMAGE,
+  isPublicEvent,
+  resolveCategoryKey,
+} from '@/lib/constants';
 import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { ArtistStars } from '@/components/home/ArtistStars';
 import { PopularDestinations } from '@/components/home/PopularDestinations';
+import { SectionHeading } from '@/components/shared/SectionHeading';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { SkeletonGrid } from '@/components/shared/SkeletonGrid';
 
 function LandingPageContent() {
   const searchParams = useSearchParams();
@@ -32,7 +42,7 @@ function LandingPageContent() {
 
   const [events, setEvents] = useState<Event[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState(t('all'));
+  const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
 
   // Sync with searchParams
@@ -40,29 +50,16 @@ function LandingPageContent() {
     if (searchParams) {
       const q = searchParams.get('q');
       const cat = searchParams.get('category');
-      if (q) setSearchQuery(q);
-      else setSearchQuery('');
-      
-      if (cat) setActiveCategory(cat);
-      else setActiveCategory(t('all'));
+      setSearchQuery(q ?? '');
+      setActiveCategory(cat ?? 'all');
     }
   }, [searchParams]);
 
   useEffect(() => {
-    EventService
-      .list()
+    EventService.list()
       .then((data) => {
         if (data?.events?.length) {
-          const cleaned = data.events
-            .filter(
-              (e) =>
-                e &&
-                e.name &&
-                !e.name.toLowerCase().includes('smoke') &&
-                !e.name.toLowerCase().includes('lifecycle') &&
-                !e.id.startsWith('evt_07')
-            )
-            .map(enrichEvent);
+          const cleaned = data.events.filter(isPublicEvent).map(enrichEvent);
           setEvents(cleaned);
         }
       })
@@ -73,96 +70,112 @@ function LandingPageContent() {
   // Filters
   const [weekendTab, setWeekendTab] = useState<'weekend' | 'month'>('weekend');
 
-  const filteredEvents = useMemo(() => events.filter((e) => {
-    if (!e) return false;
-    const name = e.name || '';
-    const desc = e.description || '';
-    const matchesSearch =
-      !searchQuery ||
-      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (e.city && e.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (e.venueName && e.venueName.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = matchCategory(e.category, activeCategory);
-    return matchesSearch && matchesCategory;
-  }), [events, searchQuery, activeCategory]);
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((e) => {
+        if (!e) return false;
+        const name = e.name || '';
+        const desc = e.description || '';
+        const q = searchQuery.toLowerCase();
+        const matchesSearch =
+          !q ||
+          name.toLowerCase().includes(q) ||
+          desc.toLowerCase().includes(q) ||
+          (e.city && e.city.toLowerCase().includes(q)) ||
+          (e.venueName && e.venueName.toLowerCase().includes(q));
+        const matchesCategory = matchCategory(e.category, activeCategory);
+        return matchesSearch && matchesCategory;
+      }),
+    [events, searchQuery, activeCategory]
+  );
 
   // Filters for Tabs: Weekend vs Month
-  const tabFilteredEvents = useMemo(() => events.filter((e) => {
-    if (!e) return false;
-    const d = new Date(e.date);
-    if (weekendTab === 'weekend') {
-      const day = d.getDay();
-      return day === 0 || day === 5 || day === 6; // Fri, Sat, Sun
-    } else {
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }
-  }).slice(0, 4), [events, weekendTab]);
+  const tabFilteredEvents = useMemo(
+    () =>
+      events
+        .filter((e) => {
+          if (!e) return false;
+          const d = new Date(e.date);
+          if (isNaN(d.getTime())) return false;
+          if (weekendTab === 'weekend') {
+            const day = d.getDay();
+            return day === 0 || day === 5 || day === 6; // Fri, Sat, Sun
+          }
+          const now = new Date();
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        })
+        .slice(0, 4),
+    [events, weekendTab]
+  );
 
-  // Split into categories for rendering
-  const musicEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Âm nhạc')).slice(0, 4), [events]);
-  const theaterEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Nghệ thuật')).slice(0, 4), [events]);
-  const workshopEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Nightlife')).slice(0, 4), [events]);
-  const otherEvents = useMemo(() => events.filter(e => matchCategory(e.category, 'Công nghệ')).slice(0, 4), [events]);
+  // Canonical category rows — no more wrong mappings (Nightlife→Workshops etc.)
+  const eventsByCategory = (key: 'music' | 'arts' | 'workshop' | 'tech') =>
+    events.filter((e) => resolveCategoryKey(e.category?.[0]) === key).slice(0, 4);
+
+  const musicEvents = useMemo(() => eventsByCategory('music'), [events]);
+  const artsEvents = useMemo(() => eventsByCategory('arts'), [events]);
+  const workshopEvents = useMemo(() => eventsByCategory('workshop'), [events]);
+  const techEvents = useMemo(() => eventsByCategory('tech'), [events]);
 
   const specialEvents = useMemo(() => events.slice(0, 5), [events]);
   const trendingEvents = useMemo(() => events.slice(2, 6), [events]);
+
+  const isFiltering = !!searchQuery || activeCategory !== 'all';
+  const tCat = useTranslations('navbar.categories');
+  const categoryTitleMap: Record<string, string> = {
+    music: tCat('music'),
+    arts: tCat('arts'),
+    sports: tCat('sports'),
+    workshop: tCat('workshop'),
+    tours: tCat('tours'),
+    other: tCat('other'),
+    nightlife: tCat('nightlife'),
+    tech: tCat('tech'),
+  };
+  const filterTitle =
+    activeCategory !== 'all'
+      ? categoryTitleMap[activeCategory] || activeCategory
+      : t('search_results');
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
       <Navbar />
 
-      {/* ── Hero Carousel Banner ── */}
-      <HeroCarousel events={events} />
+      {/* Hero only on the unfiltered landing home */}
+      {!isFiltering && <HeroCarousel events={events} />}
 
-      {/* If filtering or searching, show results directly instead of subsections */}
-      {searchQuery || activeCategory !== t('all') ? (
-        <main className="max-w-7xl mx-auto px-6 py-12 w-full flex-1">
-          <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
-            <div>
-              <h1 className="text-2xl font-black text-[var(--text-primary)]">
-                {activeCategory === t('all') ? t('search_results') : activeCategory}
-              </h1>
-              <p className="text-xs text-zinc-400 mt-1">
-                {t('events_found', { count: filteredEvents.length, query: searchQuery || activeCategory })}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setActiveCategory(t('all'));
-                router.push('/');
-              }}
-              className="text-xs font-bold text-[var(--primary)] hover:underline"
-            >
-              {t('clear_filter')}
-            </button>
-          </div>
+      {isFiltering ? (
+        /* Search / category results */
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12 w-full flex-1">
+          <SectionHeading
+            title={filterTitle}
+            icon={Search}
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveCategory('all');
+                  router.push('/');
+                }}
+                className="text-xs font-bold text-[var(--primary)] hover:underline cursor-pointer"
+              >
+                {t('clear_filter')}
+              </button>
+            }
+          />
+          <p className="text-xs text-[var(--text-muted)] -mt-4 mb-6">
+            {t('events_found', { count: filteredEvents.length, query: searchQuery || activeCategory })}
+          </p>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aura-card overflow-hidden animate-pulse">
-                  <div className="aspect-[16/10] bg-[var(--surface-hover)]" />
-                  <div className="p-4 space-y-2.5">
-                    <div className="h-4 w-3/4 rounded bg-[var(--surface-hover)]" />
-                    <div className="h-3 w-1/2 rounded bg-[var(--surface-hover)]" />
-                    <div className="h-3 w-1/3 rounded bg-[var(--surface-hover)]" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <SkeletonGrid count={8} />
           ) : filteredEvents.length === 0 ? (
-            <div className="text-center py-24 bg-[var(--surface)] rounded-2xl border border-[var(--surface-border)]">
-              <Search className="size-12 text-[var(--text-muted)] mx-auto mb-4 opacity-50" />
-              <p className="text-[var(--text-primary)] text-lg font-bold">
-                {t('no_events')}
-              </p>
-              <p className="text-[var(--text-muted)] text-sm mt-1 max-w-sm mx-auto">
-                {t('no_events_hint')}
-              </p>
-            </div>
+            <EmptyState
+              icon={Search}
+              title={t('no_events')}
+              description={t('no_events_hint')}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredEvents.map((event, idx) => (
@@ -180,22 +193,20 @@ function LandingPageContent() {
       ) : (
         /* Full multi-section layout */
         <div className="flex-1 flex flex-col pb-12">
-          {/* ── 1. Featured Stars Section ── */}
-          <ArtistStars onSelectArtist={(name) => {
-            setSearchQuery(name);
-            router.push(`/?q=${encodeURIComponent(name)}`);
-          }} />
+          <ArtistStars
+            onSelectArtist={(name) => {
+              setSearchQuery(name);
+              router.push(`/?q=${encodeURIComponent(name)}`);
+            }}
+          />
 
-          {/* ── 2. Special Events (Sự kiện đặc biệt) ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <h3 className="text-lg font-extrabold text-[var(--text-primary)] mb-6 tracking-tight flex items-center gap-2">
-              <Sparkles className="size-5 text-[var(--primary)]" />
-              {t('special_events')}
-            </h3>
+          {/* Special Events */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+            <SectionHeading title={t('special_events')} icon={Sparkles} />
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="aspect-[3/4] rounded-2xl bg-[var(--surface-hover)] animate-pulse" />
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="aspect-[3/4] rounded-2xl skeleton-shimmer" />
                 ))}
               </div>
             ) : (
@@ -204,7 +215,7 @@ function LandingPageContent() {
                   <Link
                     href={`/attendee/events/${event.id}`}
                     key={event.id}
-                    className="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer border border-white/5 hover:border-[var(--primary)]/30 transition-all duration-300 shadow-xl flex flex-col justify-end"
+                    className="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer border border-[var(--surface-border)] hover:border-[var(--primary)]/30 transition-all duration-300 shadow-lg flex flex-col justify-end"
                   >
                     <SafeImage
                       src={event.imageUrl || FALLBACK_IMAGE}
@@ -214,29 +225,27 @@ function LandingPageContent() {
                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
-                    
-                    {/* Badge in top left */}
+
                     <div className="absolute top-3 left-3">
-                      <Badge className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-[var(--on-primary)] font-bold text-[9px] px-2 py-0.5 rounded tracking-wide border-none shadow">
+                      <Badge className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary)] text-white font-bold text-[9px] px-2 py-0.5 rounded tracking-wide border-none shadow">
                         HOT
                       </Badge>
                     </div>
 
-                    {/* Content overlay */}
                     <div className="relative p-4 z-10 flex flex-col justify-end">
                       <h4 className="text-sm font-extrabold text-white leading-snug group-hover:text-[var(--primary)] transition-colors line-clamp-2">
                         {event.name}
                       </h4>
-                      <p className="text-[10px] text-zinc-400 mt-1 flex items-center gap-1">
+                      <p className="text-[10px] text-white/70 mt-1 flex items-center gap-1">
                         <MapPin className="size-3 text-[var(--primary)]" />
                         <span className="truncate">{event.city}</span>
                       </p>
-                      
+
                       <div className="mt-3 pt-2.5 border-t border-white/10 flex justify-between items-center">
                         <span className="text-xs font-bold text-[var(--primary)]">
                           {formatPrice(event.minPrice)}
                         </span>
-                        <span className="text-[10px] text-zinc-400 group-hover:text-white transition-colors flex items-center gap-0.5">
+                        <span className="text-[10px] text-white/70 group-hover:text-white transition-colors flex items-center gap-0.5">
                           {t('book_ticket')} →
                         </span>
                       </div>
@@ -247,49 +256,31 @@ function LandingPageContent() {
             )}
           </section>
 
-          {/* ── Banner VIB Promo ── */}
-          <section className="max-w-7xl mx-auto px-6 py-6 w-full">
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#0C1938] to-[#122A5E] border border-[#1E3B87] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-              <div className="flex items-center gap-5">
-                <div className="size-14 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-                  <Ticket className="size-7 text-[var(--primary)]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="bg-[var(--primary)] text-[var(--on-primary)] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">VIB Partner</span>
-                    <span className="text-white/60 text-xs font-semibold">| ticketbox</span>
-                  </div>
-                  <h3 className="text-xl font-black text-white leading-tight">{t('promo_vib_title')} <span className="text-[var(--primary)]">500K</span></h3>
-                  <p className="text-zinc-300 text-xs mt-1">{t('promo_vib_body')}</p>
-                </div>
-              </div>
-              <Link
-                href="/"
-                className="bg-[var(--primary)] text-[var(--on-primary)] font-black px-6 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all text-xs whitespace-nowrap"
-              >
-                {t('promo_vib_cta')}
-              </Link>
-            </div>
-          </section>
+          {/* Promo banner */}
+          <PromoBanner
+            variant="vib"
+            icon={<Ticket className="size-7 text-[var(--primary)]" />}
+            badge="VIB Partner"
+            title={t('promo_vib_title')}
+            highlight="500K"
+            body={t('promo_vib_body')}
+            cta={t('promo_vib_cta')}
+          />
 
-          {/* ── 3. Trending Events Section (Sự kiện xu hướng) ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <h3 className="text-lg font-extrabold text-[var(--text-primary)] mb-6 tracking-tight flex items-center gap-2">
-              <span className="text-2xl">🔥</span> {t('trending_events')}
-            </h3>
+          {/* Trending Events */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+            <SectionHeading title={t('trending_events')} icon={Sparkles} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {trendingEvents.map((event, idx) => (
                 <div
                   key={event.id}
-                  className="relative bg-[var(--surface)] rounded-2xl border border-[var(--surface-border)] p-4 flex gap-4 group hover:border-[var(--primary)]/30 hover:translate-x-1 transition-all duration-300 shadow-lg overflow-hidden"
+                  className="relative bg-[var(--surface)] rounded-2xl border border-[var(--surface-border)] p-4 flex gap-4 group hover:border-[var(--primary)]/30 hover:translate-x-1 transition-all duration-300 shadow-sm overflow-hidden"
                 >
-                  {/* Glowing rank number on left column */}
-                  <div className="flex items-center justify-center font-black text-5xl text-transparent bg-clip-text bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] opacity-80 shrink-0 w-8 select-none">
+                  <div className="flex items-center justify-center font-black text-5xl text-transparent bg-clip-text bg-gradient-to-br from-[var(--primary)] to-[var(--primary)] opacity-80 shrink-0 w-8 select-none">
                     {idx + 1}
                   </div>
-                  
-                  {/* Poster Image */}
-                  <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative border border-white/5">
+
+                  <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative border border-[var(--surface-border)]">
                     <SafeImage
                       src={event.imageUrl || FALLBACK_IMAGE}
                       alt={event.name}
@@ -298,25 +289,24 @@ function LandingPageContent() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
-                  
-                  {/* Details */}
-                  <div className="flex-1 flex flex-col justify-between py-0.5">
+
+                  <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
                     <div>
-                      <h4 className="text-xs font-bold text-white line-clamp-2 leading-tight group-hover:text-[var(--primary)] transition-colors">
+                      <h4 className="text-xs font-bold text-[var(--text-primary)] line-clamp-2 leading-tight group-hover:text-[var(--primary)] transition-colors">
                         {event.name}
                       </h4>
-                      <p className="text-[10px] text-zinc-400 mt-1 flex items-center gap-1">
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1 flex items-center gap-1">
                         <MapPin className="size-3 text-[var(--primary)]" />
                         <span className="truncate max-w-[100px]">{event.city}</span>
                       </p>
                     </div>
-                    <div className="flex justify-between items-center mt-2 pt-1 border-t border-white/5">
+                    <div className="flex justify-between items-center mt-2 pt-1 border-t border-[var(--surface-border)]">
                       <span className="text-[10px] font-bold text-[var(--primary)]">
                         {formatPrice(event.minPrice)}
                       </span>
                       <Link
                         href={`/attendee/events/${event.id}`}
-                        className="text-[10px] font-bold text-zinc-400 group-hover:text-white transition-colors flex items-center gap-0.5"
+                        className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors flex items-center gap-0.5"
                       >
                         {t('book_ticket')} →
                       </Link>
@@ -327,17 +317,17 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* ── 4. Weekend / Monthly Tabs ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4 mb-6">
+          {/* Weekend / Monthly Tabs */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--surface-border)] pb-4 mb-6">
               <div className="flex gap-2">
                 <button
                   onClick={() => setWeekendTab('weekend')}
                   className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
                     weekendTab === 'weekend'
-                      ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md shadow-orange-500/10"
-                      : "bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-md shadow-orange-500/10'
+                      : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   )}
                 >
                   {t('weekend')}
@@ -345,16 +335,16 @@ function LandingPageContent() {
                 <button
                   onClick={() => setWeekendTab('month')}
                   className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
                     weekendTab === 'month'
-                      ? "bg-[var(--primary)] text-[var(--on-primary)] shadow-md shadow-orange-500/10"
-                      : "bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-md shadow-orange-500/10'
+                      : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   )}
                 >
                   {t('this_month')}
                 </button>
               </div>
-              <span className="text-xs text-zinc-400 flex items-center gap-1">
+              <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                 {t('showing_recent')}
               </span>
             </div>
@@ -368,148 +358,44 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* ── Banner ShopeePay Promo ── */}
-          <section className="max-w-7xl mx-auto px-6 py-6 w-full">
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#2B1B0E] to-[#42220D] border border-[#7C4018] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-              <div className="flex items-center gap-5">
-                <div className="size-14 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-                  <Gift className="size-7 text-[var(--primary)]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="bg-[#FF7043] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">ShopeePay</span>
-                    <span className="text-white/60 text-xs font-semibold">| {t('promo_wallet_label')}</span>
-                  </div>
-                  <h3 className="text-xl font-black text-white leading-tight">{t('promo_shopee_title')} <span className="text-[var(--primary)]">40.000Đ</span></h3>
-                  <p className="text-zinc-300 text-xs mt-1">{t('promo_shopee_body')}</p>
-                </div>
-              </div>
-              <button type="button" className="bg-[var(--primary)] text-[var(--on-primary)] font-black px-6 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all text-xs whitespace-nowrap">
-                {t('promo_shopee_cta')}
-              </button>
-            </div>
-          </section>
+          {/* Promo banner */}
+          <PromoBanner
+            variant="shopee"
+            icon={<Gift className="size-7 text-[var(--primary)]" />}
+            badge="ShopeePay"
+            title={t('promo_shopee_title')}
+            highlight="40.000Đ"
+            body={t('promo_shopee_body')}
+            cta={t('promo_shopee_cta')}
+          />
 
-          {/* ── 5. Category Rows: Nhạc sống ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                {t('live_music')}
-              </h3>
-              <button
-                onClick={() => setActiveCategory('Âm nhạc')}
-                className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
-              >
-                {t('see_more')} <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {musicEvents.map((event) => (
-                <div key={event.id} className="h-full">
-                  <EventCard event={event} />
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* Category rows */}
+          <CategoryRow label={t('live_music')} events={musicEvents} onSeeMore={() => setActiveCategory('music')} seeMoreLabel={t('see_more')} loading={loading} />
+          <CategoryRow label={t('theater_arts')} events={artsEvents} onSeeMore={() => setActiveCategory('arts')} seeMoreLabel={t('see_more')} loading={loading} />
 
-          {/* ── 6. Category Rows: Sân khấu & Nghệ thuật ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                {t('theater_arts')}
-              </h3>
-              <button
-                onClick={() => setActiveCategory('Nghệ thuật')}
-                className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
-              >
-                {t('see_more')} <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {theaterEvents.map((event) => (
-                <div key={event.id} className="h-full">
-                  <EventCard event={event} />
-                </div>
-              ))}
-            </div>
-          </section>
+          <PromoBanner
+            variant="hdbank"
+            icon={<Sparkles className="size-7 text-[var(--primary)]" />}
+            badge="HDBank"
+            title={t('promo_hd_title')}
+            body={t('promo_hd_body')}
+            cta={t('promo_hd_cta')}
+          />
 
-          {/* ── Banner HDBank Promo ── */}
-          <section className="max-w-7xl mx-auto px-6 py-6 w-full">
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#200A0A] to-[#3B1212] border border-[#692020] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-              <div className="flex items-center gap-5">
-                <div className="size-14 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-                  <Sparkles className="size-7 text-[var(--primary)]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="bg-[#E31A1A] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">HDBank</span>
-                    <span className="text-white/60 text-xs font-semibold">| ticketbox</span>
-                  </div>
-                  <h3 className="text-xl font-black text-white leading-tight">{t('promo_hd_title')}</h3>
-                  <p className="text-zinc-300 text-xs mt-1">{t('promo_hd_body')}</p>
-                </div>
-              </div>
-              <button type="button" className="bg-[var(--primary)] text-[var(--on-primary)] font-black px-6 py-3 rounded-xl hover:scale-105 active:scale-95 transition-all text-xs whitespace-nowrap">
-                {t('promo_hd_cta')}
-              </button>
-            </div>
-          </section>
+          <CategoryRow label={t('workshops')} events={workshopEvents} onSeeMore={() => setActiveCategory('workshop')} seeMoreLabel={t('see_more')} loading={loading} />
+          <CategoryRow label={t('tech_science')} events={techEvents} onSeeMore={() => setActiveCategory('tech')} seeMoreLabel={t('see_more')} loading={loading} />
 
-          {/* ── 7. Category Rows: Hội thảo & Workshop ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                {t('workshops')}
-              </h3>
-              <button
-                onClick={() => setActiveCategory('Nightlife')}
-                className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
-              >
-                {t('see_more')} <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {workshopEvents.map((event) => (
-                <div key={event.id} className="h-full">
-                  <EventCard event={event} />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ── 8. Category Rows: Khác (Công nghệ) ── */}
-          <section className="max-w-7xl mx-auto px-6 py-8 w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-                {t('tech_science')}
-              </h3>
-              <button
-                onClick={() => setActiveCategory('Công nghệ')}
-                className="text-xs font-bold text-zinc-500 hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
-              >
-                {t('see_more')} <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {otherEvents.map((event) => (
-                <div key={event.id} className="h-full">
-                  <EventCard event={event} />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ── 9. Destination Cities (Điểm đến thú vị) ── */}
-          <PopularDestinations onSelectCity={(query) => {
-            if (query) {
-              setSearchQuery(query);
-              router.push(`/?q=${encodeURIComponent(query)}`);
-            } else {
-              setSearchQuery('');
-              router.push('/');
-            }
-          }} />
+          <PopularDestinations
+            onSelectCity={(query) => {
+              if (query) {
+                setSearchQuery(query);
+                router.push(`/?q=${encodeURIComponent(query)}`);
+              } else {
+                setSearchQuery('');
+                router.push('/');
+              }
+            }}
+          />
         </div>
       )}
 
@@ -518,14 +404,111 @@ function LandingPageContent() {
   );
 }
 
+function CategoryRow({
+  label,
+  events,
+  onSeeMore,
+  seeMoreLabel,
+  loading,
+}: {
+  label: string;
+  events: Event[];
+  onSeeMore: () => void;
+  seeMoreLabel: string;
+  loading: boolean;
+}) {
+  if (!loading && events.length === 0) return null;
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+      <SectionHeading
+        title={label}
+        action={
+          <button
+            onClick={onSeeMore}
+            className="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors flex items-center gap-0.5"
+          >
+            {seeMoreLabel} <ChevronRight className="size-3.5" />
+          </button>
+        }
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {events.map((event) => (
+          <div key={event.id} className="h-full">
+            <EventCard event={event} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+interface PromoBannerProps {
+  variant: 'vib' | 'shopee' | 'hdbank';
+  icon: React.ReactNode;
+  badge: string;
+  title: string;
+  highlight?: string;
+  body: string;
+  cta: string;
+}
+
+function PromoBanner({ variant, icon, badge, title, highlight, body, cta }: PromoBannerProps) {
+  const gradients: Record<PromoBannerProps['variant'], string> = {
+    vib: 'from-[#0C1938] to-[#122A5E]',
+    shopee: 'from-[#2B1B0E] to-[#42220D]',
+    hdbank: 'from-[#200A0A] to-[#3B1212]',
+  };
+  const badgeColors: Record<PromoBannerProps['variant'], string> = {
+    vib: 'bg-[var(--primary)] text-white',
+    shopee: 'bg-[#FF7043] text-white',
+    hdbank: 'bg-[#E31A1A] text-white',
+  };
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
+      <div
+        className={cn(
+          'relative rounded-2xl overflow-hidden bg-gradient-to-r border border-white/10 p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl',
+          gradients[variant]
+        )}
+      >
+        <div className="flex items-center gap-5">
+          <div className="size-14 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
+            {icon}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={cn('text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase', badgeColors[variant])}>
+                {badge}
+              </span>
+              <span className="text-white/60 text-xs font-semibold">| Eventing</span>
+            </div>
+            <h3 className="text-xl font-black text-white leading-tight">
+              {title} {highlight && <span className="text-[var(--primary)]">{highlight}</span>}
+            </h3>
+            <p className="text-white/70 text-xs mt-1">{body}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="bg-[var(--primary)] text-[var(--on-primary)] font-black px-6 py-3 rounded-xl hover:bg-[var(--primary-dark)] active:scale-95 transition-all text-xs whitespace-nowrap btn-tactile cursor-pointer"
+        >
+          {cta}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function EventDiscovery() {
   return (
-    <Suspense fallback={
-      <div className="bg-[var(--background)] min-h-screen text-[var(--text-secondary)] flex flex-col items-center justify-center gap-3">
-        <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        <span className="text-xs font-bold tracking-wider uppercase text-[var(--text-muted)]">Đang tải Eventing...</span>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="bg-[var(--background)] min-h-screen text-[var(--text-secondary)] flex flex-col items-center justify-center gap-3">
+          <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
+          <span className="text-xs font-bold tracking-wider uppercase text-[var(--text-muted)]">Loading…</span>
+        </div>
+      }
+    >
       <LandingPageContent />
     </Suspense>
   );

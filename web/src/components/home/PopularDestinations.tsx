@@ -63,7 +63,7 @@ export function PopularDestinations({ onSelectCity }: PopularDestinationsProps) 
           <div
             key={city.name}
             onClick={() => onSelectCity(city.query)}
-            className="group relative h-40 rounded-2xl overflow-hidden cursor-pointer shadow-lg border border-white/5 hover:border-[var(--primary)]/40 transition-all duration-500"
+            className="group relative h-40 rounded-2xl overflow-hidden cursor-pointer shadow-lg border border-[var(--surface-border)] hover:border-[var(--primary)]/40 transition-all duration-500"
           >
             <div
               className="absolute inset-0 bg-cover bg-center brightness-[0.5] group-hover:scale-110 transition-transform duration-700"

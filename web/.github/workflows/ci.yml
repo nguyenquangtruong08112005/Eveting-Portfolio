@@ -21,4 +21,4 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3000
       - name: Docker build
-        run: docker build -t auraevents-web:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:3000 .
+        run: docker build -t eventing-web:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:3000 .

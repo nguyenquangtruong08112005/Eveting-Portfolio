@@ -1,43 +1,35 @@
-// Design tokens as TypeScript constants — matches DESIGN.md and mobile Color.kt
-// Single source of truth for all color references in components
+// Design tokens as TypeScript constants — matches DESIGN.md v3.0 (Ember & Tide).
+// NOTE: For UI styling, prefer CSS variables (var(--primary)) over these hex values.
+// These constants are for places that cannot use CSS vars (e.g. inline chart configs,
+// canvas rendering, server-side SVG). Do NOT use them as a substitute for tokens in JSX.
 
 export const colors = {
-  // Primary
-  primary: '#F76B10',
-  primaryDark: '#FF8F66',
-  primaryContainer: '#3E1C0A',
-  onPrimary: '#12141A',
+  // Primary (Orange)
+  primary: '#F97316',
+  primaryDark: '#EA580C',
+  primaryLight: '#FB923C',
+  primaryContainer: '#FFF7ED',
+  onPrimary: '#FFFFFF',
 
-  // Backgrounds & Surfaces
-  background: '#12141A',
-  surface: '#1E212B',
-  surfaceHover: '#262A36',
-  surfaceBorder: 'rgba(255,255,255,0.06)',
-
-  // Secondary
-  yellow: '#FBBE47',
-  yellowDark: '#FFD54F',
-  blue: '#3B82F7',
-  blueDark: '#64B5F6',
-  green: '#2D9687',
-  greenDark: '#81C784',
-  darkOrange: '#8C3700',
+  // Accent (Teal)
+  accent: '#0D9488',
+  accentDark: '#0F766E',
+  accentLight: '#14B8A6',
 
   // Semantic
-  info: '#64B5F6',
-  success: '#81C784',
-  warning: '#FFD54F',
-  error: '#E57373',
+  success: '#16A34A',
+  warning: '#D97706',
+  error: '#DC2626',
+  info: '#0EA5E9',
 
-  // Text
-  textPrimary: '#E8EAED',
-  textSecondary: '#B0B3B8',
-  textMuted: '#6B7280',
+  // Chart series (must mirror --chart-1..5 in globals.css)
+  chart: ['#F97316', '#0D9488', '#2563EB', '#16A34A', '#DC2626'],
 } as const;
 
 export const HOLD_TIMER_SECONDS = 600; // 10 minutes seat hold
 
-export const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80';
+export const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80';
 
 export const DEFAULT_CURRENCY = '₫';
 
@@ -49,8 +41,10 @@ export function formatPrice(price: number | null | undefined, t?: TranslateFn): 
   return price.toLocaleString('vi-VN') + ' ' + DEFAULT_CURRENCY;
 }
 
-export function formatDate(timestamp: number, locale = 'vi-VN'): string {
-  return new Date(timestamp).toLocaleDateString(locale, {
+export function formatDate(timestamp: number | string | Date, locale = 'vi-VN'): string {
+  const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(locale, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -58,8 +52,10 @@ export function formatDate(timestamp: number, locale = 'vi-VN'): string {
   });
 }
 
-export function formatShortDate(timestamp: number, locale = 'vi-VN'): string {
-  return new Date(timestamp).toLocaleDateString(locale, {
+export function formatShortDate(timestamp: number | string | Date, locale = 'vi-VN'): string {
+  const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -67,47 +63,96 @@ export function formatShortDate(timestamp: number, locale = 'vi-VN'): string {
   });
 }
 
-// Map DB category tags to i18n category keys (navbar.categories namespace)
-export const TAG_TO_I18N_KEY: Record<string, string> = {
-  music: 'music', concert: 'music', edm: 'music', 'hip-hop': 'music', 'v-pop': 'music', pop: 'music',
-  art: 'arts', exhibition: 'arts', culture: 'arts', fashion: 'arts',
-  sports: 'sports', marathon: 'sports', running: 'sports', fitness: 'sports', yoga: 'sports',
-  conference: 'workshop', expo: 'workshop', business: 'workshop', networking: 'workshop', tech: 'workshop', education: 'workshop',
-  nightlife: 'other', dj: 'other', club: 'other', party: 'other', festival: 'other', esports: 'other', gaming: 'other', online: 'other',
-};
+/**
+ * Canonical category system — single source of truth.
+ *
+ * A category has: an i18n key (used in navbar/home translations), a slug
+ * (used in DB tags and /events/search), and the set of DB tag aliases that
+ * roll up to it.
+ *
+ * The previous implementation hard-coded wrong mappings
+ * (e.g. Nightlife→Workshops, Nghệ thuật→Theater). This table fixes that.
+ */
+export type CategoryKey = 'music' | 'arts' | 'sports' | 'workshop' | 'nightlife' | 'tech';
 
-// Category tags from DB → display labels (English keys, i18n-agnostic)
-// Components use useTranslations('navbar.categories') for localized labels
-export const CATEGORY_MAP: Record<string, string[]> = {
-  music: ['music', 'concert', 'edm', 'pop', 'hip-hop', 'v-pop', 'show'],
-  arts: ['art', 'exhibition', 'culture', 'museum', 'fashion'],
-  nightlife: ['nightlife', 'dj', 'club', 'party', 'festival'],
-  sports: ['sports', 'marathon', 'running', 'fitness', 'yoga', 'wellness'],
-  tech: ['tech', 'conference', 'expo', 'business', 'networking', 'esports', 'gaming', 'online'],
-};
+export interface CategoryDef {
+  /** i18n key under navbar.categories */
+  key: CategoryKey;
+  /** Canonical slug for filtering / URL */
+  slug: string;
+  /** DB tag aliases that roll up to this category */
+  aliases: string[];
+}
 
-// Map i18n category keys to DB tag slugs for filtering
-export const I18N_KEY_TO_CATEGORY: Record<string, string> = {
-  music: 'music',
-  arts: 'arts',
-  sports: 'sports',
-  workshop: 'tech',
-  tours: 'nightlife',
-  other: 'nightlife',
-};
+export const CATEGORIES: CategoryDef[] = [
+  {
+    key: 'music',
+    slug: 'music',
+    aliases: ['music', 'concert', 'edm', 'pop', 'hip-hop', 'v-pop', 'show', 'nhạc', 'âm nhạc'],
+  },
+  {
+    key: 'arts',
+    slug: 'arts',
+    aliases: ['art', 'arts', 'exhibition', 'culture', 'museum', 'fashion', 'theater', 'theatre', 'nghệ thuật', 'sân khấu'],
+  },
+  {
+    key: 'sports',
+    slug: 'sports',
+    aliases: ['sports', 'sport', 'marathon', 'running', 'fitness', 'yoga', 'wellness', 'thể thao'],
+  },
+  {
+    key: 'workshop',
+    slug: 'workshop',
+    aliases: ['workshop', 'conference', 'expo', 'business', 'networking', 'education', 'seminar', 'hội thảo'],
+  },
+  {
+    key: 'nightlife',
+    slug: 'nightlife',
+    aliases: ['nightlife', 'dj', 'club', 'party', 'festival', 'bar'],
+  },
+  {
+    key: 'tech',
+    slug: 'tech',
+    aliases: ['tech', 'technology', 'esports', 'gaming', 'online', 'công nghệ'],
+  },
+];
 
-export function matchCategory(eventCategories: string[] | undefined, activeCategory: string): boolean {
-  if (!activeCategory || activeCategory === 'all' || activeCategory === 'Tất cả') return true;
+/** Map any DB tag / display label → canonical CategoryKey (case-insensitive). */
+export function resolveCategoryKey(raw: string | undefined | null): CategoryKey | null {
+  if (!raw) return null;
+  const needle = raw.toLowerCase().trim();
+  for (const def of CATEGORIES) {
+    if (def.slug === needle || def.key === needle) return def.key;
+    if (def.aliases.includes(needle)) return def.key;
+  }
+  return null;
+}
+
+/**
+ * Does an event's category list match the active filter?
+ * `activeCategory` may be an i18n key, a slug, a display label, or the
+ * sentinel values "all" / "Tất cả".
+ */
+export function matchCategory(
+  eventCategories: string[] | undefined,
+  activeCategory: string
+): boolean {
+  if (!activeCategory) return true;
+  const lowered = activeCategory.toLowerCase();
+  if (lowered === 'all' || activeCategory === 'Tất cả') return true;
   if (!eventCategories || eventCategories.length === 0) return false;
 
-  // Try matching by i18n key → DB slug
-  const slug = I18N_KEY_TO_CATEGORY[activeCategory];
-  const targetTags = CATEGORY_MAP[slug] || CATEGORY_MAP[activeCategory] || [];
+  const targetKey = resolveCategoryKey(activeCategory);
+  if (!targetKey) {
+    // Unknown filter — fall back to direct string match
+    return eventCategories.some((c) => c.toLowerCase().includes(lowered));
+  }
 
-  return eventCategories.some(cat =>
-    targetTags.includes(cat.toLowerCase()) ||
-    cat.toLowerCase() === activeCategory.toLowerCase()
-  );
+  const def = CATEGORIES.find((c) => c.key === targetKey)!;
+  return eventCategories.some((cat) => {
+    const key = resolveCategoryKey(cat);
+    return key === targetKey || def.aliases.includes(cat.toLowerCase());
+  });
 }
 
 /** Enrich event from API with generic fallback for missing image/description */
@@ -118,4 +163,56 @@ export function enrichEvent(event: import('@/types').Event): import('@/types').E
     imageUrl: isPlaceholderImage ? FALLBACK_IMAGE : event.imageUrl,
     description: event.description || `${event.name} — event at ${event.city || 'Vietnam'}.`,
   };
+}
+
+/** Filter out internal / smoke / lifecycle test events from public listings. */
+export function isPublicEvent(event: { id?: string; name?: string }): boolean {
+  if (!event || !event.name) return false;
+  const name = event.name.toLowerCase();
+  if (name.includes('smoke') || name.includes('lifecycle')) return false;
+  if (event.id && /^evt_07/i.test(event.id)) return false;
+  return true;
+}
+
+/**
+ * Localize a raw DB category tag for display.
+ *
+ * Tries (1) the canonical category key via the translator, falling back to
+ * (2) a humanized version of the tag itself. Never throws.
+ *
+ * Usage:
+ *   const t = useTranslations('navbar.categories');
+ *   localizeCategory('v-pop', t);   // -> localized "Music" label or "V-Pop"
+ */
+export function localizeCategory(
+  cat: string,
+  tCat?: (key: string) => string
+): string {
+  if (!cat) return '';
+  const key = resolveCategoryKey(cat);
+  if (key && tCat) {
+    try {
+      return tCat(key);
+    } catch {
+      /* fall through to humanize */
+    }
+  }
+  return humanizeTag(cat);
+}
+
+function humanizeTag(cat: string): string {
+  const lower = cat.toLowerCase();
+  // Preserve well-known acronyms / stylized forms
+  const known: Record<string, string> = {
+    edm: 'EDM',
+    'hip-hop': 'Hip-Hop',
+    'v-pop': 'V-Pop',
+    esports: 'Esports',
+    online: 'Online',
+    nightlife: 'Nightlife',
+    networking: 'Networking',
+    wellness: 'Wellness',
+  };
+  if (known[lower]) return known[lower];
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
 }

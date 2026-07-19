@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { formatDate } from '@/lib/constants';
+import { formatDate, localizeCategory } from '@/lib/constants';
 import type { Event } from '@/types';
 
 interface PendingEventCardProps {
@@ -18,6 +18,7 @@ interface PendingEventCardProps {
 
 export function PendingEventCard({ event, onApprove, onReject }: PendingEventCardProps) {
   const t = useTranslations('admin_card');
+  const tCat = useTranslations('navbar.categories');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -29,7 +30,9 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
     try {
       await onApprove(event.id);
       setStatus('approved');
-    } catch { /* handled upstream */ }
+    } catch {
+      /* handled upstream */
+    }
     setLoading(false);
   };
 
@@ -48,7 +51,9 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
     try {
       await onReject(event.id, trimmed);
       setStatus('rejected');
-    } catch { /* handled upstream */ }
+    } catch {
+      /* handled upstream */
+    }
     setLoading(false);
   };
 
@@ -80,7 +85,7 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
   return (
     <div className="aura-card overflow-hidden">
       {event.imageUrl && (
-        <div className="aspect-[21/9] w-full overflow-hidden bg-[var(--background)] relative">
+        <div className="aspect-[21/9] w-full overflow-hidden bg-[var(--surface-hover)] relative">
           <Image src={event.imageUrl || ''} alt={event.name} fill className="object-cover w-full h-full" />
         </div>
       )}
@@ -88,8 +93,11 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
       <div className="p-5">
         <div className="flex gap-1.5 flex-wrap mb-3">
           {event.category?.map((cat, idx) => (
-            <Badge key={idx} className="px-2 py-0.5 rounded-full bg-[var(--primary)]/8 border border-[var(--primary)]/20 text-[10px] text-[var(--primary-dark)] font-semibold uppercase tracking-wider">
-              {cat}
+            <Badge
+              key={idx}
+              className="px-2 py-0.5 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[10px] text-[var(--primary)] font-semibold uppercase tracking-wider"
+            >
+              {localizeCategory(cat, (k) => tCat(k))}
             </Badge>
           ))}
         </div>
@@ -99,11 +107,11 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
 
         <div className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)] mb-5">
           <div className="flex items-center gap-2">
-            <Calendar className="size-3.5 text-[var(--primary-dark)]" />
+            <Calendar className="size-3.5 text-[var(--primary)]" />
             <span>{formatDate(event.date)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="size-3.5 text-[var(--secondary-blue)]" />
+            <MapPin className="size-3.5 text-[var(--accent-brand)]" />
             <span>{event.venueName || event.location?.address}</span>
           </div>
         </div>
@@ -111,11 +119,14 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
         {/* Inline reject form */}
         {showRejectForm && (
           <div className="mb-4 p-3 bg-[var(--error)]/5 border border-[var(--error)]/20 rounded-xl space-y-2">
-            <p className="text-xs text-[var(--text-secondary)] font-semibold">{t('reject_prompt')}</p>
+            <label htmlFor={`reject-${event.id}`} className="text-xs text-[var(--text-secondary)] font-semibold block">
+              {t('reject_prompt')}
+            </label>
             <Input
+              id={`reject-${event.id}`}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="bg-[#12141A] border border-white/10 text-white text-xs rounded-lg"
+              className="text-xs rounded-lg"
               placeholder={t('reject_default')}
             />
             {rejectError && <p className="text-[10px] text-[var(--error)]">{rejectError}</p>}
@@ -123,14 +134,14 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
               <Button
                 onClick={handleCancelReject}
                 variant="outline"
-                className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border-white/10 text-zinc-400 hover:text-white cursor-pointer"
+                className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer"
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 onClick={handleReject}
                 disabled={loading}
-                className="flex-1 py-1.5 rounded-lg bg-[var(--error)]/20 text-[var(--error)] text-[10px] font-semibold border border-[var(--error)]/30 cursor-pointer"
+                className="flex-1 py-1.5 rounded-lg bg-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/30 border border-[var(--error)]/30 text-[10px] font-semibold cursor-pointer"
               >
                 {t('reject')}
               </Button>
@@ -139,12 +150,21 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
         )}
 
         <div className="flex items-center gap-3">
-          <Button onClick={handleApprove} disabled={loading} className="flex-1 py-2.5 rounded-xl bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25 border border-[var(--success)]/30 font-semibold text-xs cursor-pointer btn-tactile">
+          <Button
+            onClick={handleApprove}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25 border border-[var(--success)]/30 font-semibold text-xs cursor-pointer btn-tactile"
+          >
             <Check className="size-4 mr-1.5" />
             {t('approve')}
           </Button>
           {!showRejectForm && (
-            <Button onClick={handleReject} disabled={loading} variant="outline" className="flex-1 py-2.5 rounded-xl bg-[var(--error)]/10 text-[var(--error)] hover:bg-[var(--error)]/20 border border-[var(--error)]/30 font-semibold text-xs cursor-pointer btn-tactile">
+            <Button
+              onClick={handleReject}
+              disabled={loading}
+              variant="outline"
+              className="flex-1 py-2.5 rounded-xl bg-[var(--error)]/10 text-[var(--error)] hover:bg-[var(--error)]/20 border border-[var(--error)]/30 font-semibold text-xs cursor-pointer btn-tactile"
+            >
               <X className="size-4 mr-1.5" />
               {t('reject')}
             </Button>

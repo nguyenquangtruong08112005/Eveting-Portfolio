@@ -2,7 +2,8 @@
 
 import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
-import { Flame } from 'lucide-react';
+import { Phone, Mail, MapPin } from 'lucide-react';
+import { BrandMark } from '@/components/shared/BrandMark';
 
 const FacebookIcon = () => (
   <svg viewBox="0 0 24 24" className="size-4 fill-current">
@@ -78,15 +79,15 @@ export function Footer() {
   const policies = t.raw('policies') as string[];
 
   return (
-    <footer className="w-full border-t border-[var(--surface-border)] bg-[var(--surface)] text-[var(--text-secondary)]">
+    <footer className="w-full border-t border-[var(--surface-border)] bg-[var(--surface)] text-[var(--text-secondary)] no-print">
       {/* ── Top Footer Row ── */}
-      <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Column: Hotline, Email, Address */}
         <div className="space-y-5">
           <div className="space-y-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('hotline')}</h4>
             <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
-              <span>📞</span> {t('hotline_hours')}
+              <Phone className="size-3" /> {t('hotline_hours')}
             </p>
             <p className="text-xl font-black text-[var(--primary)] tracking-wide">{process.env.NEXT_PUBLIC_HOTLINE}</p>
           </div>
@@ -94,14 +95,14 @@ export function Footer() {
           <div className="space-y-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('email')}</h4>
             <p className="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors flex items-center gap-1.5">
-              <span>✉</span> {process.env.NEXT_PUBLIC_EMAIL}
+              <Mail className="size-3" /> {process.env.NEXT_PUBLIC_EMAIL}
             </p>
           </div>
 
           <div className="space-y-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('office')}</h4>
             <p className="text-xs text-[var(--text-primary)] leading-relaxed flex items-start gap-1.5">
-              <span className="mt-0.5">📍</span>
+              <MapPin className="size-3 mt-0.5 shrink-0" />
               <span>{t('office_address')}</span>
             </p>
           </div>
@@ -111,14 +112,14 @@ export function Footer() {
         <div className="space-y-6">
           <div className="space-y-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('for_customers')}</h4>
-            <p className="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors cursor-pointer">
+            <p className="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors cursor-pointer select-none">
               {t('customer_terms')}
             </p>
           </div>
 
           <div className="space-y-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('for_organizers')}</h4>
-            <p className="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors cursor-pointer">
+            <p className="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors cursor-pointer select-none">
               {t('organizer_terms')}
             </p>
           </div>
@@ -129,7 +130,10 @@ export function Footer() {
           <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2">{t('about_company')}</h4>
           <ul className="space-y-2 text-xs text-[var(--text-primary)]">
             {policies.map((policy: string) => (
-              <li key={policy} className="hover:text-[var(--primary)] transition-colors cursor-pointer">
+              <li
+                key={policy}
+                className="hover:text-[var(--primary)] transition-colors cursor-pointer select-none"
+              >
                 {policy}
               </li>
             ))}
@@ -138,7 +142,7 @@ export function Footer() {
       </div>
 
       {/* ── Middle Footer Row ── */}
-      <div className="max-w-7xl mx-auto px-6 pb-12 grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-[var(--surface-border)] pt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-12 grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-[var(--surface-border)] pt-8">
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('customer_app')}</h4>
           <div className="flex gap-2.5">
@@ -159,10 +163,10 @@ export function Footer() {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-2.5">{t('follow_us')}</h4>
             <div className="flex gap-2.5 text-[var(--text-muted)]">
-              <a href={process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-blue-600 hover:text-white transition-all"><FacebookIcon /></a>
-              <a href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-pink-600 hover:text-white transition-all flex items-center justify-center"><InstagramIcon /></a>
-              <a href={process.env.NEXT_PUBLIC_TIKTOK_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-black hover:text-white transition-all flex items-center justify-center"><TikTokIcon /></a>
-              <a href={process.env.NEXT_PUBLIC_LINKEDIN_URL || '#'} className="p-2.5 rounded-full bg-[var(--background)] hover:bg-blue-700 hover:text-white transition-all"><LinkedInIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'} aria-label="Facebook" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-[#1877F2] hover:text-white transition-all"><FacebookIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || '#'} aria-label="Instagram" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-[#E4405F] hover:text-white transition-all flex items-center justify-center"><InstagramIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_TIKTOK_URL || '#'} aria-label="TikTok" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-black hover:text-white transition-all flex items-center justify-center"><TikTokIcon /></a>
+              <a href={process.env.NEXT_PUBLIC_LINKEDIN_URL || '#'} aria-label="LinkedIn" className="p-2.5 rounded-full bg-[var(--background)] hover:bg-[#0A66C2] hover:text-white transition-all"><LinkedInIcon /></a>
             </div>
           </div>
 
@@ -178,16 +182,9 @@ export function Footer() {
 
       {/* ── Bottom Footer ── */}
       <div className="w-full bg-[var(--background)] border-t border-[var(--surface-border)] py-8">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-[var(--text-muted)] text-[10px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-[var(--text-muted)] text-[10px]">
           <div className="flex flex-col items-center md:items-start text-center md:text-left space-y-2">
-            <Link href="/" className="flex items-center gap-2 font-extrabold text-sm text-[var(--text-primary)] hover:opacity-90 transition-opacity">
-              <div className="size-7 rounded-md bg-gradient-to-br from-[#FF8F66] to-[#FF7043] flex items-center justify-center">
-                <Flame className="size-3.5 text-[#12141A]" />
-              </div>
-              <span>
-                Event<span className="text-[var(--primary)]">ing</span>
-              </span>
-            </Link>
+            <BrandMark asLink href="/" size="sm" />
             <p className="text-[var(--text-muted)] text-[10px]">
               {t('platform_tagline')}
             </p>
