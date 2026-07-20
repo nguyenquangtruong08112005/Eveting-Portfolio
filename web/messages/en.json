@@ -440,11 +440,12 @@
   "organizer_table": {
     "status_active": "Active",
     "status_draft": "Draft",
-    "status_submitted": "Pending",
+    "status_submitted": "Awaiting approval",
     "status_pending": "Pending",
     "status_approved": "Approved",
     "status_published": "Published",
     "status_cancelled": "Cancelled",
+    "status_rejected": "Rejected",
     "empty": "No events created yet.",
     "col_event": "Event",
     "col_status": "Status",

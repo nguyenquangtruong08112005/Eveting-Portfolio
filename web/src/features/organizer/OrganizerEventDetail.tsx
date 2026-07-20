@@ -79,7 +79,7 @@ export function OrganizerEventDetailView() {
     }
   };
 
-  const status = (event?.status || event?.lifecycleStatus || '').toLowerCase();
+  const status = (event?.lifecycleStatus || event?.status || '').toLowerCase();
   const ticketsSold =
     typeof stats?.ticketsSold === 'number'
       ? stats.ticketsSold

@@ -156,12 +156,10 @@ export function OrganizerDashboardView() {
                 </h3>
                 <Badge className="border border-[var(--surface-border)] font-semibold text-[var(--text-secondary)] text-[10px] px-2 py-0.5">
                   {t('active_count', {
-                    count: events.filter(
-                      (e) =>
-                        e.status === 'active' ||
-                        e.status === 'approved' ||
-                        e.status === 'published'
-                    ).length,
+                    count: events.filter((e) => {
+                      const s = (e.lifecycleStatus || e.status || '').toLowerCase();
+                      return s === 'active' || s === 'approved' || s === 'published';
+                    }).length,
                   })}
                 </Badge>
               </div>

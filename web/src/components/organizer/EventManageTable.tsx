@@ -34,7 +34,13 @@ const statusKeyMap: Record<string, string> = {
   approved: 'status_approved',
   published: 'status_published',
   cancelled: 'status_cancelled',
+  rejected: 'status_rejected',
 };
+
+/** Normalize API status for badges/actions (lifecycle preferred). */
+function displayStatus(event: OrganizerEvent): string {
+  return (event.lifecycleStatus || event.status || 'draft').toLowerCase();
+}
 
 export function EventManageTable({
   events,
@@ -74,6 +80,7 @@ export function EventManageTable({
           {events.map((event) => {
             const pct = event.capacity > 0 ? Math.round((event.sold / event.capacity) * 100) : 0;
             const isLoading = actionLoadingId === event.id;
+            const status = displayStatus(event);
 
             return (
               <tr key={event.id} className="hover:bg-[var(--surface-hover)]/50 transition-colors">
@@ -92,10 +99,10 @@ export function EventManageTable({
                 <td className="py-4 px-4">
                   <Badge
                     className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                      statusStyles[event.status] || statusStyles.draft
+                      statusStyles[status] || statusStyles.draft
                     }`}
                   >
-                    {t(statusKeyMap[event.status] || event.status)}
+                    {t(statusKeyMap[status] || status)}
                   </Badge>
                 </td>
 
@@ -133,7 +140,7 @@ export function EventManageTable({
                       <Eye className="size-3" />
                       {t('view')}
                     </Link>
-                    {(event.status === 'draft' || event.status === 'rejected') && (
+                    {(status === 'draft' || status === 'rejected') && (
                       <Link
                         href={`/organizer/events/${event.id}/edit`}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--surface-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -142,7 +149,7 @@ export function EventManageTable({
                         {t('edit')}
                       </Link>
                     )}
-                    {event.status === 'draft' && (
+                    {status === 'draft' && (
                       <Button
                         size="xs"
                         variant="outline"
@@ -159,9 +166,9 @@ export function EventManageTable({
                       </Button>
                     )}
 
-                    {(event.status === 'active' ||
-                      event.status === 'approved' ||
-                      event.status === 'published') && (
+                    {(status === 'active' ||
+                      status === 'approved' ||
+                      status === 'published') && (
                       <Button
                         size="xs"
                         variant="destructive"

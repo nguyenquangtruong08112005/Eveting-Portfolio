@@ -1,7 +1,9 @@
 export interface OrganizerEvent {
   id: string;
   name: string;
+  /** Prefer lifecycle: draft | submitted | approved | published | … */
   status: string;
+  lifecycleStatus?: string;
   sold: number;
   capacity: number;
   price: number;
