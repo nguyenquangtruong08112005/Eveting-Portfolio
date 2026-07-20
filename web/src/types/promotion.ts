@@ -9,6 +9,7 @@ export interface Promotion {
   description?: string;
   discountType?: 'amount' | 'percent' | string;
   discountValue?: number;
+  minTicketQuantity?: number;
   eventId?: string | null;
   validFrom?: number;
   validUntil?: number;
@@ -16,4 +17,26 @@ export interface Promotion {
   usedCount?: number;
   isPublic?: boolean;
   organizerId?: string;
+  createdAt?: number;
+}
+
+export interface PromotionCreateBody {
+  code: string;
+  discountValue: number;
+  name?: string;
+  description?: string;
+  discountType?: 'amount' | 'percent';
+  minTicketQuantity?: number;
+  eventId?: string | null;
+  validFrom?: number;
+  validUntil?: number;
+  usageLimit?: number;
+  isPublic?: boolean;
+}
+
+export interface PromotionUpdateBody {
+  usageLimit?: number;
+  validUntil?: number;
+  description?: string;
+  isPublic?: boolean;
 }

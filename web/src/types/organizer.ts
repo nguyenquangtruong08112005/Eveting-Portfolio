@@ -13,3 +13,30 @@ export interface OrganizerStats {
   platformFees: number;
   netRevenue: number;
 }
+
+export interface EventAnalytics {
+  eventId?: string;
+  totalRevenue?: number;
+  ticketsSold?: Record<string, number> | number;
+  dailySales?: Record<string, number>;
+  checkIns?: number;
+  views?: number;
+  viewsOverTime?: Record<string, number>;
+  lastUpdatedAt?: number;
+}
+
+export interface OrganizerAttendeeRow {
+  ticket: {
+    id: string;
+    type?: string;
+    seat?: string;
+    status?: string;
+    purchaseDate?: number | string;
+  };
+  user: {
+    id: string;
+    name?: string;
+    email?: string;
+    profilePicUrl?: string;
+  };
+}

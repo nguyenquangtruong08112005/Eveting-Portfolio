@@ -1,5 +1,11 @@
 import { request } from './apiClient';
-import type { LedgerEntry, OrganizerStats, OrganizerEvent } from '@/types';
+import type {
+  LedgerEntry,
+  OrganizerStats,
+  OrganizerEvent,
+  EventAnalytics,
+  OrganizerAttendeeRow,
+} from '@/types';
 
 type RawStats = Partial<OrganizerStats> & {
   totalRevenue?: number;
@@ -11,14 +17,10 @@ type RawStats = Partial<OrganizerStats> & {
 };
 
 function normalizeStats(raw: RawStats | null | undefined): OrganizerStats {
-  const gross =
-    Number(raw?.grossRevenue ?? raw?.totalRevenue ?? 0) || 0;
-  const fees =
-    Number(raw?.platformFees ?? raw?.platformFee ?? raw?.fees ?? 0) || 0;
-  const totalSales =
-    Number(raw?.totalSales ?? raw?.totalTicketsSold ?? 0) || 0;
-  const net =
-    Number(raw?.netRevenue ?? gross - fees) || 0;
+  const gross = Number(raw?.grossRevenue ?? raw?.totalRevenue ?? 0) || 0;
+  const fees = Number(raw?.platformFees ?? raw?.platformFee ?? raw?.fees ?? 0) || 0;
+  const totalSales = Number(raw?.totalSales ?? raw?.totalTicketsSold ?? 0) || 0;
+  const net = Number(raw?.netRevenue ?? gross - fees) || 0;
   return {
     totalSales,
     grossRevenue: gross,
@@ -38,39 +40,20 @@ export class OrganizerService {
   }
 
   static async getEvents(): Promise<{ data: OrganizerEvent[] }> {
-    return request<{ data: OrganizerEvent[] }>(
-      'GET',
-      '/api/organizer/me/events'
-    );
+    return request<{ data: OrganizerEvent[] }>('GET', '/api/organizer/me/events');
   }
 
-  static async getEventStats(eventId: string): Promise<Record<string, unknown>> {
-    return request<Record<string, unknown>>(
-      'GET',
-      `/api/organizer/events/${eventId}/stats`
-    );
+  static async getEventStats(eventId: string): Promise<EventAnalytics> {
+    return request<EventAnalytics>('GET', `/api/organizer/events/${eventId}/stats`);
   }
 
   static async getAttendees(
     eventId: string
-  ): Promise<{
-    attendees: Array<{
-      ticket: {
-        id: string;
-        type?: string;
-        seat?: string;
-        status?: string;
-        purchaseDate?: number | string;
-      };
-      user: {
-        id: string;
-        name?: string;
-        email?: string;
-        profilePicUrl?: string;
-      };
-    }>;
-  }> {
-    return request('GET', `/api/organizer/events/${eventId}/attendees`);
+  ): Promise<{ attendees: OrganizerAttendeeRow[] }> {
+    return request<{ attendees: OrganizerAttendeeRow[] }>(
+      'GET',
+      `/api/organizer/events/${eventId}/attendees`
+    );
   }
 
   static async checkInByQr(qrToken: string): Promise<{
@@ -88,6 +71,16 @@ export class OrganizerService {
   }> {
     return request('POST', '/api/organizer/check-in-qr', {
       body: { qrToken },
+    });
+  }
+
+  static async broadcast(
+    eventId: string,
+    title: string,
+    message: string
+  ): Promise<{ success?: boolean; sentTo?: number }> {
+    return request('POST', `/api/organizer/events/${eventId}/broadcast`, {
+      body: { title, message },
     });
   }
 }

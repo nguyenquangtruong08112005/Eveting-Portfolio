@@ -16,3 +16,4 @@ export * from './media';
 export * from './membership';
 export * from './promotion';
 export * from './category';
+export * from './venue';

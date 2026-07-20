@@ -1,14 +1,18 @@
 'use client';
 
-import { QrCode } from 'lucide-react';
-import { OrganizerSectionPlaceholder } from '@/features/organizer/OrganizerSectionPlaceholder';
+import { Suspense } from 'react';
+import { CheckInView } from '@/features/organizer/CheckInView';
 
 export default function OrganizerCheckInPage() {
   return (
-    <OrganizerSectionPlaceholder
-      titleKey="check_in_title"
-      descriptionKey="check_in_subtitle"
-      icon={QrCode}
-    />
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+          <div className="size-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <CheckInView />
+    </Suspense>
   );
 }

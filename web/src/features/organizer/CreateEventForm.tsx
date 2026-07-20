@@ -1,17 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Calendar, Ticket, Sparkles, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Calendar, Ticket, Sparkles, CheckCircle2, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EventService } from '@/features/events/api';
+import { VenueService } from '@/features/organizer/api';
 import { ORG_NAV } from '@/features/organizer/nav';
 import { useTranslations } from 'next-intl';
 import { CATEGORY_KEYS, type CategoryKey } from '@/lib/constants';
+import type { Venue } from '@/types';
 
 interface TicketTier {
   name: string;
@@ -19,14 +21,32 @@ interface TicketTier {
   available: number;
 }
 
-export function CreateEventForm() {
+function toLocalInput(ts?: number | null): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+interface CreateEventFormProps {
+  mode?: 'create' | 'edit';
+}
+
+export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
   const t = useTranslations('organizer');
   const tCommon = useTranslations('common');
   const tCat = useTranslations('navbar.categories');
   const router = useRouter();
+  const params = useParams();
+  const editId = mode === 'edit' ? (params?.id as string) : undefined;
+
   const [loading, setLoading] = useState(false);
+  const [bootLoading, setBootLoading] = useState(mode === 'edit');
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [venueId, setVenueId] = useState('');
 
   // Form states
   const [name, setName] = useState('');
@@ -51,6 +71,65 @@ export function CreateEventForm() {
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([
     { name: 'Standard', price: 150000, available: 100 }
   ]);
+
+  useEffect(() => {
+    VenueService.list()
+      .then((list) => setVenues(list || []))
+      .catch(() => setVenues([]));
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !editId) return;
+    let cancelled = false;
+    setBootLoading(true);
+    EventService.getById(editId)
+      .then((ev) => {
+        if (cancelled) return;
+        setName(ev.name || '');
+        setDescription(ev.description || '');
+        setImageUrl(ev.imageUrl || '');
+        setBannerUrl(ev.bannerUrl || '');
+        setVideoUrl(ev.videoUrl || '');
+        setDateInput(toLocalInput(ev.date));
+        setEndDateInput(toLocalInput(ev.endDate as number | undefined));
+        setEventType(ev.eventType === 'online' ? 'online' : 'physical');
+        setVenueName(ev.venueName || '');
+        setCity(ev.city || '');
+        setAddress(ev.location?.address || '');
+        const cats = (ev.category || []).filter((c): c is CategoryKey =>
+          (CATEGORY_KEYS as readonly string[]).includes(c)
+        );
+        setSelectedCategories(cats);
+        if (ev.ticketTypes) {
+          const tiers = Object.entries(ev.ticketTypes).map(([n, v]) => ({
+            name: n,
+            price: v.price ?? 0,
+            available: v.available ?? v.quantity ?? 0,
+          }));
+          if (tiers.length) setTicketTiers(tiers);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setErrorMsg((err as { message?: string })?.message || t('create_error'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBootLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, editId, t]);
+
+  const applyVenue = (id: string) => {
+    setVenueId(id);
+    const v = venues.find((x) => x.id === id);
+    if (!v) return;
+    setVenueName(v.name || '');
+    setCity(v.city || '');
+    setAddress(v.address || '');
+  };
 
   const toggleCategory = (cat: CategoryKey) => {
     setSelectedCategories(prev =>
@@ -113,15 +192,24 @@ export function CreateEventForm() {
         venueName: eventType === 'physical' ? venueName : undefined,
         city: eventType === 'physical' ? city : undefined,
         location: eventType === 'physical' ? { address } : undefined,
+        venueId: eventType === 'physical' && venueId ? venueId : undefined,
         ticketTypes,
-        saveAsDraft
+        ...(mode === 'create' ? { saveAsDraft } : {}),
       };
 
-      await EventService.create(eventData);
-      setSuccess(true);
-      setTimeout(() => {
-        router.push('/organizer/dashboard');
-      }, 1500);
+      if (mode === 'edit' && editId) {
+        await EventService.update(editId, eventData);
+        setSuccess(true);
+        setTimeout(() => {
+          router.push(`/organizer/events/${editId}`);
+        }, 1200);
+      } else {
+        await EventService.create(eventData);
+        setSuccess(true);
+        setTimeout(() => {
+          router.push('/organizer/dashboard');
+        }, 1500);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || t('create_error'));
       setLoading(false);
@@ -134,11 +222,11 @@ export function CreateEventForm() {
         {/* Back Link */}
         <div>
           <Link
-            href="/organizer/dashboard"
+            href={mode === 'edit' && editId ? `/organizer/events/${editId}` : '/organizer/dashboard'}
             className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
             <ArrowLeft className="size-3.5" />
-            {t('back_to_dashboard')}
+            {mode === 'edit' ? t('back_to_event') : t('back_to_dashboard')}
           </Link>
         </div>
 
@@ -146,12 +234,18 @@ export function CreateEventForm() {
         <div>
           <h1 className="text-2xl font-black text-[var(--text-primary)] flex items-center gap-2.5 tracking-tight">
             <Sparkles className="size-6 text-[var(--primary)]" />
-            {t('new_event_title')}
+            {mode === 'edit' ? t('edit_event_title') : t('new_event_title')}
           </h1>
           <p className="text-xs text-[var(--text-secondary)] mt-1">
-            {t('new_event_subtitle')}
+            {mode === 'edit' ? t('edit_event_subtitle') : t('new_event_subtitle')}
           </p>
         </div>
+
+        {bootLoading && (
+          <div className="flex justify-center py-16">
+            <Loader2 className="size-10 text-[var(--primary)] animate-spin" />
+          </div>
+        )}
 
         {errorMsg && (
           <div className="p-4 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-2xl flex items-start gap-2.5 text-[var(--error)] text-sm">
@@ -163,12 +257,14 @@ export function CreateEventForm() {
         {success ? (
           <div className="p-10 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-center flex flex-col items-center justify-center gap-4 shadow-xl">
             <CheckCircle2 className="size-16 text-[var(--success)] animate-bounce" />
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">{t('create_success')}</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+              {mode === 'edit' ? t('update_success') : t('create_success')}
+            </h2>
             <p className="text-[var(--text-secondary)] text-sm max-w-sm">
-              {t('create_success_msg')}
+              {mode === 'edit' ? t('update_success_msg') : t('create_success_msg')}
             </p>
           </div>
-        ) : (
+        ) : bootLoading ? null : (
           <div className="space-y-6">
             {/* Step 1: Basic Information */}
             <section className="bg-[var(--surface)] border border-[var(--surface-border)] p-6 rounded-2xl shadow-xl space-y-5">
@@ -319,6 +415,26 @@ export function CreateEventForm() {
 
                 {eventType === 'physical' ? (
                   <div className="space-y-4 pt-1">
+                    {venues.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">
+                          {t('field_venue_picker')}
+                        </Label>
+                        <select
+                          value={venueId}
+                          onChange={(e) => applyVenue(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--surface-border)] text-[var(--text-primary)] rounded-xl py-3 px-4 text-sm"
+                        >
+                          <option value="">{t('venue_picker_none')}</option>
+                          {venues.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                              {v.city ? ` — ${v.city}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_venue')}</Label>
@@ -440,23 +556,36 @@ export function CreateEventForm() {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button
-                type="button"
-                onClick={() => handleSubmit(true)}
-                disabled={loading}
-                variant="outline"
-                className="flex-1 py-6 bg-transparent hover:bg-[var(--surface-hover)] border border-[var(--surface-border)] text-[var(--text-primary)] font-bold text-sm rounded-xl cursor-pointer"
-              >
-                {loading ? t('processing') : t('save_draft')}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleSubmit(false)}
-                disabled={loading}
-                className="flex-1 py-6 rounded-xl btn-primary-gradient text-sm font-black tracking-wide text-[var(--on-primary)] border-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-orange-500/10"
-              >
-                {loading ? t('processing') : t('submit_review')}
-              </Button>
+              {mode === 'edit' ? (
+                <Button
+                  type="button"
+                  onClick={() => handleSubmit(false)}
+                  disabled={loading}
+                  className="flex-1 py-6 rounded-xl btn-primary-gradient text-sm font-black tracking-wide text-[var(--on-primary)] border-none cursor-pointer"
+                >
+                  {loading ? t('processing') : t('save_changes')}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    onClick={() => handleSubmit(true)}
+                    disabled={loading}
+                    variant="outline"
+                    className="flex-1 py-6 bg-transparent hover:bg-[var(--surface-hover)] border border-[var(--surface-border)] text-[var(--text-primary)] font-bold text-sm rounded-xl cursor-pointer"
+                  >
+                    {loading ? t('processing') : t('save_draft')}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => handleSubmit(false)}
+                    disabled={loading}
+                    className="flex-1 py-6 rounded-xl btn-primary-gradient text-sm font-black tracking-wide text-[var(--on-primary)] border-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-orange-500/10"
+                  >
+                    {loading ? t('processing') : t('submit_review')}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

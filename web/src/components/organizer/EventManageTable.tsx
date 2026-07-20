@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 import { formatPrice } from '@/lib/constants';
-import { Loader2, Send, XCircle } from 'lucide-react';
+import { Loader2, Send, XCircle, Eye, Pencil } from 'lucide-react';
 import type { OrganizerEvent } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 
@@ -80,7 +81,12 @@ export function EventManageTable({
                   className="py-4 px-4 text-[var(--text-primary)] font-medium max-w-[200px] truncate"
                   title={event.name}
                 >
-                  {event.name}
+                  <Link
+                    href={`/organizer/events/${event.id}`}
+                    className="hover:text-[var(--primary)] hover:underline"
+                  >
+                    {event.name}
+                  </Link>
                 </td>
 
                 <td className="py-4 px-4">
@@ -119,7 +125,23 @@ export function EventManageTable({
                 </td>
 
                 <td className="py-4 px-4 text-right">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end gap-2 flex-wrap">
+                    <Link
+                      href={`/organizer/events/${event.id}`}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--surface-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    >
+                      <Eye className="size-3" />
+                      {t('view')}
+                    </Link>
+                    {(event.status === 'draft' || event.status === 'rejected') && (
+                      <Link
+                        href={`/organizer/events/${event.id}/edit`}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--surface-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      >
+                        <Pencil className="size-3" />
+                        {t('edit')}
+                      </Link>
+                    )}
                     {event.status === 'draft' && (
                       <Button
                         size="xs"
