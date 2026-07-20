@@ -178,6 +178,17 @@ export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
         }
       });
 
+      if (eventType === 'physical' && !venueId && !venueName.trim() && !city.trim() && !address.trim()) {
+        setErrorMsg(t('error_venue_required'));
+        setLoading(false);
+        return;
+      }
+      if (eventType === 'online' && !onlineUrl.trim()) {
+        setErrorMsg(t('error_online_url_required'));
+        setLoading(false);
+        return;
+      }
+
       const eventData = {
         name,
         description,
@@ -188,10 +199,25 @@ export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
         endDate: endDateInput ? new Date(endDateInput).getTime() : undefined,
         eventType,
         category: selectedCategories,
-        onlineUrl: eventType === 'online' ? onlineUrl : undefined,
-        venueName: eventType === 'physical' ? venueName : undefined,
-        city: eventType === 'physical' ? city : undefined,
-        location: eventType === 'physical' ? { address } : undefined,
+        onlineUrl: eventType === 'online' ? onlineUrl.trim() : undefined,
+        // Physical: server accepts venueId OR free-form name/city/address
+        venueName: eventType === 'physical' ? venueName.trim() || undefined : undefined,
+        city: eventType === 'physical' ? city.trim() || undefined : undefined,
+        location:
+          eventType === 'physical'
+            ? {
+                address: address.trim() || '',
+              }
+            : undefined,
+        addressDetails:
+          eventType === 'physical'
+            ? {
+                street: address.trim() || '',
+                city: city.trim() || '',
+                district: '',
+                ward: '',
+              }
+            : undefined,
         venueId: eventType === 'physical' && venueId ? venueId : undefined,
         ticketTypes,
         ...(mode === 'create' ? { saveAsDraft } : {}),

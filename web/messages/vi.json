@@ -214,6 +214,8 @@
     "create_success_msg": "Sự kiện của bạn đã được lưu lại. Bạn có thể chỉnh sửa thêm trước khi gửi duyệt.",
     "validation_error": "Vui lòng điền tên sự kiện và ngày bắt đầu tổ chức.",
     "error_required_fields": "Vui lòng điền tên sự kiện và ngày bắt đầu tổ chức.",
+    "error_venue_required": "Sự kiện offline cần tên địa điểm, thành phố hoặc địa chỉ (hoặc chọn từ danh mục).",
+    "error_online_url_required": "Sự kiện online cần link tham dự (Meet/Zoom).",
     "create_error": "Có lỗi xảy ra khi khởi tạo sự kiện. Vui lòng thử lại.",
     "back_dashboard": "Quay lại bảng điều khiển",
     "back_to_dashboard": "Quay lại bảng điều khiển",

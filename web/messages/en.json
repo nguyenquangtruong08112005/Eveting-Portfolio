@@ -214,6 +214,8 @@
     "create_success_msg": "Your event has been saved. You can make edits before submitting for review.",
     "validation_error": "Please enter an event name and start time.",
     "error_required_fields": "Please enter an event name and start time.",
+    "error_venue_required": "For in-person events, enter a venue name, city, or address (or pick a catalog venue).",
+    "error_online_url_required": "Online events need an attendance link (Meet/Zoom URL).",
     "create_error": "An error occurred while creating the event. Please try again.",
     "back_dashboard": "Back to Dashboard",
     "back_to_dashboard": "Back to Dashboard",
