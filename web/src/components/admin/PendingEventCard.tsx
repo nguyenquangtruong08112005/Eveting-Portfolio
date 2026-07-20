@@ -112,8 +112,23 @@ export function PendingEventCard({ event, onApprove, onReject }: PendingEventCar
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="size-3.5 text-[var(--accent-brand)]" />
-            <span>{event.venueName || event.location?.address}</span>
+            <span>
+              {[event.venueName || event.location?.address, event.city]
+                .filter(Boolean)
+                .join(' · ') || '—'}
+            </span>
           </div>
+          {(event as { organizerName?: string; lifecycleStatus?: string }).organizerName ||
+          (event as { lifecycleStatus?: string }).lifecycleStatus ? (
+            <p className="text-[10px] text-[var(--text-muted)]">
+              {(event as { organizerName?: string }).organizerName
+                ? `${(event as { organizerName?: string }).organizerName}`
+                : ''}
+              {(event as { lifecycleStatus?: string }).lifecycleStatus
+                ? ` · ${(event as { lifecycleStatus?: string }).lifecycleStatus}`
+                : ''}
+            </p>
+          ) : null}
         </div>
 
         {/* Inline reject form */}

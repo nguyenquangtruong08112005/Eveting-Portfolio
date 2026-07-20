@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ShieldAlert,
   AlertCircle,
@@ -8,15 +8,17 @@ import {
   Clock,
   ShieldCheck,
   Ban,
-  Activity,
+  History,
 } from 'lucide-react';
 import Image from 'next/image';
-import { AppShell, type NavItem } from '@/components/layout/AppShell';
+import { AppShell } from '@/components/layout/AppShell';
 import { PendingEventCard } from '@/components/admin/PendingEventCard';
 import { useAuth } from '@/hooks/useAuth';
 import { AdminService } from '@/features/admin/api';
+import { ADMIN_NAV } from '@/features/admin/nav';
 import { formatDate } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Spinner } from '@/components/shared/Spinner';
@@ -26,13 +28,7 @@ import type { RejectedEvent } from '@/types';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
-const ADMIN_NAV: NavItem[] = [
-  { href: '/admin/moderation', labelKey: 'moderation', icon: ShieldAlert },
-  // Phase 4 targets:
-  // { href: '/admin/users', labelKey: 'users', icon: Users },
-  // { href: '/admin/stats', labelKey: 'platform_stats', icon: BarChart3 },
-  // { href: '/admin/venues', labelKey: 'venues_admin', icon: MapPin },
-];
+const PAGE_SIZE = 20;
 
 export function ModerationView() {
   const t = useTranslations('moderation');
@@ -44,29 +40,44 @@ export function ModerationView() {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const loadPending = useCallback(
+    async (pageNum: number, append: boolean) => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      if (append) setLoadingMore(true);
+      else {
+        setLoading(true);
+        setErrorMessage(null);
+      }
+      try {
+        const data = await AdminService.getPendingEvents(pageNum, PAGE_SIZE);
+        const cleaned = (data.events || []).filter((e) => e && e.id && e.name);
+        setPendingEvents((prev) => (append ? [...prev, ...cleaned] : cleaned));
+        setPage(pageNum);
+        // Server total is page length until full count exists; use page full as "maybe more"
+        setHasMore(cleaned.length >= PAGE_SIZE);
+      } catch (err: unknown) {
+        console.error('Failed to load pending events:', err);
+        const msg = err instanceof Error ? err.message : t('load_error');
+        setErrorMessage(msg || t('load_error'));
+        if (!append) setPendingEvents([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [token, t]
+  );
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    setErrorMessage(null);
-    AdminService.getPendingEvents()
-      .then((data) => {
-        if (data?.events) {
-          // Filter to avoid showing internal tests in the queue
-          const cleaned = data.events.filter(
-            (e) => e && e.name && !e.name.toLowerCase().includes('test')
-          );
-          setPendingEvents(cleaned);
-        }
-      })
-      .catch((err: any) => {
-        console.error('Failed to load pending events:', err);
-        setErrorMessage(err.message || t('load_error'));
-      })
-      .finally(() => setLoading(false));
-  }, [token, t]);
+    void loadPending(1, false);
+  }, [loadPending]);
 
   const handleApprove = async (eventId: string) => {
     setErrorMessage(null);
@@ -77,8 +88,11 @@ export function ModerationView() {
       toast.success(t('approve_success', { name: event?.name || '' }));
       if (event) setApprovedEvents((prev) => [event, ...prev]);
       setPendingEvents((prev) => prev.filter((e) => e.id !== eventId));
-    } catch (err: any) {
-      const msg = err.message || t('approve_error', { name: event?.name || '' });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : t('approve_error', { name: event?.name || '' });
       setErrorMessage(msg);
       throw err;
     }
@@ -93,8 +107,11 @@ export function ModerationView() {
       toast.success(t('reject_success', { name: event?.name || '' }));
       if (event) setRejectedEvents((prev) => [{ ...event, reason }, ...prev]);
       setPendingEvents((prev) => prev.filter((e) => e.id !== eventId));
-    } catch (err: any) {
-      const msg = err.message || t('reject_error', { name: event?.name || '' });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : t('reject_error', { name: event?.name || '' });
       setErrorMessage(msg);
       throw err;
     }
@@ -113,7 +130,6 @@ export function ModerationView() {
         }
       />
 
-      {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           icon={<Clock className="size-5 text-[var(--primary)]" />}
@@ -137,31 +153,32 @@ export function ModerationView() {
           valueClass="text-[var(--error)]"
         />
         <StatCard
-          icon={<Activity className="size-5 text-[var(--info)]" />}
+          icon={<History className="size-5 text-[var(--info)]" />}
           iconBg="bg-[var(--info)]/10"
-          label={t('gateway')}
+          label={t('session_note_label')}
           value={
-            <span className="text-xs font-black text-[var(--info)] flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-[var(--info)] animate-pulse inline-block" />
-              ONLINE
+            <span className="text-[10px] font-bold text-[var(--text-muted)] leading-tight">
+              {t('session_note_short')}
             </span>
           }
         />
       </div>
 
-      {/* Messaging feedback */}
+      <p className="text-[11px] text-[var(--text-muted)] mb-4 -mt-4">
+        {t('session_history_hint')}
+      </p>
+
       {errorMessage && (
         <div
           role="alert"
-          className="p-4 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-xl flex items-start gap-2 text-[var(--error)] text-sm mb-6 animate-fade-in-up"
+          className="p-4 bg-[var(--error)]/10 border border-[var(--error)]/30 rounded-xl flex items-start gap-2 text-[var(--error)] text-sm mb-6"
         >
           <AlertCircle className="size-5 shrink-0 mt-0.5" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Tab controllers */}
-      <div className="flex gap-2 border-b border-[var(--surface-border)] pb-4 mb-6">
+      <div className="flex gap-2 border-b border-[var(--surface-border)] pb-4 mb-6 flex-wrap">
         {(['pending', 'approved', 'rejected'] as const).map((tab) => {
           const count =
             tab === 'pending'
@@ -179,19 +196,31 @@ export function ModerationView() {
           return (
             <button
               key={tab}
+              type="button"
               onClick={() => setActiveTab(tab)}
               className={cn(
                 'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer btn-tactile',
-                activeTab === tab ? activeColor : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                activeTab === tab
+                  ? activeColor
+                  : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               )}
             >
               {t(labelKey)} ({count})
             </button>
           );
         })}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-auto rounded-xl text-[10px] h-8"
+          disabled={loading}
+          onClick={() => void loadPending(1, false)}
+        >
+          {tCommon('refresh')}
+        </Button>
       </div>
 
-      {/* List */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Spinner className="size-8" />
@@ -205,20 +234,39 @@ export function ModerationView() {
             description={t('empty_queue_desc')}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {pendingEvents.map((event) => (
-              <PendingEventCard
-                key={event.id}
-                event={event}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {pendingEvents.map((event) => (
+                <PendingEventCard
+                  key={event.id}
+                  event={event}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  disabled={loadingMore}
+                  onClick={() => void loadPending(page + 1, true)}
+                >
+                  {loadingMore ? <Spinner className="size-4" /> : t('load_more')}
+                </Button>
+              </div>
+            )}
+          </>
         )
       ) : activeTab === 'approved' ? (
         approvedEvents.length === 0 ? (
-          <EmptyState icon={CheckCircle} title={t('empty_approved')} />
+          <EmptyState
+            icon={CheckCircle}
+            title={t('empty_approved')}
+            description={t('empty_session_desc')}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {approvedEvents.map((event) => (
@@ -227,11 +275,21 @@ export function ModerationView() {
           </div>
         )
       ) : rejectedEvents.length === 0 ? (
-        <EmptyState icon={Ban} title={t('empty_rejected')} />
+        <EmptyState
+          icon={Ban}
+          title={t('empty_rejected')}
+          description={t('empty_session_desc')}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {rejectedEvents.map((event) => (
-            <ReviewCard key={event.id} event={event} variant="rejected" reason={event.reason} t={t} />
+            <ReviewCard
+              key={event.id}
+              event={event}
+              variant="rejected"
+              reason={event.reason}
+              t={t}
+            />
           ))}
         </div>
       )}

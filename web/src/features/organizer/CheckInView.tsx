@@ -9,18 +9,17 @@ import {
   XCircle,
   AlertTriangle,
   History,
+  Smartphone,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AttendeeTable } from '@/components/organizer/AttendeeTable';
 import { QrCameraScanner } from '@/components/organizer/QrCameraScanner';
 import { ORG_NAV } from '@/features/organizer/nav';
 import { OrganizerService } from '@/features/organizer/api';
+import { useIsHandheld } from '@/hooks/useIsHandheld';
 import { cn } from '@/lib/utils';
 import type { OrganizerAttendeeRow, OrganizerEvent } from '@/types';
 
@@ -38,7 +37,6 @@ export function CheckInView() {
   const searchParams = useSearchParams();
   const prefillEvent = searchParams?.get('eventId') || '';
 
-  const [token, setToken] = useState('');
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<ScanResult[]>([]);
@@ -46,6 +44,8 @@ export function CheckInView() {
   const [eventId, setEventId] = useState(prefillEvent);
   const [attendees, setAttendees] = useState<OrganizerAttendeeRow[]>([]);
   const [loadingAttendees, setLoadingAttendees] = useState(false);
+  /** Camera scan only on phone/tablet — not desktop. */
+  const isHandheld = useIsHandheld();
 
   useEffect(() => {
     OrganizerService.getEvents()
@@ -79,11 +79,7 @@ export function CheckInView() {
 
   const runCheckIn = async (raw: string) => {
     const qrToken = raw.trim();
-    if (!qrToken) {
-      toast.error(t('checkin_token_required'));
-      return;
-    }
-    setToken(qrToken);
+    if (!qrToken) return;
     setScanning(true);
     setResult(null);
     try {
@@ -97,9 +93,8 @@ export function CheckInView() {
       };
       setResult(entry);
       setHistory((prev) => [entry, ...prev].slice(0, 20));
-      if (res.valid) {
-        setToken('');
-        if (eventId) loadAttendees(eventId);
+      if (res.valid && eventId) {
+        loadAttendees(eventId);
       }
     } catch (err: unknown) {
       const anyErr = err as {
@@ -107,12 +102,9 @@ export function CheckInView() {
         error?: string;
         response?: { data?: { error?: string; message?: string; valid?: boolean } };
       };
-      const code =
-        anyErr?.response?.data?.error || anyErr?.error || undefined;
+      const code = anyErr?.response?.data?.error || anyErr?.error || undefined;
       const message =
-        anyErr?.response?.data?.message ||
-        anyErr?.message ||
-        t('checkin_failed');
+        anyErr?.response?.data?.message || anyErr?.message || t('checkin_failed');
       const entry: ScanResult = {
         ok: false,
         code,
@@ -124,11 +116,6 @@ export function CheckInView() {
     } finally {
       setScanning(false);
     }
-  };
-
-  const handleCheckIn = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    await runCheckIn(token);
   };
 
   const handleCameraScan = (text: string) => {
@@ -146,46 +133,34 @@ export function CheckInView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <section className="lg:col-span-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-6 space-y-4">
-            {/* Camera stays on during API check-in; browser owns the permission dialog */}
-            <QrCameraScanner onScan={handleCameraScan} />
-
-            <div className="relative flex items-center gap-3 py-1">
-              <div className="flex-1 h-px bg-[var(--surface-border)]" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                {t('checkin_or_paste')}
-              </span>
-              <div className="flex-1 h-px bg-[var(--surface-border)]" />
-            </div>
-
-            <form onSubmit={handleCheckIn} className="space-y-4">
-              <div>
-                <Label className="text-xs font-bold text-[var(--text-secondary)] mb-2 block">
-                  {t('checkin_token_label')}
-                </Label>
-                <Input
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder={t('checkin_token_placeholder')}
-                  className="rounded-xl h-12 font-mono text-sm"
-                  autoComplete="off"
-                />
-                <p className="text-[10px] text-[var(--text-muted)] mt-1.5">
-                  {t('checkin_token_hint')}
+            {isHandheld === null ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="size-6 text-[var(--primary)] animate-spin" />
+              </div>
+            ) : isHandheld ? (
+              <>
+                {/* BarcodeDetector + ZXing WASM; ~1s debounce; phone/tablet only */}
+                <QrCameraScanner onScan={handleCameraScan} />
+                {scanning && (
+                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    <Loader2 className="size-3.5 animate-spin text-[var(--primary)]" />
+                    {t('checkin_scanning')}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--background)]/60 px-5 py-10 text-center space-y-3">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--primary)]/10">
+                  <Smartphone className="size-6 text-[var(--primary)]" />
+                </div>
+                <p className="text-sm font-bold text-[var(--text-primary)]">
+                  {t('checkin_cam_desktop_title')}
+                </p>
+                <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
+                  {t('checkin_cam_desktop_hint')}
                 </p>
               </div>
-              <Button
-                type="submit"
-                disabled={scanning}
-                className="w-full h-12 rounded-xl btn-primary-gradient text-[var(--on-primary)] border-none font-bold text-sm"
-              >
-                {scanning ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <QrCode className="size-4" />
-                )}
-                {scanning ? t('checkin_scanning') : t('checkin_submit')}
-              </Button>
-            </form>
+            )}
 
             {result && (
               <div
