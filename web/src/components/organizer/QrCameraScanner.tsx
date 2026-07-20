@@ -16,8 +16,10 @@ type CameraInfo = { id: string; label: string };
 /**
  * Camera QR scanner (html5-qrcode).
  *
- * Desktop webcams often fail with facingMode:"environment" (no rear cam).
- * We try: listed deviceId → user facing → any video constraint.
+ * Flow (matches browser permission model):
+ * 1) getUserMedia({ video: true }) → browser shows Allow/Block
+ * 2) release that stream
+ * 3) start scanner with device fallbacks
  */
 export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   const t = useTranslations('organizer');
@@ -78,14 +80,12 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   };
 
   /**
-   * Try several camera sources until one works.
-   * Order: preferred deviceId → other deviceIds → facingMode user → plain true
+   * After permission is granted, start html5-qrcode with device fallbacks.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const startWithFallbacks = async (scanner: any, cameras: CameraInfo[]) => {
     const errors: string[] = [];
 
-    // Prefer rear/back if labeled; otherwise first listed cam (desktop = usually one webcam)
     const ordered = [...cameras].sort((a, b) => {
       const score = (c: CameraInfo) =>
         /back|rear|environment|world/i.test(c.label)
@@ -105,11 +105,11 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
       }
     }
 
-    // Constraint fallbacks (no deviceId)
+    // Simple constraints — permission already granted via getUserMedia({ video: true })
     const constraints: Array<MediaTrackConstraints | boolean> = [
+      true,
       { facingMode: 'user' },
       { facingMode: 'environment' },
-      true,
     ];
     for (const c of constraints) {
       try {
@@ -147,6 +147,34 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
         return;
       }
 
+      // 1) Explicitly request permission first — browser shows Allow/Block
+      //    Use simple { video: true } so desktop webcams work (no rear-cam constraint).
+      let permissionStream: MediaStream | null = null;
+      try {
+        permissionStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (err: unknown) {
+        const name = err instanceof DOMException ? err.name : '';
+        const msg = formatErr(err);
+        setDebugDetail(msg);
+        if (
+          name === 'NotAllowedError' ||
+          name === 'PermissionDeniedError' ||
+          /NotAllowed|Permission denied|denied/i.test(msg)
+        ) {
+          setError(t('checkin_cam_permission_help'));
+        } else if (name === 'NotFoundError' || /not found|no (camera|device)/i.test(msg)) {
+          setError(t('checkin_cam_no_device'));
+        } else if (name === 'NotReadableError' || /in use|TrackStart|video source/i.test(msg)) {
+          setError(t('checkin_cam_in_use'));
+        } else {
+          setError(t('checkin_cam_error'));
+        }
+        return;
+      } finally {
+        // Release probe stream so html5-qrcode can open the camera cleanly
+        permissionStream?.getTracks().forEach((track) => track.stop());
+      }
+
       const { Html5Qrcode } = await import('html5-qrcode');
       await stop();
 
@@ -157,15 +185,15 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
       }
       host.innerHTML = '';
 
-      // Enumerate devices (may return empty labels until permission granted once)
+      // After permission, labels are usually available
       let cameras: CameraInfo[] = [];
       try {
         cameras = (await Html5Qrcode.getCameras()) as CameraInfo[];
       } catch (e) {
-        // getCameras itself may request permission
         console.warn('[QrCameraScanner] getCameras failed', e);
       }
 
+      // 2) Start scanner with valid config + fallbacks
       const scanner = new Html5Qrcode(regionId);
       try {
         const used = await startWithFallbacks(scanner, cameras);
