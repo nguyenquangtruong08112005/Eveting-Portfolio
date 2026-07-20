@@ -26,7 +26,12 @@ const nextConfig: NextConfig = {
         { key: 'X-Frame-Options', value: 'DENY' },
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        // camera/geolocation: allow same-origin (check-in QR + venue map "my location").
+        // camera=() blocks getUserMedia entirely — browser "Allow" cannot override this.
+        {
+          key: 'Permissions-Policy',
+          value: 'camera=(self), microphone=(), geolocation=(self)',
+        },
       ],
     },
   ],

@@ -332,7 +332,7 @@
     "checkin_cam_hint": "Works on http://localhost or HTTPS. Prefer the back camera on phones.",
     "checkin_cam_permission_prompt": "Tap Start camera. The browser will show a small permission bar — choose Allow.",
     "checkin_cam_permission": "Camera permission denied.",
-    "checkin_cam_permission_help": "You blocked the camera in the browser. Click the lock icon in the address bar → Site settings → Camera → Allow, then press Start camera again. Or paste the QR token below.",
+    "checkin_cam_permission_help": "Camera was denied or blocked by policy. Ensure site Camera is Allow (lock icon in address bar). If the console says Permissions-Policy camera is not allowed, the server header must allow camera=(self). Then press Start camera again. Or paste the QR token below.",
     "checkin_cam_unsupported": "This browser cannot access the camera.",
     "checkin_cam_no_device": "No camera device found.",
     "checkin_cam_in_use": "Camera is already in use by another app.",
