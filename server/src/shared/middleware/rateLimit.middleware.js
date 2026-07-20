@@ -1,8 +1,10 @@
 const rateLimit = require('express-rate-limit');
 
+// Raised for local/dev SPA traffic (list + search + home sections + refresh).
+// Production can tighten via env if needed.
 const publicApiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: Number(process.env.PUBLIC_API_RATE_LIMIT || 400),
     message: { error: 'Too many requests from this IP, please try again after 15 minutes.' },
     standardHeaders: true,
     legacyHeaders: false,
