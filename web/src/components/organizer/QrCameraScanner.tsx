@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { Camera, CameraOff, Loader2, ShieldAlert } from 'lucide-react';
+import { Camera, CameraOff, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -9,116 +9,61 @@ import { cn } from '@/lib/utils';
 interface QrCameraScannerProps {
   onScan: (text: string) => void;
   className?: string;
-  active?: boolean;
 }
 
-type PermState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
-
 /**
- * Camera QR scanner using html5-qrcode.
- * Explicitly requests camera permission via getUserMedia before scanning.
+ * Camera QR scanner. The Allow/Block dialog is owned by the **browser** —
+ * our button only calls the camera API so the browser can show that prompt.
+ *
  * Requires HTTPS or localhost.
  */
-export function QrCameraScanner({ onScan, className, active = true }: QrCameraScannerProps) {
+export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   const t = useTranslations('organizer');
   const reactId = useId().replace(/:/g, '');
   const regionId = `qr-reader-${reactId}`;
-  const scannerRef = useRef<{
-    stop: () => Promise<void>;
-    clear: () => Promise<void>;
-    isScanning: boolean;
-  } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scannerRef = useRef<any>(null);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
+
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [perm, setPerm] = useState<PermState>('unknown');
   const lastScan = useRef('');
   const lastAt = useRef(0);
 
-  // Track permission state (Chrome/Edge support Permissions API for camera)
-  useEffect(() => {
-    let cancelled = false;
-    const sync = async () => {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        if (!cancelled) setPerm('unsupported');
-        return;
-      }
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const perms = (navigator as any).permissions;
-        if (perms?.query) {
-          const status = await perms.query({ name: 'camera' as PermissionName });
-          if (cancelled) return;
-          setPerm(status.state as PermState);
-          status.onchange = () => {
-            setPerm(status.state as PermState);
-          };
-          return;
-        }
-      } catch {
-        /* Firefox may throw for camera query */
-      }
-      if (!cancelled) setPerm('prompt');
-    };
-    void sync();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const stop = async () => {
-    const s = scannerRef.current;
+    const scanner = scannerRef.current;
     scannerRef.current = null;
-    if (s?.isScanning) {
+    if (scanner) {
       try {
-        await s.stop();
-        await s.clear();
+        const state = typeof scanner.getState === 'function' ? scanner.getState() : null;
+        // Html5QrcodeScannerState.SCANNING === 2
+        if (state === 2 || scanner.isScanning) {
+          await scanner.stop();
+        }
       } catch {
         /* already stopped */
       }
-    }
-    setRunning(false);
-  };
-
-  /** Explicit browser permission prompt before Html5Qrcode owns the stream */
-  const requestCameraPermission = async (): Promise<boolean> => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setPerm('unsupported');
-      setError(t('checkin_cam_unsupported'));
-      return false;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
-      // Release immediately — html5-qrcode will open its own stream
-      stream.getTracks().forEach((track) => track.stop());
-      setPerm('granted');
-      setError(null);
-      return true;
-    } catch (e: unknown) {
-      const name = e instanceof DOMException ? e.name : '';
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        setPerm('denied');
-        setError(t('checkin_cam_permission'));
-      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-        setError(t('checkin_cam_no_device'));
-      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
-        setError(t('checkin_cam_in_use'));
-      } else {
-        setError(t('checkin_cam_error'));
+      try {
+        await scanner.clear();
+      } catch {
+        /* ignore */
       }
-      return false;
     }
+    // Clear host so next start is clean (no React children inside)
+    const el = document.getElementById(regionId);
+    if (el) el.innerHTML = '';
+    setRunning(false);
   };
 
   const start = async () => {
     if (starting || running) return;
     setStarting(true);
     setError(null);
+
     try {
-      // Secure context check
+      // Browser will only show camera permission on secure context
       if (
         typeof window !== 'undefined' &&
         !window.isSecureContext &&
@@ -129,58 +74,82 @@ export function QrCameraScanner({ onScan, className, active = true }: QrCameraSc
         return;
       }
 
-      const allowed = await requestCameraPermission();
-      if (!allowed) return;
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError(t('checkin_cam_unsupported'));
+        return;
+      }
 
       const { Html5Qrcode } = await import('html5-qrcode');
       await stop();
+
+      const host = document.getElementById(regionId);
+      if (!host) {
+        setError(t('checkin_cam_error'));
+        return;
+      }
+      host.innerHTML = '';
+
       const scanner = new Html5Qrcode(regionId);
+      // This call triggers the browser's native Allow/Block permission UI
       await scanner.start(
         { facingMode: 'environment' },
-        { fps: 8, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
+        {
+          fps: 10,
+          qrbox: (viewW: number, viewH: number) => {
+            const size = Math.min(viewW, viewH, 260) * 0.85;
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.0,
+        },
         (decoded) => {
           const text = (decoded || '').trim();
           if (!text) return;
           const now = Date.now();
+          // Debounce duplicate scans
           if (text === lastScan.current && now - lastAt.current < 2500) return;
           lastScan.current = text;
           lastAt.current = now;
-          onScan(text);
+          onScanRef.current(text);
         },
         () => {
-          /* ignore scan misses */
+          /* ignore non-decode frames */
         }
       );
-      scannerRef.current = scanner as unknown as {
-        stop: () => Promise<void>;
-        clear: () => Promise<void>;
-        isScanning: boolean;
-      };
+
+      scannerRef.current = scanner;
       setRunning(true);
     } catch (e: unknown) {
-      console.error(e);
-      const msg = e instanceof Error ? e.message : '';
-      if (/Permission|NotAllowed|NotAllowedError/i.test(msg)) {
-        setPerm('denied');
-        setError(t('checkin_cam_permission'));
+      console.error('[QrCameraScanner]', e);
+      const name = e instanceof DOMException ? e.name : '';
+      const msg = e instanceof Error ? e.message : String(e);
+
+      if (
+        name === 'NotAllowedError' ||
+        name === 'PermissionDeniedError' ||
+        /Permission|NotAllowed|denied/i.test(msg)
+      ) {
+        setError(t('checkin_cam_permission_help'));
+      } else if (name === 'NotFoundError' || /not found|no camera/i.test(msg)) {
+        setError(t('checkin_cam_no_device'));
+      } else if (name === 'NotReadableError' || /in use|TrackStart/i.test(msg)) {
+        setError(t('checkin_cam_in_use'));
       } else {
         setError(t('checkin_cam_error'));
       }
       setRunning(false);
+      scannerRef.current = null;
     } finally {
       setStarting(false);
     }
   };
 
+  // Cleanup on unmount only — do NOT stop when parent is "busy" checking in
   useEffect(() => {
-    if (!active && running) {
-      void stop();
-    }
     return () => {
       void stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, []);
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -205,44 +174,33 @@ export function QrCameraScanner({ onScan, className, active = true }: QrCameraSc
             type="button"
             size="sm"
             className="rounded-lg text-[10px] h-8 btn-primary-gradient text-[var(--on-primary)] border-none"
-            disabled={starting || !active || perm === 'unsupported'}
+            disabled={starting}
             onClick={() => void start()}
           >
             {starting ? <Loader2 className="size-3 animate-spin" /> : <Camera className="size-3" />}
-            {perm === 'denied' ? t('checkin_cam_retry') : t('checkin_cam_start')}
+            {t('checkin_cam_start')}
           </Button>
         )}
       </div>
 
-      {perm === 'prompt' && !running && (
-        <div className="rounded-xl border border-[var(--primary)]/25 bg-[var(--primary)]/5 px-3 py-2 text-[11px] text-[var(--text-secondary)] flex gap-2">
-          <ShieldAlert className="size-4 text-[var(--primary)] shrink-0 mt-0.5" />
-          <span>{t('checkin_cam_permission_prompt')}</span>
-        </div>
-      )}
+      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+        {t('checkin_cam_browser_note')}
+      </p>
 
-      {perm === 'denied' && (
-        <div className="rounded-xl border border-[var(--error)]/30 bg-[var(--error)]/5 px-3 py-2 text-[11px] text-[var(--error)] flex gap-2">
-          <ShieldAlert className="size-4 shrink-0 mt-0.5" />
-          <span>{t('checkin_cam_permission_help')}</span>
-        </div>
-      )}
-
+      {/* Empty host — Html5Qrcode owns children; never put React nodes inside */}
       <div
         id={regionId}
-        className={cn(
-          'w-full min-h-[220px] rounded-xl overflow-hidden border border-[var(--surface-border)] bg-black/80',
-          !running && 'flex items-center justify-center'
-        )}
-      >
-        {!running && (
-          <p className="text-[11px] text-white/70 px-4 text-center py-16">
-            {t('checkin_cam_idle')}
-          </p>
-        )}
-      </div>
+        className="w-full min-h-[240px] rounded-xl overflow-hidden border border-[var(--surface-border)] bg-black/90"
+      />
+      {!running && !starting && (
+        <p className="text-[11px] text-[var(--text-muted)] -mt-1 text-center">
+          {t('checkin_cam_idle')}
+        </p>
+      )}
 
-      {error && <p className="text-[11px] text-[var(--error)]">{error}</p>}
+      {error && (
+        <p className="text-[11px] text-[var(--error)] whitespace-pre-line">{error}</p>
+      )}
       <p className="text-[10px] text-[var(--text-muted)]">{t('checkin_cam_hint')}</p>
     </div>
   );

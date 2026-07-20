@@ -146,7 +146,8 @@ export function CheckInView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <section className="lg:col-span-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-6 space-y-4">
-            <QrCameraScanner onScan={handleCameraScan} active={!scanning} />
+            {/* Camera stays on during API check-in; browser owns the permission dialog */}
+            <QrCameraScanner onScan={handleCameraScan} />
 
             <div className="relative flex items-center gap-3 py-1">
               <div className="flex-1 h-px bg-[var(--surface-border)]" />
