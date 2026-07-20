@@ -8,7 +8,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { AppShell, type NavItem } from '@/components/layout/AppShell';
+import { AppShell } from '@/components/layout/AppShell';
 import { StatsGrid } from '@/components/organizer/StatsGrid';
 import { EventManageTable } from '@/components/organizer/EventManageTable';
 import { LedgerEntries } from '@/components/organizer/LedgerEntries';
@@ -16,17 +16,11 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { OrganizerService } from '@/features/organizer/api';
 import { EventService } from '@/features/events/api';
+import { ORG_NAV } from '@/features/organizer/nav';
 import { Badge } from '@/components/ui/badge';
 import type { OrganizerStats, OrganizerEvent, LedgerEntry } from '@/types';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-
-const ORG_NAV: NavItem[] = [
-  { href: '/organizer/dashboard', labelKey: 'org_dashboard', icon: LayoutDashboard },
-  // Phase 3 targets:
-  // { href: '/organizer/events/new', labelKey: 'create_event', icon: Plus },
-  // { href: '/organizer/promotions', labelKey: 'promotions', icon: TicketPercent },
-];
 
 export function OrganizerDashboardView() {
   const t = useTranslations('organizer');

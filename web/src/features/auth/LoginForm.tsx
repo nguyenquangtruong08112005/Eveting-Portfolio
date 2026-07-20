@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,25 @@ import { AuthService } from '@/features/auth/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 import { BrandMark } from '@/components/shared/BrandMark';
+import type { AuthResponse } from '@/types';
+
+function applyAuthSession(
+  data: AuthResponse,
+  login: (token: string, role: string, uid: string, refreshToken?: string) => void,
+  router: ReturnType<typeof useRouter>
+) {
+  const roles = data.user?.roles ?? [];
+  const role =
+    roles.find((r) => r === 'admin') ||
+    roles.find((r) => r === 'organizer') ||
+    roles[0] ||
+    'user';
+  const normalizedRole = role === 'user' ? 'attendee' : role;
+  login(data.accessToken, normalizedRole, data.user.id, data.refreshToken);
+  if (normalizedRole === 'admin') router.push('/admin/moderation');
+  else if (normalizedRole === 'organizer') router.push('/organizer/dashboard');
+  else router.push('/');
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -29,30 +48,42 @@ export function LoginForm() {
 
     try {
       const data = await AuthService.login(email, password);
-      // Prefer organizer/admin if present (API roles: user | organizer | admin)
-      const roles = data.user?.roles ?? [];
-      const role =
-        roles.find((r) => r === 'admin') ||
-        roles.find((r) => r === 'organizer') ||
-        roles[0] ||
-        'user';
-      // Normalize backend "user" → frontend "attendee" for any legacy checks
-      const normalizedRole = role === 'user' ? 'attendee' : role;
-      login(data.accessToken, normalizedRole, data.user.id, data.refreshToken);
-
-      if (normalizedRole === 'admin') {
-        router.push('/admin/moderation');
-      } else if (normalizedRole === 'organizer') {
-        router.push('/organizer/dashboard');
-      } else {
-        router.push('/');
-      }
+      applyAuthSession(data, login, router);
     } catch (err: unknown) {
       const message =
         (err as { message?: string; response?: { data?: { message?: string } } })?.message ||
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         t('login_error');
       setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Social login: uses env token providers when configured; otherwise shows setup hint. */
+  const handleSocial = async (provider: 'google' | 'facebook') => {
+    setError('');
+    setLoading(true);
+    try {
+      if (provider === 'google') {
+        const googleToken = (window as unknown as { __GOOGLE_ID_TOKEN__?: string }).__GOOGLE_ID_TOKEN__;
+        if (!googleToken) {
+          setError(t('social_not_configured'));
+          return;
+        }
+        const data = await AuthService.googleLogin(googleToken);
+        applyAuthSession(data, login, router);
+      } else {
+        const fbToken = (window as unknown as { __FACEBOOK_ACCESS_TOKEN__?: string }).__FACEBOOK_ACCESS_TOKEN__;
+        if (!fbToken) {
+          setError(t('social_not_configured'));
+          return;
+        }
+        const data = await AuthService.facebookLogin(fbToken);
+        applyAuthSession(data, login, router);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('login_error'));
     } finally {
       setLoading(false);
     }
@@ -65,6 +96,14 @@ export function LoginForm() {
     <div className="flex-1 min-h-screen flex items-center justify-center relative bg-[var(--background)] px-6">
       <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] rounded-full bg-[var(--primary)]/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/3 w-[300px] h-[300px] rounded-full bg-[var(--primary-dark)]/10 blur-[120px] pointer-events-none" />
+
+      <Link
+        href="/"
+        className="absolute top-6 left-6 z-20 inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+      >
+        <ArrowLeft className="size-3.5" />
+        {t('back_to_home')}
+      </Link>
 
       <Card className="w-full max-w-md rounded-xl p-8 relative z-10 border border-[var(--surface-border)] bg-[var(--surface)]/95 shadow-lg">
         <CardHeader className="p-0 mb-8 flex flex-col items-center">
@@ -123,6 +162,15 @@ export function LoginForm() {
               </div>
             </div>
 
+            <div className="flex justify-end -mt-2">
+              <Link
+                href="/forgot-password"
+                className="text-[11px] font-semibold text-[var(--primary)] hover:underline cursor-pointer"
+              >
+                {t('forgot_password')}
+              </Link>
+            </div>
+
             <Button
               type="submit"
               disabled={loading}
@@ -132,6 +180,32 @@ export function LoginForm() {
               <ArrowRight className="size-4" />
             </Button>
           </form>
+
+          <div className="mt-5 space-y-2.5">
+            <p className="text-[10px] text-center text-[var(--text-muted)] uppercase tracking-wider font-bold">
+              {t('or_continue_with')}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                onClick={() => handleSocial('google')}
+                className="rounded-xl h-11 text-xs font-bold cursor-pointer"
+              >
+                Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                onClick={() => handleSocial('facebook')}
+                className="rounded-xl h-11 text-xs font-bold cursor-pointer"
+              >
+                Facebook
+              </Button>
+            </div>
+          </div>
 
           <div className="mt-6 pt-6 border-t border-[var(--surface-border)] text-center">
             <p className="text-[var(--text-muted)] text-xs">

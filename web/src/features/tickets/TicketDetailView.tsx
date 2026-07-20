@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Calendar, MapPin, CheckCircle, Clock, XCircle, QrCode } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { TicketService } from '@/features/tickets/api';
 import { formatDate } from '@/lib/constants';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { TicketQr, buildClientTicketQrValue } from '@/components/tickets/TicketQr';
 
 export function TicketDetailView() {
   const t = useTranslations('my_tickets');
@@ -167,15 +168,21 @@ export function TicketDetailView() {
               </div>
             </div>
 
-            {/* QR Code placeholder */}
-            {ticket.qrCode && (
-              <div className="border-t border-[var(--surface-border)] pt-4 text-center">
-                <div className="inline-block bg-white p-4 rounded-xl">
-                  <QrCode className="size-24 text-[var(--foreground)]" />
-                </div>
-                <p className="text-[10px] text-[var(--text-muted)] mt-2">{t('qr_hint')}</p>
+            {/* Real QR from server JWT / fallback payload */}
+            <div className="border-t border-[var(--surface-border)] pt-4 text-center">
+              <div className="inline-block bg-white p-4 rounded-xl shadow-sm">
+                <TicketQr
+                  value={buildClientTicketQrValue({
+                    ticketId: ticket.id,
+                    eventId: ticket.event?.id || ticket.eventId,
+                    qrCode: ticket.qrCode || ticket.qr_code,
+                  })}
+                  size={180}
+                  alt={t('qr_hint')}
+                />
               </div>
-            )}
+              <p className="text-[10px] text-[var(--text-muted)] mt-2">{t('qr_hint')}</p>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">

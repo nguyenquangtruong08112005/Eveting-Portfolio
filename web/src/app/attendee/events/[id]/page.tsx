@@ -19,9 +19,14 @@ import { EventService } from '@/services/event.service';
 import { enrichEvent, formatPrice, HOLD_TIMER_SECONDS } from '@/lib/constants';
 import { EventHeader } from '@/components/events/EventHeader';
 import { EventInfoContent } from '@/components/events/EventInfoContent';
+import { ReviewsSection } from '@/components/events/ReviewsSection';
 import { MediaGallery } from '@/components/events/MediaGallery';
+import { WeatherWidget } from '@/components/events/WeatherWidget';
+import { OrganizerCard } from '@/components/events/OrganizerCard';
+import { EventRecommendStrip } from '@/components/events/EventRecommendStrip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useTranslations } from 'next-intl';
+import { reviewUnavailableReason } from '@/lib/event-review';
 
 export default function EventDetailPage() {
   const t = useTranslations('event_detail');
@@ -236,14 +241,17 @@ export default function EventDetailPage() {
           className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
-          {t('back_list')}
+          {t('back_home')}
         </Link>
       </div>
 
       {/* Main content: 7:5 layout */}
       <main className="max-w-7xl mx-auto px-6 py-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Event info (7/12) */}
-        <EventInfoContent event={event} mounted={mounted} />
+        <div className="lg:col-span-7 space-y-5 min-w-0 max-w-full">
+          <EventInfoContent event={event} mounted={mounted} />
+          <OrganizerCard organizerId={event.organizerId} />
+        </div>
 
         {/* Right: Ticket Picker (5/12) ── sticky */}
         <section className="lg:col-span-5">
@@ -321,11 +329,13 @@ export default function EventDetailPage() {
                 </Link>
               </div>
             )}
+
+            <WeatherWidget eventId={eventId} />
           </div>
         </section>
       </main>
 
-      {/* Photos (reviews deferred to phase 2) */}
+      {/* Reviews + Photos tabs */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-12 w-full">
         <Tabs defaultValue="photos">
           <TabsList className="bg-[var(--surface)] border border-[var(--surface-border)] p-1 h-auto">
@@ -335,12 +345,32 @@ export default function EventDetailPage() {
             >
               {t('tab_photos')}
             </TabsTrigger>
+            <TabsTrigger
+              value="reviews"
+              className="data-[selected]:bg-[var(--primary)] data-[selected]:text-[var(--on-primary)] rounded-lg text-xs font-bold px-4 py-2"
+            >
+              {t('tab_reviews')}
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="photos" className="mt-6">
             <MediaGallery eventId={eventId} />
           </TabsContent>
+          <TabsContent value="reviews" className="mt-6">
+            {(() => {
+              const reason = reviewUnavailableReason(event);
+              return (
+                <ReviewsSection
+                  eventId={eventId}
+                  canWrite={reason === 'ok'}
+                  lockedReason={reason === 'ok' ? null : reason}
+                />
+              );
+            })()}
+          </TabsContent>
         </Tabs>
       </section>
+
+      <EventRecommendStrip eventId={eventId} category={event.category} />
 
       <Footer />
     </div>

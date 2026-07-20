@@ -29,4 +29,7 @@ features/
 | `/my-tickets/[id]` | `tickets/TicketDetailView` |
 | `/organizer/dashboard` | `organizer/OrganizerDashboardView` |
 | `/organizer/events/new` | `organizer/CreateEventForm` |
+| `/organizer/promotions` | Phase 3 (placeholder → PromotionsView) |
+| `/organizer/venues` | Phase 3 (placeholder → VenuesView) |
+| `/organizer/check-in` | Phase 3 (placeholder → CheckInView) |
 | `/admin/moderation` | `admin/ModerationView` |

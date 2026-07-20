@@ -6,6 +6,8 @@ export interface Ticket {
   ticketType: string;
   status: 'active' | 'cancelled' | 'used';
   purchasedAt: number;
+  /** Server JWT / QR payload for venue check-in */
+  qrCode?: string;
 }
 
 export interface TicketType {

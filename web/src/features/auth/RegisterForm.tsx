@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,13 @@ export function RegisterForm() {
       const requestedRole = params.get('role');
       const role = requestedRole === 'organizer' ? 'organizer' : 'user';
       await AuthService.register(name, email, password, role);
-      router.push('/login');
+      // After register: verify email (not login). Best-effort send verify link.
+      try {
+        await AuthService.requestEmailVerify(email.trim());
+      } catch {
+        /* user can resend on verify page */
+      }
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}&registered=1`);
     } catch (err: unknown) {
       const message =
         (err as { message?: string; response?: { data?: { message?: string } } })?.message ||
@@ -54,6 +60,14 @@ export function RegisterForm() {
     <div className="flex-1 min-h-screen flex items-center justify-center relative bg-[var(--background)] px-6">
       <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] rounded-full bg-[var(--primary)]/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/3 w-[300px] h-[300px] rounded-full bg-[var(--primary-dark)]/10 blur-[120px] pointer-events-none" />
+
+      <Link
+        href="/"
+        className="absolute top-6 left-6 z-20 inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+      >
+        <ArrowLeft className="size-3.5" />
+        {t('back_to_home')}
+      </Link>
 
       <Card className="w-full max-w-md rounded-xl p-8 relative z-10 border border-[var(--surface-border)] bg-[var(--surface)]/95 shadow-lg">
         <CardHeader className="p-0 mb-8 flex flex-col items-center">

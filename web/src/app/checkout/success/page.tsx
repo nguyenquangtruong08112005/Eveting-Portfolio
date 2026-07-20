@@ -11,12 +11,14 @@ import { EventService } from '@/services/event.service';
 import { TicketService } from '@/services/ticket.service';
 import { formatPrice, formatDate, enrichEvent } from '@/lib/constants';
 import { useTranslations } from 'next-intl';
+import { TicketQr, buildClientTicketQrValue } from '@/components/tickets/TicketQr';
 
 function CheckoutSuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { token } = useAuth();
   const t = useTranslations('checkout');
+  const tTickets = useTranslations('my_tickets');
 
   const eventId = searchParams?.get('eventId') || '';
   const ticketId = searchParams?.get('ticketId') || '';
@@ -25,6 +27,7 @@ function CheckoutSuccessPageContent() {
 
   const [event, setEvent] = useState<any>(null);
   const [paymentVerified, setPaymentVerified] = useState<boolean | null>(null);
+  const [qrPayload, setQrPayload] = useState<string>('');
 
   const paymentMethods: Record<string, string> = {
     zalopay: t('zalopay'),
@@ -47,7 +50,7 @@ function CheckoutSuccessPageContent() {
         setEvent(null);
       });
 
-    // Verify payment status with ZaloPay if ticketId is present
+    // Verify payment status + load real QR payload when ticketId is present
     if (ticketId) {
       TicketService.checkPaymentStatus(ticketId)
         .then((result) => {
@@ -56,6 +59,24 @@ function CheckoutSuccessPageContent() {
         .catch(() => {
           setPaymentVerified(null);
         });
+
+      TicketService.getTicketDetails(ticketId)
+        .then((data: any) => {
+          setQrPayload(
+            buildClientTicketQrValue({
+              ticketId: data?.id || ticketId,
+              eventId: data?.event?.id || data?.eventId || eventId,
+              qrCode: data?.qrCode || data?.qr_code,
+            })
+          );
+        })
+        .catch(() => {
+          setQrPayload(
+            buildClientTicketQrValue({ ticketId, eventId })
+          );
+        });
+    } else {
+      setQrPayload('');
     }
   }, [eventId, ticketId, router]);
 
@@ -86,6 +107,19 @@ function CheckoutSuccessPageContent() {
               </p>
             )}
           </div>
+
+          {/* Ticket QR */}
+          {qrPayload ? (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <div className="bg-white p-3 rounded-xl shadow-sm inline-block">
+                <TicketQr value={qrPayload} size={160} alt={tTickets('qr_hint')} />
+              </div>
+              <p className="text-[10px] text-[var(--text-muted)]">{tTickets('qr_hint')}</p>
+              {paymentVerified === true && (
+                <p className="text-[10px] font-bold text-[var(--success)]">{t('payment_verified')}</p>
+              )}
+            </div>
+          ) : null}
 
           {/* Receipt Info */}
           <div className="p-4 bg-[var(--background)] rounded-xl border border-[var(--surface-border)] text-left space-y-3">

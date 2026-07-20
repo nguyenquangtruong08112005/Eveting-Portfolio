@@ -15,6 +15,7 @@ import { formatDate, enrichEvent } from '@/lib/constants';
 import type { Ticket, Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
+import { TicketQr, buildClientTicketQrValue } from '@/components/tickets/TicketQr';
 
 
 
@@ -58,6 +59,7 @@ export function MyTicketsView() {
           // Map server statuses to frontend statuses
           status: t.status === 'paid' ? 'active' : t.status === 'checkedIn' ? 'used' : t.status || 'active',
           purchasedAt: t.purchaseDate || Date.now(),
+          qrCode: t.qrCode || t.qr_code || undefined,
         }));
         setTickets(mappedTickets);
       } else {
@@ -217,17 +219,19 @@ export function MyTicketsView() {
                     <div className="size-4 bg-[var(--background)] rounded-full -mb-2 -ml-2 border-t border-[var(--surface-border)]" />
                   </div>
 
-                  {/* Right Barcode Stub (30%) */}
+                  {/* Right QR Stub (30%) */}
                   <div className="w-full md:w-[28%] bg-[var(--surface-hover)] p-6 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-[var(--surface-border)] gap-3">
-                    {/* Mock Barcode */}
                     <div className="w-full bg-white p-3 rounded-lg flex flex-col items-center justify-center gap-1.5 shadow">
-                      {/* Barcode lines */}
-                      <div className="w-full h-10 bg-[var(--foreground)] flex gap-[2px] items-stretch p-1 rounded overflow-hidden">
-                        {[4, 2, 6, 2, 8, 4, 2, 6, 2, 8, 4, 2, 6, 2, 8, 4, 2, 6, 2, 8, 4].map((width, idx) => (
-                          <div key={idx} className="bg-white flex-1" style={{ flexGrow: width }} />
-                        ))}
-                      </div>
-                      <span className="font-mono text-[9px] text-[var(--foreground)] tracking-[0.25em] font-bold select-all leading-none mt-1">
+                      <TicketQr
+                        value={buildClientTicketQrValue({
+                          ticketId: ticket.id,
+                          eventId: ticket.eventId,
+                          qrCode: ticket.qrCode,
+                        })}
+                        size={120}
+                        alt={t('qr_hint')}
+                      />
+                      <span className="font-mono text-[9px] text-[var(--foreground)] tracking-[0.15em] font-bold select-all leading-none mt-1 max-w-full truncate">
                         {ticket.id.toUpperCase()}
                       </span>
                     </div>

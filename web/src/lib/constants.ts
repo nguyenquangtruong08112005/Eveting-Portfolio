@@ -3,6 +3,10 @@
 // These constants are for places that cannot use CSS vars (e.g. inline chart configs,
 // canvas rendering, server-side SVG). Do NOT use them as a substitute for tokens in JSX.
 
+import type { CategoryKey, CategoryDef } from '@/types/category';
+
+export type { CategoryKey, CategoryDef };
+
 export const colors = {
   // Primary (Orange)
   primary: '#F97316',
@@ -66,24 +70,13 @@ export function formatShortDate(timestamp: number | string | Date, locale = 'vi-
 /**
  * Canonical category system — single source of truth.
  *
+ * Types: `types/category.ts` (CategoryKey, CategoryDef).
+ * Runtime table + helpers: this file.
+ *
  * A category has: an i18n key (used in navbar/home translations), a slug
  * (used in DB tags and /events/search), and the set of DB tag aliases that
  * roll up to it.
- *
- * The previous implementation hard-coded wrong mappings
- * (e.g. Nightlife→Workshops, Nghệ thuật→Theater). This table fixes that.
  */
-export type CategoryKey = 'music' | 'arts' | 'sports' | 'workshop' | 'nightlife' | 'tech';
-
-export interface CategoryDef {
-  /** i18n key under navbar.categories */
-  key: CategoryKey;
-  /** Canonical slug for filtering / URL */
-  slug: string;
-  /** DB tag aliases that roll up to this category */
-  aliases: string[];
-}
-
 export const CATEGORIES: CategoryDef[] = [
   {
     key: 'music',
@@ -116,6 +109,18 @@ export const CATEGORIES: CategoryDef[] = [
     aliases: ['tech', 'technology', 'esports', 'gaming', 'online', 'công nghệ'],
   },
 ];
+
+/** Ordered list of canonical category keys (no empty "all" sentinel). */
+export const CATEGORY_KEYS: CategoryKey[] = CATEGORIES.map((c) => c.key);
+
+/**
+ * Category filter options for search / discovery UI.
+ * Leading empty string = "all categories".
+ */
+export const SEARCH_CATEGORY_OPTIONS: readonly ('' | CategoryKey)[] = [
+  '',
+  ...CATEGORY_KEYS,
+] as const;
 
 /** Map any DB tag / display label → canonical CategoryKey (case-insensitive). */
 export function resolveCategoryKey(raw: string | undefined | null): CategoryKey | null {

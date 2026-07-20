@@ -8,7 +8,6 @@ import type { Event } from '@/types';
 
 interface EventInfoContentProps {
   event: Event & {
-    endDate?: number;
     venue?: {
       name: string;
       addressDetails?: {
@@ -27,7 +26,7 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
   const tCat = useTranslations('navbar.categories');
 
   return (
-    <section className="lg:col-span-7 space-y-6">
+    <section className="space-y-6">
       {/* Category badges */}
       {event?.category && event.category.length > 0 && (
         <div className="flex gap-1.5 flex-wrap">
@@ -108,21 +107,41 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
         </div>
       )}
 
-      {/* Map Location iframe */}
-      {event?.eventType === 'physical' && (
-        <div className="glass-card rounded-xl p-5 mt-6">
+      {/* Map — show for physical / hybrid / unspecified (not pure online) */}
+      {event?.eventType !== 'online' && (
+        <div className="glass-card rounded-xl p-4 sm:p-5 min-w-0 w-full max-w-full">
           <h2 className="text-base font-bold text-[var(--text-primary)] mb-3">
             {t('venue_map')}
           </h2>
-          <div className="w-full h-[250px] overflow-hidden rounded-xl bg-[var(--surface-hover)] border border-[var(--surface-border)]">
-            <iframe
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${(event?.location?.longitude || 106.7009) - 0.005}%2C${(event?.location?.latitude || 10.7769) - 0.005}%2C${(event?.location?.longitude || 106.7009) + 0.005}%2C${(event?.location?.latitude || 10.7769) + 0.005}&layer=mapnik&marker=${event?.location?.latitude || 10.7769}%2C${event?.location?.longitude || 106.7009}`}
-              allowFullScreen
-            />
-          </div>
+          {(() => {
+            const lat = Number(event?.location?.latitude) || 10.7769;
+            const lon = Number(event?.location?.longitude) || 106.7009;
+            // Google embed fills the frame reliably (OSM export often letterboxes)
+            const src = `https://maps.google.com/maps?q=${lat},${lon}&z=15&output=embed&hl=en`;
+            const openUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+            return (
+              <div className="w-full min-w-0 max-w-full space-y-2">
+                <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-[var(--surface-hover)] border border-[var(--surface-border)] aspect-[4/3] sm:aspect-[16/9]">
+                  <iframe
+                    title={t('venue_map')}
+                    src={src}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                    className="absolute inset-0 block h-full w-full max-w-full border-0"
+                  />
+                </div>
+                <a
+                  href={openUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-[11px] font-bold text-[var(--primary)] hover:underline"
+                >
+                  {t('open_map')}
+                </a>
+              </div>
+            );
+          })()}
         </div>
       )}
 

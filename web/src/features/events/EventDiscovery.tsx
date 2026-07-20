@@ -12,12 +12,16 @@ import {
   Gift,
   Sparkles,
   Ticket,
+  Navigation,
+  Heart,
+  Tag,
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { EventCard } from '@/components/events/EventCard';
 import { Badge } from '@/components/ui/badge';
 import { EventService } from '@/features/events/api';
+import { PromotionService } from '@/services/promotion.service';
 import {
   matchCategory,
   enrichEvent,
@@ -25,12 +29,15 @@ import {
   FALLBACK_IMAGE,
   isPublicEvent,
   resolveCategoryKey,
+  CATEGORIES,
+  type CategoryKey,
 } from '@/lib/constants';
-import type { Event } from '@/types';
+import type { Event, Promotion } from '@/types';
 import { cn } from '@/lib/utils';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { ArtistStars } from '@/components/home/ArtistStars';
 import { PopularDestinations } from '@/components/home/PopularDestinations';
+import { PromoBanner } from '@/components/home/PromoBanner';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SkeletonGrid } from '@/components/shared/SkeletonGrid';
@@ -41,11 +48,14 @@ function LandingPageContent() {
   const t = useTranslations('home');
 
   const [events, setEvents] = useState<Event[]>([]);
+  const [nearbyEvents, setNearbyEvents] = useState<Event[]>([]);
+  const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
 
-  // Sync with searchParams
+  // Sync with searchParams — prefer dedicated /search for deep filters
   useEffect(() => {
     if (searchParams) {
       const q = searchParams.get('q');
@@ -65,6 +75,39 @@ function LandingPageContent() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Recommendations (auth optional — server may return generic list)
+    EventService.recommendations(8)
+      .then((data) => {
+        const list = (data.events || []).filter(isPublicEvent).map(enrichEvent);
+        setRecommendedEvents(list);
+      })
+      .catch(() => setRecommendedEvents([]));
+
+    PromotionService.listPublic()
+      .then((list) => setPromotions(Array.isArray(list) ? list.slice(0, 6) : []))
+      .catch(() => setPromotions([]));
+
+    // Geolocation → nearby events
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          EventService.nearby({
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            radius: 50,
+            limit: 8,
+          })
+            .then((data) => {
+              const list = (data.events || []).filter(isPublicEvent).map(enrichEvent);
+              setNearbyEvents(list);
+            })
+            .catch(() => setNearbyEvents([]));
+        },
+        () => setNearbyEvents([]),
+        { maximumAge: 600_000, timeout: 8_000 }
+      );
+    }
   }, []);
 
   // Filters
@@ -122,19 +165,19 @@ function LandingPageContent() {
 
   const isFiltering = !!searchQuery || activeCategory !== 'all';
   const tCat = useTranslations('navbar.categories');
-  const categoryTitleMap: Record<string, string> = {
-    music: tCat('music'),
-    arts: tCat('arts'),
-    sports: tCat('sports'),
-    workshop: tCat('workshop'),
-    tours: tCat('tours'),
-    other: tCat('other'),
-    nightlife: tCat('nightlife'),
-    tech: tCat('tech'),
-  };
   const filterTitle =
     activeCategory !== 'all'
-      ? categoryTitleMap[activeCategory] || activeCategory
+      ? (() => {
+          const key = resolveCategoryKey(activeCategory) as CategoryKey | null;
+          if (key && CATEGORIES.some((c) => c.key === key)) {
+            try {
+              return tCat(key);
+            } catch {
+              return activeCategory;
+            }
+          }
+          return activeCategory;
+        })()
       : t('search_results');
 
   return (
@@ -195,10 +238,91 @@ function LandingPageContent() {
         <div className="flex-1 flex flex-col pb-12">
           <ArtistStars
             onSelectArtist={(name) => {
-              setSearchQuery(name);
-              router.push(`/?q=${encodeURIComponent(name)}`);
+              router.push(`/search?q=${encodeURIComponent(name)}`);
             }}
           />
+
+          {/* Near you */}
+          {nearbyEvents.length > 0 && (
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+              <SectionHeading
+                title={t('near_you')}
+                icon={Navigation}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => router.push('/search')}
+                    className="text-xs font-bold text-[var(--primary)] hover:underline cursor-pointer flex items-center gap-0.5"
+                  >
+                    {t('see_more')} <ChevronRight className="size-3.5" />
+                  </button>
+                }
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {nearbyEvents.slice(0, 4).map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Recommended for you */}
+          {(recommendedEvents.length > 0 || !loading) && recommendedEvents.length > 0 && (
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+              <SectionHeading
+                title={t('recommended_for_you')}
+                icon={Heart}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => router.push('/search')}
+                    className="text-xs font-bold text-[var(--primary)] hover:underline cursor-pointer flex items-center gap-0.5"
+                  >
+                    {t('see_more')} <ChevronRight className="size-3.5" />
+                  </button>
+                }
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {recommendedEvents.slice(0, 4).map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* API promotions strip */}
+          {promotions.length > 0 && (
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
+              <SectionHeading title={t('promotions')} icon={Tag} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {promotions.map((promo) => (
+                  <div
+                    key={promo.id}
+                    className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-5 flex flex-col gap-2 hover:border-[var(--primary)]/30 transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge className="bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 text-[10px] font-black uppercase tracking-wider">
+                        {promo.code}
+                      </Badge>
+                      <span className="text-xs font-bold text-[var(--accent-brand)]">
+                        {promo.discountType === 'percent'
+                          ? `-${promo.discountValue}%`
+                          : promo.discountValue != null
+                            ? formatPrice(promo.discountValue)
+                            : ''}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                      {promo.name || promo.code}
+                    </h4>
+                    {promo.description ? (
+                      <p className="text-xs text-[var(--text-muted)] line-clamp-2">{promo.description}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Special Events */}
           <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
@@ -437,63 +561,6 @@ function CategoryRow({
             <EventCard event={event} />
           </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-interface PromoBannerProps {
-  variant: 'vib' | 'shopee' | 'hdbank';
-  icon: React.ReactNode;
-  badge: string;
-  title: string;
-  highlight?: string;
-  body: string;
-  cta: string;
-}
-
-function PromoBanner({ variant, icon, badge, title, highlight, body, cta }: PromoBannerProps) {
-  const gradients: Record<PromoBannerProps['variant'], string> = {
-    vib: 'from-[#0C1938] to-[#122A5E]',
-    shopee: 'from-[#2B1B0E] to-[#42220D]',
-    hdbank: 'from-[#200A0A] to-[#3B1212]',
-  };
-  const badgeColors: Record<PromoBannerProps['variant'], string> = {
-    vib: 'bg-[var(--primary)] text-white',
-    shopee: 'bg-[#FF7043] text-white',
-    hdbank: 'bg-[#E31A1A] text-white',
-  };
-  return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
-      <div
-        className={cn(
-          'relative rounded-2xl overflow-hidden bg-gradient-to-r border border-white/10 p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl',
-          gradients[variant]
-        )}
-      >
-        <div className="flex items-center gap-5">
-          <div className="size-14 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-            {icon}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={cn('text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase', badgeColors[variant])}>
-                {badge}
-              </span>
-              <span className="text-white/60 text-xs font-semibold">| Eventing</span>
-            </div>
-            <h3 className="text-xl font-black text-white leading-tight">
-              {title} {highlight && <span className="text-[var(--primary)]">{highlight}</span>}
-            </h3>
-            <p className="text-white/70 text-xs mt-1">{body}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="bg-[var(--primary)] text-[var(--on-primary)] font-black px-6 py-3 rounded-xl hover:bg-[var(--primary-dark)] active:scale-95 transition-all text-xs whitespace-nowrap btn-tactile cursor-pointer"
-        >
-          {cta}
-        </button>
       </div>
     </section>
   );

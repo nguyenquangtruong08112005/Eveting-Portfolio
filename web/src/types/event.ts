@@ -9,6 +9,8 @@ export interface Event {
   name: string;
   description?: string;
   date: number;
+  /** Optional multi-day / last performance end */
+  endDate?: number | null;
   imageUrl?: string;
   bannerUrl?: string;
   videoUrl?: string;
@@ -19,9 +21,24 @@ export interface Event {
   category?: string[];
   tags?: string[];
   eventType?: 'physical' | 'online' | 'hybrid';
-  status?: 'draft' | 'submitted' | 'approved' | 'published' | 'rejected' | 'cancelled' | 'active' | 'finished';
+  status?:
+    | 'draft'
+    | 'submitted'
+    | 'approved'
+    | 'published'
+    | 'rejected'
+    | 'cancelled'
+    | 'active'
+    | 'finished'
+    | 'ended';
+  lifecycleStatus?: string;
   organizerId?: string;
   capacity?: number;
+  /** Recurring / series rule from backend */
+  recurringRule?: string | Record<string, unknown> | null;
+  /** Optional multi-show schedule */
+  performances?: Array<{ id?: string; name?: string; date?: number }>;
+  sponsors?: Array<{ name?: string; logoUrl?: string; url?: string } | string>;
   ticketTypes?: Record<
     string,
     {
@@ -44,9 +61,13 @@ export interface Destination {
 
 export interface EventWeather {
   tempC?: number;
+  temperature?: number;
   condition?: string;
+  description?: string;
   icon?: string;
+  iconUrl?: string;
   humidity?: number;
   windKph?: number;
+  windSpeed?: number;
   forecast?: string;
 }

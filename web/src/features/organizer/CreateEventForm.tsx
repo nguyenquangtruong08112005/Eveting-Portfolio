@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Trash2, Calendar, Ticket, Sparkles, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EventService } from '@/features/events/api';
+import { ORG_NAV } from '@/features/organizer/nav';
 import { useTranslations } from 'next-intl';
+import { CATEGORY_KEYS, type CategoryKey } from '@/lib/constants';
 
 interface TicketTier {
   name: string;
@@ -18,10 +19,10 @@ interface TicketTier {
   available: number;
 }
 
-const CATEGORY_OPTIONS = ['Âm nhạc', 'Nghệ thuật', 'Nightlife', 'Thể thao', 'Công nghệ'];
-
 export function CreateEventForm() {
   const t = useTranslations('organizer');
+  const tCommon = useTranslations('common');
+  const tCat = useTranslations('navbar.categories');
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -44,14 +45,14 @@ export function CreateEventForm() {
   const [onlineUrl, setOnlineUrl] = useState('');
 
   // Category states
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>([]);
 
   // Ticket Tiers
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([
     { name: 'Standard', price: 150000, available: 100 }
   ]);
 
-  const toggleCategory = (cat: string) => {
+  const toggleCategory = (cat: CategoryKey) => {
     setSelectedCategories(prev =>
       prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
@@ -128,10 +129,8 @@ export function CreateEventForm() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
-      <Navbar isOrganizerPage />
-
-      <main className="max-w-4xl mx-auto px-6 py-10 w-full flex-grow space-y-8">
+    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full flex-grow space-y-8">
         {/* Back Link */}
         <div>
           <Link
@@ -238,7 +237,7 @@ export function CreateEventForm() {
                 <div>
                   <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">{t('field_category')}</Label>
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {CATEGORY_OPTIONS.map((cat) => {
+                    {CATEGORY_KEYS.map((cat) => {
                       const isSelected = selectedCategories.includes(cat);
                       return (
                         <button
@@ -251,7 +250,7 @@ export function CreateEventForm() {
                               : 'bg-[var(--surface-hover)] border-[var(--surface-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                           }`}
                         >
-                          {cat}
+                          {tCat(cat)}
                         </button>
                       );
                     })}
@@ -462,8 +461,6 @@ export function CreateEventForm() {
           </div>
         )}
       </main>
-
-      <Footer />
-    </div>
+    </AppShell>
   );
 }
