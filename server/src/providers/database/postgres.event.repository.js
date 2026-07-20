@@ -82,6 +82,8 @@ function rowToFirebaseDoc(row, extras = {}) {
             lastUpdatedAt: fromDb(row.last_updated_at),
         };
     }
+    // Canonical lifecycle (draft | submitted | approved | …) — not the same as legacy status
+    data.lifecycleStatus = row.lifecycle_status || data.lifecycleStatus || null;
     // Normalize time fields when raw_data path used
     if (row.start_at != null) data.date = fromDb(row.start_at);
     if (row.end_at != null) data.endDate = fromDb(row.end_at);
@@ -361,12 +363,17 @@ const getEventsByOrganizerId = async (organizerId, { page = 1, limit = 20, statu
     const result = await query(sql, params);
     const events = [];
     result.rows.forEach((row) => {
+        // Prefer lifecycle_status for organizer UI (draft vs submitted).
+        // Legacy status maps BOTH draft+submitted → "pending", which hid drafts.
+        const lifecycle = row.lifecycle_status || null;
         events.push({
             id: row.id,
             name: row.name,
             date: fromDb(row.start_at),
             bannerUrl: row.banner_url,
-            status: row.status,
+            status: lifecycle || row.status,
+            lifecycleStatus: lifecycle,
+            legacyStatus: row.status,
             viewCount: row.view_count || 0,
         });
     });

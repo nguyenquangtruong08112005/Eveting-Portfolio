@@ -82,16 +82,25 @@ const getMyEvents = async (organizerId, page = 1, limit = 20, status) => {
         let totalCapacity = 0;
         if (rawEventData && rawEventData.ticketTypes) {
             for (const typeKey in rawEventData.ticketTypes) {
-                totalCapacity += rawEventData.ticketTypes[typeKey].capacity || 0;
+                const t = rawEventData.ticketTypes[typeKey] || {};
+                // ticket types store `available` (web) or legacy `capacity` / `quantity`
+                totalCapacity += Number(t.available ?? t.capacity ?? t.quantity ?? 0) || 0;
             }
         }
 
         const price = rawEventData ? (rawEventData.minPrice || 0) : 0;
+        // event.status from getEventsByOrganizerId is already lifecycle when present
+        const displayStatus =
+            event.lifecycleStatus ||
+            event.status ||
+            rawEventData?.lifecycleStatus ||
+            'draft';
 
         enrichedEvents.push({
             id: event.id,
             name: event.name,
-            status: event.status,
+            status: displayStatus,
+            lifecycleStatus: event.lifecycleStatus || displayStatus,
             sold: soldCount,
             capacity: totalCapacity || rawEventData?.capacity || 0,
             price: price

@@ -170,7 +170,8 @@ const createEvent = async (eventData, organizerId) => {
     };
 
     const isDraft = eventData.saveAsDraft === true;
-    const eventToPersist = { ...newEventData, lifecycleStatus: isDraft ? LIFECYCLE.DRAFT : LIFECYCLE.SUBMITTED };
+    const lifecycleStatus = isDraft ? LIFECYCLE.DRAFT : LIFECYCLE.SUBMITTED;
+    const eventToPersist = { ...newEventData, lifecycleStatus };
 
     await dbTransaction(async (transaction) => {
         await eventRepository.createEvent(eventId, eventToPersist, transaction);
@@ -198,7 +199,12 @@ const createEvent = async (eventData, organizerId) => {
 
     outboxProcessor.triggerProcess();
 
-    return newEventData;
+    // Expose lifecycle clearly: legacy `status` is "pending" for BOTH draft & submitted
+    return {
+        ...newEventData,
+        lifecycleStatus,
+        status: lifecycleStatus,
+    };
 };
 
 const updateEvent = async (eventId, eventData) => {
