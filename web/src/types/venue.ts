@@ -8,4 +8,10 @@ export interface Venue {
   lat?: number | null;
   lng?: number | null;
   capacity?: number | null;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+    lat?: number;
+    lng?: number;
+  };
 }

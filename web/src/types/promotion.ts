@@ -34,9 +34,17 @@ export interface PromotionCreateBody {
   isPublic?: boolean;
 }
 
+/** Full update — matches server updatePromotion allowed fields */
 export interface PromotionUpdateBody {
-  usageLimit?: number;
-  validUntil?: number;
+  code?: string;
+  name?: string;
   description?: string;
+  discountType?: 'amount' | 'percent';
+  discountValue?: number;
+  minTicketQuantity?: number;
+  eventId?: string | null;
+  validFrom?: number;
+  validUntil?: number;
+  usageLimit?: number;
   isPublic?: boolean;
 }

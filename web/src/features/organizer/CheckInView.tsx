@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AttendeeTable } from '@/components/organizer/AttendeeTable';
+import { QrCameraScanner } from '@/components/organizer/QrCameraScanner';
 import { ORG_NAV } from '@/features/organizer/nav';
 import { OrganizerService } from '@/features/organizer/api';
 import { cn } from '@/lib/utils';
@@ -76,13 +77,13 @@ export function CheckInView() {
     loadAttendees(eventId);
   }, [eventId, loadAttendees]);
 
-  const handleCheckIn = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const qrToken = token.trim();
+  const runCheckIn = async (raw: string) => {
+    const qrToken = raw.trim();
     if (!qrToken) {
       toast.error(t('checkin_token_required'));
       return;
     }
+    setToken(qrToken);
     setScanning(true);
     setResult(null);
     try {
@@ -125,6 +126,15 @@ export function CheckInView() {
     }
   };
 
+  const handleCheckIn = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    await runCheckIn(token);
+  };
+
+  const handleCameraScan = (text: string) => {
+    void runCheckIn(text);
+  };
+
   return (
     <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full space-y-6">
@@ -136,6 +146,16 @@ export function CheckInView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <section className="lg:col-span-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-6 space-y-4">
+            <QrCameraScanner onScan={handleCameraScan} active={!scanning} />
+
+            <div className="relative flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-[var(--surface-border)]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                {t('checkin_or_paste')}
+              </span>
+              <div className="flex-1 h-px bg-[var(--surface-border)]" />
+            </div>
+
             <form onSubmit={handleCheckIn} className="space-y-4">
               <div>
                 <Label className="text-xs font-bold text-[var(--text-secondary)] mb-2 block">
@@ -146,7 +166,6 @@ export function CheckInView() {
                   onChange={(e) => setToken(e.target.value)}
                   placeholder={t('checkin_token_placeholder')}
                   className="rounded-xl h-12 font-mono text-sm"
-                  autoFocus
                   autoComplete="off"
                 />
                 <p className="text-[10px] text-[var(--text-muted)] mt-1.5">

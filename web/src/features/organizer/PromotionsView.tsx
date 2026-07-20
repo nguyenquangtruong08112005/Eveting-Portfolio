@@ -48,10 +48,15 @@ export function PromotionsView() {
   const [isPublic, setIsPublic] = useState(false);
   const [description, setDescription] = useState('');
 
-  // Edit form
+  // Edit form (full CRUD fields)
+  const [editCode, setEditCode] = useState('');
+  const [editDiscountType, setEditDiscountType] = useState<'amount' | 'percent'>('amount');
+  const [editDiscountValue, setEditDiscountValue] = useState(0);
+  const [editEventId, setEditEventId] = useState('');
   const [editUsage, setEditUsage] = useState(100);
   const [editPublic, setEditPublic] = useState(false);
   const [editDesc, setEditDesc] = useState('');
+  const [editMinQty, setEditMinQty] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,19 +117,34 @@ export function PromotionsView() {
 
   const openEdit = (p: Promotion) => {
     setEditPromo(p);
+    setEditCode(p.code || '');
+    setEditDiscountType(p.discountType === 'percent' ? 'percent' : 'amount');
+    setEditDiscountValue(Number(p.discountValue) || 0);
+    setEditEventId(p.eventId || '');
     setEditUsage(p.usageLimit ?? 100);
     setEditPublic(!!p.isPublic);
     setEditDesc(p.description || '');
+    setEditMinQty(p.minTicketQuantity ?? 1);
   };
 
   const handleUpdate = async () => {
     if (!editPromo) return;
+    if (!editCode.trim() || !editDiscountValue) {
+      toast.error(t('promo_validation'));
+      return;
+    }
     setSaving(true);
     try {
       await PromotionService.update(editPromo.id, {
+        code: editCode.trim().toUpperCase(),
+        discountType: editDiscountType,
+        discountValue: Number(editDiscountValue),
+        eventId: editEventId || null,
         usageLimit: Number(editUsage) || 0,
         isPublic: editPublic,
         description: editDesc,
+        minTicketQuantity: Number(editMinQty) || 1,
+        name: editCode.trim().toUpperCase(),
       });
       toast.success(t('promo_updated'));
       setEditPromo(null);
@@ -358,24 +378,79 @@ export function PromotionsView() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit dialog — limited fields */}
+        {/* Edit dialog — full CRUD */}
         <Dialog open={!!editPromo} onOpenChange={(o) => !o && setEditPromo(null)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {t('promo_edit')} · {editPromo?.code}
-              </DialogTitle>
+              <DialogTitle>{t('promo_edit')}</DialogTitle>
             </DialogHeader>
-            <p className="text-[11px] text-[var(--text-muted)]">{t('promo_edit_hint')}</p>
             <div className="space-y-3 py-2">
               <div>
-                <Label className="text-xs mb-1.5 block">{t('promo_usage_limit')}</Label>
+                <Label className="text-xs mb-1.5 block">{t('promo_code')}</Label>
                 <Input
-                  type="number"
-                  value={editUsage}
-                  onChange={(e) => setEditUsage(Number(e.target.value))}
-                  className="rounded-xl"
+                  value={editCode}
+                  onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                  className="rounded-xl uppercase"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block">{t('promo_type')}</Label>
+                  <select
+                    value={editDiscountType}
+                    onChange={(e) =>
+                      setEditDiscountType(e.target.value as 'amount' | 'percent')
+                    }
+                    className="w-full h-10 rounded-xl border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm"
+                  >
+                    <option value="amount">{t('promo_type_amount')}</option>
+                    <option value="percent">{t('promo_type_percent')}</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">{t('promo_value')}</Label>
+                  <Input
+                    type="number"
+                    value={editDiscountValue}
+                    onChange={(e) => setEditDiscountValue(Number(e.target.value))}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">{t('promo_event')}</Label>
+                <select
+                  value={editEventId}
+                  onChange={(e) => setEditEventId(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm"
+                >
+                  <option value="">{t('promo_all_events')}</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block">{t('promo_usage_limit')}</Label>
+                  <Input
+                    type="number"
+                    value={editUsage}
+                    onChange={(e) => setEditUsage(Number(e.target.value))}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">{t('promo_min_qty')}</Label>
+                  <Input
+                    type="number"
+                    value={editMinQty}
+                    onChange={(e) => setEditMinQty(Number(e.target.value))}
+                    className="rounded-xl"
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-xs mb-1.5 block">{t('promo_description')}</Label>
