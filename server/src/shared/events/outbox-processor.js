@@ -7,6 +7,7 @@ const esClient = require('@/shared/config/elasticsearch.config');
 const { buildElasticData } = require('@/modules/events/application/helpers/event-mappers');
 const eventRepository = require('@/providers/database/event.repository');
 const cacheProvider = require('@/shared/cache/cache-provider');
+const { nowDb } = require('@/providers/database/time.helper');
 
 let isProcessing = false;
 
@@ -118,7 +119,7 @@ async function processPending() {
         for (const row of result.rows) {
             await query(
                 `UPDATE outbox SET status = 'processing', updated_at = $1 WHERE id = $2`,
-                [Date.now(), row.id]
+                [nowDb(), row.id]
             );
 
             try {
@@ -131,7 +132,7 @@ async function processPending() {
 
                 await query(
                     `UPDATE outbox SET status = 'completed', updated_at = $1 WHERE id = $2`,
-                    [Date.now(), row.id]
+                    [nowDb(), row.id]
                 );
             } catch (err) {
                 logger.error(`[Outbox Processor] Error processing entry ${row.id}: ${err.message}`);
@@ -141,7 +142,7 @@ async function processPending() {
                     `UPDATE outbox 
                      SET status = $1, retry_count = $2, error_message = $3, updated_at = $4 
                      WHERE id = $5`,
-                    [nextStatus, nextRetry, err.message, Date.now(), row.id]
+                    [nextStatus, nextRetry, err.message, nowDb(), row.id]
                 );
             }
         }
