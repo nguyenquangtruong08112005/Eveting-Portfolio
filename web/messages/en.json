@@ -301,7 +301,7 @@
     "venue_delete_confirm": "Delete venue \"{name}\"?",
     "venue_error": "Could not save venue",
     "map_pick_label": "Location on map",
-    "map_pick_hint": "Click the map or drag the pin. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY for Google Maps tiles; otherwise OpenStreetMap is used. Always openable in Google Maps.",
+    "map_pick_hint": "Click the map or drag the pin. Optional: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (+ MAP_ID for advanced markers). Without a key, OpenStreetMap is used; pins always open in Google Maps.",
     "map_my_location": "My location",
     "map_apply_coords": "Apply coordinates",
     "map_address_placeholder": "Address (auto-filled from pin when possible)",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, Loader2, MapPin, Navigation } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -18,14 +18,64 @@ interface LocationMapPickerProps {
   value?: MapLocation | null;
   onChange: (loc: MapLocation) => void;
   className?: string;
-  /** Default center when no value (HCMC) */
   defaultCenter?: { lat: number; lng: number };
+}
+
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    google?: any;
+    __gmapsInit?: () => void;
+  }
+}
+
+/** Singleton Google Maps script loader (async + callback). */
+function loadGoogleMapsScript(apiKey: string): Promise<void> {
+  if (typeof window === 'undefined') return Promise.reject(new Error('SSR'));
+  if (window.google?.maps?.Map) return Promise.resolve();
+
+  const existing = document.getElementById('gmaps-js') as HTMLScriptElement | null;
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      if (window.google?.maps?.Map) {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('gmaps load error')), {
+        once: true,
+      });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const prev = window.__gmapsInit;
+    window.__gmapsInit = () => {
+      prev?.();
+      resolve();
+    };
+    const script = document.createElement('script');
+    script.id = 'gmaps-js';
+    script.async = true;
+    script.defer = true;
+    // Google recommends loading=async in the URL for best-practice loading
+    script.src =
+      `https://maps.googleapis.com/maps/api/js` +
+      `?key=${encodeURIComponent(apiKey)}` +
+      `&v=weekly` +
+      `&loading=async` +
+      `&callback=__gmapsInit`;
+    script.onerror = () => reject(new Error('gmaps script error'));
+    document.head.appendChild(script);
+  });
 }
 
 /**
  * Click/drag map to pick venue coordinates.
- * Uses Google Maps JS when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set;
- * otherwise Leaflet + OpenStreetMap (still opens selection in Google Maps).
+ * Google Maps when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set; else Leaflet/OSM.
+ *
+ * Important: the map host div must stay empty of React children so map libs
+ * can own the DOM without removeChild conflicts on unmount (e.g. Dialog close).
  */
 export function LocationMapPicker({
   value,
@@ -34,37 +84,49 @@ export function LocationMapPicker({
   defaultCenter = { lat: 10.7769, lng: 106.7009 },
 }: LocationMapPickerProps) {
   const t = useTranslations('organizer');
-  const mapEl = useRef<HTMLDivElement>(null);
+  /** Host element only for map lib — never put React children inside */
+  const mapHostRef = useRef<HTMLDivElement>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const addressRef = useRef(value?.address || '');
+
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latInput, setLatInput] = useState(String(value?.lat ?? defaultCenter.lat));
   const [lngInput, setLngInput] = useState(String(value?.lng ?? defaultCenter.lng));
   const [address, setAddress] = useState(value?.address || '');
   const [geocoding, setGeocoding] = useState(false);
+
   const leafletRef = useRef<{
     map: import('leaflet').Map;
     marker: import('leaflet').Marker;
     L: typeof import('leaflet');
   } | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const googleRef = useRef<{ map: any; marker: any } | null>(null);
+  const googleRef = useRef<{ map: any; marker: any; clickListener?: any; dragListener?: any } | null>(
+    null
+  );
+  const destroyedRef = useRef(false);
 
   const googleKey =
-    typeof process !== 'undefined'
-      ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
-      : '';
+    typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '' : '';
 
-  // Sync external value → inputs
+  useEffect(() => {
+    addressRef.current = address;
+  }, [address]);
+
   useEffect(() => {
     if (value?.lat != null) setLatInput(String(value.lat));
     if (value?.lng != null) setLngInput(String(value.lng));
-    if (value?.address != null) setAddress(value.address);
+    if (value?.address != null) {
+      setAddress(value.address);
+      addressRef.current = value.address;
+    }
   }, [value?.lat, value?.lng, value?.address]);
 
-  const reverseGeocode = async (lat: number, lng: number) => {
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     setGeocoding(true);
     try {
-      // Nominatim (OSM) — no key; rate-limit friendly for organizer tools
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
         { headers: { Accept: 'application/json' } }
@@ -77,27 +139,89 @@ export function LocationMapPicker({
     } finally {
       setGeocoding(false);
     }
-  };
+  }, []);
 
-  const emit = async (lat: number, lng: number, keepAddress?: string) => {
-    setLatInput(String(lat));
-    setLngInput(String(lng));
-    let addr = keepAddress;
-    if (!addr) {
-      addr = await reverseGeocode(lat, lng);
-      if (addr) setAddress(addr);
+  const emit = useCallback(
+    async (lat: number, lng: number, keepAddress?: string) => {
+      if (destroyedRef.current) return;
+      setLatInput(String(lat));
+      setLngInput(String(lng));
+      let addr = keepAddress;
+      if (!addr) {
+        addr = await reverseGeocode(lat, lng);
+        if (destroyedRef.current) return;
+        if (addr) {
+          setAddress(addr);
+          addressRef.current = addr;
+        }
+      }
+      onChangeRef.current({
+        lat,
+        lng,
+        address: addr || addressRef.current || undefined,
+      });
+    },
+    [reverseGeocode]
+  );
+
+  const destroyMaps = useCallback(() => {
+    destroyedRef.current = true;
+    try {
+      if (leafletRef.current) {
+        const { map } = leafletRef.current;
+        map.off();
+        map.remove();
+        leafletRef.current = null;
+      }
+    } catch {
+      /* ignore leaflet teardown races */
     }
-    onChange({ lat, lng, address: addr || address || undefined });
-  };
+    try {
+      if (googleRef.current) {
+        const { marker, clickListener, dragListener } = googleRef.current;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = (window as any).google;
+        if (g?.maps?.event) {
+          if (clickListener) g.maps.event.removeListener(clickListener);
+          if (dragListener) g.maps.event.removeListener(dragListener);
+          if (marker) g.maps.event.clearInstanceListeners(marker);
+          if (googleRef.current.map) g.maps.event.clearInstanceListeners(googleRef.current.map);
+        }
+        // Detach marker from map without fighting React
+        if (marker?.setMap) marker.setMap(null);
+        googleRef.current = null;
+      }
+    } catch {
+      /* ignore google teardown races */
+    }
+    // Clear host after libs release — React never owned these children
+    const host = mapHostRef.current;
+    if (host) {
+      try {
+        while (host.firstChild) {
+          host.removeChild(host.firstChild);
+        }
+      } catch {
+        host.innerHTML = '';
+      }
+    }
+  }, []);
 
-  // Init Google Maps or Leaflet
+  // Init map once
   useEffect(() => {
+    destroyedRef.current = false;
     let cancelled = false;
 
+    const centerLat = value?.lat ?? defaultCenter.lat;
+    const centerLng = value?.lng ?? defaultCenter.lng;
+
     const initLeaflet = async () => {
-      if (!mapEl.current || cancelled) return;
+      const host = mapHostRef.current;
+      if (!host || cancelled || destroyedRef.current) return;
+
       const L = await import('leaflet');
-      // Fix default marker icons in bundlers
+      if (cancelled || destroyedRef.current || !mapHostRef.current) return;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -106,7 +230,6 @@ export function LocationMapPicker({
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      // CSS once
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
@@ -115,17 +238,15 @@ export function LocationMapPicker({
         document.head.appendChild(link);
       }
 
-      const center: [number, number] = [
-        value?.lat ?? defaultCenter.lat,
-        value?.lng ?? defaultCenter.lng,
-      ];
-      const map = L.map(mapEl.current).setView(center, 15);
+      // Ensure empty host
+      host.innerHTML = '';
+      const map = L.map(host, { zoomControl: true }).setView([centerLat, centerLng], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
         maxZoom: 19,
       }).addTo(map);
 
-      const marker = L.marker(center, { draggable: true }).addTo(map);
+      const marker = L.marker([centerLat, centerLng], { draggable: true }).addTo(map);
       marker.on('dragend', () => {
         const p = marker.getLatLng();
         void emit(p.lat, p.lng);
@@ -136,86 +257,119 @@ export function LocationMapPicker({
       });
 
       leafletRef.current = { map, marker, L };
-      setReady(true);
-      setTimeout(() => map.invalidateSize(), 100);
+      if (!cancelled) {
+        setReady(true);
+        requestAnimationFrame(() => {
+          try {
+            map.invalidateSize();
+          } catch {
+            /* ignore */
+          }
+        });
+      }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = () => (window as any).google;
+    const initGoogle = async () => {
+      const host = mapHostRef.current;
+      if (!host || cancelled || destroyedRef.current) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapsApi: any = window.google?.maps;
+      if (!mapsApi?.Map) return;
 
-    const initGoogle = () => {
-      if (!mapEl.current || cancelled || !g()?.maps) return;
-      const center = {
-        lat: value?.lat ?? defaultCenter.lat,
-        lng: value?.lng ?? defaultCenter.lng,
-      };
+      host.innerHTML = '';
+      const center = { lat: centerLat, lng: centerLng };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapsApi: any = g().maps;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const map: any = new mapsApi.Map(mapEl.current, {
+      const map: any = new mapsApi.Map(host, {
         center,
         zoom: 15,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        // Avoid gesture conflicts inside scrollable dialogs
+        gestureHandling: 'greedy',
       });
+
+      // Prefer AdvancedMarkerElement when Map ID is configured; else classic Marker
+      // (classic is deprecated but still supported; AdvancedMarker needs mapId)
+      const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || '';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const marker: any = new mapsApi.Marker({
-        map,
-        position: center,
-        draggable: true,
-      });
-      marker.addListener('dragend', () => {
-        const p = marker.getPosition();
-        if (p) void emit(p.lat(), p.lng());
-      });
+      let marker: any;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      map.addListener('click', (e: any) => {
-        if (!e.latLng) return;
-        marker.setPosition(e.latLng);
-        void emit(e.latLng.lat(), e.latLng.lng());
-      });
-      googleRef.current = { map, marker };
-      setReady(true);
+      let dragListener: any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let clickListener: any;
+
+      if (mapId && mapsApi.marker?.AdvancedMarkerElement) {
+        map.setOptions({ mapId });
+        marker = new mapsApi.marker.AdvancedMarkerElement({
+          map,
+          position: center,
+          gmpDraggable: true,
+        });
+        dragListener = marker.addListener('dragend', () => {
+          const p = marker.position;
+          if (!p) return;
+          const lat = typeof p.lat === 'function' ? p.lat() : p.lat;
+          const lng = typeof p.lng === 'function' ? p.lng() : p.lng;
+          void emit(Number(lat), Number(lng));
+        });
+        clickListener = map.addListener('click', (e: { latLng?: { lat: () => number; lng: () => number } }) => {
+          if (!e.latLng) return;
+          marker.position = e.latLng;
+          void emit(e.latLng.lat(), e.latLng.lng());
+        });
+      } else {
+        // Classic Marker — still supported; avoids requiring a Cloud Map ID
+        marker = new mapsApi.Marker({
+          map,
+          position: center,
+          draggable: true,
+        });
+        dragListener = marker.addListener('dragend', () => {
+          const p = marker.getPosition();
+          if (p) void emit(p.lat(), p.lng());
+        });
+        clickListener = map.addListener('click', (e: { latLng?: { lat: () => number; lng: () => number } }) => {
+          if (!e.latLng) return;
+          marker.setPosition(e.latLng);
+          void emit(e.latLng.lat(), e.latLng.lng());
+        });
+      }
+
+      googleRef.current = { map, marker, clickListener, dragListener };
+      if (!cancelled) setReady(true);
     };
 
-    if (googleKey) {
-      if (g()?.maps) {
-        initGoogle();
-      } else {
-        const existing = document.getElementById('gmaps-js');
-        if (existing) {
-          existing.addEventListener('load', initGoogle);
-        } else {
-          const script = document.createElement('script');
-          script.id = 'gmaps-js';
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${googleKey}`;
-          script.async = true;
-          script.onload = () => initGoogle();
-          script.onerror = () => {
-            setError(t('map_google_fail'));
-            void initLeaflet();
-          };
-          document.head.appendChild(script);
+    const boot = async () => {
+      try {
+        if (googleKey) {
+          try {
+            await loadGoogleMapsScript(googleKey);
+            if (cancelled || destroyedRef.current) return;
+            await initGoogle();
+            return;
+          } catch (e) {
+            console.warn(e);
+            if (!cancelled) setError(t('map_google_fail'));
+          }
         }
-      }
-    } else {
-      void initLeaflet().catch((e) => {
+        await initLeaflet();
+      } catch (e) {
         console.error(e);
-        setError(t('map_load_error'));
-      });
-    }
+        if (!cancelled) setError(t('map_load_error'));
+      }
+    };
+
+    void boot();
 
     return () => {
       cancelled = true;
-      if (leafletRef.current) {
-        leafletRef.current.map.remove();
-        leafletRef.current = null;
-      }
-      googleRef.current = null;
+      destroyMaps();
+      setReady(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once
-  }, [googleKey]);
+    // Mount once per picker instance (key on parent when reopening dialog)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleKey, destroyMaps, emit, t]);
 
   // Move marker when value changes externally
   useEffect(() => {
@@ -228,8 +382,11 @@ export function LocationMapPicker({
     }
     if (googleRef.current) {
       const pos = { lat: value.lat, lng: value.lng };
-      googleRef.current.marker.setPosition(pos);
-      googleRef.current.map.panTo(pos);
+      const m = googleRef.current.marker;
+      if (m.setPosition) m.setPosition(pos);
+      else m.position = pos;
+      googleRef.current.map.panTo?.(pos);
+      googleRef.current.map.setCenter?.(pos);
     }
   }, [value?.lat, value?.lng]);
 
@@ -247,8 +404,11 @@ export function LocationMapPicker({
     }
     if (googleRef.current) {
       const pos = { lat, lng };
-      googleRef.current.marker.setPosition(pos);
-      googleRef.current.map.setCenter(pos);
+      const m = googleRef.current.marker;
+      if (m.setPosition) m.setPosition(pos);
+      else m.position = pos;
+      googleRef.current.map.setCenter?.(pos);
+      googleRef.current.map.panTo?.(pos);
     }
     void emit(lat, lng, address || undefined);
   };
@@ -258,7 +418,6 @@ export function LocationMapPicker({
       setError(t('map_geo_unsupported'));
       return;
     }
-    // Explicit permission probe where supported (Chrome)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const perms = (navigator as any).permissions;
@@ -270,7 +429,7 @@ export function LocationMapPicker({
         }
       }
     } catch {
-      /* ignore — browser will still prompt on getCurrentPosition */
+      /* ignore */
     }
 
     setError(null);
@@ -278,26 +437,23 @@ export function LocationMapPicker({
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        setError(null);
         if (leafletRef.current) {
           leafletRef.current.marker.setLatLng([lat, lng]);
           leafletRef.current.map.setView([lat, lng], 16);
         }
         if (googleRef.current) {
           const p = { lat, lng };
-          googleRef.current.marker.setPosition(p);
-          googleRef.current.map.setCenter(p);
+          const m = googleRef.current.marker;
+          if (m.setPosition) m.setPosition(p);
+          else m.position = p;
+          googleRef.current.map.setCenter?.(p);
         }
         void emit(lat, lng);
       },
       (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setError(t('map_geo_denied_help'));
-        } else if (err.code === err.TIMEOUT) {
-          setError(t('map_geo_timeout'));
-        } else {
-          setError(t('map_geo_denied'));
-        }
+        if (err.code === err.PERMISSION_DENIED) setError(t('map_geo_denied_help'));
+        else if (err.code === err.TIMEOUT) setError(t('map_geo_timeout'));
+        else setError(t('map_geo_denied'));
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
@@ -321,7 +477,7 @@ export function LocationMapPicker({
             size="sm"
             variant="outline"
             className="rounded-lg text-[10px] h-8"
-            onClick={useMyLocation}
+            onClick={() => void useMyLocation()}
           >
             <Navigation className="size-3" />
             {t('map_my_location')}
@@ -340,15 +496,14 @@ export function LocationMapPicker({
 
       <p className="text-[10px] text-[var(--text-muted)]">{t('map_pick_hint')}</p>
 
-      <div
-        ref={mapEl}
-        className="relative w-full h-[260px] rounded-xl overflow-hidden border border-[var(--surface-border)] bg-[var(--surface-hover)] z-0"
-      >
+      {/* Overlay spinner OUTSIDE map host so React never fights map DOM */}
+      <div className="relative w-full h-[260px] rounded-xl overflow-hidden border border-[var(--surface-border)] bg-[var(--surface-hover)] z-0">
         {!ready && !error && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
             <Loader2 className="size-6 text-[var(--primary)] animate-spin" />
           </div>
         )}
+        <div ref={mapHostRef} className="absolute inset-0 z-0" />
       </div>
 
       {error && <p className="text-[11px] text-[var(--error)]">{error}</p>}
@@ -382,7 +537,7 @@ export function LocationMapPicker({
       </Button>
 
       <div>
-        <Label className="text-[10px] mb-1 block flex items-center gap-1">
+        <Label className="text-[10px] mb-1 flex items-center gap-1">
           {t('venue_address')}
           {geocoding && <Loader2 className="size-3 animate-spin" />}
         </Label>
@@ -390,8 +545,13 @@ export function LocationMapPicker({
           value={address}
           onChange={(e) => {
             setAddress(e.target.value);
+            addressRef.current = e.target.value;
             if (value?.lat != null && value?.lng != null) {
-              onChange({ lat: value.lat, lng: value.lng, address: e.target.value });
+              onChangeRef.current({
+                lat: value.lat,
+                lng: value.lng,
+                address: e.target.value,
+              });
             }
           }}
           className="rounded-xl text-xs"
@@ -401,5 +561,3 @@ export function LocationMapPicker({
     </div>
   );
 }
-
-

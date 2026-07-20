@@ -296,8 +296,10 @@ export function VenuesView() {
                 />
               </div>
 
+              {/* key forces clean remount; avoids map DOM removeChild races on dialog close */}
               {open && (
                 <LocationMapPicker
+                  key={editing?.id || 'new-venue-map'}
                   value={mapLoc}
                   onChange={handleMapChange}
                 />
