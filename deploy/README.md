@@ -31,6 +31,11 @@ npm.cmd run dev:up
 | Redis | `redis://localhost:6379` (`REDIS_URL`) |
 | ES | http://localhost:9200 |
 | ngrok | public HTTPS → API (for mobile) |
+| **Grafana** (obs) | http://localhost:3301 — `npm.cmd run obs:up` |
+| Prometheus | http://localhost:9090 |
+| Loki | http://localhost:3100 |
+
+Admin web embeds Grafana at `/admin/observability`. Details: `server/infra/observability/README.md`.
 
 Point mobile `BASE_URL` at the **ngrok https** URL while developing.
 

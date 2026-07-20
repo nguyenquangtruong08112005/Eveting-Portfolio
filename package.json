@@ -15,6 +15,9 @@
     "docker:build": "docker compose -f docker-compose.yml -f docker-compose.app.yml build",
     "docker:up": "docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build",
     "docker:down": "docker compose -f docker-compose.yml -f docker-compose.app.yml down",
-    "docker:logs": "docker compose -f docker-compose.yml -f docker-compose.app.yml logs -f"
+    "docker:logs": "docker compose -f docker-compose.yml -f docker-compose.app.yml logs -f",
+    "obs:up": "cmd /c scripts\\obs-up.cmd",
+    "obs:down": "cmd /c scripts\\obs-down.cmd",
+    "obs:logs": "docker compose -f server/infra/docker/docker-compose.observability.yml logs -f --tail=100"
   }
 }
