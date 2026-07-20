@@ -253,11 +253,27 @@ export function LocationMapPicker({
     void emit(lat, lng, address || undefined);
   };
 
-  const useMyLocation = () => {
+  const useMyLocation = async () => {
     if (!navigator.geolocation) {
       setError(t('map_geo_unsupported'));
       return;
     }
+    // Explicit permission probe where supported (Chrome)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const perms = (navigator as any).permissions;
+      if (perms?.query) {
+        const status = await perms.query({ name: 'geolocation' as PermissionName });
+        if (status.state === 'denied') {
+          setError(t('map_geo_denied_help'));
+          return;
+        }
+      }
+    } catch {
+      /* ignore — browser will still prompt on getCurrentPosition */
+    }
+
+    setError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
@@ -274,8 +290,16 @@ export function LocationMapPicker({
         }
         void emit(lat, lng);
       },
-      () => setError(t('map_geo_denied')),
-      { enableHighAccuracy: true, timeout: 10000 }
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setError(t('map_geo_denied_help'));
+        } else if (err.code === err.TIMEOUT) {
+          setError(t('map_geo_timeout'));
+        } else {
+          setError(t('map_geo_denied'));
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
