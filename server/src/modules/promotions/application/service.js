@@ -56,10 +56,46 @@ const updatePromotion = async (promoId, organizerId, updateData) => {
     if (promo.organizerId !== organizerId) throw new Error("Forbidden.");
 
     const allowedUpdates = {};
-    if (updateData.usageLimit) allowedUpdates.usageLimit = Number(updateData.usageLimit);
-    if (updateData.validUntil) allowedUpdates.validUntil = updateData.validUntil;
-    if (updateData.description) allowedUpdates.description = updateData.description;
-    if (updateData.isPublic !== undefined) allowedUpdates.isPublic = updateData.isPublic;
+
+    // Full CRUD fields (code uniqueness checked when changed)
+    if (updateData.code !== undefined) {
+        const nextCode = String(updateData.code).toUpperCase().trim();
+        if (!nextCode) throw new Error("Promotion code is required.");
+        if (nextCode !== promo.code) {
+            const existing = await promotionRepo.findByCode(nextCode);
+            if (existing && existing.id !== promoId) {
+                throw new Error(`Promotion code '${nextCode}' already exists.`);
+            }
+        }
+        allowedUpdates.code = nextCode;
+    }
+    if (updateData.name !== undefined) allowedUpdates.name = updateData.name;
+    if (updateData.description !== undefined) allowedUpdates.description = updateData.description;
+    if (updateData.discountType !== undefined) {
+        allowedUpdates.discountType = updateData.discountType === 'percent' ? 'percent' : 'amount';
+    }
+    if (updateData.discountValue !== undefined) {
+        allowedUpdates.discountValue = Number(updateData.discountValue);
+    }
+    if (updateData.minTicketQuantity !== undefined) {
+        allowedUpdates.minTicketQuantity = Number(updateData.minTicketQuantity) || 1;
+    }
+    if (updateData.eventId !== undefined) {
+        if (updateData.eventId) {
+            const event = await promotionRepo.getEventById(updateData.eventId);
+            if (!event) throw new Error("Event not found.");
+            if (event.organizerId !== organizerId) throw new Error("You do not own this event.");
+            allowedUpdates.eventId = updateData.eventId;
+        } else {
+            allowedUpdates.eventId = null;
+        }
+    }
+    if (updateData.validFrom !== undefined) allowedUpdates.validFrom = updateData.validFrom;
+    if (updateData.validUntil !== undefined) allowedUpdates.validUntil = updateData.validUntil;
+    if (updateData.usageLimit !== undefined) {
+        allowedUpdates.usageLimit = Number(updateData.usageLimit);
+    }
+    if (updateData.isPublic !== undefined) allowedUpdates.isPublic = !!updateData.isPublic;
 
     if (Object.keys(allowedUpdates).length > 0) {
         await promotionRepo.updatePromotion(promoId, allowedUpdates);

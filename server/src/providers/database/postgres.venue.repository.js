@@ -92,9 +92,89 @@ const getVenueRawById = async (venueId) => {
     return { exists: true, id, data };
 };
 
+const updateVenue = async (venueId, venueData) => {
+    const existing = await getVenueById(venueId);
+    if (!existing) return null;
+
+    const merged = {
+        ...existing,
+        ...venueData,
+        id: venueId,
+    };
+
+    const {
+        id: _id,
+        name,
+        address,
+        city,
+        district,
+        country,
+        lat,
+        lng,
+        capacity,
+        ...rest
+    } = merged;
+
+    // Keep bag fields (location, addressDetails, seatMapTemplate, etc.)
+    const bag = { ...rest };
+    delete bag.address;
+    delete bag.city;
+    delete bag.district;
+    delete bag.country;
+    delete bag.lat;
+    delete bag.lng;
+    delete bag.capacity;
+    delete bag.name;
+
+    await query(
+        `UPDATE venues SET
+           name = $2,
+           data = $3::jsonb,
+           address = $4,
+           city = $5,
+           district = $6,
+           country = $7,
+           lat = $8,
+           lng = $9,
+           capacity = $10
+         WHERE id = $1 AND deleted_at IS NULL`,
+        [
+            venueId,
+            name || '',
+            JSON.stringify(bag || {}),
+            address != null ? address : null,
+            city != null ? city : null,
+            district != null ? district : null,
+            country != null ? country : 'VN',
+            lat != null ? Number(lat) : null,
+            lng != null ? Number(lng) : null,
+            capacity != null ? Number(capacity) : null,
+        ]
+    );
+
+    return getVenueById(venueId);
+};
+
+const deleteVenue = async (venueId) => {
+    // Soft-delete when column exists; hard delete as fallback
+    try {
+        const result = await query(
+            `UPDATE venues SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+            [venueId]
+        );
+        if (result.rows.length > 0) return true;
+    } catch {
+        /* column may not exist on older schemas */
+    }
+    const result = await query(`DELETE FROM venues WHERE id = $1 RETURNING id`, [venueId]);
+    return result.rows.length > 0;
+};
+
 module.exports = {
     getAllVenues,
     createVenue,
     getVenueById,
     getVenueRawById,
+    updateVenue,
+    deleteVenue,
 };
