@@ -11,11 +11,13 @@ interface QrCameraScannerProps {
   className?: string;
 }
 
+type CameraInfo = { id: string; label: string };
+
 /**
- * Camera QR scanner. The Allow/Block dialog is owned by the **browser** —
- * our button only calls the camera API so the browser can show that prompt.
+ * Camera QR scanner (html5-qrcode).
  *
- * Requires HTTPS or localhost.
+ * Desktop webcams often fail with facingMode:"environment" (no rear cam).
+ * We try: listed deviceId → user facing → any video constraint.
  */
 export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   const t = useTranslations('organizer');
@@ -29,6 +31,7 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugDetail, setDebugDetail] = useState<string | null>(null);
   const lastScan = useRef('');
   const lastAt = useRef(0);
 
@@ -38,7 +41,6 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
     if (scanner) {
       try {
         const state = typeof scanner.getState === 'function' ? scanner.getState() : null;
-        // Html5QrcodeScannerState.SCANNING === 2
         if (state === 2 || scanner.isScanning) {
           await scanner.stop();
         }
@@ -51,19 +53,85 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
         /* ignore */
       }
     }
-    // Clear host so next start is clean (no React children inside)
     const el = document.getElementById(regionId);
     if (el) el.innerHTML = '';
     setRunning(false);
+  };
+
+  const onDecoded = (decoded: string) => {
+    const text = (decoded || '').trim();
+    if (!text) return;
+    const now = Date.now();
+    if (text === lastScan.current && now - lastAt.current < 2500) return;
+    lastScan.current = text;
+    lastAt.current = now;
+    onScanRef.current(text);
+  };
+
+  const config = {
+    fps: 10,
+    qrbox: (viewW: number, viewH: number) => {
+      const size = Math.min(viewW, viewH, 280) * 0.8;
+      return { width: Math.max(160, size), height: Math.max(160, size) };
+    },
+    aspectRatio: 1.333,
+  };
+
+  /**
+   * Try several camera sources until one works.
+   * Order: preferred deviceId → other deviceIds → facingMode user → plain true
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const startWithFallbacks = async (scanner: any, cameras: CameraInfo[]) => {
+    const errors: string[] = [];
+
+    // Prefer rear/back if labeled; otherwise first listed cam (desktop = usually one webcam)
+    const ordered = [...cameras].sort((a, b) => {
+      const score = (c: CameraInfo) =>
+        /back|rear|environment|world/i.test(c.label)
+          ? 0
+          : /front|user|face/i.test(c.label)
+            ? 2
+            : 1;
+      return score(a) - score(b);
+    });
+
+    for (const cam of ordered) {
+      try {
+        await scanner.start(cam.id, config, onDecoded, () => {});
+        return cam.label || cam.id;
+      } catch (e) {
+        errors.push(`${cam.label || cam.id}: ${formatErr(e)}`);
+      }
+    }
+
+    // Constraint fallbacks (no deviceId)
+    const constraints: Array<MediaTrackConstraints | boolean> = [
+      { facingMode: 'user' },
+      { facingMode: 'environment' },
+      true,
+    ];
+    for (const c of constraints) {
+      try {
+        await scanner.start(c as MediaTrackConstraints, config, onDecoded, () => {});
+        return typeof c === 'object' && c && 'facingMode' in c
+          ? String(c.facingMode)
+          : 'default';
+      } catch (e) {
+        errors.push(`${JSON.stringify(c)}: ${formatErr(e)}`);
+      }
+    }
+
+    throw new Error(errors.join(' | ') || 'No camera strategy worked');
   };
 
   const start = async () => {
     if (starting || running) return;
     setStarting(true);
     setError(null);
+    setDebugDetail(null);
 
     try {
-      // Browser will only show camera permission on secure context
       if (
         typeof window !== 'undefined' &&
         !window.isSecureContext &&
@@ -89,50 +157,56 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
       }
       host.innerHTML = '';
 
-      const scanner = new Html5Qrcode(regionId);
-      // This call triggers the browser's native Allow/Block permission UI
-      await scanner.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: (viewW: number, viewH: number) => {
-            const size = Math.min(viewW, viewH, 260) * 0.85;
-            return { width: size, height: size };
-          },
-          aspectRatio: 1.0,
-        },
-        (decoded) => {
-          const text = (decoded || '').trim();
-          if (!text) return;
-          const now = Date.now();
-          // Debounce duplicate scans
-          if (text === lastScan.current && now - lastAt.current < 2500) return;
-          lastScan.current = text;
-          lastAt.current = now;
-          onScanRef.current(text);
-        },
-        () => {
-          /* ignore non-decode frames */
-        }
-      );
+      // Enumerate devices (may return empty labels until permission granted once)
+      let cameras: CameraInfo[] = [];
+      try {
+        cameras = (await Html5Qrcode.getCameras()) as CameraInfo[];
+      } catch (e) {
+        // getCameras itself may request permission
+        console.warn('[QrCameraScanner] getCameras failed', e);
+      }
 
-      scannerRef.current = scanner;
-      setRunning(true);
+      const scanner = new Html5Qrcode(regionId);
+      try {
+        const used = await startWithFallbacks(scanner, cameras);
+        scannerRef.current = scanner;
+        setRunning(true);
+        setDebugDetail(t('checkin_cam_using', { cam: used }));
+      } catch (e) {
+        try {
+          await scanner.clear();
+        } catch {
+          /* ignore */
+        }
+        throw e;
+      }
     } catch (e: unknown) {
       console.error('[QrCameraScanner]', e);
       const name = e instanceof DOMException ? e.name : '';
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = formatErr(e);
+      setDebugDetail(msg);
 
       if (
         name === 'NotAllowedError' ||
         name === 'PermissionDeniedError' ||
-        /Permission|NotAllowed|denied/i.test(msg)
+        /NotAllowed|Permission denied|PermissionDenied|not allowed/i.test(msg)
       ) {
         setError(t('checkin_cam_permission_help'));
-      } else if (name === 'NotFoundError' || /not found|no camera/i.test(msg)) {
+      } else if (
+        name === 'NotFoundError' ||
+        /not found|no (camera|device)|Requested device not found/i.test(msg)
+      ) {
         setError(t('checkin_cam_no_device'));
-      } else if (name === 'NotReadableError' || /in use|TrackStart/i.test(msg)) {
+      } else if (
+        name === 'NotReadableError' ||
+        /in use|TrackStart|Could not start video source/i.test(msg)
+      ) {
         setError(t('checkin_cam_in_use'));
+      } else if (
+        name === 'OverconstrainedError' ||
+        /Overconstrained|could not satisfy|constraint/i.test(msg)
+      ) {
+        setError(t('checkin_cam_overconstrained'));
       } else {
         setError(t('checkin_cam_error'));
       }
@@ -143,7 +217,6 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
     }
   };
 
-  // Cleanup on unmount only — do NOT stop when parent is "busy" checking in
   useEffect(() => {
     return () => {
       void stop();
@@ -187,7 +260,6 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
         {t('checkin_cam_browser_note')}
       </p>
 
-      {/* Empty host — Html5Qrcode owns children; never put React nodes inside */}
       <div
         id={regionId}
         className="w-full min-h-[240px] rounded-xl overflow-hidden border border-[var(--surface-border)] bg-black/90"
@@ -201,7 +273,22 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
       {error && (
         <p className="text-[11px] text-[var(--error)] whitespace-pre-line">{error}</p>
       )}
+      {debugDetail && (
+        <p className="text-[10px] font-mono text-[var(--text-muted)] break-all">
+          {debugDetail}
+        </p>
+      )}
       <p className="text-[10px] text-[var(--text-muted)]">{t('checkin_cam_hint')}</p>
     </div>
   );
+}
+
+function formatErr(e: unknown): string {
+  if (e instanceof Error) return `${e.name}: ${e.message}`;
+  if (typeof e === 'string') return e;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
 }
