@@ -2,10 +2,16 @@ const adminService = require('@/modules/admin/application/service');
 
 const getPendingEvents = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
         const events = await adminService.getPendingEvents(page, limit);
-        res.status(200).json(events);
+        // Envelope so web clients can read data.events reliably (array-only broke UI).
+        res.status(200).json({
+            events: Array.isArray(events) ? events : [],
+            page,
+            limit,
+            total: Array.isArray(events) ? events.length : 0,
+        });
     } catch (error) {
         res.status(500).send({ error: error.message });
     }

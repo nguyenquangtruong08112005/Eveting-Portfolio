@@ -1,3 +1,17 @@
+# Observability stack — Prometheus, Loki, Promtail, Grafana, node-exporter
+#
+# From monorepo root:
+#   docker compose -f server/infra/docker/docker-compose.observability.yml up -d
+#   npm.cmd run obs:up
+#
+# Ports (local):
+#   Grafana    http://localhost:3301  (admin/admin; anonymous Viewer for iframe demo)
+#   Prometheus http://localhost:9090
+#   Loki       http://localhost:3100
+#   node-exp   http://localhost:9100
+#
+# Requires API metrics at host.docker.internal:3000/metrics and logs under server/logs.
+
 services:
   prometheus:
     image: prom/prometheus:v2.51.2
@@ -17,10 +31,14 @@ services:
   loki:
     image: grafana/loki:2.9.4
     container_name: mobile-eventing-loki
+    # Official image runs as uid 10001; volume at /loki must be writable by that user.
+    # For local demo, run as root so bind/named volume mkdir works on Windows/Docker Desktop.
+    user: "0"
     ports:
       - "3100:3100"
     volumes:
-      - ../observability/loki-config.yml:/etc/loki/local-config.yaml
+      - ../observability/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     restart: unless-stopped
 
@@ -28,9 +46,12 @@ services:
     image: grafana/promtail:2.9.4
     container_name: mobile-eventing-promtail
     volumes:
-      - ../../logs:/var/log/app
+      # server/infra/docker → server/logs
+      - ../../logs:/var/log/app:ro
       - ../observability/promtail-config.yml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
     restart: unless-stopped
 
   node-exporter:
@@ -43,19 +64,31 @@ services:
   grafana:
     image: grafana/grafana:10.4.1
     container_name: mobile-eventing-grafana
+    # 3301 avoids clash with web (3001) and API (3000)
     ports:
-      - "3001:3000"
+      - "3301:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+      # Embed in admin web iframe (local demo only)
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_SECURITY_COOKIE_SAMESITE=disabled
+      - GF_SERVER_ROOT_URL=http://localhost:3301
     volumes:
       - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ../observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ../observability/grafana/dashboards:/etc/grafana/dashboards
       - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
     restart: unless-stopped
 
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:

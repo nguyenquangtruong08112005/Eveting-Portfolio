@@ -15,12 +15,16 @@ const startReminderJob = () => {
         const next24h = moment().add(24, 'hours');
         const next24h_plus30m = moment().add(24, 'hours').add(30, 'minutes');
 
-        const events = await eventRepository.getActiveEventsInDateRange(next24h.valueOf(), next24h_plus30m.valueOf());
+        // Pass Date (or ms) — repository converts millis → TIMESTAMPTZ via toDb
+        const events = await eventRepository.getActiveEventsInDateRange(
+            next24h.toDate(),
+            next24h_plus30m.toDate()
+        );
 
-        if (events.length === 0) return;
+        if (!events || events.length === 0) return;
 
         for (const event of events) {
-            const tickets = await ticketRepository.getPaidTicketsByEventId(event._id);
+            const tickets = await ticketRepository.getPaidTicketsByEventId(event._id || event.id);
                 
             const userIds = [...new Set(tickets.map(t => t.userId))];
             if (userIds.length === 0) continue;

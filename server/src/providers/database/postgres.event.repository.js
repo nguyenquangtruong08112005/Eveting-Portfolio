@@ -135,9 +135,16 @@ const getEventDataById = async (eventId) => {
 };
 
 const getActiveEventsInDateRange = async (startTime, endTime) => {
+    // start_at is TIMESTAMPTZ — never pass raw epoch millis (PG error 22008).
+    const { toDb } = require('./time.helper');
+    const startAt = toDb(startTime);
+    const endAt = toDb(endTime);
+    if (!startAt || !endAt) {
+        return [];
+    }
     const result = await query(
-        `SELECT * FROM events WHERE start_at >= $1 AND start_at < $2 AND status = $3`,
-        [startTime, endTime, STATUS.ACTIVE]
+        `SELECT * FROM events WHERE start_at >= $1 AND start_at < $2 AND status = $3 AND deleted_at IS NULL`,
+        [startAt, endAt, STATUS.ACTIVE]
     );
     const hydrated = await hydrateEventRows(result.rows);
     return hydrated.map((e) => ({ ...e, _id: e.id }));

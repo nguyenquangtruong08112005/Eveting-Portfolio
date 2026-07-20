@@ -15,4 +15,20 @@ scrape_configs:
           - localhost
         labels:
           job: app-logs
+          app: eventing-api
+          env: local
           __path__: /var/log/app/*.log
+    pipeline_stages:
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}|^\{'
+          max_wait_time: 3s
+      - match:
+          selector: '{job="app-logs"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  message: message
+                  requestId: requestId
+            - labels:
+                level:
