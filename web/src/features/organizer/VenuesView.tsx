@@ -140,7 +140,7 @@ export function VenuesView() {
     const lat = v.lat ?? v.location?.latitude ?? v.location?.lat;
     const lng = v.lng ?? v.location?.longitude ?? v.location?.lng;
     if (lat == null || lng == null) return null;
-    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
   };
 
   return (
@@ -243,7 +243,7 @@ export function VenuesView() {
                         className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--primary)] hover:underline"
                       >
                         <ExternalLink className="size-3" />
-                        Google Maps
+                        OpenStreetMap
                       </a>
                     )}
                   </div>

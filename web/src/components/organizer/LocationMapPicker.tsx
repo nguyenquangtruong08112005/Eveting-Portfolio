@@ -21,61 +21,11 @@ interface LocationMapPickerProps {
   defaultCenter?: { lat: number; lng: number };
 }
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    google?: any;
-    __gmapsInit?: () => void;
-  }
-}
-
-/** Singleton Google Maps script loader (async + callback). */
-function loadGoogleMapsScript(apiKey: string): Promise<void> {
-  if (typeof window === 'undefined') return Promise.reject(new Error('SSR'));
-  if (window.google?.maps?.Map) return Promise.resolve();
-
-  const existing = document.getElementById('gmaps-js') as HTMLScriptElement | null;
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      if (window.google?.maps?.Map) {
-        resolve();
-        return;
-      }
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('gmaps load error')), {
-        once: true,
-      });
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const prev = window.__gmapsInit;
-    window.__gmapsInit = () => {
-      prev?.();
-      resolve();
-    };
-    const script = document.createElement('script');
-    script.id = 'gmaps-js';
-    script.async = true;
-    script.defer = true;
-    // Google recommends loading=async in the URL for best-practice loading
-    script.src =
-      `https://maps.googleapis.com/maps/api/js` +
-      `?key=${encodeURIComponent(apiKey)}` +
-      `&v=weekly` +
-      `&loading=async` +
-      `&callback=__gmapsInit`;
-    script.onerror = () => reject(new Error('gmaps script error'));
-    document.head.appendChild(script);
-  });
-}
-
 /**
- * Click/drag map to pick venue coordinates.
- * Google Maps when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set; else Leaflet/OSM.
+ * Click/drag map to pick venue coordinates — OpenStreetMap via Leaflet only.
+ * No Google Maps API key required.
  *
- * Important: the map host div must stay empty of React children so map libs
- * can own the DOM without removeChild conflicts on unmount (e.g. Dialog close).
+ * Map host div stays empty of React children so Leaflet owns the DOM safely.
  */
 export function LocationMapPicker({
   value,
@@ -84,7 +34,6 @@ export function LocationMapPicker({
   defaultCenter = { lat: 10.7769, lng: 106.7009 },
 }: LocationMapPickerProps) {
   const t = useTranslations('organizer');
-  /** Host element only for map lib — never put React children inside */
   const mapHostRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -102,14 +51,7 @@ export function LocationMapPicker({
     marker: import('leaflet').Marker;
     L: typeof import('leaflet');
   } | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const googleRef = useRef<{ map: any; marker: any; clickListener?: any; dragListener?: any } | null>(
-    null
-  );
   const destroyedRef = useRef(false);
-
-  const googleKey =
-    typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '' : '';
 
   useEffect(() => {
     addressRef.current = address;
@@ -164,54 +106,30 @@ export function LocationMapPicker({
     [reverseGeocode]
   );
 
-  const destroyMaps = useCallback(() => {
+  const destroyMap = useCallback(() => {
     destroyedRef.current = true;
     try {
       if (leafletRef.current) {
-        const { map } = leafletRef.current;
-        map.off();
-        map.remove();
+        leafletRef.current.map.off();
+        leafletRef.current.map.remove();
         leafletRef.current = null;
       }
     } catch {
-      /* ignore leaflet teardown races */
+      /* ignore teardown races */
     }
-    try {
-      if (googleRef.current) {
-        const { marker, clickListener, dragListener } = googleRef.current;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const g = (window as any).google;
-        if (g?.maps?.event) {
-          if (clickListener) g.maps.event.removeListener(clickListener);
-          if (dragListener) g.maps.event.removeListener(dragListener);
-          if (marker) g.maps.event.clearInstanceListeners(marker);
-          if (googleRef.current.map) g.maps.event.clearInstanceListeners(googleRef.current.map);
-        }
-        // Detach marker from map without fighting React
-        if (marker?.setMap) marker.setMap(null);
-        googleRef.current = null;
-      }
-    } catch {
-      /* ignore google teardown races */
-    }
-    // Clear host after libs release — React never owned these children
     const host = mapHostRef.current;
     if (host) {
       try {
-        while (host.firstChild) {
-          host.removeChild(host.firstChild);
-        }
+        while (host.firstChild) host.removeChild(host.firstChild);
       } catch {
         host.innerHTML = '';
       }
     }
   }, []);
 
-  // Init map once
   useEffect(() => {
     destroyedRef.current = false;
     let cancelled = false;
-
     const centerLat = value?.lat ?? defaultCenter.lat;
     const centerLng = value?.lng ?? defaultCenter.lng;
 
@@ -238,11 +156,10 @@ export function LocationMapPicker({
         document.head.appendChild(link);
       }
 
-      // Ensure empty host
       host.innerHTML = '';
       const map = L.map(host, { zoomControl: true }).setView([centerLat, centerLng], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(map);
 
@@ -269,125 +186,25 @@ export function LocationMapPicker({
       }
     };
 
-    const initGoogle = async () => {
-      const host = mapHostRef.current;
-      if (!host || cancelled || destroyedRef.current) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapsApi: any = window.google?.maps;
-      if (!mapsApi?.Map) return;
-
-      host.innerHTML = '';
-      const center = { lat: centerLat, lng: centerLng };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const map: any = new mapsApi.Map(host, {
-        center,
-        zoom: 15,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        // Avoid gesture conflicts inside scrollable dialogs
-        gestureHandling: 'greedy',
-      });
-
-      // Prefer AdvancedMarkerElement when Map ID is configured; else classic Marker
-      // (classic is deprecated but still supported; AdvancedMarker needs mapId)
-      const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || '';
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let marker: any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let dragListener: any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let clickListener: any;
-
-      if (mapId && mapsApi.marker?.AdvancedMarkerElement) {
-        map.setOptions({ mapId });
-        marker = new mapsApi.marker.AdvancedMarkerElement({
-          map,
-          position: center,
-          gmpDraggable: true,
-        });
-        dragListener = marker.addListener('dragend', () => {
-          const p = marker.position;
-          if (!p) return;
-          const lat = typeof p.lat === 'function' ? p.lat() : p.lat;
-          const lng = typeof p.lng === 'function' ? p.lng() : p.lng;
-          void emit(Number(lat), Number(lng));
-        });
-        clickListener = map.addListener('click', (e: { latLng?: { lat: () => number; lng: () => number } }) => {
-          if (!e.latLng) return;
-          marker.position = e.latLng;
-          void emit(e.latLng.lat(), e.latLng.lng());
-        });
-      } else {
-        // Classic Marker — still supported; avoids requiring a Cloud Map ID
-        marker = new mapsApi.Marker({
-          map,
-          position: center,
-          draggable: true,
-        });
-        dragListener = marker.addListener('dragend', () => {
-          const p = marker.getPosition();
-          if (p) void emit(p.lat(), p.lng());
-        });
-        clickListener = map.addListener('click', (e: { latLng?: { lat: () => number; lng: () => number } }) => {
-          if (!e.latLng) return;
-          marker.setPosition(e.latLng);
-          void emit(e.latLng.lat(), e.latLng.lng());
-        });
-      }
-
-      googleRef.current = { map, marker, clickListener, dragListener };
-      if (!cancelled) setReady(true);
-    };
-
-    const boot = async () => {
-      try {
-        if (googleKey) {
-          try {
-            await loadGoogleMapsScript(googleKey);
-            if (cancelled || destroyedRef.current) return;
-            await initGoogle();
-            return;
-          } catch (e) {
-            console.warn(e);
-            if (!cancelled) setError(t('map_google_fail'));
-          }
-        }
-        await initLeaflet();
-      } catch (e) {
-        console.error(e);
-        if (!cancelled) setError(t('map_load_error'));
-      }
-    };
-
-    void boot();
+    void initLeaflet().catch((e) => {
+      console.error(e);
+      if (!cancelled) setError(t('map_load_error'));
+    });
 
     return () => {
       cancelled = true;
-      destroyMaps();
+      destroyMap();
       setReady(false);
     };
-    // Mount once per picker instance (key on parent when reopening dialog)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleKey, destroyMaps, emit, t]);
+  }, [destroyMap, emit, t]);
 
-  // Move marker when value changes externally
   useEffect(() => {
-    if (value?.lat == null || value?.lng == null) return;
-    if (leafletRef.current) {
-      const { map, marker, L } = leafletRef.current;
-      const ll = L.latLng(value.lat, value.lng);
-      marker.setLatLng(ll);
-      map.panTo(ll);
-    }
-    if (googleRef.current) {
-      const pos = { lat: value.lat, lng: value.lng };
-      const m = googleRef.current.marker;
-      if (m.setPosition) m.setPosition(pos);
-      else m.position = pos;
-      googleRef.current.map.panTo?.(pos);
-      googleRef.current.map.setCenter?.(pos);
-    }
+    if (value?.lat == null || value?.lng == null || !leafletRef.current) return;
+    const { map, marker, L } = leafletRef.current;
+    const ll = L.latLng(value.lat, value.lng);
+    marker.setLatLng(ll);
+    map.panTo(ll);
   }, [value?.lat, value?.lng]);
 
   const applyManualCoords = () => {
@@ -401,14 +218,6 @@ export function LocationMapPicker({
     if (leafletRef.current) {
       leafletRef.current.marker.setLatLng([lat, lng]);
       leafletRef.current.map.setView([lat, lng], 16);
-    }
-    if (googleRef.current) {
-      const pos = { lat, lng };
-      const m = googleRef.current.marker;
-      if (m.setPosition) m.setPosition(pos);
-      else m.position = pos;
-      googleRef.current.map.setCenter?.(pos);
-      googleRef.current.map.panTo?.(pos);
     }
     void emit(lat, lng, address || undefined);
   };
@@ -441,13 +250,6 @@ export function LocationMapPicker({
           leafletRef.current.marker.setLatLng([lat, lng]);
           leafletRef.current.map.setView([lat, lng], 16);
         }
-        if (googleRef.current) {
-          const p = { lat, lng };
-          const m = googleRef.current.marker;
-          if (m.setPosition) m.setPosition(p);
-          else m.position = p;
-          googleRef.current.map.setCenter?.(p);
-        }
         void emit(lat, lng);
       },
       (err) => {
@@ -459,10 +261,9 @@ export function LocationMapPicker({
     );
   };
 
-  const googleMapsUrl =
-    value?.lat != null && value?.lng != null
-      ? `https://www.google.com/maps/search/?api=1&query=${value.lat},${value.lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${defaultCenter.lat},${defaultCenter.lng}`;
+  const lat = value?.lat ?? defaultCenter.lat;
+  const lng = value?.lng ?? defaultCenter.lng;
+  const osmOpenUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -483,20 +284,19 @@ export function LocationMapPicker({
             {t('map_my_location')}
           </Button>
           <a
-            href={googleMapsUrl}
+            href={osmOpenUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 px-2 h-8 rounded-lg border border-[var(--surface-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--primary)]"
           >
             <ExternalLink className="size-3" />
-            Google Maps
+            OpenStreetMap
           </a>
         </div>
       </div>
 
       <p className="text-[10px] text-[var(--text-muted)]">{t('map_pick_hint')}</p>
 
-      {/* Overlay spinner OUTSIDE map host so React never fights map DOM */}
       <div className="relative w-full h-[260px] rounded-xl overflow-hidden border border-[var(--surface-border)] bg-[var(--surface-hover)] z-0">
         {!ready && !error && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">

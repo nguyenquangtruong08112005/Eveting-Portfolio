@@ -114,11 +114,14 @@ export function EventInfoContent({ event, mounted }: EventInfoContentProps) {
             {t('venue_map')}
           </h2>
           {(() => {
+            // Prefer event coords; fall back to HCMC center
             const lat = Number(event?.location?.latitude) || 10.7769;
             const lon = Number(event?.location?.longitude) || 106.7009;
-            // Google embed fills the frame reliably (OSM export often letterboxes)
-            const src = `https://maps.google.com/maps?q=${lat},${lon}&z=15&output=embed&hl=en`;
-            const openUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+            // OpenStreetMap embed — no API key (unlike Google Maps JavaScript API)
+            const delta = 0.012;
+            const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+            const src = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lon}`)}`;
+            const openUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
             return (
               <div className="w-full min-w-0 max-w-full space-y-2">
                 <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-[var(--surface-hover)] border border-[var(--surface-border)] aspect-[4/3] sm:aspect-[16/9]">
