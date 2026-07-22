@@ -18,18 +18,24 @@ interface EventCardProps {
 export function EventCard({ event }: EventCardProps) {
   const t = useTranslations('navbar.categories');
   const tCommon = useTranslations('common');
-  const isFree = event.minPrice === 0 || event.minPrice === null || event.minPrice === undefined;
   const isOnline = event.eventType === 'online';
   const displayCategories = (event.category ?? []).slice(0, 2);
   const [mounted, setMounted] = React.useState(false);
+  const href = `/attendee/events/${event.id}`;
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
   return (
-    <article className="aura-card overflow-hidden flex flex-col group h-full">
-      {/* Image */}
+    <article className="aura-card overflow-hidden flex flex-col group h-full relative">
+      {/* Full-card click target (image + body); CTA still looks like a button */}
+      <Link
+        href={href}
+        className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+        aria-label={event.name}
+      />
+
       <div className="aspect-[16/10] w-full relative overflow-hidden bg-[var(--surface-hover)]">
         <SafeImage
           src={event.imageUrl || FALLBACK_IMAGE}
@@ -38,8 +44,7 @@ export function EventCard({ event }: EventCardProps) {
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700"
         />
-        {/* Category Badges */}
-        <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+        <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap z-[1]">
           {displayCategories.map((cat, idx) => (
             <Badge
               key={idx}
@@ -49,17 +54,15 @@ export function EventCard({ event }: EventCardProps) {
             </Badge>
           ))}
         </div>
-        {/* Event type indicator */}
         {isOnline && (
-          <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-[var(--info)]/15 border border-[var(--info)]/30 flex items-center gap-1 backdrop-blur-md">
+          <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-[var(--info)]/15 border border-[var(--info)]/30 flex items-center gap-1 backdrop-blur-md z-[1]">
             <Globe className="size-3 text-[var(--info)]" />
             <span className="text-[9px] font-bold text-[var(--info)] uppercase tracking-wider">
               Online
             </span>
           </div>
         )}
-        {/* Price Tag */}
-        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/55 backdrop-blur-md border border-white/10">
+        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/55 backdrop-blur-md border border-white/10 z-[1]">
           <span className="text-[10px] text-white/70 block leading-none">{tCommon('from')}</span>
           <span className="text-sm font-bold text-[var(--primary)]">
             {formatPrice(event.minPrice)}
@@ -67,7 +70,6 @@ export function EventCard({ event }: EventCardProps) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-5 flex-1 flex flex-col">
         <h3 className="text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors line-clamp-1 mb-1.5">
           {event.name}
@@ -76,7 +78,6 @@ export function EventCard({ event }: EventCardProps) {
           {event.description || event.name}
         </p>
 
-        {/* Meta */}
         <div className="flex flex-col gap-2 text-xs text-[var(--text-secondary)] mt-auto mb-4">
           <div className="flex items-center gap-2">
             <Calendar className="size-3.5 text-[var(--primary)]" />
@@ -91,17 +92,15 @@ export function EventCard({ event }: EventCardProps) {
           </div>
         </div>
 
-        {/* CTA */}
-        <Link
-          href={`/attendee/events/${event.id}`}
+        <div
           className={cn(
             buttonVariants({ variant: 'default' }),
-            'w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer btn-tactile text-[var(--on-primary)] border-none font-bold'
+            'w-full py-2.5 rounded-xl btn-primary-gradient text-sm tracking-wide flex items-center justify-center gap-2 pointer-events-none text-[var(--on-primary)] border-none font-bold'
           )}
         >
           {tCommon('book_now')}
           <ArrowRight className="size-3.5" />
-        </Link>
+        </div>
       </div>
     </article>
   );

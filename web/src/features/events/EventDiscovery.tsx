@@ -9,19 +9,15 @@ import {
   Search,
   MapPin,
   ChevronRight,
-  Gift,
   Sparkles,
-  Ticket,
   Navigation,
   Heart,
-  Tag,
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { EventCard } from '@/components/events/EventCard';
 import { Badge } from '@/components/ui/badge';
 import { EventService } from '@/features/events/api';
-import { PromotionService } from '@/services/promotion.service';
 import {
   matchCategory,
   enrichEvent,
@@ -32,12 +28,11 @@ import {
   CATEGORIES,
   type CategoryKey,
 } from '@/lib/constants';
-import type { Event, Promotion } from '@/types';
+import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { ArtistStars } from '@/components/home/ArtistStars';
 import { PopularDestinations } from '@/components/home/PopularDestinations';
-import { PromoBanner } from '@/components/home/PromoBanner';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SkeletonGrid } from '@/components/shared/SkeletonGrid';
@@ -50,7 +45,6 @@ function LandingPageContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [nearbyEvents, setNearbyEvents] = useState<Event[]>([]);
   const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -84,9 +78,6 @@ function LandingPageContent() {
       })
       .catch(() => setRecommendedEvents([]));
 
-    PromotionService.listPublic()
-      .then((list) => setPromotions(Array.isArray(list) ? list.slice(0, 6) : []))
-      .catch(() => setPromotions([]));
 
     // Geolocation → nearby events
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -290,40 +281,6 @@ function LandingPageContent() {
             </section>
           )}
 
-          {/* API promotions strip */}
-          {promotions.length > 0 && (
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
-              <SectionHeading title={t('promotions')} icon={Tag} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {promotions.map((promo) => (
-                  <div
-                    key={promo.id}
-                    className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-5 flex flex-col gap-2 hover:border-[var(--primary)]/30 transition-all"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge className="bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 text-[10px] font-black uppercase tracking-wider">
-                        {promo.code}
-                      </Badge>
-                      <span className="text-xs font-bold text-[var(--accent-brand)]">
-                        {promo.discountType === 'percent'
-                          ? `-${promo.discountValue}%`
-                          : promo.discountValue != null
-                            ? formatPrice(promo.discountValue)
-                            : ''}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                      {promo.name || promo.code}
-                    </h4>
-                    {promo.description ? (
-                      <p className="text-xs text-[var(--text-muted)] line-clamp-2">{promo.description}</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
           {/* Special Events */}
           <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
             <SectionHeading title={t('special_events')} icon={Sparkles} />
@@ -380,23 +337,13 @@ function LandingPageContent() {
             )}
           </section>
 
-          {/* Promo banner */}
-          <PromoBanner
-            variant="vib"
-            icon={<Ticket className="size-7 text-[var(--primary)]" />}
-            badge="VIB Partner"
-            title={t('promo_vib_title')}
-            highlight="500K"
-            body={t('promo_vib_body')}
-            cta={t('promo_vib_cta')}
-          />
-
           {/* Trending Events */}
           <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
             <SectionHeading title={t('trending_events')} icon={Sparkles} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {trendingEvents.map((event, idx) => (
-                <div
+                <Link
+                  href={`/attendee/events/${event.id}`}
                   key={event.id}
                   className="relative bg-[var(--surface)] rounded-2xl border border-[var(--surface-border)] p-4 flex gap-4 group hover:border-[var(--primary)]/30 hover:translate-x-1 transition-all duration-300 shadow-sm overflow-hidden"
                 >
@@ -428,15 +375,12 @@ function LandingPageContent() {
                       <span className="text-[10px] font-bold text-[var(--primary)]">
                         {formatPrice(event.minPrice)}
                       </span>
-                      <Link
-                        href={`/attendee/events/${event.id}`}
-                        className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors flex items-center gap-0.5"
-                      >
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors flex items-center gap-0.5">
                         {t('book_ticket')} →
-                      </Link>
+                      </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>
@@ -482,30 +426,9 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* Promo banner */}
-          <PromoBanner
-            variant="shopee"
-            icon={<Gift className="size-7 text-[var(--primary)]" />}
-            badge="ShopeePay"
-            title={t('promo_shopee_title')}
-            highlight="40.000Đ"
-            body={t('promo_shopee_body')}
-            cta={t('promo_shopee_cta')}
-          />
-
           {/* Category rows */}
           <CategoryRow label={t('live_music')} events={musicEvents} onSeeMore={() => setActiveCategory('music')} seeMoreLabel={t('see_more')} loading={loading} />
           <CategoryRow label={t('theater_arts')} events={artsEvents} onSeeMore={() => setActiveCategory('arts')} seeMoreLabel={t('see_more')} loading={loading} />
-
-          <PromoBanner
-            variant="hdbank"
-            icon={<Sparkles className="size-7 text-[var(--primary)]" />}
-            badge="HDBank"
-            title={t('promo_hd_title')}
-            body={t('promo_hd_body')}
-            cta={t('promo_hd_cta')}
-          />
-
           <CategoryRow label={t('workshops')} events={workshopEvents} onSeeMore={() => setActiveCategory('workshop')} seeMoreLabel={t('see_more')} loading={loading} />
           <CategoryRow label={t('tech_science')} events={techEvents} onSeeMore={() => setActiveCategory('tech')} seeMoreLabel={t('see_more')} loading={loading} />
 
