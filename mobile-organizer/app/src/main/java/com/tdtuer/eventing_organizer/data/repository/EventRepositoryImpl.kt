@@ -363,7 +363,7 @@ class EventRepositoryImpl @Inject constructor(
         try {
             val response = apiService.getPendingEvents()
             if (response.isSuccessful && response.body() != null) {
-                emit(Result.Success(response.body()!!))
+                emit(Result.Success(response.body()!!.events))
             } else {
                 emit(Result.Failure(Exception("Error loading pending events: ${response.code()}")))
             }

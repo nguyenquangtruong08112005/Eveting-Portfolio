@@ -93,6 +93,13 @@ data class MyEventsResponse(
     @SerializedName("data") val data: List<MyEventDto>
 )
 
+data class PendingEventsResponse(
+    @SerializedName("events") val events: List<MyEventDto> = emptyList(),
+    @SerializedName("page") val page: Int? = null,
+    @SerializedName("limit") val limit: Int? = null,
+    @SerializedName("total") val total: Int? = null
+)
+
 data class MyEventDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,

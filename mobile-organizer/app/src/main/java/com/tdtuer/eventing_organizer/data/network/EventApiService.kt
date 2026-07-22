@@ -24,6 +24,7 @@ import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.MyEventsResponse
 import com.tdtuer.eventing_organizer.data.network.model.NotificationDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
+import com.tdtuer.eventing_organizer.data.network.model.PendingEventsResponse
 import com.tdtuer.eventing_organizer.data.network.model.PostMediaRequest
 import com.tdtuer.eventing_organizer.data.network.model.PostReviewRequest
 import com.tdtuer.eventing_organizer.data.network.model.PromotionDto
@@ -199,7 +200,7 @@ interface EventApiService {
     suspend fun getPendingEvents(
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 20
-    ): Response<List<MyEventDto>> // Tái sử dụng MyEventsResponse vì cấu trúc list giống nhau
+    ): Response<PendingEventsResponse>
 
     @POST("admin/events/{id}/approve")
     suspend fun approveEvent(@Path("id") eventId: String): Response<Unit>
