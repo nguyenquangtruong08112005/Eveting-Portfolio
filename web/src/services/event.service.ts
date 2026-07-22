@@ -68,12 +68,16 @@ export class EventService {
       events: Event[];
       total?: number;
       page?: number;
+      pagination?: {
+        currentPage?: number;
+        totalItems?: number;
+      };
     }>('GET', `/api/web/events/search${queryStr ? `?${queryStr}` : ''}`, {}, SEARCH_TTL);
 
-    const page = params.page ?? 1;
+    const page = data.pagination?.currentPage ?? params.page ?? 1;
     const limit = params.limit ?? 12;
     const events = data.events || [];
-    const total = data.total;
+    const total = data.total ?? data.pagination?.totalItems;
     const hasMore =
       total != null ? page * limit < total : events.length >= limit;
 
@@ -100,12 +104,13 @@ export class EventService {
   }
 
   static async recommendations(limit = 10): Promise<{ events: Event[] }> {
-    return requestCached<{ events: Event[] }>(
+    const data = await requestCached<Event[] | { events: Event[] }>(
       'GET',
       `/api/web/events/recommendations?limit=${limit}`,
       {},
       LIST_TTL
     );
+    return { events: Array.isArray(data) ? data : data.events || [] };
   }
 
   static async getWeather(eventId: string): Promise<EventWeather> {
