@@ -65,23 +65,41 @@ function mapTicketWithEvent(ticketData, eventData) {
 }
 
 function mapTicketDetailResponse(ticketData, eventData, venueData) {
+  // Flat ticket + nested event (matches web TicketDetailView / MyTicketsView)
+  const eventId = eventData.id || ticketData.eventId;
   return {
-    ticket: ticketData,
+    id: ticketData.id,
+    status: ticketData.status,
+    type: ticketData.type,
+    price: ticketData.price,
+    seat: ticketData.seat,
+    qrCode: ticketData.qrCode,
+    purchaseDate: ticketData.purchaseDate,
+    userId: ticketData.userId,
+    eventId,
+    quantity: ticketData.quantity,
     event: {
+      id: eventId,
       name: eventData.name,
       date: eventData.date,
       endDate: eventData.endDate,
+      imageUrl: eventData.imageUrl,
       bannerUrl: eventData.bannerUrl,
       eventType: eventData.eventType,
       onlineUrl: eventData.onlineUrl,
       city: eventData.city,
       venueName: eventData.venueName,
+      status: eventData.status,
     },
-    venue: venueData ? {
-      name: venueData.name,
-      addressDetails: venueData.addressDetails,
-      location: venueData.location
-    } : null
+    venue: venueData
+      ? {
+          name: venueData.name,
+          addressDetails: venueData.addressDetails,
+          location: venueData.location,
+        }
+      : null,
+    // Keep nested ticket for older clients
+    ticket: ticketData,
   };
 }
 

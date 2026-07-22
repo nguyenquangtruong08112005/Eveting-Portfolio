@@ -1,13 +1,20 @@
 const { query } = require('./postgres.client');
 const postgresUserRepository = require('./postgres.user.repository');
+const { fromDb, nowDb, nowMs } = require('./time.helper');
 
 const getOrganizerProfile = async (userId) => {
+  // email + roles: auth_users | name + avatar: user_profiles | org fields: organizer_profiles
   const result = await query(
-    `SELECT u.id, u.name, u.email, u.profile_pic_url, u.roles,
+    `SELECT a.id,
+            u.name,
+            a.email,
+            u.profile_pic_url,
+            a.roles,
             o.company_name, o.tax_code, o.website, o.description, o.status, o.created_at, o.raw_data
-     FROM user_profiles u
-     LEFT JOIN organizer_profiles o ON u.id = o.user_id
-     WHERE u.id = $1`,
+     FROM auth_users a
+     LEFT JOIN user_profiles u ON u.id = a.id AND u.deleted_at IS NULL
+     LEFT JOIN organizer_profiles o ON o.user_id = a.id
+     WHERE a.id = $1 AND a.deleted_at IS NULL`,
     [userId]
   );
   if (result.rows.length === 0) return null;
@@ -15,7 +22,7 @@ const getOrganizerProfile = async (userId) => {
 
   const doc = {
     id: row.id,
-    name: row.name,
+    name: row.name || '',
     email: row.email || '',
     profilePicUrl: row.profile_pic_url || '',
     roles: row.roles || []
@@ -28,7 +35,7 @@ const getOrganizerProfile = async (userId) => {
       description: row.description || '',
       website: row.website || '',
       status: row.status || 'approved',
-      createdAt: row.created_at ? Number(row.created_at) : Date.now()
+      createdAt: fromDb(row.created_at) ?? nowMs()
     };
     if (row.raw_data) {
       doc.organizerInfo = Object.assign({}, row.raw_data, doc.organizerInfo);
@@ -48,8 +55,7 @@ const addOrganizerRoleToUser = async (userId, organizerData) => {
   // 1. Update user_profiles via postgresUserRepository
   await postgresUserRepository.addOrganizerRoleToUser(userId, organizerData);
 
-  // 2. Upsert to organizer_profiles
-  const now = Date.now();
+  // 2. Upsert to organizer_profiles (created_at is timestamptz)
   const rawData = Object.assign({ status: 'approved' }, organizerData);
   await query(
     `INSERT INTO organizer_profiles (id, user_id, company_name, tax_code, website, description, status, created_at, raw_data)
@@ -69,7 +75,7 @@ const addOrganizerRoleToUser = async (userId, organizerData) => {
       organizerData.website || '',
       organizerData.description || '',
       organizerData.status || 'approved',
-      now,
+      nowDb(),
       JSON.stringify(rawData)
     ]
   );

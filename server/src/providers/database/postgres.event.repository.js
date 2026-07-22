@@ -89,6 +89,23 @@ function rowToFirebaseDoc(row, extras = {}) {
     if (row.end_at != null) data.endDate = fromDb(row.end_at);
     if (row.created_at != null) data.createdAt = fromDb(row.created_at);
     if (row.last_updated_at != null) data.lastUpdatedAt = fromDb(row.last_updated_at);
+
+    // Relational columns are SoT — never trust stale Firebase ids from raw_data
+    // (raw_data.organizerId often points at deleted Firebase UIDs → FK violations on tickets)
+    data.organizerId = row.organizer_id || null;
+    data.venueId = row.venue_id != null ? row.venue_id : (data.venueId || null);
+    data.venueName = row.venue_name != null ? row.venue_name : (data.venueName || null);
+    data.city = row.city != null ? row.city : (data.city || null);
+    data.status = row.status || data.status || STATUS.PENDING;
+    data.visibility = row.visibility || data.visibility || VISIBILITY.PRIVATE;
+    if (row.name != null) data.name = row.name;
+    if (row.description != null) data.description = row.description;
+    if (row.image_url !== undefined) data.imageUrl = row.image_url;
+    if (row.banner_url !== undefined) data.bannerUrl = row.banner_url;
+    if (row.event_type != null) data.eventType = row.event_type;
+    if (row.online_url !== undefined) data.onlineUrl = row.online_url;
+    if (row.min_price != null) data.minPrice = Number(row.min_price);
+
     data.ticketTypes = extras.ticketTypes != null ? extras.ticketTypes : (data.ticketTypes || {});
     data.featuredProfileIds = extras.featuredProfileIds != null
         ? extras.featuredProfileIds
@@ -508,20 +525,26 @@ const getEventRawById = async (eventId) => {
 
 const getPublicEventsPage = async (page, limit) => {
     const offset = (page - 1) * limit;
+    // Attendee feed: only upcoming (or still-running) public events
+    const now = nowDb();
 
     const countResult = await query(
         `SELECT COUNT(*)::int AS count FROM events
-         WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL`,
-        [VISIBILITY.PUBLIC, STATUS.ACTIVE]
+         WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
+           AND (end_at IS NULL OR end_at >= $3)
+           AND start_at >= ($3::timestamptz - INTERVAL '6 hours')`,
+        [VISIBILITY.PUBLIC, STATUS.ACTIVE, now]
     );
     const totalItems = countResult.rows[0].count;
 
     const result = await query(
         `SELECT * FROM events
          WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
+           AND (end_at IS NULL OR end_at >= $3)
+           AND start_at >= ($3::timestamptz - INTERVAL '6 hours')
          ORDER BY start_at ASC
-         LIMIT $3 OFFSET $4`,
-        [VISIBILITY.PUBLIC, STATUS.ACTIVE, limit, offset]
+         LIMIT $4 OFFSET $5`,
+        [VISIBILITY.PUBLIC, STATUS.ACTIVE, now, limit, offset]
     );
 
     const hydrated = await hydrateEventRows(result.rows);
@@ -547,10 +570,13 @@ const getPublicEventsPage = async (page, limit) => {
 
 const searchPublicEvents = async (searchString, page, limit) => {
     const offset = (page - 1) * limit;
+    const now = nowDb();
 
-    let sql = `FROM events WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL`;
-    const params = [VISIBILITY.PUBLIC, STATUS.ACTIVE];
-    let idx = 3;
+    let sql = `FROM events WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
+      AND (end_at IS NULL OR end_at >= $3)
+      AND start_at >= ($3::timestamptz - INTERVAL '6 hours')`;
+    const params = [VISIBILITY.PUBLIC, STATUS.ACTIVE, now];
+    let idx = 4;
 
     if (searchString) {
         sql += ` AND (name ILIKE $${idx} OR description ILIKE $${idx} OR city ILIKE $${idx} OR venue_name ILIKE $${idx})`;

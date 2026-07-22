@@ -1,6 +1,8 @@
 const asyncHandler = require('@/shared/middleware/asyncHandler');
 const { NotFoundError, ForbiddenError, BadRequestError } = require('@/shared/errors');
 const eventService = require('@/modules/events/application/service');
+const eventRepository = require('@/providers/database/event.repository');
+const { LIFECYCLE, STATUS } = require('@/modules/events/domain/event-lifecycle');
 
 const getAllEvents = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -47,17 +49,30 @@ const updateEvent = asyncHandler(async (req, res) => {
 const cancelEventController = asyncHandler(async (req, res) => {
   const eventId = req.params.eventId;
   const requestingUserId = req.user.uid;
+  const roles = req.user.roles || [];
 
-  const currentEvent = await eventService.getEventById(eventId, req.user);
-  if (!currentEvent) {
+  // Use ownership row — getEventById can return null for non-public / cache edge cases
+  const row = await eventRepository.getEventLifecycleOwnership(eventId);
+  if (!row) {
     throw new NotFoundError('Event not found or access denied.');
   }
-  if (currentEvent.organizerId !== requestingUserId) {
+  const isAdmin = roles.includes('admin');
+  if (row.organizer_id !== requestingUserId && !isAdmin) {
     throw new ForbiddenError('You do not have permission to cancel this event.');
+  }
+  if (
+    row.lifecycle_status === LIFECYCLE.CANCELLED ||
+    row.status === STATUS.CANCELLED
+  ) {
+    return res.status(200).json({
+      id: eventId,
+      status: STATUS.CANCELLED,
+      lifecycleStatus: LIFECYCLE.CANCELLED,
+      message: 'Event already cancelled.',
+    });
   }
 
   const cancelledEvent = await eventService.cancelEvent(eventId);
-
   res.status(200).json(cancelledEvent);
 });
 
