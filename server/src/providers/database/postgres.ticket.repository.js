@@ -64,6 +64,11 @@ const getTicketById = async (ticketId) => {
     return rowToTicket(result.rows[0], true);
 };
 
+/**
+ * Update ticket columns + optional raw_data merge.
+ * Only FIELD_MAP keys become real columns. Payment fields dropped in mig 048
+ * (zaloAppTransId, paymentStatus, …) are stored in raw_data only — never as columns.
+ */
 const updateTicket = async (ticketId, updates, transaction = null) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const keys = Object.keys(updates);
@@ -72,10 +77,14 @@ const updateTicket = async (ticketId, updates, transaction = null) => {
     const sets = [];
     const params = [];
     let idx = 1;
+    const rawMerge = {};
 
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
         if (key === 'id') continue;
+
+        // Always keep a JSON trail for non-column / legacy fields
+        rawMerge[key] = updates[key];
 
         if (key in FIELD_MAP) {
             sets.push(`${FIELD_MAP[key]} = $${idx}`);
@@ -86,19 +95,8 @@ const updateTicket = async (ticketId, updates, transaction = null) => {
                 params.push(updates[key]);
             }
             idx++;
-        } else {
-            const snake = key.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
-            sets.push(`${snake} = $${idx}`);
-            params.push(updates[key]);
-            idx++;
         }
-    }
-
-    const rawMerge = {};
-    for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
-        if (key === 'id') continue;
-        rawMerge[key] = updates[key];
+        // Unknown keys: raw_data only (do NOT invent columns from camelCase)
     }
 
     if (Object.keys(rawMerge).length > 0) {
@@ -143,9 +141,33 @@ const getTicketInTransaction = async (transaction, ticketId) => {
     return rowToTicket(result.rows[0], true);
 };
 
+/**
+ * organizer_id FK → auth_users. Never write empty string or orphan ids.
+ * Prefer null when organizer is unknown (nullable FK).
+ */
+function sanitizeOrganizerId(organizerId) {
+    if (organizerId == null) return null;
+    const s = String(organizerId).trim();
+    if (!s) return null;
+    return s;
+}
+
 const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
-    const rawData = { ...ticketData };
+    let organizerId = sanitizeOrganizerId(ticketData.organizerId);
+
+    // Drop orphan organizer ids so book never trips fk_tickets_organizer_id
+    if (organizerId) {
+        const check = await client.query(
+            'SELECT 1 FROM auth_users WHERE id = $1 AND deleted_at IS NULL LIMIT 1',
+            [organizerId]
+        );
+        if (check.rows.length === 0) {
+            organizerId = null;
+        }
+    }
+
+    const rawData = { ...ticketData, organizerId };
     await client.query(
         `INSERT INTO tickets (
             id, event_id, user_id, organizer_id, type, price, original_price,
@@ -177,7 +199,7 @@ const createTicketInTransaction = async (transaction, ticketId, ticketData) => {
             ticketId,
             ticketData.eventId,
             ticketData.userId,
-            ticketData.organizerId || null,
+            organizerId,
             ticketData.type,
             ticketData.price || 0,
             ticketData.originalPrice || 0,

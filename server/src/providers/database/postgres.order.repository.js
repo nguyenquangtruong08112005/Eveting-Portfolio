@@ -426,6 +426,7 @@ module.exports = {
     getTicketOrderLinkInTransaction,
     createPaymentAttemptAndLinkTicketAtomic,
     getPaymentAttemptByProviderOrderId,
+    getLatestPaymentAttemptByTicketId,
     updateOrderStatusInTransaction,
     createLedgerEntryInTransaction,
     getOrganizerSettingsInTransaction,
@@ -461,7 +462,7 @@ async function applyOrderStatusUpdate(client, orderId, status, paidAt = null) {
 
     if (paidAt !== null) {
         sets.push(`paid_at = $${idx}`);
-        params.push(paidAt);
+        params.push(toDb(paidAt) || nowDb());
         idx++;
     }
 
@@ -477,14 +478,8 @@ async function updateOrderStatusInTransaction(tx, orderId, status, paidAt = null
     await applyOrderStatusUpdate(client, orderId, status, paidAt);
 }
 
-async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction = null, lock = false) {
-    const client = getClient(transaction);
-    const sql = lock 
-        ? 'SELECT * FROM payment_attempts WHERE provider_order_id = $1 FOR UPDATE'
-        : 'SELECT * FROM payment_attempts WHERE provider_order_id = $1';
-    const result = await client.query(sql, [providerOrderId]);
-    if (result.rows.length === 0) return null;
-    const r = result.rows[0];
+function mapPaymentAttemptRow(r) {
+    if (!r) return null;
     return {
         id: r.id,
         orderId: r.order_id,
@@ -504,12 +499,55 @@ async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction =
     };
 }
 
+async function getPaymentAttemptByProviderOrderId(providerOrderId, transaction = null, lock = false) {
+    const client = getClient(transaction);
+    const sql = lock
+        ? 'SELECT * FROM payment_attempts WHERE provider_order_id = $1 FOR UPDATE'
+        : 'SELECT * FROM payment_attempts WHERE provider_order_id = $1';
+    const result = await client.query(sql, [providerOrderId]);
+    if (result.rows.length === 0) return null;
+    return mapPaymentAttemptRow(result.rows[0]);
+}
+
+/** Latest attempt for a ticket — SoT after mig 048 dropped tickets.zalo_app_trans_id */
+async function getLatestPaymentAttemptByTicketId(ticketId, transaction = null, lock = false) {
+    const client = getClient(transaction);
+    const sql = lock
+        ? `SELECT * FROM payment_attempts WHERE ticket_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT 1 FOR UPDATE`
+        : `SELECT * FROM payment_attempts WHERE ticket_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT 1`;
+    const result = await client.query(sql, [ticketId]);
+    if (result.rows.length === 0) return null;
+    return mapPaymentAttemptRow(result.rows[0]);
+}
+
 async function createLedgerEntryInTransaction(tx, entry) {
     const client = getClient(tx);
+    // organizer_id FK → auth_users; skip ledger if orphan (event had no valid org)
+    if (entry.organizerId) {
+        const orgOk = await client.query(
+            'SELECT 1 FROM auth_users WHERE id = $1 AND deleted_at IS NULL LIMIT 1',
+            [entry.organizerId]
+        );
+        if (orgOk.rows.length === 0) {
+            entry.organizerId = null;
+        }
+    }
+    if (!entry.organizerId) {
+        // ledger_entries.organizer_id is NOT NULL in some schemas — skip if unknown
+        return;
+    }
     await client.query(
         `INSERT INTO ledger_entries (id, order_id, organizer_id, gross_amount, platform_fee, net_amount, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [entry.id, entry.orderId, entry.organizerId, entry.grossAmount, entry.platformFee, entry.netAmount, entry.createdAt || nowDb()]
+        [
+            entry.id,
+            entry.orderId,
+            entry.organizerId,
+            entry.grossAmount,
+            entry.platformFee,
+            entry.netAmount,
+            toDb(entry.createdAt) || nowDb(),
+        ]
     );
 
     // Update organizer balance

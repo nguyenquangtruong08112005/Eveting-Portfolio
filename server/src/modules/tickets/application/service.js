@@ -103,11 +103,14 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
 
         const qrCodeJwt = generateTicketQR(ticketId, userId, eventId, qty);
 
+        // Prefer relational event.organizerId (column); raw Firebase ids are stripped in hydrate
+        const organizerId = eventData.organizerId || null;
+
         const newTicketData = {
             id: ticketId,
             eventId: eventId,
             userId: userId,
-            organizerId: eventData.organizerId,
+            organizerId,
             type: ticketType,
 
             price: totalPrice,
@@ -146,7 +149,7 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
                     id: shadowOrderId,
                     userId,
                     eventId,
-                    organizerId: eventData.organizerId,
+                    organizerId,
                     status: ORDER_STATUS.PENDING_PAYMENT,
                     subtotalAmount: originalTotalPrice,
                     discountAmount: originalTotalPrice - totalPrice,
@@ -301,7 +304,9 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
         }
 
         // ── Shadow payment_attempt, order status, and ledger update ──
+        // SAVEPOINT: failure here must not abort ticket paid status
         try {
+            await transaction.query('SAVEPOINT shadow_payment');
             const link = await orderRepository.getTicketOrderLinkInTransaction(transaction, ticketId);
             if (link) {
                 if (link.paymentAttemptId) {
@@ -318,7 +323,7 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
                     await orderRepository.updateOrderStatusInTransaction(transaction, link.orderId, ORDER_STATUS.PAID, Date.now());
 
                     const orderData = await orderRepository.getOrderInTransaction(transaction, link.orderId);
-                    if (orderData) {
+                    if (orderData && orderData.organizerId) {
                         const settings = await orderRepository.getOrganizerSettingsInTransaction(transaction, orderData.organizerId);
                         const platformFeeRate = settings ? settings.platformFeeRate : 0.05;
 
@@ -338,13 +343,19 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
                     }
                 }
             }
+            await transaction.query('RELEASE SAVEPOINT shadow_payment');
         } catch (err) {
+            try {
+                await transaction.query('ROLLBACK TO SAVEPOINT shadow_payment');
+                await transaction.query('RELEASE SAVEPOINT shadow_payment');
+            } catch (_) { /* ignore */ }
             logger.error(`[ShadowPayment] Failed to update payment, order, or ledger for ticket ${ticketId}: ${err.message}`);
         }
         // ── End shadow payment_attempt, order status, and ledger update ──
 
         // ── Publish notification event to outbox ──
         try {
+            await transaction.query('SAVEPOINT notif_outbox');
             const userProfileResult = await transaction.query(
                 `SELECT a.email, p.name
                  FROM auth_users a
@@ -370,7 +381,12 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
                 body: `Your ticket payment was confirmed!`,
                 data: { ticketId, eventId: ticketData.eventId }
             }, transaction);
+            await transaction.query('RELEASE SAVEPOINT notif_outbox');
         } catch (err) {
+            try {
+                await transaction.query('ROLLBACK TO SAVEPOINT notif_outbox');
+                await transaction.query('RELEASE SAVEPOINT notif_outbox');
+            } catch (_) { /* ignore */ }
             logger.error(`[NotificationOutbox] Failed to publish outbox event: ${err.message}`);
         }
 

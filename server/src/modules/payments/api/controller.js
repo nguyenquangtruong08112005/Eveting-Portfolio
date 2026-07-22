@@ -5,8 +5,49 @@ const orderRepository = require('@/providers/database/order.repository');
 const asyncHandler = require('@/shared/middleware/asyncHandler');
 const { v4: uuidv4 } = require('uuid');
 const { BadRequestError, NotFoundError, ForbiddenError, ConflictError } = require('@/shared/errors');
-const { PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
+const { ORDER_STATUS, PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
 const logger = require('@/shared/logger');
+
+/**
+ * Ensure ticket has an order row for payment_attempts.order_id (NOT NULL FK).
+ * Book path usually creates a shadow order; recover if missing.
+ */
+async function ensureOrderForTicket(ticket, userId) {
+    const link = await orderRepository.getTicketOrderLink(ticket.id);
+    if (link?.orderId) return link;
+
+    const orderId = `ord_${uuidv4()}`;
+    const orderItemId = `oi_${uuidv4()}`;
+    const now = Date.now();
+    await orderRepository.createOrder({
+        id: orderId,
+        userId,
+        eventId: ticket.eventId || null,
+        organizerId: ticket.organizerId || null,
+        status: ORDER_STATUS.PENDING_PAYMENT,
+        subtotalAmount: Number(ticket.price) || 0,
+        totalAmount: Number(ticket.price) || 0,
+        currency: 'VND',
+        createdAt: now,
+        updatedAt: now,
+        items: [
+            {
+                id: orderItemId,
+                ticketId: ticket.id,
+                ticketType: ticket.type || null,
+                eventId: ticket.eventId || null,
+                quantity: ticket.quantity || 1,
+                unitPrice: Number(ticket.unitPrice ?? ticket.price) || 0,
+                subtotal: Number(ticket.price) || 0,
+                totalAmount: Number(ticket.price) || 0,
+                status: 'pending',
+                createdAt: now,
+            },
+        ],
+    });
+    await orderRepository.linkTicketToOrder(ticket.id, orderId, orderItemId, null);
+    return { orderId, orderItemId, paymentAttemptId: null };
+}
 
 const createPaymentOrder = asyncHandler(async (req, res) => {
     const { ticketId, redirectUrl } = req.body;
@@ -19,43 +60,52 @@ const createPaymentOrder = asyncHandler(async (req, res) => {
         throw new ConflictError(`Ticket not payable (status: ${ticket.status}).`);
     }
 
-    // Use redirectUrl as-is — the user's browser can access localhost directly.
-    // Only the ZaloPay callback (webhook) needs the public ngrok URL.
+    // Use redirectUrl as-is — browser can access localhost; callback needs public URL.
     const finalRedirectUrl = redirectUrl;
 
     const zaloResponse = await paymentService.createZaloPayOrder(ticket, finalRedirectUrl);
+    const appTransId = zaloResponse.app_trans_id;
+    if (!appTransId) {
+        throw new BadRequestError('ZaloPay did not return app_trans_id.');
+    }
 
+    // Mig 048: payment SoT is payment_attempts. Ticket update only touches FIELD_MAP + raw_data
+    // (zaloAppTransId / paymentStatus go to raw_data, not dropped columns).
     await ticketRepository.updateTicket(ticketId, {
-        zaloAppTransId: zaloResponse.app_trans_id,
+        zaloAppTransId: appTransId,
         paymentStatus: 'processing',
-        lastPaymentAttempt: new Date().toISOString()
+        lastPaymentAttempt: new Date().toISOString(),
+        updatedAt: Date.now(),
     });
 
-    // ── Shadow payment_attempt creation (atomic) ──
+    const link = await ensureOrderForTicket(ticket, userId);
+    const paId = `pa_${uuidv4()}`;
     try {
-        const link = await orderRepository.getTicketOrderLink(ticketId);
-        if (link && link.orderId) {
-            const paId = `pa_${uuidv4()}`;
-            await orderRepository.createPaymentAttemptAndLinkTicketAtomic({
+        await orderRepository.createPaymentAttemptAndLinkTicketAtomic(
+            {
                 id: paId,
                 orderId: link.orderId,
                 ticketId,
                 status: PAYMENT_STATUS.PROCESSING,
                 paymentMethod: 'zalopay',
                 provider: 'zalopay',
-                providerOrderId: zaloResponse.app_trans_id,
+                providerOrderId: appTransId,
                 amount: ticket.price,
                 currency: 'VND',
                 requestPayload: null,
                 responsePayload: zaloResponse,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
-            }, ticketId);
-        }
+            },
+            ticketId
+        );
     } catch (err) {
-        logger.error(`[ShadowPayment] Failed to create payment_attempt for ticket ${ticketId}: ${err.message}`);
+        // Still return ZaloPay order so client can open pay URL; log for ops
+        logger.error(
+            `[Payment] Failed to create payment_attempt for ticket ${ticketId}: ${err.message}`
+        );
+        throw err;
     }
-    // ── End shadow payment_attempt creation ──
 
     res.status(200).json(zaloResponse);
 });
@@ -67,9 +117,9 @@ const handleZaloPayCallback = async (req, res) => {
         const isVerified = paymentService.verifyZaloPayCallback(req.body);
 
         if (!isVerified) {
-            console.warn("[ZaloPay Callback] Invalid MAC signature!");
+            console.warn('[ZaloPay Callback] Invalid MAC signature!');
             result.return_code = -1;
-            result.return_message = "mac not equal";
+            result.return_message = 'mac not equal';
             return res.json(result);
         }
 
@@ -80,51 +130,62 @@ const handleZaloPayCallback = async (req, res) => {
         const zpTransId = dataObj.zp_trans_id;
 
         const callbackResult = await ticketRepository.runTransaction(async (tx) => {
-            // Lock the payment attempt row
-            const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(appTransId, tx, true);
+            const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(
+                appTransId,
+                tx,
+                true
+            );
             if (!existingAttempt) {
-                console.warn(`[ZaloPay Callback] Payment attempt for provider order ${appTransId} not found.`);
+                console.warn(
+                    `[ZaloPay Callback] Payment attempt for provider order ${appTransId} not found.`
+                );
                 return {
                     return_code: 0,
-                    return_message: "payment attempt not found"
+                    return_message: 'payment attempt not found',
                 };
             }
 
-            // Webhook Idempotency Check
             if (existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
-                console.log(`[ZaloPay Callback] Transaction ${appTransId} already succeeded. Skipping.`);
+                console.log(
+                    `[ZaloPay Callback] Transaction ${appTransId} already succeeded. Skipping.`
+                );
                 return {
                     return_code: 1,
-                    return_message: "success"
+                    return_message: 'success',
                 };
             }
 
-            // State Machine Guard Check (Terminal states block)
-            if (existingAttempt.status === PAYMENT_STATUS.FAILED || existingAttempt.status === PAYMENT_STATUS.CANCELLED) {
-                console.warn(`[ZaloPay Callback] Transaction ${appTransId} is in terminal state '${existingAttempt.status}'. Cannot overwrite.`);
+            if (
+                existingAttempt.status === PAYMENT_STATUS.FAILED ||
+                existingAttempt.status === PAYMENT_STATUS.CANCELLED
+            ) {
+                console.warn(
+                    `[ZaloPay Callback] Transaction ${appTransId} is in terminal state '${existingAttempt.status}'. Cannot overwrite.`
+                );
                 return {
                     return_code: 0,
-                    return_message: `Cannot overwrite terminal status: ${existingAttempt.status}`
+                    return_message: `Cannot overwrite terminal status: ${existingAttempt.status}`,
                 };
             }
 
             const embedData = JSON.parse(dataObj.embed_data);
-            const ticketId = embedData.ticket_id;
+            const ticketId = embedData.ticket_id || existingAttempt.ticketId;
 
-            console.log(`[ZaloPay Callback] Success Verified. Ticket: ${ticketId}, ZaloID: ${zpTransId}`);
+            console.log(
+                `[ZaloPay Callback] Success Verified. Ticket: ${ticketId}, ZaloID: ${zpTransId}`
+            );
 
             await ticketService.confirmTicketPayment(ticketId, zpTransId, tx);
 
             return {
                 return_code: 1,
-                return_message: "success"
+                return_message: 'success',
             };
         });
 
         return res.json(callbackResult);
-
     } catch (error) {
-        console.error("[ZaloPay Callback] Exception:", error);
+        console.error('[ZaloPay Callback] Exception:', error);
         result.return_code = 0;
         result.return_message = error.message;
         return res.json(result);
@@ -137,31 +198,48 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
     const ticket = await ticketRepository.getTicketById(ticketId);
     if (!ticket) throw new NotFoundError('Not found');
 
-    if (ticket.status === 'paid') return res.json({ status: 'paid', message: "Paid confirmed" });
-    if (!ticket.zaloAppTransId) throw new BadRequestError("No transaction ID");
+    if (ticket.status === 'paid') return res.json({ status: 'paid', message: 'Paid confirmed' });
 
-    const queryResult = await paymentService.queryZaloPayOrder(ticket.zaloAppTransId);
+    // Prefer payment_attempts (SoT); fall back to ticket.raw_data.zaloAppTransId
+    const latestAttempt = await orderRepository.getLatestPaymentAttemptByTicketId(ticketId);
+    const providerOrderId =
+        latestAttempt?.providerOrderId || ticket.zaloAppTransId || null;
+    if (!providerOrderId) {
+        throw new BadRequestError('No payment transaction ID for this ticket.');
+    }
+
+    const queryResult = await paymentService.queryZaloPayOrder(providerOrderId);
 
     const result = await ticketRepository.runTransaction(async (tx) => {
-        // Lock the payment attempt row
-        const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(ticket.zaloAppTransId, tx, true);
+        const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(
+            providerOrderId,
+            tx,
+            true
+        );
         if (!existingAttempt) {
             throw new NotFoundError('Payment attempt not found.');
         }
 
-        // State Machine Guard check
         if (existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
-            return { status: 'paid', message: "Paid confirmed (already succeeded)", raw: queryResult };
+            return { status: 'paid', message: 'Paid confirmed (already succeeded)', raw: queryResult };
         }
         if (existingAttempt.status === PAYMENT_STATUS.FAILED) {
-            return { status: 'failed', message: "Payment failed (already failed)", raw: queryResult };
+            return { status: 'failed', message: 'Payment failed (already failed)', raw: queryResult };
         }
         if (existingAttempt.status === PAYMENT_STATUS.CANCELLED) {
-            return { status: 'cancelled', message: "Payment cancelled (already cancelled)", raw: queryResult };
+            return {
+                status: 'cancelled',
+                message: 'Payment cancelled (already cancelled)',
+                raw: queryResult,
+            };
         }
 
         if (queryResult.return_code === 1) {
-            await ticketService.confirmTicketPayment(ticketId, queryResult.zp_trans_id || "re-query", tx);
+            await ticketService.confirmTicketPayment(
+                ticketId,
+                queryResult.zp_trans_id || 're-query',
+                tx
+            );
             return { status: 'paid', raw: queryResult };
         } else if (queryResult.return_code === 2) {
             await ticketService.failTicketPayment(ticketId, 'ZaloPay reported failure', tx);
@@ -198,5 +276,5 @@ module.exports = {
     createPaymentOrder,
     handleZaloPayCallback,
     manualCheckPaymentStatus,
-    handleZaloPayRedirect
+    handleZaloPayRedirect,
 };
