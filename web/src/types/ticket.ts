@@ -4,7 +4,7 @@ export interface Ticket {
   userId: string;
   seatId?: string;
   ticketType: string;
-  status: 'active' | 'cancelled' | 'used';
+  status: 'active' | 'cancelled' | 'used' | 'pending';
   purchasedAt: number;
   /** Server JWT / QR payload for venue check-in */
   qrCode?: string;

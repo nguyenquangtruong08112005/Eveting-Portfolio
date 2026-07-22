@@ -50,18 +50,34 @@ function CheckoutSuccessPageContent() {
         setEvent(null);
       });
 
-    // Verify payment status + load real QR payload when ticketId is present
+    // Confirm payment with backend (ZaloPay webhook often never hits localhost —
+    // success page re-query is the real confirmation path).
     if (ticketId) {
-      TicketService.checkPaymentStatus(ticketId)
-        .then((result) => {
-          setPaymentVerified(result.status === 'paid');
-        })
-        .catch(() => {
-          setPaymentVerified(null);
-        });
+      let cancelled = false;
+      const runVerify = async () => {
+        // Retry: ZaloPay query can lag right after redirect
+        for (let i = 0; i < 4 && !cancelled; i++) {
+          try {
+            const result = await TicketService.checkPaymentStatus(ticketId);
+            if (cancelled) return;
+            if (result.status === 'paid') {
+              setPaymentVerified(true);
+              break;
+            }
+            if (result.status === 'failed' || result.status === 'cancelled') {
+              setPaymentVerified(false);
+              break;
+            }
+            setPaymentVerified(false);
+          } catch {
+            if (!cancelled) setPaymentVerified(null);
+          }
+          await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+        }
 
-      TicketService.getTicketDetails(ticketId)
-        .then((data: any) => {
+        try {
+          const data: any = await TicketService.getTicketDetails(ticketId);
+          if (cancelled) return;
           setQrPayload(
             buildClientTicketQrValue({
               ticketId: data?.id || ticketId,
@@ -69,15 +85,21 @@ function CheckoutSuccessPageContent() {
               qrCode: data?.qrCode || data?.qr_code,
             })
           );
-        })
-        .catch(() => {
-          setQrPayload(
-            buildClientTicketQrValue({ ticketId, eventId })
-          );
-        });
-    } else {
-      setQrPayload('');
+          if (data?.status === 'paid' || data?.status === 'checkedIn') {
+            setPaymentVerified(true);
+          }
+        } catch {
+          if (!cancelled) {
+            setQrPayload(buildClientTicketQrValue({ ticketId, eventId }));
+          }
+        }
+      };
+      void runVerify();
+      return () => {
+        cancelled = true;
+      };
     }
+    setQrPayload('');
   }, [eventId, ticketId, router]);
 
   return (
@@ -97,10 +119,17 @@ function CheckoutSuccessPageContent() {
 
           {/* Message */}
           <div>
-            <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{t('payment_success')}</h1>
+            <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">
+              {paymentVerified === false ? t('payment_success') : t('payment_success')}
+            </h1>
             <p className="text-[var(--text-secondary)] text-xs mt-1.5 leading-relaxed">
-              {t('success_message')}
+              {paymentVerified === false
+                ? 'Payment is still processing. Your ticket will activate when ZaloPay confirms (or use “Check status” on My Tickets).'
+                : t('success_message')}
             </p>
+            {paymentVerified === true && (
+              <p className="text-[var(--success)] text-[11px] font-bold mt-2">{t('payment_verified')}</p>
+            )}
             {!token && (
               <p className="text-[var(--primary)] text-[11px] font-bold mt-2">
                 {t('email_sent')}

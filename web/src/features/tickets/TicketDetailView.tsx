@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ArrowLeft, Calendar, MapPin, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/shared/SafeImage';
 import { useAuth } from '@/hooks/useAuth';
 import { TicketService } from '@/features/tickets/api';
 import { formatDate } from '@/lib/constants';
@@ -33,8 +33,19 @@ export function TicketDetailView() {
     }
 
     TicketService.getTicketDetails(ticketId)
-      .then((data) => {
-        setTicket(data);
+      .then((data: any) => {
+        // API may return flat ticket or { ticket, event }
+        const flat =
+          data?.ticket && !data?.id
+            ? {
+                ...data.ticket,
+                event: data.event
+                  ? { id: data.event.id || data.ticket.eventId, ...data.event }
+                  : undefined,
+                eventId: data.ticket.eventId || data.event?.id,
+              }
+            : data;
+        setTicket(flat);
       })
       .catch((err) => {
         console.error('Failed to load ticket details:', err);
@@ -45,9 +56,13 @@ export function TicketDetailView() {
 
   const statusConfig = {
     paid: { label: t('active'), icon: CheckCircle, color: 'text-[var(--primary)]', bg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/20' },
+    active: { label: t('active'), icon: CheckCircle, color: 'text-[var(--primary)]', bg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/20' },
     pending: { label: 'Pending', icon: Clock, color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', border: 'border-[var(--warning)]/20' },
+    processing: { label: 'Pending', icon: Clock, color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', border: 'border-[var(--warning)]/20' },
     checkedIn: { label: t('used'), icon: CheckCircle, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', border: 'border-[var(--success)]/20' },
+    used: { label: t('used'), icon: CheckCircle, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', border: 'border-[var(--success)]/20' },
     cancelled: { label: t('cancelled'), icon: XCircle, color: 'text-[var(--text-muted)]', bg: 'bg-[var(--surface-hover)]', border: 'border-[var(--surface-border)]' },
+    failed: { label: t('cancelled'), icon: XCircle, color: 'text-[var(--text-muted)]', bg: 'bg-[var(--surface-hover)]', border: 'border-[var(--surface-border)]' },
   };
 
   if (loading) {
@@ -100,7 +115,14 @@ export function TicketDetailView() {
           {/* Event Image */}
           {event?.imageUrl && (
             <div className="aspect-[21/9] w-full overflow-hidden relative">
-              <Image src={event.imageUrl} alt={event.name} fill className="object-cover" />
+              <SafeImage
+                src={event.imageUrl}
+                alt={event.name || 'Event'}
+                fill
+                sizes="(max-width: 768px) 100vw, 672px"
+                className="object-cover"
+                unoptimized
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-5 right-5">
                 <h1 className="text-xl font-extrabold text-white leading-snug drop-shadow-md">{event.name}</h1>

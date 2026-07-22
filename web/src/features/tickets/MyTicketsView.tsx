@@ -3,14 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Ticket as TicketIcon, Calendar, MapPin, ArrowRight, RefreshCw, Printer } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/shared/SafeImage';
 import { useAuth } from '@/hooks/useAuth';
 import { TicketService } from '@/features/tickets/api';
-import { EventService } from '@/features/events/api';
 import { formatDate, enrichEvent } from '@/lib/constants';
 import type { Ticket, Event } from '@/types';
 import { cn } from '@/lib/utils';
@@ -28,60 +27,90 @@ export function MyTicketsView() {
   const [eventsMap, setEventsMap] = useState<Record<string, Event>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 10;
 
-  const loadData = useCallback(async () => {
+  const mapServerStatus = (s: string | undefined): Ticket['status'] => {
+    if (s === 'paid' || s === 'active') return 'active';
+    if (s === 'checkedIn' || s === 'used') return 'used';
+    if (s === 'cancelled' || s === 'failed') return 'cancelled';
+    // pending / processing — not cancelled
+    if (s === 'pending' || s === 'processing') return 'pending' as Ticket['status'];
+    return (s as Ticket['status']) || 'pending';
+  };
+
+  const loadData = useCallback(async (pageNum = 1) => {
     if (!token) {
       router.push('/login?redirect=/my-tickets');
       return;
     }
 
     try {
-      // Fetch user tickets
-      const data = await TicketService.getUserTickets();
-      
-      // Fetch all events to construct map
-      const eventsData = await EventService.list();
-      const map: Record<string, Event> = {};
-      if (eventsData?.events) {
-        eventsData.events.forEach((e) => {
-          map[e.id] = enrichEvent(e);
-        });
-      }
-      setEventsMap(map);
+      const data = await TicketService.getUserTickets(pageNum, PAGE_SIZE);
+      const map: Record<string, Event> = { ...eventsMap };
 
       if (data?.tickets) {
-        const mappedTickets: Ticket[] = data.tickets.map((t: any) => ({
-          id: t.id,
-          eventId: t.event?.id || t.eventId || '',
-          userId: t.userId || '',
-          seatId: t.seat || undefined,
-          ticketType: t.type === 'standard' ? 'Standard' : (t.type || 'Standard'),
-          // Map server statuses to frontend statuses
-          status: t.status === 'paid' ? 'active' : t.status === 'checkedIn' ? 'used' : t.status || 'active',
-          purchasedAt: t.purchaseDate || Date.now(),
-          qrCode: t.qrCode || t.qr_code || undefined,
-        }));
+        const mappedTickets: Ticket[] = data.tickets.map((t: any) => {
+          const eventId = t.event?.id || t.eventId || '';
+          if (t.event?.id) {
+            map[t.event.id] = enrichEvent({
+              id: t.event.id,
+              name: t.event.name,
+              date: t.event.date,
+              imageUrl: t.event.imageUrl,
+              venueName: t.event.venueName,
+              city: t.event.city,
+              status: t.event.status,
+            } as Event);
+          }
+          return {
+            id: t.id,
+            eventId,
+            userId: t.userId || '',
+            seatId: t.seat || undefined,
+            ticketType: t.type === 'standard' ? 'Standard' : t.type || 'Standard',
+            status: mapServerStatus(t.status),
+            purchasedAt: t.purchaseDate || Date.now(),
+            qrCode: t.qrCode || t.qr_code || undefined,
+          };
+        });
         setTickets(mappedTickets);
+        setEventsMap(map);
+        const pag = (data as { pagination?: { totalPages?: number; currentPage?: number } })
+          .pagination;
+        setTotalPages(Math.max(1, pag?.totalPages || 1));
+        setPage(pag?.currentPage || pageNum);
       } else {
         setTickets([]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load tickets:', err);
       setTickets([]);
-      setEventsMap({});
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load by page; avoid eventsMap loop
   }, [token, router]);
 
   useEffect(() => {
-    loadData();
+    loadData(1);
   }, [loadData]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    loadData();
+    // Re-query ZaloPay for any still-pending tickets (webhook often misses localhost)
+    try {
+      await Promise.allSettled(
+        tickets
+          .filter((t) => t.status === 'pending')
+          .map((t) => TicketService.checkPaymentStatus(t.id))
+      );
+    } catch {
+      /* ignore */
+    }
+    await loadData(page);
   };
 
   const handlePrint = () => {
@@ -166,7 +195,14 @@ export function MyTicketsView() {
                     {/* Event Image */}
                     {eventInfo?.imageUrl && (
                       <div className="w-24 h-32 rounded-lg overflow-hidden shrink-0 border border-[var(--surface-border)] relative hidden sm:block">
-                        <Image src={eventInfo.imageUrl || ''} alt={eventInfo.name} fill className="w-full h-full object-cover" />
+                        <SafeImage
+                          src={eventInfo.imageUrl}
+                          alt={eventInfo.name || 'Event'}
+                          fill
+                          sizes="96px"
+                          className="object-cover"
+                          unoptimized
+                        />
                       </div>
                     )}
                     
@@ -184,9 +220,21 @@ export function MyTicketsView() {
                           )}
                           <Badge className={cn(
                             "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border",
-                            ticket.status === 'active' ? "bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)]" : "bg-[var(--surface-hover)] border-[var(--surface-border)] text-[var(--text-muted)]"
+                            ticket.status === 'active'
+                              ? "bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)]"
+                              : ticket.status === 'used'
+                                ? "bg-[var(--success)]/10 border-[var(--success)]/20 text-[var(--success)]"
+                                : ticket.status === 'pending' || (ticket.status as string) === 'processing'
+                                  ? "bg-[var(--warning)]/10 border-[var(--warning)]/20 text-[var(--warning)]"
+                                  : "bg-[var(--surface-hover)] border-[var(--surface-border)] text-[var(--text-muted)]"
                           )}>
-                            {ticket.status === 'active' ? t('active') : ticket.status === 'used' ? t('used') : t('cancelled')}
+                            {ticket.status === 'active'
+                              ? t('active')
+                              : ticket.status === 'used'
+                                ? t('used')
+                                : ticket.status === 'pending' || (ticket.status as string) === 'processing'
+                                  ? 'Pending'
+                                  : t('cancelled')}
                           </Badge>
                         </div>
                         
@@ -257,6 +305,35 @@ export function MyTicketsView() {
                 </div>
               );
             })}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={page <= 1 || refreshing}
+                  onClick={() => {
+                    setRefreshing(true);
+                    loadData(page - 1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--surface-border)] text-xs font-bold disabled:opacity-40 cursor-pointer"
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-[var(--text-muted)]">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page >= totalPages || refreshing}
+                  onClick={() => {
+                    setRefreshing(true);
+                    loadData(page + 1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--surface-border)] text-xs font-bold disabled:opacity-40 cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>

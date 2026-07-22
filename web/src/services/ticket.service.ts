@@ -98,8 +98,17 @@ export class TicketService {
     });
   }
 
-  static async getUserTickets(): Promise<{ tickets: Ticket[] }> {
-    return request<{ tickets: Ticket[] }>("GET", "/api/web/tickets");
+  static async getUserTickets(
+    page = 1,
+    limit = 10
+  ): Promise<{
+    tickets: Ticket[];
+    pagination?: { currentPage: number; limit: number; totalPages: number; totalItems: number };
+  }> {
+    return request(
+      "GET",
+      `/api/web/tickets?page=${page}&limit=${limit}`
+    );
   }
 
   static async getTicketDetails(ticketId: string): Promise<any> {
