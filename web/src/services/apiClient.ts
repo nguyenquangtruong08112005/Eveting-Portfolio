@@ -164,10 +164,24 @@ export async function request<T>(
         } catch {
           errorBody = { message: res.statusText };
         }
-        const msg =
-          (errorBody as { message?: string; error?: string })?.message ||
-          (errorBody as { error?: string })?.error ||
-          `API error: ${res.status}`;
+        // Support shapes: { message }, { error: string }, { error: { message } }
+        const body = errorBody as {
+          message?: unknown;
+          error?: unknown;
+        };
+        let msg: string | undefined;
+        if (typeof body?.message === 'string') msg = body.message;
+        else if (typeof body?.error === 'string') msg = body.error;
+        else if (
+          body?.error &&
+          typeof body.error === 'object' &&
+          typeof (body.error as { message?: unknown }).message === 'string'
+        ) {
+          msg = (body.error as { message: string }).message;
+        }
+        if (!msg || msg === '[object Object]') {
+          msg = `API error: ${res.status}`;
+        }
         throw new HttpError(res.status, msg, errorBody);
       }
 

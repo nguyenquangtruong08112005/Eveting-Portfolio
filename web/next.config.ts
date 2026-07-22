@@ -22,6 +22,26 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'tkbcdn.com',
       },
+      {
+        protocol: 'https',
+        hostname: '**.tkbcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.tkbcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ticketbox.vn',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.ticketbox.vn',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pub-6104e758b7f44f039780b95c312ee780.r2.dev',
+      },
     ],
   },
   headers: async () => [
