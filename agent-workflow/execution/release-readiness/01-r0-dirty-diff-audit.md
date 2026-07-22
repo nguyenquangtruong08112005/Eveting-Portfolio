@@ -197,16 +197,16 @@ Completed checks:
 
 Committed source checkpoint:
 
-- `web` commit `e8328cf web: fix organizer lint errors`
-- `server` commit `7102dfe server: harden payment state persistence`
-- `server` commit `4e57fd9 server: normalize event and ticket repository behavior`
-- `server` commit `193b0f3 server: refresh seed and timestamp handling`
-- `web` commit `acc743a web: align ticket checkout flows`
-- `web` commit `d5ca72f web: refine event discovery UI`
-- `web` commit `b0a8f65 web: persist checkout identity hints`
-- `web` commit `91cea71 web: polish organizer shell utilities`
-- `web` commit `f4bb93c web: improve api errors and image hosts`
-- `mobile-attendee` commit `c39a161 mobile-attendee: remove tracked ide metadata`
+- `server` commit `7578e29 fix(server): harden payment state persistence`
+- `server` commit `56cf62d fix(server): normalize event and ticket repository behavior`
+- `server` commit `1c238ce chore(server): refresh seed and timestamp handling`
+- `web` commit `0724909 fix(web): resolve organizer lint errors`
+- `web` commit `400bf00 fix(web): align ticket checkout flows`
+- `web` commit `ed41d11 refactor(web): refine event discovery UI`
+- `web` commit `38387db feat(web): persist checkout identity hints`
+- `web` commit `5b8cbb3 refactor(web): polish organizer shell utilities`
+- `web` commit `79653f4 fix(web): improve api errors and image hosts`
+- `mobile-attendee` commit `e443722 chore(mobile-attendee): remove tracked ide metadata`
 
 Remaining warnings:
 
