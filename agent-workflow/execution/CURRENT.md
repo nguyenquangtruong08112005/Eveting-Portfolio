@@ -6,11 +6,11 @@
 
 | Field | Value |
 |---|---|
-| Program | **DB-FINISH-ALL** |
-| Status | **CLOSED** |
-| Hub | [db/finish/](db/finish/) |
-| Final scorecard | [db/finish/99-final-scorecard.md](db/finish/99-final-scorecard.md) |
-| Overall score | **~8.9/10** (target 9.0) |
+| Program | **RELEASE-READINESS** |
+| Status | **DRAFT / NEXT ACTIVE** |
+| Hub | [release-readiness/](release-readiness/) |
+| Plan | [release-readiness/00-plan.md](release-readiness/00-plan.md) |
+| Immediate next | R0 dirty diff audit |
 
 ## Closed DB programs
 
