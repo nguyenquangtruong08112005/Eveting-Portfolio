@@ -32,7 +32,10 @@ const ZXING_MAX_EDGE = 720;
 export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   const t = useTranslations('organizer');
   const onScanRef = useRef(onScan);
-  onScanRef.current = onScan;
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -46,7 +49,6 @@ export function QrCameraScanner({ onScan, className }: QrCameraScannerProps) {
   const facingRef = useRef<Facing>('environment');
   const devicesRef = useRef<MediaDeviceInfo[]>([]);
   const deviceIndexRef = useRef(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const barcodeDetectorRef = useRef<any>(null);
   const zxingReadyRef = useRef(false);
   const engineRef = useRef<Engine | null>(null);
@@ -504,7 +506,6 @@ function applyStartError(
   e: unknown,
   setError: (s: string) => void,
   setDebugDetail: (s: string | null) => void,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any
 ) {
   const name = e instanceof DOMException ? e.name : '';

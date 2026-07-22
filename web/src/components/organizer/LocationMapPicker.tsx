@@ -36,8 +36,11 @@ export function LocationMapPicker({
   const t = useTranslations('organizer');
   const mapHostRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
   const addressRef = useRef(value?.address || '');
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +143,6 @@ export function LocationMapPicker({
       const L = await import('leaflet');
       if (cancelled || destroyedRef.current || !mapHostRef.current) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -222,13 +224,12 @@ export function LocationMapPicker({
     void emit(lat, lng, address || undefined);
   };
 
-  const useMyLocation = async () => {
+  const handleMyLocation = async () => {
     if (!navigator.geolocation) {
       setError(t('map_geo_unsupported'));
       return;
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const perms = (navigator as any).permissions;
       if (perms?.query) {
         const status = await perms.query({ name: 'geolocation' as PermissionName });
@@ -278,7 +279,7 @@ export function LocationMapPicker({
             size="sm"
             variant="outline"
             className="rounded-lg text-[10px] h-8"
-            onClick={() => void useMyLocation()}
+            onClick={() => void handleMyLocation()}
           >
             <Navigation className="size-3" />
             {t('map_my_location')}
