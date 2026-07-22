@@ -1,4 +1,5 @@
 const { query } = require('./postgres.client');
+const { toDb, fromDb, nowDb, nowMs } = require('./time.helper');
 
 function rowToAnalytics(row) {
     if (!row) return null;
@@ -29,7 +30,7 @@ function rowToAnalytics(row) {
     } else {
         analytics.viewsOverTime = {};
     }
-    if (row.last_updated_at != null) analytics.lastUpdatedAt = Number(row.last_updated_at);
+    if (row.last_updated_at != null) analytics.lastUpdatedAt = fromDb(row.last_updated_at);
 
     return analytics;
 }
@@ -44,7 +45,8 @@ const updateAnalyticsForConfirmPaymentInTransaction = async (transaction, eventI
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     const qty = quantity || 1;
     const prc = price || 0;
-    const now = Date.now();
+    const tsMs = nowMs();
+    const tsDb = nowDb();
 
     const ticketsSoldObj = JSON.stringify({ [ticketType]: qty });
     const dailySalesObj = JSON.stringify({ [dailyTimestamp]: qty });
@@ -54,7 +56,7 @@ const updateAnalyticsForConfirmPaymentInTransaction = async (transaction, eventI
         totalRevenue: prc,
         ticketsSold: { [ticketType]: qty },
         dailySales: { [dailyTimestamp]: qty },
-        lastUpdatedAt: now
+        lastUpdatedAt: tsMs
     });
 
     const sql = `
@@ -69,7 +71,7 @@ const updateAnalyticsForConfirmPaymentInTransaction = async (transaction, eventI
                 'totalRevenue', COALESCE((analytics.raw_data->>'totalRevenue')::numeric, 0) + EXCLUDED.total_revenue,
                 'ticketsSold', COALESCE(analytics.raw_data->'ticketsSold', '{}'::jsonb) || jsonb_build_object($7::text, COALESCE((analytics.raw_data->'ticketsSold'->>$7)::int, 0) + $8::int),
                 'dailySales', COALESCE(analytics.raw_data->'dailySales', '{}'::jsonb) || jsonb_build_object($9::text, COALESCE((analytics.raw_data->'dailySales'->>$9)::int, 0) + $8::int),
-                'lastUpdatedAt', EXCLUDED.last_updated_at
+                'lastUpdatedAt', $10::bigint
             )
     `;
 
@@ -78,17 +80,19 @@ const updateAnalyticsForConfirmPaymentInTransaction = async (transaction, eventI
         prc,
         ticketsSoldObj,
         dailySalesObj,
-        now,
+        tsDb,
         rawData,
         ticketType,
         qty,
-        dailyTimestamp
+        dailyTimestamp,
+        tsMs,
     ]);
 };
 
 const incrementCheckInInTransaction = async (transaction, eventId) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
-    const now = Date.now();
+    const tsMs = nowMs();
+    const tsDb = nowDb();
     const sql = `
         INSERT INTO analytics (id, event_id, check_ins, last_updated_at, raw_data)
         VALUES ($1, $1, 1, $2, $3::jsonb)
@@ -97,10 +101,15 @@ const incrementCheckInInTransaction = async (transaction, eventId) => {
             last_updated_at = EXCLUDED.last_updated_at,
             raw_data = COALESCE(analytics.raw_data, '{}'::jsonb) || jsonb_build_object(
                 'checkIns', COALESCE((analytics.raw_data->>'checkIns')::int, 0) + 1,
-                'lastUpdatedAt', EXCLUDED.last_updated_at
+                'lastUpdatedAt', $4::bigint
             )
     `;
-    await client.query(sql, [eventId, now, JSON.stringify({ eventId, checkIns: 1, lastUpdatedAt: now })]);
+    await client.query(sql, [
+        eventId,
+        tsDb,
+        JSON.stringify({ eventId, checkIns: 1, lastUpdatedAt: tsMs }),
+        tsMs,
+    ]);
 };
 
 const getAnalyticsByEventIds = async (eventIds) => {
@@ -138,7 +147,7 @@ const createAnalytics = async (eventId, analyticsData) => {
             analyticsData.checkIns || 0,
             analyticsData.views || 0,
             JSON.stringify(viewsOverTime),
-            analyticsData.lastUpdatedAt != null ? Number(analyticsData.lastUpdatedAt) : null,
+            toDb(analyticsData.lastUpdatedAt) || nowDb(),
             JSON.stringify(rawData)
         ]
     );

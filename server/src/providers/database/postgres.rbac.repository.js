@@ -215,11 +215,21 @@ async function getOrganizationMember(organizationId, userId) {
 // ---------------------------------------------------------------------------
 async function createAuditLog({ id, actorId, action, resourceType, resourceId, metadata, ipAddress }) {
   const { v4: uuidv4 } = require('uuid');
+  const { nowDb } = require('./time.helper');
   const logId = id || `aud_${uuidv4()}`;
   await query(
     `INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, changes, ip_address, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [logId, actorId, action, resourceType, resourceId, metadata ? JSON.stringify(metadata) : '{}', ipAddress || '', Date.now()]
+    [
+      logId,
+      actorId,
+      action,
+      resourceType,
+      resourceId,
+      metadata ? JSON.stringify(metadata) : '{}',
+      ipAddress || '',
+      nowDb(),
+    ]
   );
   return logId;
 }

@@ -138,7 +138,7 @@ const logLoyaltyPointsEntryInTransaction = async (transaction, entryData) => {
             entryData.points,
             entryData.transactionType,
             entryData.referenceId || null,
-            entryData.createdAt || nowDb()
+            toDb(entryData.createdAt) || nowDb()
         ]
     );
 };

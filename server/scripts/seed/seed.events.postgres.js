@@ -11,7 +11,8 @@ if (!process.env.DATABASE_URL) {
 
 process.env.EVENT_DATABASE_PROVIDER = 'postgres';
 
-var events = require('../../seed/postgres/events_FIXED.json');
+// Prefer platform seed for production-like data: npm run db:seed:platform
+var events = require('../../seed/postgres/events_seed.json');
 require('../../src/alias-bootstrap');
 var eventRepo = require('../../src/providers/database/event.repository');
 
