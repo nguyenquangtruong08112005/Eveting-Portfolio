@@ -176,3 +176,40 @@ findstr /n /i "PromotionService PromoBanner" src\features\events\EventDiscovery.
 ## 7. Next Action
 
 Run focused manager verification for blockers 1-4, then stage commits by the split above.
+
+## 8. Manager Verification Results
+
+> Updated: 2026-07-22
+
+Completed checks:
+
+- `server`: `git diff --check` passed for current backend diff.
+- `server`: `node --check` passed for all currently changed `.js` files.
+- `server`: local Docker Postgres is healthy on host port `55432`.
+- `server`: DB probe passed after loading `.env`.
+- `server`: required tables exist: `events`, `order_items`, `orders`, `payment_attempts`, `tickets`.
+- `server`: `payment_attempts` columns exist, including `order_id`, `ticket_id`, `provider_order_id`, payload fields, and timestamps.
+- `server`: event filter impact is acceptable for demo data: 50 public active events, 20 visible after the current/upcoming time filter.
+- `web`: `NotificationBell.tsx` exists.
+- `web`: initial `npm run lint` failed with 3 errors in organizer map/camera components.
+- `web`: OpenCode fixed the lint blocker in a narrow scope.
+- `web`: manager re-ran `npm run lint`; result is 0 errors, 10 warnings.
+
+Committed source checkpoint:
+
+- `web` commit `e8328cf web: fix organizer lint errors`
+
+Remaining warnings:
+
+- `scripts/test-safe-redirect.mjs`: unused `createRequire`.
+- `src/app/attendee/events/[id]/page.tsx`: missing `t` dependencies.
+- `src/components/layout/Footer.tsx`: unused `Link`.
+- `src/components/search/SearchBarDropdown.tsx`: unsupported `aria-expanded` on textbox role.
+- `src/features/events/EventDiscovery.tsx`: missing `eventsByCategory` dependencies.
+- `src/features/notifications/NotificationsView.tsx`: unused `Link`.
+
+Next source action:
+
+1. Commit server diffs by the proposed split.
+2. Commit web R1/R2 diffs by the proposed split.
+3. Decide root `.zcode/` and `TEST_ACCOUNTS.md` handling before public-source cleanup.
