@@ -27,6 +27,11 @@ function applyAuthSession(
     'user';
   const normalizedRole = role === 'user' ? 'attendee' : role;
   login(data.accessToken, normalizedRole, data.user.id, data.refreshToken);
+  // Persist profile basics for checkout autofill
+  if (typeof window !== 'undefined') {
+    if (data.user?.email) localStorage.setItem('userEmail', data.user.email);
+    if (data.user?.name) localStorage.setItem('userName', data.user.name);
+  }
   if (normalizedRole === 'admin') router.push('/admin/moderation');
   else if (normalizedRole === 'organizer') router.push('/organizer/dashboard');
   else router.push('/');
@@ -50,10 +55,19 @@ export function LoginForm() {
       const data = await AuthService.login(email, password);
       applyAuthSession(data, login, router);
     } catch (err: unknown) {
-      const message =
-        (err as { message?: string; response?: { data?: { message?: string } } })?.message ||
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        t('login_error');
+      let message = t('login_error');
+      if (err instanceof Error && err.message && err.message !== '[object Object]') {
+        message = err.message;
+      } else if (err && typeof err === 'object') {
+        const e = err as { message?: unknown; body?: { error?: { message?: string }; message?: string } };
+        const nested =
+          (typeof e.message === 'string' && e.message) ||
+          e.body?.error?.message ||
+          e.body?.message;
+        if (nested && typeof nested === 'string' && nested !== '[object Object]') {
+          message = nested;
+        }
+      }
       setError(message);
     } finally {
       setLoading(false);

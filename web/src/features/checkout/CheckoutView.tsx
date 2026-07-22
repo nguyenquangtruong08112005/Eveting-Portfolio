@@ -40,6 +40,15 @@ function CheckoutPageContent() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
+  // Autofill billing from last login / profile cache
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const cachedName = localStorage.getItem('userName') || '';
+    const cachedEmail = localStorage.getItem('userEmail') || '';
+    if (cachedName) setName((prev) => prev || cachedName);
+    if (cachedEmail) setEmail((prev) => prev || cachedEmail);
+  }, []);
+
   const selectedSeats = seatsParam ? seatsParam.split(',').filter(Boolean) : [];
   const seatPrice = event?.ticketTypes?.standard?.price
     ? Number(event.ticketTypes.standard.price)

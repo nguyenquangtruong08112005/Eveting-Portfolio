@@ -50,6 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('role');
     localStorage.removeItem('uid');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
     setState({
       token: null,
       role: null,
