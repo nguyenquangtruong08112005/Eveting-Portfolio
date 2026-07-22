@@ -198,6 +198,15 @@ Completed checks:
 Committed source checkpoint:
 
 - `web` commit `e8328cf web: fix organizer lint errors`
+- `server` commit `7102dfe server: harden payment state persistence`
+- `server` commit `4e57fd9 server: normalize event and ticket repository behavior`
+- `server` commit `193b0f3 server: refresh seed and timestamp handling`
+- `web` commit `acc743a web: align ticket checkout flows`
+- `web` commit `d5ca72f web: refine event discovery UI`
+- `web` commit `b0a8f65 web: persist checkout identity hints`
+- `web` commit `91cea71 web: polish organizer shell utilities`
+- `web` commit `f4bb93c web: improve api errors and image hosts`
+- `mobile-attendee` commit `c39a161 mobile-attendee: remove tracked ide metadata`
 
 Remaining warnings:
 
@@ -210,6 +219,6 @@ Remaining warnings:
 
 Next source action:
 
-1. Commit server diffs by the proposed split.
-2. Commit web R1/R2 diffs by the proposed split.
-3. Decide root `.zcode/` and `TEST_ACCOUNTS.md` handling before public-source cleanup.
+1. Decide root `.zcode/` and `TEST_ACCOUNTS.md` handling before public-source cleanup.
+2. Decide whether root QA and PO notes should be curated into public docs or kept local.
+3. Start R1 contract consistency verification across backend, web, and mobile.
