@@ -2,7 +2,7 @@
 
 import { DollarSign, TrendingUp, Percent, Wallet } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { formatPrice } from '@/lib/constants';
+import { formatMoney } from '@/lib/constants';
 import type { OrganizerStats } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -51,9 +51,9 @@ export function StatsGrid({ stats }: StatsGridProps) {
               <p
                 className={cn('text-xl font-black truncate')}
                 style={{ color: `var(${token})` }}
-                title={isCurrency ? formatPrice(value) : String(value)}
+                title={isCurrency ? formatMoney(value) : String(value)}
               >
-                {isCurrency ? formatPrice(value) : value.toLocaleString()}
+                {isCurrency ? formatMoney(value) : value.toLocaleString()}
               </p>
             </div>
           </div>

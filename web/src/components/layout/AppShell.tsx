@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Menu, Bell, LogOut, ChevronRight } from 'lucide-react';
+import { Menu, LogOut, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
 import { BrandMark } from '@/components/shared/BrandMark';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -146,6 +147,7 @@ export function AppShell({ variant, items, heading, children }: AppShellProps) {
         </Sheet>
         <BrandMark size="sm" />
         <div className="flex items-center gap-1.5">
+          <NotificationBell />
           <ThemeToggle />
           <LanguageSwitcher />
         </div>
@@ -153,14 +155,7 @@ export function AppShell({ variant, items, heading, children }: AppShellProps) {
 
       {/* Desktop top utility bar */}
       <div className="hidden lg:flex sticky top-0 lg:ml-64 h-16 items-center justify-end px-6 gap-3 bg-[var(--background)]/85 backdrop-blur-xl border-b border-[var(--surface-border)] z-20">
-        <button
-          type="button"
-          className="p-2 rounded-full border border-[var(--surface-border)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer relative"
-          title={t('notifications')}
-          aria-label={t('notifications')}
-        >
-          <Bell className="size-4" />
-        </button>
+        <NotificationBell />
         <ThemeToggle />
         <LanguageSwitcher />
       </div>

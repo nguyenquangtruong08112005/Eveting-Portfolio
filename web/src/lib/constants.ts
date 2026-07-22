@@ -45,6 +45,13 @@ export function formatPrice(price: number | null | undefined, t?: TranslateFn): 
   return price.toLocaleString('vi-VN') + ' ' + DEFAULT_CURRENCY;
 }
 
+/** Money totals (revenue, fees) — never label 0 as "free ticket". */
+export function formatMoney(amount: number | null | undefined): string {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return `0 ${DEFAULT_CURRENCY}`;
+  return `${n.toLocaleString('vi-VN')} ${DEFAULT_CURRENCY}`;
+}
+
 export function formatDate(timestamp: number | string | Date, locale = 'vi-VN'): string {
   const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
   if (isNaN(d.getTime())) return '';

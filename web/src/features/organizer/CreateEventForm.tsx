@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EventService } from '@/features/events/api';
 import { VenueService } from '@/features/organizer/api';
+import { ProfileService } from '@/services/profile.service';
 import { ORG_NAV } from '@/features/organizer/nav';
 import { useTranslations } from 'next-intl';
 import { CATEGORY_KEYS, type CategoryKey } from '@/lib/constants';
-import type { Venue } from '@/types';
+import type { Venue, FeaturedProfile } from '@/types';
 
 interface TicketTier {
   name: string;
@@ -72,10 +73,17 @@ export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
     { name: 'Standard', price: 150000, available: 100 }
   ]);
 
+  // Featured artists / speakers on the event
+  const [featuredProfiles, setFeaturedProfiles] = useState<FeaturedProfile[]>([]);
+  const [selectedFeaturedIds, setSelectedFeaturedIds] = useState<string[]>([]);
+
   useEffect(() => {
     VenueService.list()
       .then((list) => setVenues(list || []))
       .catch(() => setVenues([]));
+    ProfileService.list(1, 50)
+      .then((res) => setFeaturedProfiles(res?.profiles || []))
+      .catch(() => setFeaturedProfiles([]));
   }, []);
 
   useEffect(() => {
@@ -108,6 +116,12 @@ export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
           }));
           if (tiers.length) setTicketTiers(tiers);
         }
+        const fp =
+          (ev as { featuredProfileIds?: string[] }).featuredProfileIds ||
+          ((ev as { featuredProfiles?: { id: string }[] }).featuredProfiles || []).map(
+            (p) => p.id
+          );
+        if (fp?.length) setSelectedFeaturedIds(fp);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -220,6 +234,7 @@ export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
             : undefined,
         venueId: eventType === 'physical' && venueId ? venueId : undefined,
         ticketTypes,
+        featuredProfileIds: selectedFeaturedIds,
         ...(mode === 'create' ? { saveAsDraft } : {}),
       };
 
@@ -377,6 +392,41 @@ export function CreateEventForm({ mode = 'create' }: CreateEventFormProps) {
                       );
                     })}
                   </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-[var(--text-secondary)] block mb-1.5">
+                    Featured artists / speakers
+                  </Label>
+                  {featuredProfiles.length === 0 ? (
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      No featured profiles yet. Seed platform data or create profiles first.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 pt-1 max-h-36 overflow-y-auto">
+                      {featuredProfiles.map((p) => {
+                        const on = selectedFeaturedIds.includes(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedFeaturedIds((prev) =>
+                                on ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                              )
+                            }
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer ${
+                              on
+                                ? 'bg-[var(--accent-brand)]/15 border-[var(--accent-brand)]/40 text-[var(--accent-brand)]'
+                                : 'bg-[var(--surface-hover)] border-[var(--surface-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
