@@ -195,3 +195,37 @@ Do not change backend server response shapes for the two P0 issues unless absolu
 - keep mobile-facing server contracts stable
 - update web normalization for web-only expectations
 - update organizer mobile where it still uses an admin flow that now has a web-friendly envelope
+
+## 8. Implementation Results
+
+> Updated: 2026-07-22
+
+Completed P0 fixes:
+
+1. `fix(web): normalize event response envelopes`
+   - Commit: `20f8e50`
+   - File: `web/src/services/event.service.ts`
+   - Change:
+     - `recommendations()` now accepts raw `Event[]` or `{ events }`.
+     - `search()` now reads `pagination.currentPage` and `pagination.totalItems` in addition to legacy `page` and `total`.
+   - Verification:
+     - `npm run lint` passed with 0 errors and 10 existing warnings.
+
+2. `fix(mobile-organizer): accept pending event envelope`
+   - Commit: `1971368`
+   - Files:
+     - `mobile-organizer/app/src/main/java/com/tdtuer/eventing_organizer/data/network/EventApiService.kt`
+     - `mobile-organizer/app/src/main/java/com/tdtuer/eventing_organizer/data/network/model/OrganizerDtos.kt`
+     - `mobile-organizer/app/src/main/java/com/tdtuer/eventing_organizer/data/repository/EventRepositoryImpl.kt`
+   - Change:
+     - Added `PendingEventsResponse`.
+     - Retrofit now expects the server envelope.
+     - Repository still exposes `Flow<Result<List<MyEventDto>>>` by unwrapping `response.body()!!.events`.
+   - Verification:
+     - `gradlew.bat :app:compileDebugKotlin` passed.
+
+Remaining R1 work:
+
+1. Run server smoke contract script once local server is running.
+2. Run attendee Android compile if mobile-facing contract risk needs a full mobile gate.
+3. Decide whether to add `/api/web/users`, `/api/web/notifications`, `/api/web/promotions`, `/api/web/storage`, `/api/web/venues` aliases or document the mixed-path transitional state.
