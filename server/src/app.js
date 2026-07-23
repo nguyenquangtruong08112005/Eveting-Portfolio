@@ -70,6 +70,11 @@ app.use('/api/web/payments', paymentsRouter);
 app.use('/api/web/memberships', membershipsRouter);
 app.use('/api/web/vouchers', vouchersRouter);
 app.use('/api/web/profiles', featuredProfileRouter);
+app.use('/api/web/users', usersRouter);
+app.use('/api/web/notifications', notificationsRouter);
+app.use('/api/web/promotions', promotionsRouter);
+app.use('/api/web/storage', storageRouter);
+app.use('/api/web/venues', venuesRouter);
 app.use('/api/organizer', organizerRouter);
 app.use('/api/admin', adminRouter);
 
