@@ -90,11 +90,30 @@ EC2
   docker compose --profile tools run --rm migrate
   docker compose up -d
 
-Cloudflare
-  DNS/proxy/TLS in front of EC2
-```
-
 This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/ALB can be added later, but they are not required for the first public deploy.
+
+### Domain Reverse Proxy & Cloudflare Configuration
+
+- **Web Domain:** `https://eventing.moteo.fun` -> proxied to `web:3000`
+- **API Domain:** `https://api.eventing.moteo.fun` -> proxied to `api:3000`
+
+#### Reverse Proxy Architecture (Caddy)
+- Caddy is the **sole public 80/443 container** in production.
+- API and Web containers run on internal Docker networks and do not expose ports 3000/3001 directly to the host.
+- Caddy handles TLS termination/proxying, zstd/gzip compression, and forwards standard headers (`Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`).
+- Persistent Caddy data and configuration are preserved via `caddy_data` and `caddy_config` volumes.
+
+#### Required Cloudflare Setup
+1. **DNS A Records:**
+   - `eventing.moteo.fun` -> EC2 Elastic IP (Proxied, Orange Cloud)
+   - `api.eventing.moteo.fun` -> EC2 Elastic IP (Proxied, Orange Cloud)
+2. **SSL/TLS Encryption Mode:**
+   - Set Cloudflare SSL/TLS encryption mode to **Full** or **Full (strict)** in Cloudflare Dashboard.
+   - Do **NOT** select Flexible mode; Flexible causes infinite redirect loops when Caddy enforces HTTPS on origin.
+
+#### CORS Allowlist
+- Backend CORS allowlist in `server/src/app.js` is scoped to `https://eventing.moteo.fun` and configured `CORS_ALLOWED_ORIGINS` without wildcard (`*`) access.
+
 
 ### GitHub secrets for deploy
 

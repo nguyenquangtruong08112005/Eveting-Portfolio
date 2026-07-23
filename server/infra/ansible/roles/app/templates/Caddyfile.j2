@@ -1,0 +1,21 @@
+{$WEB_DOMAIN:eventing.moteo.fun} {
+    encode zstd gzip
+
+    reverse_proxy web:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+{$API_DOMAIN:api.eventing.moteo.fun} {
+    encode zstd gzip
+
+    reverse_proxy api:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

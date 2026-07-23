@@ -20,13 +20,22 @@ root_volume_size_gb         = 40
 ecr_image_tag_mutability    = "MUTABLE"
 ecr_untagged_image_retention_days = 14
 
-# Optional Cloudflare DNS. Leave these empty to skip Cloudflare from Terraform.
+# Target domains for reverse proxy routing.
+web_domain = "eventing.moteo.fun"
+api_domain = "api.eventing.moteo.fun"
+
+# Optional Cloudflare DNS. Leave cloudflare_zone_id empty to skip Cloudflare from Terraform.
 # Prefer setting CLOUDFLARE_API_TOKEN in your shell/CI instead of putting it here.
 cloudflare_zone_id = ""
 cloudflare_dns_records = {
-  # api = {
-  #   name    = "api.example.com"
-  #   ttl     = 1
-  #   proxied = true
-  # }
+  web = {
+    name    = "eventing.moteo.fun"
+    ttl     = 1
+    proxied = true
+  }
+  api = {
+    name    = "api.eventing.moteo.fun"
+    ttl     = 1
+    proxied = true
+  }
 }

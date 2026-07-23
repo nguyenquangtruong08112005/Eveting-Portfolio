@@ -39,6 +39,8 @@ jobs:
     env:
       TF_VAR_environment: ${{ inputs.environment }}
       TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+      TF_VAR_web_domain: ${{ secrets.WEB_DOMAIN || 'eventing.moteo.fun' }}
+      TF_VAR_api_domain: ${{ secrets.API_DOMAIN || 'api.eventing.moteo.fun' }}
       TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
     steps:
@@ -140,7 +142,10 @@ jobs:
         env:
           AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
           ECR_REGISTRY: ${{ needs.terraform.outputs.ecr_registry || secrets.ECR_REGISTRY }}
-          PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          WEB_DOMAIN: ${{ secrets.WEB_DOMAIN || 'eventing.moteo.fun' }}
+          API_DOMAIN: ${{ secrets.API_DOMAIN || 'api.eventing.moteo.fun' }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS || 'https://eventing.moteo.fun' }}
+          PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://api.eventing.moteo.fun' }}
           APP_PUBLIC_URL: ${{ secrets.APP_PUBLIC_URL }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}

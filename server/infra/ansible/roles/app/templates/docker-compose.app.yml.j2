@@ -33,13 +33,29 @@ services:
       - "127.0.0.1:9200:9200"
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: eventing-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:-eventing.moteo.fun}
+      API_DOMAIN: ${API_DOMAIN:-api.eventing.moteo.fun}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
   api:
     image: ${ECR_REGISTRY}/eventing-api:${IMAGE_TAG}
     container_name: eventing-api
     env_file:
       - .env
-    ports:
-      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,8 +72,6 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-    ports:
-      - "3001:3000"
     depends_on:
       - api
     restart: unless-stopped
@@ -72,3 +86,7 @@ services:
         condition: service_healthy
     command: ["node", "db/migrate.js"]
     restart: "no"
+
+volumes:
+  caddy_data:
+  caddy_config:

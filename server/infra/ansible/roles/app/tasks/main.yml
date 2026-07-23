@@ -30,6 +30,14 @@
     group: "{{ ansible_user }}"
     mode: '0644'
 
+- name: Render Caddyfile configuration
+  template:
+    src: Caddyfile.j2
+    dest: "{{ deploy_dir }}/Caddyfile"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
 - name: Login to ECR registry
   shell: |
     set -e

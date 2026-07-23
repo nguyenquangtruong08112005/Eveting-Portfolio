@@ -27,9 +27,22 @@ app.set('trust proxy', 1);
 app.use(observabilityMiddleware);
 app.get('/metrics', metricsHandler);
 
-// Custom CORS middleware to allow localhost:3001 or other clients
+// CORS middleware with domain allowlist for https://eventing.moteo.fun
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const defaultAllowed = ['https://eventing.moteo.fun', 'http://localhost:3001', 'http://localhost:3000'];
+  const envAllowed = (process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  const allowedOrigins = envAllowed.length > 0 ? envAllowed : defaultAllowed;
+
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  } else {
+    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+  }
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   if (req.method === 'OPTIONS') {
     res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
@@ -37,6 +50,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

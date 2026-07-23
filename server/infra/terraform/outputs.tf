@@ -30,6 +30,16 @@ output "ssm_transfer_bucket" {
   value       = aws_s3_bucket.ssm_transfer.id
 }
 
+output "web_domain" {
+  description = "Target web domain."
+  value       = var.web_domain
+}
+
+output "api_domain" {
+  description = "Target API domain."
+  value       = var.api_domain
+}
+
 output "ansible_inventory" {
   description = "Ansible inventory generated from Terraform-managed EC2, using SSM connection."
   value       = <<-EOT
@@ -41,6 +51,8 @@ output "ansible_inventory" {
     ansible_aws_ssm_bucket_name=${aws_s3_bucket.ssm_transfer.id}
     ansible_aws_ssm_bucket_sse_mode=AES256
     ansible_aws_ssm_region=${var.aws_region}
+    web_domain=${var.web_domain}
+    api_domain=${var.api_domain}
     environment=${var.environment}
     project_root=/opt/server-eventing
   EOT

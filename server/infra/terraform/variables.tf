@@ -92,6 +92,18 @@ variable "ecr_untagged_image_retention_days" {
   default     = 14
 }
 
+variable "web_domain" {
+  description = "Target web application domain name."
+  type        = string
+  default     = "eventing.moteo.fun"
+}
+
+variable "api_domain" {
+  description = "Target backend API domain name."
+  type        = string
+  default     = "api.eventing.moteo.fun"
+}
+
 variable "cloudflare_api_token" {
   description = "Cloudflare API token for DNS automation. Prefer CLOUDFLARE_API_TOKEN env var in CI."
   type        = string
@@ -106,11 +118,22 @@ variable "cloudflare_zone_id" {
 }
 
 variable "cloudflare_dns_records" {
-  description = "Optional Cloudflare A records pointed at the EC2 Elastic IP."
+  description = "Cloudflare A records pointed at the EC2 Elastic IP."
   type = map(object({
     name    = string
     ttl     = number
     proxied = bool
   }))
-  default = {}
+  default = {
+    web = {
+      name    = "eventing.moteo.fun"
+      ttl     = 1
+      proxied = true
+    }
+    api = {
+      name    = "api.eventing.moteo.fun"
+      ttl     = 1
+      proxied = true
+    }
+  }
 }
