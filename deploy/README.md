@@ -128,7 +128,24 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 | `ECR_REGISTRY` | Fallback ECR registry when `run_terraform=false` |
 | `POSTGRES_PASSWORD` | EC2 compose Postgres password |
 | `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `JWT_TICKET_SECRET` | Runtime auth/ticket secrets |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | SMTP server host (`smtp.resend.com`), port (`587`), secure flag (`false`) |
+| `SMTP_USER`, `SMTP_PASS` | SMTP username (`resend`) and password/API key (`re_...`) |
+| `EMAIL_FROM` | Sender address (e.g., `Eventing <noreply@eventing.moteo.fun>`) |
+| `AUTH_MOCK_EMAIL` | `true` for log-only mock mode; `false` for live SMTP delivery |
 | Provider secrets | ZaloPay, OpenWeather, OneSignal, R2/S3 values as needed |
+
+#### Resend SMTP Integration Guide
+1. Obtain an API key (`re_...`) from your [Resend](https://resend.com) dashboard.
+2. Ensure your domain `eventing.moteo.fun` is verified in Resend DNS settings.
+3. Configure environment / GitHub secrets:
+   - `SMTP_HOST`: `smtp.resend.com`
+   - `SMTP_PORT`: `587`
+   - `SMTP_SECURE`: `false`
+   - `SMTP_USER`: `resend`
+   - `SMTP_PASS`: `<your-resend-api-key>`
+   - `EMAIL_FROM`: `Eventing <noreply@eventing.moteo.fun>`
+   - `AUTH_MOCK_EMAIL`: `false`
+4. If `AUTH_MOCK_EMAIL=true` or SMTP credentials are missing, system operates safely in log-only mock mode.
 
 **Removed secrets** (SSH no longer used):
 - ~~`TERRAFORM_SSH_PUBLIC_KEY`~~

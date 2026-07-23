@@ -27,7 +27,13 @@ const PROCESSORS = {
                 io.to(target).emit(payload.event || 'notification', { title, body, data });
             }
         } else if (channel === 'email') {
-            logger.info(`[Email Dispatcher Mock] Sending email to ${target}: ${title} - ${body}`);
+            const emailProvider = require('@/providers/email');
+            await emailProvider.sendEmail({
+                to: target,
+                subject: title,
+                text: body,
+                html: payload.html || `<p>${body}</p>`
+            });
         } else if (channel === 'event_update') {
             const { notifyAttendeesAboutUpdate } = require('@/modules/events/application/helpers/notification-sender');
             await notifyAttendeesAboutUpdate(payload.eventId, payload.eventName);

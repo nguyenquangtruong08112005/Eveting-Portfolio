@@ -153,6 +153,13 @@ jobs:
           JWT_TICKET_SECRET: ${{ secrets.JWT_TICKET_SECRET }}
           PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          AUTH_MOCK_EMAIL: ${{ secrets.AUTH_MOCK_EMAIL }}
           ZALOPAY_APP_ID: ${{ secrets.ZALOPAY_APP_ID }}
           ZALOPAY_KEY1: ${{ secrets.ZALOPAY_KEY1 }}
           ZALOPAY_KEY2: ${{ secrets.ZALOPAY_KEY2 }}
