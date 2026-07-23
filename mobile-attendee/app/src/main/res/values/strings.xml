@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Eventing</string>
+    <string name="title_activity_my_profile">MyProfile</string>
+    <string name="title_activity_organizer">Organizer</string>
+    <string name="title_activity_notification_empty">NotificationEmpty</string>
+    <string name="title_activity_notification">Notification</string>
+    <string name="title_activity_invite_friend">Invite_Friend</string>
+    <string name="title_activity_share">Share</string>
+    <string name="title_activity_splash_screen">SplashScreen</string>
+    <string name="title_activity_on_boarding">OnBoarding</string>
+    <string name="title_activity_sign_in">Sign_in</string>
+    <string name="title_activity_sign_up">SignUp</string>
+    <string name="title_activity_common_auth_components">CommonAuthComponents</string>
+    <string name="title_activity_verification">Verification</string>
+    <string name="title_activity_reset_password">ResetPassword</string>
+    <string name="title_activity_home_page">HomePage</string>
+    <string name="title_activity_menu">Menu</string>
+    <string name="title_activity_event_details">EventDetails</string>
+    <string name="title_activity_search">Search</string>
+    <string name="title_activity_empty_event">EmptyEvent</string>
+    <string name="title_activity_all_event">AllEvent</string>
+
+    <string name="facebook_app_id">781463811381006</string>
+    <string name="fb_login_protocol_scheme">fb781463811381006</string>
+    <string name="facebook_client_token">b973a2a498c46382f66f9fe303bd3ec0</string>
+</resources>

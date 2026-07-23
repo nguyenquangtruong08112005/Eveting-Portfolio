@@ -1,0 +1,650 @@
+{
+  "Users": [
+    {
+      "id": "org_pro_asia",
+      "email": "organizer@asia.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "organizer",
+      "name": "Events Pro Asia",
+      "profilePicUrl": "https://avatars.githubusercontent.com/u/84173536",
+      "historyEventIds": [
+        "event_ai_summit",
+        "event_rock_fest"
+      ],
+      "followedArtistIds": [],
+      "points": 0,
+      "level": "organizer",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "business",
+          "marketing"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "user_alice_123",
+      "email": "alice@mail.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Alice Wander",
+      "profilePicUrl": "https://avatars.githubusercontent.com/u/41817937",
+      "historyEventIds": [
+        "event_ai_summit"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 4402,
+      "level": "premium",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "user_bob_456",
+      "email": "bob@mail.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Bob The Builder",
+      "profilePicUrl": "https://avatars.githubusercontent.com/u/62033593",
+      "historyEventIds": [
+        "event_rock_fest"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 4553,
+      "level": "premium",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "b06ba52bcfdd9de2cd519dab",
+      "email": "Naomi_Marks96@gmail.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Ricardo McKenzie",
+      "profilePicUrl": "https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait/male/512/77.jpg",
+      "historyEventIds": [
+        "event_ai_summit"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 3657,
+      "level": "basic",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "ddbfdeafb5150ee42c4c9546",
+      "email": "Morton_Parisian29@yahoo.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Victor Cormier",
+      "profilePicUrl": "https://avatars.githubusercontent.com/u/87834939",
+      "historyEventIds": [
+        "event_rock_fest"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 2289,
+      "level": "basic",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "afabc8f314fb7f28ea7cfe1f",
+      "email": "Rafael.Wisoky@gmail.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Alfred Hermann MD",
+      "profilePicUrl": "https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait/male/512/63.jpg",
+      "historyEventIds": [
+        "event_ai_summit"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 1206,
+      "level": "basic",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "3cdb2afbaaa39e78cca5aa54",
+      "email": "Cole.Reinger@hotmail.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Lorraine DuBuque",
+      "profilePicUrl": "https://avatars.githubusercontent.com/u/28221299",
+      "historyEventIds": [
+        "event_ai_summit"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 3231,
+      "level": "premium",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    },
+    {
+      "id": "36a32b077fc6ae2cdcebadfc",
+      "email": "Deon.Treutel1@hotmail.com",
+      "passwordHash": "FIREBASE_AUTH_REF",
+      "role": "attendee",
+      "name": "Mrs. Whitney Rutherford",
+      "profilePicUrl": "https://avatars.githubusercontent.com/u/74582594",
+      "historyEventIds": [
+        "event_ai_summit"
+      ],
+      "followedArtistIds": [
+        "artist_thunder"
+      ],
+      "points": 2080,
+      "level": "premium",
+      "matchingPreferences": {
+        "ageRange": "20-30",
+        "interests": [
+          "music",
+          "tech"
+        ]
+      },
+      "sharedMedia": []
+    }
+  ],
+  "Events": [
+    {
+      "id": "event_ai_summit",
+      "name": "The Future of AI Summit 2025",
+      "description": "Defungo voluptate arguo aer cubicularis ancilla deleo vinitor appositus. Sortitus capto apostolus iste balbus clarus. Quo thorax creo peccatus antepono assumenda ut vobis spoliatio amissio.",
+      "artistIds": [],
+      "category": [
+        "conference",
+        "tech"
+      ],
+      "date": 1784472185603,
+      "location": {
+        "latitude": 10.747078,
+        "longitude": 106.654607
+      },
+      "venueDetails": {
+        "lat": 10.747078,
+        "long": 106.654607,
+        "nearby": [
+          "Towne, McClure and Hackett Cafe"
+        ]
+      },
+      "ticketTypes": {
+        "VIP": {
+          "price": 5000000,
+          "quantity": 100,
+          "available": 91
+        },
+        "Standard": {
+          "price": 1000000,
+          "quantity": 500,
+          "available": 386
+        }
+      },
+      "seatMap": {
+        "A1": true,
+        "A2": false,
+        "B1": true
+      },
+      "videoUrl": "https://youtube.com/event_trailer",
+      "isOutdoor": false,
+      "organizerId": "org_pro_asia",
+      "hotScore": 85,
+      "revenue": 550000000
+    },
+    {
+      "id": "event_rock_fest",
+      "name": "Summer Music Festival - Rock Night",
+      "description": "Tamisium derelinquo sublime tollo benevolentia armarium. Artificiose caveo synagoga. Civis bellum voro acsi degusto cinis utique consuasor.",
+      "artistIds": [
+        "artist_thunder",
+        "artist_starlight"
+      ],
+      "category": [
+        "music",
+        "festival",
+        "rock"
+      ],
+      "date": 1777394557767,
+      "location": {
+        "latitude": 10.812568,
+        "longitude": 106.733603
+      },
+      "venueDetails": {
+        "lat": 10.812568,
+        "long": 106.733603,
+        "nearby": [
+          "Hammes - Boyle Cafe"
+        ]
+      },
+      "ticketTypes": {
+        "VIP": {
+          "price": 5000000,
+          "quantity": 100,
+          "available": 84
+        },
+        "Standard": {
+          "price": 1000000,
+          "quantity": 500,
+          "available": 394
+        }
+      },
+      "seatMap": {},
+      "videoUrl": "https://youtube.com/event_trailer",
+      "isOutdoor": true,
+      "organizerId": "org_pro_asia",
+      "hotScore": 95,
+      "revenue": 1600000000
+    },
+    {
+      "id": "4d1ccc4dae80e0bd4e4b8b6d",
+      "name": "amissio abduco pel Expo",
+      "description": "Curis cumque volubilis demergo chirographum totam. Comitatus impedit combibo video consuasor molestiae thymum demens facere. Conculco iste vapulus ultra demonstro.",
+      "artistIds": [],
+      "category": [
+        "expo"
+      ],
+      "date": 1778033385116,
+      "location": {
+        "latitude": 10.723516,
+        "longitude": 106.666391
+      },
+      "venueDetails": {
+        "lat": 10.723516,
+        "long": 106.666391,
+        "nearby": [
+          "Hauck, Collins and Gleichner Cafe"
+        ]
+      },
+      "ticketTypes": {
+        "VIP": {
+          "price": 5000000,
+          "quantity": 100,
+          "available": 83
+        },
+        "Standard": {
+          "price": 1000000,
+          "quantity": 500,
+          "available": 416
+        }
+      },
+      "seatMap": {},
+      "videoUrl": "https://youtube.com/event_trailer",
+      "isOutdoor": false,
+      "organizerId": "org_pro_asia",
+      "hotScore": 62,
+      "revenue": 166502919
+    },
+    {
+      "id": "c0eed4c2166429f1f3c96a77",
+      "name": "censura thymum attollo Expo",
+      "description": "Creator capio ulciscor tabesco urbanus annus amissio velociter comminor. Curis cervus deludo tutis coepi thymum vinco ancilla cupio. Deleo deprimo velit vetus tum votum velum tantillus arca.",
+      "artistIds": [],
+      "category": [
+        "expo"
+      ],
+      "date": 1770977684298,
+      "location": {
+        "latitude": 10.81132,
+        "longitude": 106.747517
+      },
+      "venueDetails": {
+        "lat": 10.81132,
+        "long": 106.747517,
+        "nearby": [
+          "Lang - Hirthe Cafe"
+        ]
+      },
+      "ticketTypes": {
+        "VIP": {
+          "price": 5000000,
+          "quantity": 100,
+          "available": 90
+        },
+        "Standard": {
+          "price": 1000000,
+          "quantity": 500,
+          "available": 352
+        }
+      },
+      "seatMap": {},
+      "videoUrl": "https://youtube.com/event_trailer",
+      "isOutdoor": false,
+      "organizerId": "org_pro_asia",
+      "hotScore": 51,
+      "revenue": 279989310
+    },
+    {
+      "id": "fe200ebfadecf3af208099ae",
+      "name": "vinum aliquid via Expo",
+      "description": "Nostrum subvenio expedita centum nisi animus depromo. Aegrus vere strues campana acceptus articulus tamisium. Volo congregatio ultra.",
+      "artistIds": [],
+      "category": [
+        "expo"
+      ],
+      "date": 1782228592098,
+      "location": {
+        "latitude": 10.816923,
+        "longitude": 106.773773
+      },
+      "venueDetails": {
+        "lat": 10.816923,
+        "long": 106.773773,
+        "nearby": [
+          "Donnelly - Bins Cafe"
+        ]
+      },
+      "ticketTypes": {
+        "VIP": {
+          "price": 5000000,
+          "quantity": 100,
+          "available": 92
+        },
+        "Standard": {
+          "price": 1000000,
+          "quantity": 500,
+          "available": 414
+        }
+      },
+      "seatMap": {},
+      "videoUrl": "https://youtube.com/event_trailer",
+      "isOutdoor": false,
+      "organizerId": "org_pro_asia",
+      "hotScore": 53,
+      "revenue": 214212178
+    }
+  ],
+  "Tickets": [
+    {
+      "id": "ticket_1a",
+      "eventId": "event_ai_summit",
+      "userId": "user_alice_123",
+      "type": "VIP",
+      "price": 4500000,
+      "seat": "A6",
+      "qrCode": "QR_ticket_1a_H9Irr4",
+      "status": "paid",
+      "purchaseDate": 1749741757301,
+      "groupId": "group_bZ5l",
+      "collaboratorId": null
+    },
+    {
+      "id": "ticket_2b",
+      "eventId": "event_rock_fest",
+      "userId": "user_bob_456",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_ticket_2b_JvNLZy",
+      "status": "checkedIn",
+      "purchaseDate": 1738514572424,
+      "groupId": null,
+      "collaboratorId": "collab_john"
+    },
+    {
+      "id": "ticket_3c",
+      "eventId": "event_rock_fest",
+      "userId": "user_alice_123",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_ticket_3c_QrT7hB",
+      "status": "paid",
+      "purchaseDate": 1728071422488,
+      "groupId": "group_pEBs",
+      "collaboratorId": null
+    },
+    {
+      "id": "ffcd5aabc7c710acc3c7cc4f",
+      "eventId": "event_ai_summit",
+      "userId": "user_bob_456",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_ffcd5aabc7c710acc3c7cc4f_jHoV2k",
+      "status": "pending",
+      "purchaseDate": 1732651876598,
+      "groupId": null,
+      "collaboratorId": null
+    },
+    {
+      "id": "59a608fdb5cefcacbc9c78fe",
+      "eventId": "event_ai_summit",
+      "userId": "user_bob_456",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_59a608fdb5cefcacbc9c78fe_Ff6qIF",
+      "status": "cancelled",
+      "purchaseDate": 1736976095288,
+      "groupId": null,
+      "collaboratorId": null
+    },
+    {
+      "id": "1f2abeb86de7af2c4cdf7ccd",
+      "eventId": "event_ai_summit",
+      "userId": "user_bob_456",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_1f2abeb86de7af2c4cdf7ccd_I1J7YM",
+      "status": "paid",
+      "purchaseDate": 1758535109180,
+      "groupId": "group_WNCy",
+      "collaboratorId": null
+    },
+    {
+      "id": "f3ac552dcdcdaf97e30fd5e9",
+      "eventId": "event_ai_summit",
+      "userId": "user_bob_456",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_f3ac552dcdcdaf97e30fd5e9_YiutJn",
+      "status": "paid",
+      "purchaseDate": 1754610116192,
+      "groupId": "group_bHTf",
+      "collaboratorId": null
+    },
+    {
+      "id": "e6d80debebb5fb3dbdca8f5f",
+      "eventId": "event_ai_summit",
+      "userId": "user_bob_456",
+      "type": "Standard",
+      "price": 1000000,
+      "seat": "N/A",
+      "qrCode": "QR_e6d80debebb5fb3dbdca8f5f_yZk0uv",
+      "status": "paid",
+      "purchaseDate": 1743241790248,
+      "groupId": "group_Qaek",
+      "collaboratorId": null
+    }
+  ],
+  "Reviews": [
+    {
+      "id": "rev_1",
+      "eventId": "event_ai_summit",
+      "userId": "user_alice_123",
+      "rating": 5,
+      "comment": "Hội nghị rất chuyên nghiệp!",
+      "date": 1727841880052
+    },
+    {
+      "id": "rev_2",
+      "eventId": "event_rock_fest",
+      "userId": "user_bob_456",
+      "rating": 4,
+      "comment": "Âm thanh tốt, không gian tuyệt vời.",
+      "date": 1753445875455
+    },
+    {
+      "id": "e337bf4b4dbbdb5fa0767b3d",
+      "eventId": "event_rock_fest",
+      "userId": "user_alice_123",
+      "rating": 1,
+      "comment": "Laborum capto subnecto nostrum depereo sustineo quidem beneficium.",
+      "date": 1747524244918
+    },
+    {
+      "id": "f04906dabb248cefbc38ceae",
+      "eventId": "event_rock_fest",
+      "userId": "user_alice_123",
+      "rating": 4,
+      "comment": "Blandior derelinquo caelum enim cubitum vulgaris vergo adicio utilis suggero.",
+      "date": 1737639375306
+    },
+    {
+      "id": "6bd7bedd8c30cceb7ddfa577",
+      "eventId": "event_rock_fest",
+      "userId": "user_alice_123",
+      "rating": 1,
+      "comment": "Denego ab aliqua censura cernuus dolorem qui.",
+      "date": 1749979716701
+    }
+  ],
+  "Artists": [
+    {
+      "id": "artist_thunder",
+      "name": "The Thunderbolts",
+      "bio": "Verto calamitas conturbo expedita defungo.",
+      "imageUrl": "https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait/female/512/36.jpg",
+      "upcomingEventIds": [
+        "event_rock_fest"
+      ]
+    },
+    {
+      "id": "artist_starlight",
+      "name": "Starlight Diva",
+      "bio": "Amiculum cilicium subiungo omnis canis ex patrocinor corrumpo at conicio.",
+      "imageUrl": "https://avatars.githubusercontent.com/u/76420182",
+      "upcomingEventIds": []
+    }
+  ],
+  "Promotions": [
+    {
+      "id": "promo_eb",
+      "eventId": "event_ai_summit",
+      "code": "EARLYBIRD20",
+      "discount": 0.2,
+      "type": "earlyBird",
+      "validUntil": 1761743714237,
+      "usageLimit": 50
+    },
+    {
+      "id": "promo_mem",
+      "eventId": null,
+      "code": "MEMBER10",
+      "discount": 0.1,
+      "type": "member",
+      "validUntil": 1789452853193,
+      "usageLimit": 1000
+    }
+  ],
+  "Notifications": [
+    {
+      "id": "notif_1",
+      "userId": "user_alice_123",
+      "type": "reminder",
+      "message": "Sự kiện AI Summit còn 24 giờ!",
+      "eventId": "event_ai_summit",
+      "sentDate": 1758929884419
+    },
+    {
+      "id": "notif_2",
+      "userId": "all",
+      "type": "update",
+      "message": "Rock Fest thay đổi lịch trình.",
+      "eventId": "event_rock_fest",
+      "sentDate": 1758904555832
+    }
+  ],
+  "Collaborators": [
+    {
+      "id": "collab_john",
+      "organizerId": "org_pro_asia",
+      "name": "John Checkin",
+      "permissions": [
+        "checkIn"
+      ]
+    },
+    {
+      "id": "collab_jane",
+      "organizerId": "org_pro_asia",
+      "name": "Jane Manager",
+      "permissions": [
+        "checkIn",
+        "manageTickets"
+      ]
+    }
+  ],
+  "Analytics": [
+    {
+      "eventId": "event_ai_summit",
+      "totalRevenue": 550000000,
+      "ticketsSold": {
+        "VIP": 20,
+        "Standard": 50
+      },
+      "views": 1500,
+      "popularTypes": [
+        "Standard"
+      ]
+    },
+    {
+      "eventId": "event_rock_fest",
+      "totalRevenue": 1600000000,
+      "ticketsSold": {
+        "GA": 200
+      },
+      "views": 5000,
+      "popularTypes": [
+        "GA"
+      ]
+    }
+  ]
+}

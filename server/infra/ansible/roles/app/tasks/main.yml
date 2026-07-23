@@ -1,0 +1,66 @@
+---
+- name: Ensure application deployment directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  loop:
+    - "{{ deploy_dir }}"
+    - "{{ deploy_dir }}/logs"
+    - "{{ deploy_dir }}/data"
+    - "{{ deploy_dir }}/data/postgres"
+    - "{{ deploy_dir }}/data/elasticsearch"
+
+- name: Render application environment file
+  template:
+    src: app.env.j2
+    dest: "{{ deploy_dir }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+  no_log: true
+
+- name: Render application Docker Compose file
+  template:
+    src: docker-compose.app.yml.j2
+    dest: "{{ deploy_dir }}/docker-compose.app.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Login to ECR registry
+  shell: |
+    set -e
+    echo "{{ lookup('env', 'ECR_PASSWORD') }}" | docker login --username AWS --password-stdin "{{ lookup('env', 'ECR_REGISTRY') }}"
+  when:
+    - lookup('env', 'ECR_REGISTRY') | length > 0
+    - lookup('env', 'ECR_PASSWORD') | length > 0
+  no_log: true
+
+- name: Pull application images
+  shell: docker compose --env-file .env -f docker-compose.app.yml pull
+  args:
+    chdir: "{{ deploy_dir }}"
+
+- name: Run database migrations
+  shell: docker compose --env-file .env -f docker-compose.app.yml --profile tools run --rm migrate
+  args:
+    chdir: "{{ deploy_dir }}"
+
+- name: Start or update application containers
+  shell: docker compose --env-file .env -f docker-compose.app.yml up -d --remove-orphans
+  args:
+    chdir: "{{ deploy_dir }}"
+
+- name: Show running application containers
+  shell: docker compose --env-file .env -f docker-compose.app.yml ps
+  args:
+    chdir: "{{ deploy_dir }}"
+  register: app_compose_ps
+  changed_when: false
+
+- name: Print application container status
+  debug:
+    var: app_compose_ps.stdout_lines

@@ -1,0 +1,540 @@
+package com.tdtuer.eventing_organizer.ui.screens.editevent
+
+import com.tdtuer.eventing_organizer.helpers.UserFacingErrors
+import com.tdtuer.eventing_organizer.helpers.toUserMessage
+
+import android.net.Uri
+import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.tdtuer.eventing_organizer.constants.Constraints
+import com.tdtuer.eventing_organizer.data.network.AddressApiService
+import com.tdtuer.eventing_organizer.data.network.EventApiService
+import com.tdtuer.eventing_organizer.data.network.model.*
+import com.tdtuer.eventing_organizer.data.repository.EventRepository
+import com.tdtuer.eventing_organizer.domain.model.Event
+import com.tdtuer.eventing_organizer.domain.model.Result
+import com.tdtuer.eventing_organizer.domain.usecase.user.UploadImageUseCase
+import com.tdtuer.eventing_organizer.ui.screens.createevent.CreateEventUiState
+import com.tdtuer.eventing_organizer.ui.screens.createevent.CreateProfileState
+import com.tdtuer.eventing_organizer.ui.screens.createevent.LocationMode
+import com.tdtuer.eventing_organizer.ui.screens.createevent.TicketTypeState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import javax.inject.Inject
+
+@HiltViewModel
+class EditEventViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val eventRepository: EventRepository,
+    private val uploadImageUseCase: UploadImageUseCase,
+    private val addressApiService: AddressApiService,
+    private val eventApiService: EventApiService
+) : ViewModel() {
+
+    private val eventId: String = savedStateHandle.get<String>("eventId") ?: ""
+
+    private val _uiState = MutableStateFlow(CreateEventUiState())
+    val uiState = _uiState.asStateFlow()
+
+    // Sử dụng mutableStateListOf để Compose theo dõi thay đổi của từng phần tử
+    val ticketTypes = mutableStateListOf<TicketTypeState>()
+
+    val predefinedCategories = listOf(
+        "Music", "Art", "Workshop", "Business", "Food & Drink",
+        "Technology", "Sports", "Education", "Fashion", "Other"
+    )
+
+    init {
+        loadInitialData()
+        if (eventId.isNotEmpty()) {
+            loadEventData(eventId)
+        }
+    }
+
+    private fun loadInitialData() {
+        viewModelScope.launch {
+            // Load Venues
+            launch {
+                eventRepository.getVenues().collect { result ->
+                    if (result is Result.Success) _uiState.update { it.copy(availableVenues = result.data) }
+                }
+            }
+            // Load Provinces
+            launch {
+                try {
+                    val res = addressApiService.getProvinces()
+                    if (res.isSuccessful && res.body() != null) _uiState.update { it.copy(provinces = res.body()!!) }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            // Load Profiles
+            launch {
+                eventRepository.getFeaturedProfiles().collect { result ->
+                    if (result is Result.Success) _uiState.update { it.copy(availableProfiles = result.data) }
+                }
+            }
+        }
+    }
+
+    /**
+     * @param id: ID của sự kiện cần load
+     * Load data từ repository và map vào UI State
+     */
+    private fun loadEventData(id: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            eventRepository.getEventById(id).collect { result ->
+                //Log.d("EditEventViewModel", "loadEventData: $result")
+
+                if (result is Result.Success) {
+                    val event = result.data
+                    mapEventToState(event)
+                    _uiState.update { it.copy(isLoading = false) }
+                } else if (result is Result.Failure) {
+                    val errorMsg = UserFacingErrors.toUserMessage(result.exception)
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                }
+            }
+        }
+    }
+
+    private fun mapEventToState(event: Event) {
+        // 1. Map Ticket Types
+        // Dữ liệu từ Domain là Map<String, Map<String, Any>>
+        ticketTypes.clear()
+        //Log.d("EditEventViewModel", "mapEventToState TicketTypes: ${event.ticketTypes}")
+
+        if (event.ticketTypes.isNotEmpty()) {
+            event.ticketTypes.forEach { (key, details) ->
+                // --- UPDATE FIX: Xử lý fallback tên vé ---
+                val rawName = details["name"] as? String
+                // Nếu name trong chi tiết là null hoặc chuỗi rỗng "", dùng Key của Map
+                val typeName = if (!rawName.isNullOrBlank()) rawName else key
+
+                // Convert an toàn số sang String
+                val price = when (val p = details["price"]) {
+                    is Number -> p.toLong().toString() // Dùng toLong để bỏ .0 nếu là số nguyên
+                    is String -> p
+                    else -> "0"
+                }
+                val quantity = when (val q = details["quantity"]) {
+                    is Number -> q.toInt().toString()
+                    is String -> q
+                    else -> "0"
+                }
+                val description = details["description"] as? String ?: ""
+
+                ticketTypes.add(TicketTypeState(typeName, price, quantity, description))
+            }
+        } else {
+            ticketTypes.add(TicketTypeState())
+        }
+
+        // 2. Map Featured Profiles
+        val profileIds = try {
+            val rawList = event.featuredProfiles
+            if (rawList.isNotEmpty()) {
+                val firstItem = rawList.firstOrNull()
+                when (firstItem) {
+                    is String -> rawList.filterIsInstance<String>().toSet()
+                    is FeaturedProfileDto -> rawList.filterIsInstance<FeaturedProfileDto>().map { it.id }.toSet()
+                    else -> emptySet()
+                }
+            } else emptySet()
+        } catch (e: Exception) {
+            Log.e("EditEventViewModel", "Error mapping profiles: ${e.message}")
+            emptySet()
+        }
+
+        // 3. Map Location
+        val venueDetails = event.venueDetails
+        val lat = (venueDetails["latitude"] as? Number)?.toDouble() ?: 0.0
+        val lng = (venueDetails["longitude"] as? Number)?.toDouble() ?: 0.0
+
+        val fullAddress = venueDetails["address"] as? String ?: event.location
+        val parts = fullAddress.split(",").map { it.trim() }
+
+        var city = event.city
+        var district = ""
+        var ward = ""
+        var street = fullAddress
+
+        // Cố gắng parse ngược địa chỉ
+        if (parts.size >= 4) {
+            city = parts.last()
+            district = parts[parts.size - 2]
+            ward = parts[parts.size - 3]
+            street = parts.take(parts.size - 3).joinToString(", ")
+        } else if (parts.isNotEmpty()) {
+            street = parts[0]
+        }
+
+        val hasVenueId = venueDetails["id"] != null && (venueDetails["id"] as String).isNotEmpty()
+        val mode = if (hasVenueId) LocationMode.EXISTING_VENUE else LocationMode.CUSTOM_LOCATION
+        val venueName = event.venueName
+
+        var selectedVenue: VenueResponse? = null
+        if (hasVenueId) {
+            val vId = venueDetails["id"] as String
+            selectedVenue = _uiState.value.availableVenues.find { it.id == vId }
+            if (selectedVenue == null) {
+                selectedVenue = VenueResponse(
+                    id = vId,
+                    name = venueName,
+                    addressDetails = AddressDetailsDto(street, ward, district, city),
+                    location = LocationDto(lat, lng)
+                )
+            }
+        }
+
+        _uiState.update {
+            it.copy(
+                name = event.name,
+                description = event.description,
+                date = event.date,
+                eventType = event.eventType,
+                onlineUrl = event.onlineUrl,
+                videoUrl = event.videoUrl,
+                bannerUrl = event.bannerUrl,
+                thumbnailUrl = event.imageUrl,
+                isOutdoor = event.isOutdoor,
+                locationMode = mode,
+                selectedVenue = selectedVenue,
+                venueName = venueName,
+                city = city,
+                district = district,
+                ward = ward,
+                street = street,
+                lat = lat,
+                lng = lng,
+                selectedCategories = event.category.toSet(),
+                tags = event.tags,
+                selectedProfileIds = profileIds
+            )
+        }
+
+        if (mode == LocationMode.CUSTOM_LOCATION) {
+            onLocationSelected(lat, lng, street, ward, district, city)
+        }
+    }
+
+    /**
+     * @param: None
+     * @return: Unit (Updates UI State and triggers API call)
+     * Updated: Chuyển logic ticketTypes từ List sang Map để fix lỗi crash app do sai cấu trúc dữ liệu
+     */
+    fun onSaveChangesClick() {
+        val state = _uiState.value
+
+        if (state.name.isBlank() || ticketTypes.isEmpty()) {
+            _uiState.update { it.copy(error = "Vui lòng nhập Tên sự kiện và ít nhất 1 loại vé.") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            // 1. Upload All Media
+            val bannerDef = async {
+                if (state.bannerUri != null) uploadImageUseCase(
+                    state.bannerUri,
+                    "${Constraints.PATH_EVENTS}/banners/${System.currentTimeMillis()}.jpg"
+                ) else Result.Success(state.bannerUrl)
+            }
+            val thumbDef = async {
+                if (state.thumbnailUri != null) uploadImageUseCase(
+                    state.thumbnailUri,
+                    "${Constraints.PATH_EVENTS}/thumbnails/${System.currentTimeMillis()}.jpg"
+                ) else Result.Success(state.thumbnailUrl)
+            }
+            val videoDef = async {
+                if (state.videoUri != null) uploadImageUseCase(
+                    state.videoUri,
+                    "${Constraints.PATH_EVENTS}/videos/${System.currentTimeMillis()}.mp4"
+                )
+                else Result.Success(state.videoUrl)
+            }
+
+            val bannerRes = bannerDef.await()
+            val thumbRes = thumbDef.await()
+            val videoRes = videoDef.await()
+
+            if (bannerRes !is Result.Success || thumbRes !is Result.Success || videoRes !is Result.Success) {
+                _uiState.update { it.copy(isLoading = false, error = "Lỗi upload ảnh/video.") }
+                return@launch
+            }
+
+            val finalBannerUrl = bannerRes.data
+            val finalThumbUrl = thumbRes.data
+            val finalVideoUrl = videoRes.data
+
+            // 2. Prepare Request
+            // --- LOGIC MỚI: Dùng associate để tạo Map ---
+            val ticketRequestsMap = ticketTypes.associate { ticketState ->
+                val ticketName = ticketState.name.ifBlank { "General" }
+                // Key của Map là ticketName
+                ticketName to TicketTypeRequest(
+                    name = ticketName,
+                    price = ticketState.price.toDoubleOrNull() ?: 0.0,
+                    quantity = ticketState.quantity.toIntOrNull() ?: 0,
+                    description = ticketState.description
+                )
+            }
+
+            var venueId: String? = null
+            var venueName: String? = null
+            var addressDetails: AddressDetailsRequest? = null
+            var locationCoords: LocationCoordinates? = null
+
+            if (state.eventType == "physical") {
+                if (state.locationMode == LocationMode.EXISTING_VENUE) {
+                    venueId = state.selectedVenue?.id
+                } else {
+                    venueName = state.venueName.ifBlank { "${state.street}, ${state.district}" }
+                    addressDetails = AddressDetailsRequest(state.street, state.ward, state.district, state.city)
+                    locationCoords = LocationCoordinates(state.lat, state.lng)
+                }
+            } else {
+                venueId = null
+            }
+
+            val request = CreateEventRequest(
+                name = state.name,
+                description = state.description,
+                date = state.date,
+                eventType = state.eventType,
+                bannerUrl = finalBannerUrl,
+                imageUrl = finalThumbUrl,
+                videoUrl = finalVideoUrl,
+                isOutdoor = state.isOutdoor,
+
+                // --- UPDATE: Truyền Map vào request ---
+                ticketTypes = ticketRequestsMap,
+                // -------------------------------------
+
+                category = state.selectedCategories.toList(),
+                tags = state.tags,
+                onlineUrl = if (state.eventType == "online") state.onlineUrl else null,
+                venueId = venueId,
+                venueName = venueName,
+                location = locationCoords,
+                addressDetails = addressDetails,
+                featuredProfileIds = state.selectedProfileIds.toList()
+            )
+
+            // 3. Call Update API
+            val result = eventRepository.updateEvent(eventId, request)
+
+            if (result is Result.Success) {
+                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+            } else {
+                val err = UserFacingErrors.toUserMessage((result as Result.Failure).exception)
+                _uiState.update { it.copy(isLoading = false, error = err) }
+            }
+        }
+    }
+
+    private fun normalizeAddressName(name: String): String {
+        return name.lowercase()
+            .replace(Regex("^(tỉnh|thành phố|tp\\.|tp|quận|huyện|thị xã|phường|xã|thị trấn|q\\.|p\\.)\\s+"), "")
+            .trim()
+    }
+
+    // --- Keep simple setters ---
+    fun onNameChange(v: String) { _uiState.update { it.copy(name = v) } }
+    fun onDescriptionChange(v: String) { _uiState.update { it.copy(description = v) } }
+    fun onDateSelected(v: Long) { _uiState.update { it.copy(date = v) } }
+    fun onEventTypeChange(v: String) { _uiState.update { it.copy(eventType = v) } }
+    fun onOutdoorChange(v: Boolean) { _uiState.update { it.copy(isOutdoor = v) } }
+    fun onOnlineUrlChange(v: String) { _uiState.update { it.copy(onlineUrl = v) } }
+    fun onVideoUrlChange(v: String) { _uiState.update { it.copy(videoUrl = v) } }
+
+    fun onLocationModeChange(mode: LocationMode) { _uiState.update { it.copy(locationMode = mode) } }
+    fun onVenueSelected(venue: VenueResponse) { _uiState.update { it.copy(selectedVenue = venue) } }
+
+    fun onBannerSelected(uri: Uri?) { _uiState.update { it.copy(bannerUri = uri) } }
+    fun onThumbnailSelected(uri: Uri?) { _uiState.update { it.copy(thumbnailUri = uri) } }
+    fun onVideoSelected(uri: Uri?) { _uiState.update { it.copy(videoUri = uri) } }
+
+    fun toggleCategory(category: String) {
+        _uiState.update {
+            val newSet = it.selectedCategories.toMutableSet()
+            if (newSet.contains(category)) newSet.remove(category) else newSet.add(category)
+            it.copy(selectedCategories = newSet)
+        }
+    }
+
+    fun onTagInputChange(input: String) {
+        if (input.endsWith(",")) {
+            val newTag = input.dropLast(1).trim()
+            if (newTag.isNotEmpty()) addTag(newTag)
+            _uiState.update { it.copy(currentTagInput = "") }
+        } else {
+            _uiState.update { it.copy(currentTagInput = input) }
+        }
+    }
+
+    fun onTagInputDone() {
+        val input = _uiState.value.currentTagInput.trim()
+        if (input.isNotEmpty()) {
+            addTag(input)
+            _uiState.update { it.copy(currentTagInput = "") }
+        }
+    }
+
+    private fun addTag(tag: String) {
+        val currentTags = _uiState.value.tags.toMutableList()
+        if (!currentTags.contains(tag)) {
+            currentTags.add(tag)
+            _uiState.update { it.copy(tags = currentTags) }
+        }
+    }
+
+    fun removeTag(tag: String) {
+        val currentTags = _uiState.value.tags.toMutableList()
+        currentTags.remove(tag)
+        _uiState.update { it.copy(tags = currentTags) }
+    }
+
+    fun onVenueNameChange(v: String) { _uiState.update { it.copy(venueName = v) } }
+    fun onStreetChange(v: String) { _uiState.update { it.copy(street = v) } }
+
+    fun onProvinceSelected(province: Province) {
+        _uiState.update { it.copy(selectedProvinceObj = province, selectedDistrictObj = null, selectedWardObj = null, districts = emptyList(), wards = emptyList(), city = province.name) }
+        viewModelScope.launch {
+            try {
+                val res = addressApiService.getDistrictsByProvince(province.code)
+                if (res.isSuccessful) _uiState.update { it.copy(districts = res.body()!!.districts) }
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun onDistrictSelected(district: District) {
+        _uiState.update { it.copy(selectedDistrictObj = district, selectedWardObj = null, wards = emptyList(), district = district.name) }
+        viewModelScope.launch {
+            try {
+                val res = addressApiService.getWardsByDistrict(district.code)
+                if (res.isSuccessful) _uiState.update { it.copy(wards = res.body()!!.wards) }
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun onWardSelected(ward: Ward) {
+        _uiState.update { it.copy(selectedWardObj = ward, ward = ward.name) }
+    }
+
+    fun onLocationSelected(lat: Double, lng: Double, street: String, ward: String, district: String, city: String) {
+        _uiState.update {
+            val finalStreet = street.ifBlank { it.street }
+            val autoVenueName = it.venueName.ifBlank { "$finalStreet, $district".trim(',',' ') }
+
+            // Preserve original lat/lng if new ones are 0.0
+            val finalLat = if (lat == 0.0) it.lat else lat
+            val finalLng = if (lng == 0.0) it.lng else lng
+
+            it.copy(lat = finalLat, lng = finalLng, street = finalStreet, ward = ward, district = district, city = city, venueName = autoVenueName)
+        }
+
+        val provinces = _uiState.value.provinces
+        if (provinces.isEmpty()) return
+
+        val normCity = normalizeAddressName(city)
+        val foundProvince = provinces.find { normalizeAddressName(it.name).contains(normCity) || normCity.contains(normalizeAddressName(it.name)) }
+
+        if (foundProvince != null) {
+            onProvinceSelected(foundProvince)
+            viewModelScope.launch {
+                try {
+                    val res = addressApiService.getDistrictsByProvince(foundProvince.code)
+                    if (res.isSuccessful && res.body() != null) {
+                        val districts = res.body()!!.districts
+                        _uiState.update { it.copy(districts = districts) }
+
+                        val normDistrict = normalizeAddressName(district)
+                        val foundDistrict = districts.find { normalizeAddressName(it.name).contains(normDistrict) || normDistrict.contains(normalizeAddressName(it.name)) }
+
+                        if (foundDistrict != null) {
+                            onDistrictSelected(foundDistrict)
+                            try {
+                                val resWard = addressApiService.getWardsByDistrict(foundDistrict.code)
+                                if (resWard.isSuccessful && resWard.body() != null) {
+                                    val wards = resWard.body()!!.wards
+                                    _uiState.update { it.copy(wards = wards) }
+
+                                    val normWard = normalizeAddressName(ward)
+                                    val foundWard = wards.find { normalizeAddressName(it.name).contains(normWard) || normWard.contains(normalizeAddressName(it.name)) }
+                                    if (foundWard != null) onWardSelected(foundWard)
+                                }
+                            } catch (e: Exception) {}
+                        }
+                    }
+                } catch (e: Exception) {}
+            }
+        }
+    }
+
+    fun addTicketType() { ticketTypes.add(TicketTypeState()) }
+    fun removeTicketType(index: Int) { if (ticketTypes.size > 1) ticketTypes.removeAt(index) }
+    fun updateTicket(index: Int, ticket: TicketTypeState) { ticketTypes[index] = ticket }
+
+    fun getFormattedDate(): String = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(_uiState.value.date))
+
+    fun showCreateProfileDialog() { _uiState.update { it.copy(createProfileState = it.createProfileState.copy(isShowDialog = true)) } }
+    fun hideCreateProfileDialog() { _uiState.update { it.copy(createProfileState = CreateProfileState()) } }
+    fun onNewProfileNameChange(v: String) { _uiState.update { it.copy(createProfileState = it.createProfileState.copy(newName = v)) } }
+    fun onNewProfileBioChange(v: String) { _uiState.update { it.copy(createProfileState = it.createProfileState.copy(newBio = v)) } }
+    fun onNewProfileTypeChange(v: String) { _uiState.update { it.copy(createProfileState = it.createProfileState.copy(newProfileType = v)) } }
+    fun onNewGenresChange(v: String) { _uiState.update { it.copy(createProfileState = it.createProfileState.copy(newGenresInput = v)) } }
+    fun onNewProfileImageSelected(uri: Uri?) { _uiState.update { it.copy(createProfileState = it.createProfileState.copy(newImageUri = uri)) } }
+
+    fun createNewProfile() {
+        val pState = _uiState.value.createProfileState
+        if (pState.newName.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(createProfileState = it.createProfileState.copy(isCreating = true)) }
+            var imageUrl: String? = null
+            if (pState.newImageUri != null) {
+                val path = "${Constraints.PATH_UPLOADS}/profiles/${System.currentTimeMillis()}.jpg"
+                val uploadRes = uploadImageUseCase(pState.newImageUri, path)
+                if (uploadRes is Result.Success) imageUrl = uploadRes.data
+            }
+            val genresList = pState.newGenresInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+            val result = eventRepository.createFeaturedProfile(pState.newName, pState.newBio, imageUrl, pState.newProfileType, genresList)
+            if (result is Result.Success) {
+                val newProfile = result.data
+                _uiState.update {
+                    it.copy(
+                        availableProfiles = it.availableProfiles + newProfile,
+                        selectedProfileIds = it.selectedProfileIds + newProfile.id,
+                        createProfileState = CreateProfileState()
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(createProfileState = it.createProfileState.copy(isCreating = false)) }
+            }
+        }
+    }
+
+    fun toggleProfileSelection(profileId: String) {
+        _uiState.update {
+            val current = it.selectedProfileIds.toMutableSet()
+            if (current.contains(profileId)) current.remove(profileId) else current.add(profileId)
+            it.copy(selectedProfileIds = current)
+        }
+    }
+
+    fun onBackClick() { /* Handled in UI */ }
+}

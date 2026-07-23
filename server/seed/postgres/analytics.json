@@ -1,0 +1,23 @@
+[
+  {
+    "id": "evt_vdf_hcm_2025",
+    "totalRevenue": 35000000,
+    "ticketsSold": { "EarlyBird": 50, "Standard": 0 },
+    "checkIns": 0,
+    "viewsOverTime": { "2025-10-10": 1500, "2025-10-11": 2200 }
+  },
+  {
+    "id": "evt_rapviet_allstar_2025",
+    "totalRevenue": 7800000000,
+    "ticketsSold": { "GA": 6500, "VIP": 250 },
+    "checkIns": 0,
+    "viewsOverTime": { "2025-10-10": 8000, "2025-10-11": 15000 }
+  },
+  {
+    "id": "evt_lany_concert_2025_past",
+    "totalRevenue": 3600000000,
+    "ticketsSold": { "Standard": 3000 },
+    "checkIns": 2850,
+    "viewsOverTime": {}
+  }
+]

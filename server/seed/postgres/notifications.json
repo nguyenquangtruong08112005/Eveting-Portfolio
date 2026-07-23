@@ -1,0 +1,32 @@
+[
+  {
+    "id": "notif_reminder_vdf_1",
+    "userId": "user_alice",
+    "title": "Sự kiện sắp diễn ra!",
+    "message": "Vietnam Developer Festival 2025 chỉ còn 24 giờ nữa sẽ bắt đầu. Hãy chuẩn bị sẵn sàng!",
+    "type": "reminder",
+    "eventId": "evt_vdf_hcm_2025",
+    "isRead": false,
+    "createdAt": 1765419600000
+  },
+  {
+    "id": "notif_update_marathon_1",
+    "userId": "all",
+    "title": "Thông báo quan trọng",
+    "message": "Sự kiện Da Nang International Marathon đã bị hủy do thời tiết xấu. Chúng tôi sẽ tiến hành hoàn vé trong thời gian sớm nhất.",
+    "type": "update",
+    "eventId": "evt_cancelled_marathon_2025",
+    "isRead": true,
+    "createdAt": 1757048400000
+  },
+  {
+    "id": "notif_promo_new_1",
+    "userId": "user_diana",
+    "title": "Ưu đãi dành riêng cho bạn",
+    "message": "Bạn nhận được mã giảm giá 15% cho sự kiện Rap Việt All-Star. Dùng mã RAPVIETGROUP ngay!",
+    "type": "promotion",
+    "eventId": "evt_rapviet_allstar_2025",
+    "isRead": false,
+    "createdAt": 1759500000000
+  }
+]

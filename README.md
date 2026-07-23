@@ -11,14 +11,15 @@ Full-stack **Eventing** monorepo (portfolio / internship).
 
 ## Source History
 
-This public monorepo is the release-ready portfolio workspace. Earlier child repositories are kept as implementation history:
+This public monorepo is the release-ready portfolio workspace combining server, web, and mobile projects with preserved git history. Source repositories:
 
 | Area | Repository |
 |---|---|
 | Server | [Server-2025-Eventing](https://github.com/nguyenquangtruong08112005/Server-2025-Eventing) |
+| Web | [Web-2025-Eventing](https://github.com/nguyenquangtruong08112005/Web-2025-Eventing) |
 | Attendee Android | [Mobile-2025-Eventing](https://github.com/nguyenquangtruong08112005/Mobile-2025-Eventing) |
 | Organizer Android | [Mobile-2025-Eventing-Organizer](https://github.com/nguyenquangtruong08112005/Mobile-2025-Eventing-Organizer) |
-| Web | Monorepo-only in this workspace; no separate remote is configured |
+
 
 ## Highlights (CV)
 

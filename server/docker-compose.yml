@@ -1,0 +1,18 @@
+# NOTE: If you need both PostgreSQL and Elasticsearch, use:
+# docker compose -f infra/docker/docker-compose.local.yml up -d
+# This file is kept for backward compatibility running Elasticsearch only.
+services:
+  elasticsearch:
+    image: elasticsearch:9.1.7 # (Phiên bản này ổn định)
+    container_name: es01
+    environment:
+      - discovery.type=single-node
+      # TẮT BẢO MẬT (Chỉ dùng cho local dev)
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+
+volumes:
+  esdata01:

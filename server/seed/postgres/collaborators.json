@@ -1,0 +1,14 @@
+[
+  {
+    "id": "collab_org_john",
+    "organizerId": "org_pro_asia",
+    "collaboratorId": "collab_john",
+    "permissions": ["checkIn"]
+  },
+  {
+    "id": "collab_org_jane",
+    "organizerId": "org_pro_asia",
+    "collaboratorId": "collab_jane",
+    "permissions": ["checkIn", "manageTickets"]
+  }
+]

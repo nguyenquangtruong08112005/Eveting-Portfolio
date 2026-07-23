@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+logs
+.git
+.env
+.env.*
+coverage
+**/*.md
+scripts/smoke
+scripts/db/probes
+archive

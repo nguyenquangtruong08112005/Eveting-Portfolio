@@ -1,0 +1,24 @@
+name: Docker publish (API)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [staging, master, main]
+    paths:
+      - "Dockerfile"
+      - "src/**"
+      - "db/**"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -t eventing-api:${{ github.sha }} .
+      # Uncomment when ECR secrets are configured:
+      # - uses: aws-actions/configure-aws-credentials@v4
+      # - uses: aws-actions/amazon-ecr-login@v2
+      # - run: docker tag ... && docker push ...

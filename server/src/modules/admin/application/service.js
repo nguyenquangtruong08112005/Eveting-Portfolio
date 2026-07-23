@@ -1,0 +1,163 @@
+const eventRepository = require('@/providers/database/event.repository');
+const featuredProfileRepository = require('@/providers/database/featuredProfile.repository');
+const adminRepository = require('@/providers/database/admin.repository');
+const esClient = require('@/shared/config/elasticsearch.config');
+const ELASTIC_INDEX = 'events';
+const { fcmService, helper: notifHelper } = require('@/modules/notifications');
+const { STATUS, VISIBILITY, LIFECYCLE, isTransitionAllowed } = require('@/modules/events/domain/event-lifecycle');
+const { BadRequestError } = require('@/shared/errors');
+const { transaction: dbTransaction } = require('@/providers/database/postgres.client');
+const eventPublisher = require('@/shared/events/event-publisher');
+const outboxProcessor = require('@/shared/events/outbox-processor');
+const { logAction } = require('@/shared/audit/audit-logger');
+
+const buildElasticData = async (eventData) => {
+    let featuredProfileNames = [];
+    if (eventData.featuredProfileIds && eventData.featuredProfileIds.length > 0) {
+        try {
+            const profiles = await featuredProfileRepository.getFeaturedProfilesByIds(eventData.featuredProfileIds);
+            featuredProfileNames = profiles.map(p => p.name);
+        } catch (error) {
+            console.error("Lỗi lấy profile names cho Elastic (Admin):", error);
+        }
+    }
+
+    const data = {
+        name: eventData.name || null,
+        description: eventData.description || null,
+        tags: eventData.tags || [],
+        city: eventData.city || null,
+        category: eventData.category || [],
+        minPrice: eventData.minPrice !== undefined ? eventData.minPrice : null,
+        date: eventData.date || null,
+        featuredProfileIds: eventData.featuredProfileIds || [],
+        featuredProfileNames: featuredProfileNames,
+        status: eventData.status || null,
+        visibility: eventData.visibility || null,
+        imageUrl: eventData.imageUrl || null,
+        bannerUrl: eventData.bannerUrl || null,
+        videoUrl: eventData.videoUrl || null,
+        location: eventData.location || null,
+        venueName: eventData.venueName || null,
+        eventType: eventData.eventType || null,
+    };
+
+    Object.keys(data).forEach(key => {
+        if (data[key] === undefined) data[key] = null;
+    });
+
+    return data;
+};
+
+const getPendingEvents = async (page = 1, limit = 20) => {
+    return adminRepository.getPendingEvents(page, limit);
+};
+
+const approveEvent = async (eventId, adminUserId = 'system_admin', ipAddress = null) => {
+    const row = await eventRepository.getEventLifecycleOwnership(eventId);
+    if (!row) {
+        throw new Error('Event not found');
+    }
+    const lifecycle = row.lifecycle_status || (row.status === STATUS.PENDING ? LIFECYCLE.SUBMITTED : null);
+    if (!isTransitionAllowed(lifecycle, LIFECYCLE.APPROVED)) {
+        const label = row.lifecycle_status || `legacy ${row.status}`;
+        throw new BadRequestError(`Cannot approve event with current lifecycle status "${label}". Event must be submitted first.`);
+    }
+
+    const eventData = await eventRepository.getEventDataById(eventId);
+
+    const updates = {
+        status: STATUS.ACTIVE,
+        visibility: VISIBILITY.PUBLIC,
+        lifecycleStatus: LIFECYCLE.PUBLISHED,
+        approvedAt: new Date().getTime(),
+        lastUpdatedAt: new Date().getTime()
+    };
+
+    await dbTransaction(async (transaction) => {
+        await eventRepository.updateEvent(eventId, updates, transaction);
+
+        await eventPublisher.publish('search_index', {
+            action: 'index',
+            eventId: eventId
+        }, transaction);
+
+        const featuredProfileIds = eventData.featuredProfileIds || [];
+        const title = "Sự kiện mới!";
+        const body = `${eventData.name || 'Sự kiện'} vừa được công bố. Đặt vé ngay!`;
+        const payloadData = notifHelper.buildPayloadData("new_event", eventId);
+
+        for (const artistId of featuredProfileIds) {
+            await eventPublisher.publish('notification', {
+                channel: 'push',
+                topic: notifHelper.buildTopicName('artist', artistId),
+                title,
+                body,
+                data: payloadData
+            }, transaction);
+        }
+
+        // Relational audit logging inside transaction
+        await logAction(transaction, {
+            userId: adminUserId,
+            action: 'EVENT_APPROVED',
+            resourceType: 'event',
+            resourceId: eventId,
+            changes: { before: { status: row.status }, after: { status: STATUS.ACTIVE } },
+            ipAddress
+        });
+    });
+
+    outboxProcessor.triggerProcess();
+
+    return { success: true, message: "Event approved and published." };
+};
+
+const rejectEvent = async (eventId, reason, adminUserId = 'system_admin', ipAddress = null) => {
+    const row = await eventRepository.getEventLifecycleOwnership(eventId);
+    if (!row) {
+        throw new Error('Event not found');
+    }
+    const lifecycle = row.lifecycle_status || (row.status === STATUS.PENDING ? LIFECYCLE.SUBMITTED : null);
+    if (!isTransitionAllowed(lifecycle, LIFECYCLE.REJECTED)) {
+        const label = row.lifecycle_status || `legacy ${row.status}`;
+        throw new BadRequestError(`Cannot reject event with current lifecycle status "${label}". Event must be submitted first.`);
+    }
+
+    const updates = {
+        status: STATUS.REJECTED,
+        lifecycleStatus: LIFECYCLE.REJECTED,
+        rejectReason: reason,
+        rejectedAt: new Date().getTime(),
+        lastUpdatedAt: new Date().getTime()
+    };
+
+    await dbTransaction(async (transaction) => {
+        await eventRepository.updateEvent(eventId, updates, transaction);
+
+        await eventPublisher.publish('search_index', {
+            action: 'delete',
+            eventId: eventId
+        }, transaction);
+
+        // Relational audit logging inside transaction
+        await logAction(transaction, {
+            userId: adminUserId,
+            action: 'EVENT_REJECTED',
+            resourceType: 'event',
+            resourceId: eventId,
+            changes: { reason, before: { status: row.status }, after: { status: STATUS.REJECTED } },
+            ipAddress
+        });
+    });
+
+    outboxProcessor.triggerProcess();
+
+    return { success: true, message: "Event rejected." };
+};
+
+module.exports = {
+    getPendingEvents,
+    approveEvent,
+    rejectEvent
+};

@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mobile-eventing-postgres
+    environment:
+      POSTGRES_USER: eventing
+      POSTGRES_PASSWORD: eventing_dev_password
+      POSTGRES_DB: eventing_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventing -d eventing_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mobile-eventing-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  elasticsearch:
+    image: elasticsearch:9.1.7
+    container_name: es01
+    environment:
+      - discovery.type=single-node
+      # Disable security for local development
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  esdata01:

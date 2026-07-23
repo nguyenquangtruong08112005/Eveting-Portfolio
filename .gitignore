@@ -1,9 +1,3 @@
-# Live apps (separate git repos)
-server/
-web/
-mobile-attendee/
-mobile-organizer/
-
 # Legacy names (should not reappear; ignore if residual)
 Server-2025-Eventing/
 web-2025-eventing/
