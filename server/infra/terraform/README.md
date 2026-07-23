@@ -8,7 +8,7 @@ this project unless you are doing temporary debugging.
 
 - AWS VPC, public subnet, internet gateway, and route table
 - EC2 security group
-- EC2 SSH key pair from your public key
+- EC2 IAM role + instance profile with `AmazonSSMManagedInstanceCore` for SSM access
 - One Ubuntu EC2 instance for the portfolio/demo stack
 - Elastic IP attached to that EC2 instance
 - ECR repositories:
@@ -22,7 +22,6 @@ this project unless you are doing temporary debugging.
 
 Runtime secrets stay out of Terraform state:
 
-- SSH private key
 - database password
 - JWT secrets
 - ZaloPay keys
@@ -32,23 +31,22 @@ Runtime secrets stay out of Terraform state:
 
 Put those in GitHub Actions secrets and local `.env` files only.
 
+SSM does not require any secrets in Terraform — instance access is granted via the
+IAM instance profile (AWS-managed `AmazonSSMManagedInstanceCore` policy). No SSH
+key pair or private key is managed or stored by Terraform.
+
 ## Manual Bootstrap
 
 You only need to prepare:
 
 1. AWS credentials that can run Terraform.
-2. An SSH key pair.
-3. Optional Cloudflare API token and zone id if Terraform should manage DNS.
-4. Runtime provider secrets for Ansible/GitHub Actions.
+2. Optional Cloudflare API token and zone id if Terraform should manage DNS.
+3. Runtime provider secrets for Ansible/GitHub Actions.
 
-Generate an SSH key if needed:
-
-```bash
-ssh-keygen -t ed25519 -C "eventing-deployer" -f ~/.ssh/eventing_ec2
-```
-
-Use the `.pub` value as `ssh_public_key`.
-Use the private key value as GitHub Actions secret `EC2_SSH_PRIVATE_KEY`.
+No SSH key pair is needed — EC2 access is managed through AWS Systems Manager
+(SSM) via the IAM instance profile attached by Terraform. Ansible connects
+using the `amazon.aws.aws_ssm` connection plugin, which requires AWS credentials
+with `ssm:StartSession` permission on the controller (e.g., GitHub Actions).
 
 ## Local Usage
 
@@ -67,13 +65,17 @@ After apply, generate an Ansible inventory:
 terraform output -raw ansible_inventory > ../ansible/inventory.ini
 ```
 
-Then deploy:
+Then deploy (the controller must have AWS credentials with `ssm:StartSession`):
 
 ```bash
 cd ../ansible
+ansible-galaxy collection install amazon.aws
 ansible-playbook -i inventory.ini playbook.yml --tags common,app \
   --extra-vars "environment=staging image_tag=<image-tag> aws_region=<aws-region>"
 ```
+
+The SSM connection plugin uses your local AWS credentials (same as those used
+for Terraform) to start a Session Manager session. No SSH key is required.
 
 ## GitHub Actions Usage
 
@@ -86,8 +88,6 @@ Required GitHub secrets for Terraform:
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION`
-- `TERRAFORM_SSH_PUBLIC_KEY`
-- `TERRAFORM_ALLOWED_SSH_CIDR`
 
 Optional DNS secrets:
 
@@ -95,6 +95,27 @@ Optional DNS secrets:
 - `CLOUDFLARE_ZONE_ID`
 
 Runtime/app secrets are documented in `server/infra/ansible/README.md`.
+
+Ansible connects via the `amazon.aws.aws_ssm` plugin using the same AWS
+credentials. No SSH key secrets are needed. The deploy credential must have
+`ssm:StartSession`, `ssm:TerminateSession`, `ssm:DescribeInstanceInformation`,
+and `ec2:DescribeInstances` permissions to use SSM.
+
+## Required Deploy Credential Permissions
+
+The IAM user or role used for deployment (e.g., GitHub Actions OIDC or access
+keys) needs these permissions in addition to Terraform and ECR permissions:
+
+| Action | Reason |
+|--------|--------|
+| `ssm:StartSession` | Initiate SSM session for Ansible |
+| `ssm:TerminateSession` | Clean up SSM sessions |
+| `ssm:DescribeInstanceInformation` | Discover managed instances |
+| `ec2:DescribeInstances` | Resolve instance metadata |
+
+These are not managed by this Terraform configuration — they must be attached to
+the deploy principal outside of this project's Terraform (e.g., an IAM user or
+GitHub OIDC role).
 
 ## Local Credential Note
 

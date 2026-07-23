@@ -97,15 +97,6 @@ resource "aws_security_group" "server" {
   })
 }
 
-resource "aws_vpc_security_group_ingress_rule" "ssh" {
-  security_group_id = aws_security_group.server.id
-  description       = "SSH from approved CIDR"
-  cidr_ipv4         = var.allowed_ssh_cidr
-  from_port         = 22
-  ip_protocol       = "tcp"
-  to_port           = 22
-}
-
 resource "aws_vpc_security_group_ingress_rule" "http" {
   security_group_id = aws_security_group.server.id
   description       = "HTTP"
@@ -151,12 +142,38 @@ resource "aws_vpc_security_group_egress_rule" "all_ipv4" {
   ip_protocol       = "-1"
 }
 
-resource "aws_key_pair" "deployer" {
-  key_name   = "${local.name_prefix}-deployer-key"
-  public_key = var.ssh_public_key
+resource "aws_iam_role" "app_server" {
+  name = "${local.name_prefix}-app-server-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
 
   tags = merge(local.tags, {
-    Name = "${local.name_prefix}-deployer-key"
+    Name = "${local.name_prefix}-app-server-role"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_managed" {
+  role       = aws_iam_role.app_server.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "app_server" {
+  name = "${local.name_prefix}-app-server-profile"
+  role = aws_iam_role.app_server.name
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-app-server-profile"
   })
 }
 
@@ -180,7 +197,7 @@ resource "aws_instance" "app_server" {
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.server.id]
-  key_name               = aws_key_pair.deployer.key_name
+  iam_instance_profile   = aws_iam_instance_profile.app_server.name
 
   root_block_device {
     volume_size           = var.root_volume_size_gb

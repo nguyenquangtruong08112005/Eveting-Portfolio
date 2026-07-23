@@ -51,17 +51,6 @@ variable "root_volume_size_gb" {
   default     = 40
 }
 
-variable "ssh_public_key" {
-  description = "Public SSH key for EC2 access. The matching private key is provided to Ansible/GitHub Actions, not Terraform."
-  type        = string
-  sensitive   = true
-}
-
-variable "allowed_ssh_cidr" {
-  description = "CIDR block allowed to SSH into the EC2 instance. Prefer your current public IP /32."
-  type        = string
-}
-
 variable "allowed_http_cidr" {
   description = "CIDR block allowed to reach HTTP/HTTPS."
   type        = string

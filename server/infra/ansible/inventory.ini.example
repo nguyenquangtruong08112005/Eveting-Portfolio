@@ -1,6 +1,7 @@
 [app_servers]
-# Replace with the IP address output by Terraform
-192.0.2.1 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/eventing_ec2
+# Replace with the EC2 instance ID output by Terraform (terraform output -raw instance_id)
+# ansible_connection=amazon.aws.aws_ssm uses AWS SSM Session Manager — no SSH key needed.
+i-1234567890abcdef0 ansible_connection=amazon.aws.aws_ssm ansible_user=ubuntu
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

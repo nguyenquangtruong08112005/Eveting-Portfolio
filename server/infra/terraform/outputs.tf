@@ -26,10 +26,10 @@ output "ecr_repository_urls" {
 }
 
 output "ansible_inventory" {
-  description = "Ansible inventory generated from Terraform-managed EC2."
+  description = "Ansible inventory generated from Terraform-managed EC2, using SSM connection."
   value       = <<-EOT
     [app_servers]
-    ${aws_eip.app_server.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/eventing_ec2
+    ${aws_instance.app_server.id} ansible_connection=amazon.aws.aws_ssm ansible_user=ubuntu
 
     [all:vars]
     ansible_python_interpreter=/usr/bin/python3

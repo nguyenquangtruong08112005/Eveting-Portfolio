@@ -5,12 +5,9 @@ aws_region    = "ap-southeast-2"
 environment   = "staging"
 instance_type = "t3.medium"
 
-# Generate or reuse a local SSH key pair. Put only the public key here.
-# The matching private key goes to GitHub Actions secret EC2_SSH_PRIVATE_KEY.
-ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleReplaceMe eventing-deployer"
-
-# Strongly prefer your current public IP with /32.
-allowed_ssh_cidr = "203.0.113.10/32"
+# Remote access uses AWS Systems Manager (SSM) — no SSH key pair required.
+# The EC2 instance profile includes AmazonSSMManagedInstanceCore.
+# Ansible connects via the amazon.aws.aws_ssm connection plugin.
 
 # HTTP/HTTPS are public so Cloudflare and mobile/web clients can reach the app.
 allowed_http_cidr = "0.0.0.0/0"
