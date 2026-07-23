@@ -23,6 +23,8 @@ cd server && npm.cmd install && npm.cmd run local:infra && npm.cmd run db:migrat
 cd web && npm.cmd install && npm.cmd run dev -- -p 3001
 ```
 
+Copy `.env.example`, `server/.env.example`, and `web/.env.example` to local `.env` files before enabling provider-backed features such as R2/S3, OneSignal, OAuth, email, or ZaloPay.
+
 See **[DEMO.md](DEMO.md)** · **[START_HERE.md](START_HERE.md)** · **[NAMING.md](NAMING.md)**
 
 ## Docs

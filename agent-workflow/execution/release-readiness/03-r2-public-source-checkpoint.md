@@ -68,3 +68,10 @@
 | YAML validation | Done | Local `py` YAML parse passed |
 | DB-backed smokes in CI | Deferred | Needs service-backed Postgres/Redis/Elasticsearch wiring to avoid flaky public CI |
 | Android CI strictness | Deferred | Jobs are report-only until public-safe SDK credentials and Gradle properties are finalized |
+
+## R7 Public Source Progress
+
+| Item | Status | Evidence |
+|---|---|---|
+| Env templates | Done | Added root `.env.example`, `server/.env.example`, and `web/.env.example` with placeholders/local defaults |
+| README env pointer | Done | Root README points readers to env templates before provider-backed features |
