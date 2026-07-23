@@ -117,13 +117,32 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 
 ### Terraform Remote State & Concurrency
 
-- **Dedicated State Storage:** Dedicated Cloudflare R2 bucket (e.g. `eventing-tfstate`), completely isolated from application runtime media storage.
-- **Credential Least Privilege:** R2 state credentials (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) must be a dedicated API token created in Cloudflare R2, scoped exclusively to `Object Read & Write` on the state bucket, separate from application storage tokens.
-- **Bootstrap Architecture:** `server/infra/terraform/bootstrap` operates with local state (ignored by Git) and provisions the dedicated `cloudflare_r2_bucket.tf_state` using Cloudflare API token and Account ID.
+- **REST API Bucket Verification:** Workflow uses Cloudflare REST API (`GET /client/v4/accounts/${ACCOUNT_ID}/r2/buckets/${BUCKET}`) with `CLOUDFLARE_API_TOKEN` to verify bucket existence without requiring pre-existing S3 API credentials.
+- **Dedicated State Storage:** Dedicated Cloudflare R2 bucket (e.g. `eventing-tfstate`), completely isolated from application runtime media storage (`S3_*`).
+- **Credential Least Privilege:** R2 state credentials (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) are created after Stage 1, scoped exclusively to `Object Read & Write` on the `eventing-tfstate` bucket.
+- **Bootstrap Architecture:** `server/infra/terraform/bootstrap` operates with local state (ignored by Git) and provisions `cloudflare_r2_bucket.tf_state` using `CLOUDFLARE_API_TOKEN`.
 - **Main Stack Backend:** `server/infra/terraform` connects via S3-compatible API using `endpoints = { s3 = "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" }`, `skip_s3_checksum = true`, `use_path_style = true`, `use_lockfile = true`, and key `eventing/${environment}/terraform.tfstate`.
 - **Encryption Note:** Cloudflare R2 encrypts all objects at rest automatically provider-side. `encrypt = true` (S3 SSE header `x-amz-server-side-encryption`) is intentionally omitted because R2 does not implement custom S3 SSE headers.
-- **Idempotent Runner Bootstrap:** Prior to running `bootstrap apply`, workflow uses `aws s3api head-bucket --endpoint-url https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com` with R2 state credentials to check bucket existence, skipping bootstrap apply on subsequent runs.
 - **SSM Private AWS S3 Bucket:** AWS S3 transfer bucket (`aws_s3_bucket.ssm_transfer`) remains dedicated exclusively to Ansible-over-SSM file transfers and is not used for Terraform state.
+
+### Two-Stage Operator Setup Sequence for Cloudflare R2 Remote State
+
+Because a bucket-scoped R2 API credential cannot be created until the bucket exists in Cloudflare, initial state bucket setup follows a two-stage sequence:
+
+1. **Stage 1 (Initial R2 Bucket Provisioning):**
+   - Populate `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub Secrets.
+   - Dispatch workflow with `run_terraform_plan=true` and `run_terraform_apply=true`.
+   - Workflow checks state bucket via REST API. Finding it absent, bootstrap provisions `eventing-tfstate` and intentionally stops pipeline execution (`bootstrap_only=true`).
+
+2. **Operator Action (Create Dedicated R2 Credentials):**
+   - In Cloudflare Dashboard → R2 → Manage R2 API Tokens, create a new token:
+     - **Permissions:** `Object Read & Write`
+     - **Bucket Scoping:** Apply exclusively to `eventing-tfstate`.
+   - Add generated Access Key ID as `R2_ACCESS_KEY_ID` and Secret Access Key as `R2_SECRET_ACCESS_KEY` in GitHub Secrets.
+
+3. **Stage 2+ (Normal Operational Deployments):**
+   - Re-run workflow with desired deployment mode. Pipeline verifies bucket existence, validates non-empty `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`, initializes main backend, and executes requested plan/apply/build/deploy steps.
+
 ### Workflow Dispatch Deployment Modes
 
 | Mode | `run_terraform_plan` | `run_terraform_apply` | `run_build_push` | `run_ansible` | Description |

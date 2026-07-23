@@ -45,6 +45,7 @@ jobs:
       ansible_inventory: ${{ steps.tf_outputs.outputs.ansible_inventory }}
       ecr_registry: ${{ steps.tf_outputs.outputs.ecr_registry }}
       ssm_transfer_bucket: ${{ steps.tf_outputs.outputs.ssm_transfer_bucket }}
+      bootstrap_only: ${{ steps.tf_outputs.outputs.bootstrap_only }}
     defaults:
       run:
         working-directory: server/infra/terraform
@@ -66,54 +67,68 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+      - name: Test Cloudflare R2 State Bucket Existence via REST API
+        run: |
+          STATE_BUCKET="${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}"
+          CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${STATE_BUCKET}")
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Cloudflare R2 state bucket '$STATE_BUCKET' exists."
+            echo "R2_BUCKET_EXISTS=true" >> "$GITHUB_ENV"
+          else
+            echo "Cloudflare R2 state bucket '$STATE_BUCKET' is absent (HTTP status $HTTP_STATUS)."
+            echo "R2_BUCKET_EXISTS=false" >> "$GITHUB_ENV"
+          fi
       - name: Idempotent Bootstrap of Cloudflare R2 State Bucket
         working-directory: server/infra/terraform/bootstrap
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TF_VAR_state_r2_bucket_name: ${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          STATE_BUCKET="${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}"
-          CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
-          R2_ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
           terraform init
           terraform fmt -check
           terraform validate
 
-          if AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
-             AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
-             AWS_EC2_METADATA_DISABLED=true \
-             AWS_DEFAULT_REGION=auto \
-             aws s3api head-bucket --bucket "$STATE_BUCKET" --endpoint-url "$R2_ENDPOINT" 2>/dev/null; then
-            echo "Cloudflare R2 state bucket '$STATE_BUCKET' exists. Skipping bootstrap apply."
-            echo "R2_BUCKET_EXISTS=true" >> "$GITHUB_ENV"
+          if [ "${R2_BUCKET_EXISTS}" = "true" ]; then
+            echo "R2 state bucket exists. Skipping bootstrap plan & apply."
           else
-            echo "Cloudflare R2 state bucket '$STATE_BUCKET' absent."
-            echo "R2_BUCKET_EXISTS=false" >> "$GITHUB_ENV"
-            echo "Exposing bootstrap Terraform plan..."
+            echo "R2 state bucket absent. Running bootstrap terraform plan..."
             terraform plan
 
             if [ "${{ inputs.run_terraform_apply }}" = "true" ]; then
               echo "Provisioning Cloudflare R2 state bucket via bootstrap apply..."
               terraform apply -auto-approve
-              echo "R2_BUCKET_EXISTS=true" >> "$GITHUB_ENV"
+              echo "BOOTSTRAP_JUST_APPLIED=true" >> "$GITHUB_ENV"
+              echo "SKIP_MAIN_TF=true" >> "$GITHUB_ENV"
+              echo "R2 state bucket created. OPERATOR ACTION REQUIRED: Create a bucket-scoped Object Read & Write R2 API Token in Cloudflare dashboard, add R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY to GitHub Secrets, then re-run workflow."
             else
-              echo "run_terraform_apply is false; Cloudflare R2 state bucket provision skipped."
+              echo "run_terraform_apply is false; bootstrap apply skipped."
+              echo "SKIP_MAIN_TF=true" >> "$GITHUB_ENV"
             fi
           fi
       - name: Initialize Main Terraform with Cloudflare R2 Backend
         run: |
-          if [ "${R2_BUCKET_EXISTS}" != "true" ]; then
-            echo "R2 state bucket does not exist yet. Skipping main Terraform init and plan."
-            echo "SKIP_MAIN_TF=true" >> "$GITHUB_ENV"
+          if [ "${SKIP_MAIN_TF}" = "true" ]; then
+            echo "Skipping main Terraform initialization."
             exit 0
           fi
 
           STATE_BUCKET="${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}"
           CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          R2_KEY_ID="${{ secrets.R2_ACCESS_KEY_ID }}"
+          R2_SECRET="${{ secrets.R2_SECRET_ACCESS_KEY }}"
+
+          if [ -z "$R2_KEY_ID" ] || [ -z "$R2_SECRET" ]; then
+            echo "Error: State bucket '$STATE_BUCKET' exists, but R2_ACCESS_KEY_ID and/or R2_SECRET_ACCESS_KEY GitHub secrets are missing or empty."
+            echo "OPERATOR INSTRUCTION: Create a bucket-scoped Object Read & Write R2 API Token in Cloudflare dashboard for '$STATE_BUCKET', then add R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY to GitHub Secrets."
+            exit 1
+          fi
+
           R2_ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
           terraform init -reconfigure \
@@ -121,8 +136,8 @@ jobs:
             -backend-config="key=eventing/${{ inputs.environment }}/terraform.tfstate" \
             -backend-config="region=auto" \
             -backend-config="endpoints={s3=\"${R2_ENDPOINT}\"}" \
-            -backend-config="access_key=${{ secrets.R2_ACCESS_KEY_ID }}" \
-            -backend-config="secret_key=${{ secrets.R2_SECRET_ACCESS_KEY }}" \
+            -backend-config="access_key=${R2_KEY_ID}" \
+            -backend-config="secret_key=${R2_SECRET}" \
             -backend-config="skip_credentials_validation=true" \
             -backend-config="skip_region_validation=true" \
             -backend-config="skip_requesting_account_id=true" \
@@ -148,6 +163,12 @@ jobs:
       - name: Capture Terraform outputs
         id: tf_outputs
         run: |
+          if [ "${SKIP_MAIN_TF}" = "true" ] || [ "${BOOTSTRAP_JUST_APPLIED}" = "true" ]; then
+            echo "bootstrap_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "bootstrap_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
           if [ "${SKIP_MAIN_TF}" = "true" ] || [ "${{ inputs.run_terraform_apply }}" != "true" ]; then
             echo "Main Terraform apply did not run; setting empty output values."
             echo "ansible_inventory=" >> "$GITHUB_OUTPUT"
@@ -166,7 +187,7 @@ jobs:
 
   build-and-push:
     needs: terraform
-    if: ${{ always() && inputs.run_build_push && (!inputs.run_terraform_plan && !inputs.run_terraform_apply || needs.terraform.result == 'success') }}
+    if: ${{ always() && inputs.run_build_push && needs.terraform.outputs.bootstrap_only != 'true' && (!inputs.run_terraform_plan && !inputs.run_terraform_apply || needs.terraform.result == 'success') }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -202,7 +223,7 @@ jobs:
 
           IMAGE="eventing-web"
           docker build \
-            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'https://api.example.com' }} \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'https://api.eventing.moteo.fun' }} \
             -t $REGISTRY/$IMAGE:${{ github.sha }} \
             -t $REGISTRY/$IMAGE:${{ inputs.environment }} \
             ./web
@@ -211,7 +232,7 @@ jobs:
 
   ansible:
     needs: [terraform, build-and-push]
-    if: ${{ always() && inputs.run_ansible && inputs.run_build_push && needs.build-and-push.result == 'success' && (!inputs.run_terraform_plan && !inputs.run_terraform_apply || needs.terraform.result == 'success') }}
+    if: ${{ always() && inputs.run_ansible && inputs.run_build_push && needs.build-and-push.result == 'success' && needs.terraform.outputs.bootstrap_only != 'true' && (!inputs.run_terraform_plan && !inputs.run_terraform_apply || needs.terraform.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
