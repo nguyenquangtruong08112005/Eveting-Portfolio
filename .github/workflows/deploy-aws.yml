@@ -24,6 +24,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
 jobs:
   terraform:
     if: ${{ inputs.run_terraform }}
@@ -54,7 +58,34 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
-      - run: terraform init
+      - name: Derive AWS Account ID and State Bucket Name
+        id: state_bucket
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          AWS_REGION="${{ secrets.AWS_REGION || 'ap-southeast-2' }}"
+          BUCKET_NAME="eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}"
+          echo "account_id=${ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
+          echo "bucket_name=${BUCKET_NAME}" >> "$GITHUB_OUTPUT"
+      - name: Bootstrap S3 Remote State Bucket
+        working-directory: server/infra/terraform/bootstrap
+        env:
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+          TF_VAR_environment: ${{ inputs.environment }}
+        run: |
+          terraform init
+          terraform fmt -check
+          terraform validate
+          terraform apply -auto-approve
+      - name: Initialize Main Terraform with S3 Backend
+        run: |
+          STATE_BUCKET="${{ steps.state_bucket.outputs.bucket_name }}"
+          AWS_REGION="${{ secrets.AWS_REGION || 'ap-southeast-2' }}"
+          terraform init \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="key=eventing/${{ inputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
       - run: terraform fmt -check
       - run: terraform validate
       - run: terraform plan

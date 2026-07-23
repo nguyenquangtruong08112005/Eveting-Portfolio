@@ -115,6 +115,14 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 - Backend CORS allowlist in `server/src/app.js` is scoped to `https://eventing.moteo.fun` and configured `CORS_ALLOWED_ORIGINS` without wildcard (`*`) access.
 
 
+### Terraform Remote State & Concurrency
+
+- **State Bucket:** `eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}` created idempotently via `server/infra/terraform/bootstrap` on first run.
+- **State Key:** `eventing/${environment}/terraform.tfstate`
+- **State Safeguards:** S3 versioning enabled, default `AES256` encryption, public access block, 90-day noncurrent version expiration, and S3 native lockfile (`use_lockfile = true`). No DynamoDB required.
+- **Workflow Concurrency:** GitHub workflow enforces `concurrency: deploy-${{ inputs.environment }}` to prevent concurrent pipeline runs on the same environment.
+- **State Recovery / Rollback:** Prior state file versions are preserved in S3. Use `aws s3api list-object-versions` and `terraform state push` if state recovery is needed.
+
 ### GitHub secrets for deploy
 
 | Secret | Purpose |
