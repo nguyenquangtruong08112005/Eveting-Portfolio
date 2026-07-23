@@ -70,11 +70,11 @@ jobs:
         working-directory: server/infra/terraform/bootstrap
         env:
           TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
-          TF_VAR_environment: ${{ inputs.environment }}
+          TF_VAR_environment: "shared"
         run: |
           STATE_BUCKET="${{ steps.state_bucket.outputs.bucket_name }}"
           AWS_REGION="${{ secrets.AWS_REGION || 'ap-southeast-2' }}"
-          BOOTSTRAP_KEY="bootstrap/${{ inputs.environment }}/terraform.tfstate"
+          BOOTSTRAP_KEY="bootstrap/terraform.tfstate"
 
           terraform fmt -check
 

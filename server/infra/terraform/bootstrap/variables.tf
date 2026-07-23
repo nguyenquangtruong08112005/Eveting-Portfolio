@@ -11,7 +11,7 @@ variable "aws_region" {
 }
 
 variable "environment" {
-  description = "Deployment environment name."
+  description = "Scope or environment tag for shared bootstrap resources."
   type        = string
-  default     = "staging"
+  default     = "shared"
 }
