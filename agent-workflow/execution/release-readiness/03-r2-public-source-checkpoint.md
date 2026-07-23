@@ -58,7 +58,10 @@
 |---|---|---|
 | Web BFF alias gap | Done | Server commit `55c5953` adds `/api/web/users`, `/api/web/notifications`, `/api/web/promotions`, `/api/web/storage`, and `/api/web/venues` |
 | Alias syntax check | Done | `node --check src/app.js` passed |
-| Live mobile contract smoke | Blocked | API was not listening on `localhost:3000` during this pass |
+| Live mobile contract smoke | Done | `npm.cmd run db:smoke:mobile-contracts` passed: 17 pass, 0 fail, 0 skip |
+| Android attendee compile | Done | `gradlew.bat :app:compileDebugKotlin` passed |
+| Android organizer compile | Done | `gradlew.bat :app:compileDebugKotlin` passed |
+| ADB device verification | Blocked | `adb devices -l` starts daemon but lists no devices; phone is not visible/authorized to Windows yet |
 
 ## R3 CI Baseline Progress
 
