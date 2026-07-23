@@ -37,7 +37,22 @@ locals {
     "${var.project_name}-web",
   ])
 
-  create_cloudflare_dns = var.cloudflare_zone_id != "" && length(var.cloudflare_dns_records) > 0
+  default_dns_records = {
+    web = {
+      name    = var.web_domain
+      ttl     = 1
+      proxied = true
+    }
+    api = {
+      name    = var.api_domain
+      ttl     = 1
+      proxied = true
+    }
+  }
+
+  cloudflare_dns_records = length(var.cloudflare_dns_records) > 0 ? var.cloudflare_dns_records : local.default_dns_records
+
+  create_cloudflare_dns = var.cloudflare_zone_id != ""
 }
 
 resource "aws_vpc" "main" {
@@ -258,7 +273,7 @@ resource "aws_ecr_lifecycle_policy" "app" {
 }
 
 resource "cloudflare_dns_record" "app" {
-  for_each = local.create_cloudflare_dns ? var.cloudflare_dns_records : {}
+  for_each = local.create_cloudflare_dns ? local.cloudflare_dns_records : {}
 
   zone_id = var.cloudflare_zone_id
   name    = each.value.name

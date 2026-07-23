@@ -118,22 +118,11 @@ variable "cloudflare_zone_id" {
 }
 
 variable "cloudflare_dns_records" {
-  description = "Cloudflare A records pointed at the EC2 Elastic IP."
+  description = "Optional custom Cloudflare A record overrides pointed at the EC2 Elastic IP. If empty, records are derived automatically from web_domain and api_domain."
   type = map(object({
     name    = string
     ttl     = number
     proxied = bool
   }))
-  default = {
-    web = {
-      name    = "eventing.moteo.fun"
-      ttl     = 1
-      proxied = true
-    }
-    api = {
-      name    = "api.eventing.moteo.fun"
-      ttl     = 1
-      proxied = true
-    }
-  }
+  default = {}
 }
