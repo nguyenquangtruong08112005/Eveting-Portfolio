@@ -89,6 +89,7 @@
 |---|---|---|
 | EC2 app deploy role | Done | Added Ansible `app` role to render compose/env, pull ECR images, run migrations, and restart containers |
 | Manual AWS workflow | Done | `deploy-aws.yml` build/pushes ECR images and can run Ansible app deploy with `run_ansible=true` |
+| GitHub Actions SSH key setup | Done | Deploy workflow writes `EC2_SSH_PRIVATE_KEY` to `~/.ssh/eventing_ec2`; inventory example references that path |
 | Deploy docs | Done | `deploy/README.md` documents GitHub Actions → ECR → EC2 Docker Compose pull/up |
 | Local deploy validation | Partial | YAML parse passed; `ansible-playbook` is not installed locally, so Ansible syntax check is deferred to CI/runner |
 

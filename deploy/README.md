@@ -103,6 +103,7 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 | `NEXT_PUBLIC_API_URL` | Public API base for web image and deployed web |
 | `APP_PUBLIC_URL` | Public API callback base for payment/webhooks |
 | `ANSIBLE_INVENTORY` | inventory.ini content |
+| `EC2_SSH_PRIVATE_KEY` | Private SSH key used by GitHub Actions to connect to EC2 |
 | `ECR_REGISTRY` | AWS account ECR registry, e.g. `123456789012.dkr.ecr.ap-southeast-1.amazonaws.com` |
 | `POSTGRES_PASSWORD` | EC2 compose Postgres password |
 | `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `JWT_TICKET_SECRET` | Runtime auth/ticket secrets |

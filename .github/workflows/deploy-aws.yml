@@ -105,6 +105,13 @@ jobs:
           ECR_PASSWORD="$(aws ecr get-login-password --region $AWS_REGION)"
           echo "::add-mask::$ECR_PASSWORD"
           echo "ECR_PASSWORD=$ECR_PASSWORD" >> "$GITHUB_ENV"
+      - name: Configure SSH key for EC2
+        env:
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/eventing_ec2
+          chmod 600 ~/.ssh/eventing_ec2
       - name: Run Ansible (requires inventory secrets)
         working-directory: server/infra/ansible
         env:
