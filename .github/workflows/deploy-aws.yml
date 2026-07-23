@@ -101,7 +101,10 @@ jobs:
       - name: Get ECR login password
         env:
           AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
-        run: echo "ECR_PASSWORD=$(aws ecr get-login-password --region $AWS_REGION)" >> "$GITHUB_ENV"
+        run: |
+          ECR_PASSWORD="$(aws ecr get-login-password --region $AWS_REGION)"
+          echo "::add-mask::$ECR_PASSWORD"
+          echo "ECR_PASSWORD=$ECR_PASSWORD" >> "$GITHUB_ENV"
       - name: Run Ansible (requires inventory secrets)
         working-directory: server/infra/ansible
         env:
