@@ -1,6 +1,4 @@
-# Docs monorepo only (apps live in separate repos under server/, web/, …).
-# App CI: server/.github/workflows/* and web/.github/workflows/*
-name: Docs monorepo CI
+name: Eventing CI
 
 on:
   push:
@@ -8,14 +6,118 @@ on:
   pull_request:
     branches: [staging, master, main]
 
+permissions:
+  contents: read
+
 jobs:
-  docs-paths:
+  root-sanity:
+    name: Root sanity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ensure deploy entrypoints exist
+      - name: Ensure release entrypoints exist
         run: |
-          test -f scripts/dev-up.ps1
-          test -f deploy/README.md
-          test -f package.json
+          test -f README.md
+          test -f DEMO.md
           test -f NAMING.md
+          test -f deploy/README.md
+          test -f scripts/dev-up.cmd
+          test -f docker-compose.yml
+          test -f docker-compose.app.yml
+
+  server:
+    name: Server syntax and Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+      - name: Check JavaScript syntax
+        working-directory: server
+        run: node scripts/ci/check-js-syntax.js
+      - name: Report-only npm audit
+        working-directory: server
+        continue-on-error: true
+        run: npm run security:audit
+      - name: Build server image
+        run: docker build -t eventing-api:ci ./server
+
+  web:
+    name: Web lint build and Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+      - name: Lint web
+        working-directory: web
+        run: npm run lint
+      - name: Build web
+        working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+        run: npm run build
+      - name: Build web image
+        run: docker build -t eventing-web:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:3000 ./web
+
+  mobile-attendee:
+    name: Attendee Android compile
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile attendee debug Kotlin
+        working-directory: mobile-attendee
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:compileDebugKotlin --no-daemon
+
+  mobile-organizer:
+    name: Organizer Android compile
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile organizer debug Kotlin
+        working-directory: mobile-organizer
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:compileDebugKotlin --no-daemon
+
+  security-report:
+    name: Report-only Trivy scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: 0
+          format: table

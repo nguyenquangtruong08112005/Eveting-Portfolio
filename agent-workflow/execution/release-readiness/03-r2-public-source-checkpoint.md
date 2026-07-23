@@ -59,3 +59,12 @@
 | Web BFF alias gap | Done | Server commit `55c5953` adds `/api/web/users`, `/api/web/notifications`, `/api/web/promotions`, `/api/web/storage`, and `/api/web/venues` |
 | Alias syntax check | Done | `node --check src/app.js` passed |
 | Live mobile contract smoke | Blocked | API was not listening on `localhost:3000` during this pass |
+
+## R3 CI Baseline Progress
+
+| Item | Status | Evidence |
+|---|---|---|
+| Root CI | Done | `.github/workflows/ci.yml` now checks root docs, server syntax/Docker, web lint/build/Docker, Android compile report-only, and Trivy report-only |
+| YAML validation | Done | Local `py` YAML parse passed |
+| DB-backed smokes in CI | Deferred | Needs service-backed Postgres/Redis/Elasticsearch wiring to avoid flaky public CI |
+| Android CI strictness | Deferred | Jobs are report-only until public-safe SDK credentials and Gradle properties are finalized |
