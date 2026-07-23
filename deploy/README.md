@@ -80,10 +80,10 @@ Images:
 ```text
 GitHub Actions
   optional terraform apply
-  create/update AWS infra
+  create/update AWS infra (IAM + SSM role)
   build eventing-api/eventing-web
   push images to ECR with tags: <github.sha> and <environment>
-  run Ansible over SSH
+  run Ansible via AWS SSM Session Manager (no SSH key)
 
 EC2
   docker compose pull <github.sha>
@@ -100,19 +100,27 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 
 | Secret | Purpose |
 |---|---|
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Deploy credentials (or use OIDC later) |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Deploy credentials (or OIDC role) |
 | `AWS_REGION` | e.g. `ap-southeast-2` |
-| `TERRAFORM_SSH_PUBLIC_KEY` | Public SSH key Terraform registers on EC2 |
-| `TERRAFORM_ALLOWED_SSH_CIDR` | SSH CIDR, prefer your IP `/32` |
 | `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ZONE_ID` | Optional Terraform-managed DNS |
 | `NEXT_PUBLIC_API_URL` | Public API base for web image and deployed web |
 | `APP_PUBLIC_URL` | Public API callback base for payment/webhooks |
 | `ANSIBLE_INVENTORY` | Fallback inventory.ini content when `run_terraform=false` |
-| `EC2_SSH_PRIVATE_KEY` | Private SSH key used by GitHub Actions to connect to EC2 |
 | `ECR_REGISTRY` | Fallback ECR registry when `run_terraform=false` |
 | `POSTGRES_PASSWORD` | EC2 compose Postgres password |
 | `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `JWT_TICKET_SECRET` | Runtime auth/ticket secrets |
 | Provider secrets | ZaloPay, OpenWeather, OneSignal, R2/S3 values as needed |
+
+**Removed secrets** (SSH no longer used):
+- ~~`TERRAFORM_SSH_PUBLIC_KEY`~~
+- ~~`TERRAFORM_ALLOWED_SSH_CIDR`~~
+- ~~`EC2_SSH_PRIVATE_KEY`~~
+
+EC2 access now uses AWS Systems Manager (SSM) via the `amazon.aws.aws_ssm`
+Ansible connection plugin. No SSH key pair is needed. The deploy credential must
+have `ssm:StartSession`, `ssm:TerminateSession`, `ssm:DescribeInstanceInformation`,
+and `ec2:DescribeInstances` permissions. The EC2 instance profile (created by
+Terraform) includes the AWS-managed `AmazonSSMManagedInstanceCore` policy.
 
 Terraform creates EC2, ECR, security groups, Elastic IP, and optional DNS. Do not
 create those manually in the AWS Console for normal deploys.
@@ -128,7 +136,7 @@ Actions → **Deploy AWS (manual)**:
 Expected flow:
 
 ```text
-GitHub manual workflow → Terraform infra → ECR image tags → SSH/Ansible → EC2 docker compose pull/up
+GitHub manual workflow → Terraform infra → ECR image tags → SSM/Ansible → EC2 docker compose pull/up
 ```
 
 ---

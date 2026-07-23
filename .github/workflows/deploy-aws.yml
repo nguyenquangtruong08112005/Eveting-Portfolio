@@ -38,8 +38,6 @@ jobs:
     env:
       TF_VAR_environment: ${{ inputs.environment }}
       TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
-      TF_VAR_ssh_public_key: ${{ secrets.TERRAFORM_SSH_PUBLIC_KEY }}
-      TF_VAR_allowed_ssh_cidr: ${{ secrets.TERRAFORM_ALLOWED_SSH_CIDR }}
       TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
     steps:
@@ -130,17 +128,14 @@ jobs:
           ECR_PASSWORD="$(aws ecr get-login-password --region $AWS_REGION)"
           echo "::add-mask::$ECR_PASSWORD"
           echo "ECR_PASSWORD=$ECR_PASSWORD" >> "$GITHUB_ENV"
-      - name: Configure SSH key for EC2
-        env:
-          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+      - name: Install Session Manager Plugin
         run: |
-          mkdir -p ~/.ssh
-          echo "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/eventing_ec2
-          chmod 600 ~/.ssh/eventing_ec2
-      - name: Run Ansible (requires inventory secrets)
+          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+          sudo dpkg -i session-manager-plugin.deb
+          rm -f session-manager-plugin.deb
+      - name: Run Ansible via SSM
         working-directory: server/infra/ansible
         env:
-          ANSIBLE_HOST_KEY_CHECKING: "False"
           AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
           ECR_REGISTRY: ${{ needs.terraform.outputs.ecr_registry || secrets.ECR_REGISTRY }}
           PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
@@ -174,4 +169,5 @@ jobs:
             echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
           fi
           pip install ansible
+          ansible-galaxy collection install amazon.aws
           ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }} aws_region=$AWS_REGION"
