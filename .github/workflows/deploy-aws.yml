@@ -1,5 +1,5 @@
-# Manual deploy skeleton: build images → push ECR → optional Terraform / Ansible.
-# Requires repository secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, ECR_REGISTRY
+# Manual deploy: optional Terraform infra → build images → push ECR → optional Ansible rollout.
+# Terraform creates AWS infra; Ansible deploys app/runtime config to the EC2 host.
 name: Deploy AWS (manual)
 
 on:
@@ -14,7 +14,7 @@ on:
       run_terraform:
         description: "run terraform apply"
         type: boolean
-        default: false
+        default: true
       run_ansible:
         description: "run ansible deploy"
         type: boolean
@@ -25,7 +25,53 @@ permissions:
   id-token: write
 
 jobs:
+  terraform:
+    if: ${{ inputs.run_terraform }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      ansible_inventory: ${{ steps.tf_outputs.outputs.ansible_inventory }}
+      ecr_registry: ${{ steps.tf_outputs.outputs.ecr_registry }}
+    defaults:
+      run:
+        working-directory: server/infra/terraform
+    env:
+      TF_VAR_environment: ${{ inputs.environment }}
+      TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+      TF_VAR_ssh_public_key: ${{ secrets.TERRAFORM_SSH_PUBLIC_KEY }}
+      TF_VAR_allowed_ssh_cidr: ${{ secrets.TERRAFORM_ALLOWED_SSH_CIDR }}
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+      - run: terraform init
+      - run: terraform fmt -check
+      - run: terraform validate
+      - run: terraform plan
+      - run: terraform apply -auto-approve
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || inputs.environment == 'staging'
+      - name: Capture Terraform outputs
+        id: tf_outputs
+        run: |
+          {
+            echo "ansible_inventory<<EOF"
+            terraform output -raw ansible_inventory
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "ecr_registry=$(terraform output -raw ecr_registry)" >> "$GITHUB_OUTPUT"
+
   build-and-push:
+    needs: terraform
+    if: ${{ always() && (!inputs.run_terraform || needs.terraform.result == 'success') }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -36,7 +82,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
 
       - name: Login to Amazon ECR
         id: ecr
@@ -65,30 +111,9 @@ jobs:
           docker push $REGISTRY/$IMAGE:${{ github.sha }}
           docker push $REGISTRY/$IMAGE:${{ inputs.environment }}
 
-  terraform:
-    needs: build-and-push
-    if: ${{ inputs.run_terraform }}
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server/infra/terraform
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
-      - run: terraform init
-      - run: terraform plan -var="environment=${{ inputs.environment }}"
-      - run: terraform apply -auto-approve -var="environment=${{ inputs.environment }}"
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || inputs.environment == 'staging'
-
   ansible:
-    needs: build-and-push
-    if: ${{ inputs.run_ansible }}
+    needs: [terraform, build-and-push]
+    if: ${{ always() && inputs.run_ansible && needs.build-and-push.result == 'success' && (!inputs.run_terraform || needs.terraform.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,10 +122,10 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
       - name: Get ECR login password
         env:
-          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
         run: |
           ECR_PASSWORD="$(aws ecr get-login-password --region $AWS_REGION)"
           echo "::add-mask::$ECR_PASSWORD"
@@ -116,8 +141,8 @@ jobs:
         working-directory: server/infra/ansible
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
-          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+          ECR_REGISTRY: ${{ needs.terraform.outputs.ecr_registry || secrets.ECR_REGISTRY }}
           PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           APP_PUBLIC_URL: ${{ secrets.APP_PUBLIC_URL }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -141,7 +166,12 @@ jobs:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
           LOG_LEVEL: info
           LOG_CONSOLE: "true"
+          TERRAFORM_ANSIBLE_INVENTORY: ${{ needs.terraform.outputs.ansible_inventory }}
         run: |
-          echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
+          if [ "${{ inputs.run_terraform }}" = "true" ]; then
+            printf '%s\n' "$TERRAFORM_ANSIBLE_INVENTORY" > inventory.ini
+          else
+            echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
+          fi
           pip install ansible
           ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }} aws_region=$AWS_REGION"

@@ -70,15 +70,17 @@ Images:
 
 | Path | Role |
 |---|---|
-| `server/infra/terraform/` | VPC, SG, EC2-style baseline (existing) |
-| `server/infra/ansible/` | Host bootstrap / observability (existing) |
+| `server/infra/terraform/` | AWS IaC: VPC, subnet, SG, EC2, Elastic IP, ECR, optional Cloudflare DNS |
+| `server/infra/ansible/` | Host bootstrap, Docker app rollout, runtime env, observability |
 | `.github/workflows/ci.yml` | Build server + web + docker images |
-| `.github/workflows/deploy-aws.yml` | Manual: push ECR, optional TF/Ansible |
+| `.github/workflows/deploy-aws.yml` | Manual: optional Terraform, push ECR images, optional Ansible deploy |
 
 ### AWS target shape (portfolio demo)
 
 ```text
 GitHub Actions
+  optional terraform apply
+  create/update AWS infra
   build eventing-api/eventing-web
   push images to ECR with tags: <github.sha> and <environment>
   run Ansible over SSH
@@ -99,29 +101,34 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 | Secret | Purpose |
 |---|---|
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Deploy credentials (or use OIDC later) |
-| `AWS_REGION` | e.g. `ap-southeast-1` |
+| `AWS_REGION` | e.g. `ap-southeast-2` |
+| `TERRAFORM_SSH_PUBLIC_KEY` | Public SSH key Terraform registers on EC2 |
+| `TERRAFORM_ALLOWED_SSH_CIDR` | SSH CIDR, prefer your IP `/32` |
+| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ZONE_ID` | Optional Terraform-managed DNS |
 | `NEXT_PUBLIC_API_URL` | Public API base for web image and deployed web |
 | `APP_PUBLIC_URL` | Public API callback base for payment/webhooks |
-| `ANSIBLE_INVENTORY` | inventory.ini content |
+| `ANSIBLE_INVENTORY` | Fallback inventory.ini content when `run_terraform=false` |
 | `EC2_SSH_PRIVATE_KEY` | Private SSH key used by GitHub Actions to connect to EC2 |
-| `ECR_REGISTRY` | AWS account ECR registry, e.g. `123456789012.dkr.ecr.ap-southeast-1.amazonaws.com` |
+| `ECR_REGISTRY` | Fallback ECR registry when `run_terraform=false` |
 | `POSTGRES_PASSWORD` | EC2 compose Postgres password |
 | `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `JWT_TICKET_SECRET` | Runtime auth/ticket secrets |
 | Provider secrets | ZaloPay, OpenWeather, OneSignal, R2/S3 values as needed |
-| ECR repositories | Create `eventing-api`, `eventing-web` first |
+
+Terraform creates EC2, ECR, security groups, Elastic IP, and optional DNS. Do not
+create those manually in the AWS Console for normal deploys.
 
 ### Manual deploy workflow
 
 Actions → **Deploy AWS (manual)**:
 
 1. choose `staging` / `production`
-2. keep `run_terraform=false` unless you are intentionally changing infra
-3. set `run_ansible=true` to update the EC2 containers
+2. keep `run_terraform=true` for first deploy or infra changes
+3. set `run_ansible=true` to update the EC2 containers after images are pushed
 
 Expected flow:
 
 ```text
-GitHub push/manual workflow → ECR image tags → SSH/Ansible → EC2 docker compose pull/up
+GitHub manual workflow → Terraform infra → ECR image tags → SSH/Ansible → EC2 docker compose pull/up
 ```
 
 ---
