@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: eventing-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: eventing-redis
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:9.1.7
+    container_name: eventing-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+    restart: unless-stopped
+
+  api:
+    image: ${ECR_REGISTRY}/eventing-api:${IMAGE_TAG}
+    container_name: eventing-api
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    restart: unless-stopped
+
+  web:
+    image: ${ECR_REGISTRY}/eventing-web:${IMAGE_TAG}
+    container_name: eventing-web
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3001:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  migrate:
+    image: ${ECR_REGISTRY}/eventing-api:${IMAGE_TAG}
+    profiles: ["tools"]
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "db/migrate.js"]
+    restart: "no"

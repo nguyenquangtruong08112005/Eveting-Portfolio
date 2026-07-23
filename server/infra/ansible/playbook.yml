@@ -10,4 +10,5 @@
 
   roles:
     - { role: common, tags: [common, docker] }
+    - { role: app, tags: [app, deploy] }
     - { role: observability, tags: [observability] }
