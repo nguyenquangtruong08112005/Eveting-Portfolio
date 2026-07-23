@@ -139,3 +139,11 @@ serviceAccountKey.json
 
 # Local deploy inventory. Keep infra/ansible/inventory.ini.example tracked.
 infra/ansible/inventory.ini
+
+# Terraform local state and machine-specific inputs. Keep .terraform.lock.hcl tracked.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example

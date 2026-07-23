@@ -1,36 +1,72 @@
+terraform {
+  required_version = ">= 1.6.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
+  }
+}
+
 provider "aws" {
   region = var.aws_region
 }
 
-# Simple VPC lookup or creation
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+data "aws_caller_identity" "current" {}
+
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
 
   tags = {
-    Name        = "eventing-vpc-${var.environment}"
+    Project     = var.project_name
     Environment = var.environment
+    ManagedBy   = "terraform"
   }
+
+  ecr_repositories = toset([
+    "${var.project_name}-api",
+    "${var.project_name}-web",
+  ])
+
+  create_cloudflare_dns = var.cloudflare_zone_id != "" && length(var.cloudflare_dns_records) > 0
+}
+
+resource "aws_vpc" "main" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-vpc"
+  })
 }
 
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = var.public_subnet_cidr
   map_public_ip_on_launch = true
+  availability_zone       = var.availability_zone
 
-  tags = {
-    Name        = "eventing-subnet-public-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-public-subnet"
+  })
 }
 
-resource "aws_internet_gateway" "gw" {
+resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
-  tags = {
-    Name        = "eventing-igw-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-igw"
+  })
 }
 
 resource "aws_route_table" "public" {
@@ -38,13 +74,12 @@ resource "aws_route_table" "public" {
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.gw.id
+    gateway_id = aws_internet_gateway.main.id
   }
 
-  tags = {
-    Name        = "eventing-rt-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-public-rt"
+  })
 }
 
 resource "aws_route_table_association" "public" {
@@ -52,57 +87,82 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security group allowing SSH, App, Grafana, Prometheus
 resource "aws_security_group" "server" {
-  name        = "eventing-sg-${var.environment}"
-  description = "Allow inbound SSH, application ports, and observability UI access"
+  name        = "${local.name_prefix}-server-sg"
+  description = "Eventing demo EC2 ingress and egress"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "SSH access"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.allowed_ssh_cidr]
-  }
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-server-sg"
+  })
+}
 
-  ingress {
-    description = "Backend Server API"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_vpc_security_group_ingress_rule" "ssh" {
+  security_group_id = aws_security_group.server.id
+  description       = "SSH from approved CIDR"
+  cidr_ipv4         = var.allowed_ssh_cidr
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
+}
 
-  ingress {
-    description = "Grafana Observability Portal"
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_vpc_security_group_ingress_rule" "http" {
+  security_group_id = aws_security_group.server.id
+  description       = "HTTP"
+  cidr_ipv4         = var.allowed_http_cidr
+  from_port         = 80
+  ip_protocol       = "tcp"
+  to_port           = 80
+}
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_vpc_security_group_ingress_rule" "https" {
+  security_group_id = aws_security_group.server.id
+  description       = "HTTPS"
+  cidr_ipv4         = var.allowed_http_cidr
+  from_port         = 443
+  ip_protocol       = "tcp"
+  to_port           = 443
+}
 
-  tags = {
-    Name        = "eventing-sg-${var.environment}"
-    Environment = var.environment
-  }
+resource "aws_vpc_security_group_ingress_rule" "backend_api" {
+  count             = var.expose_backend_port ? 1 : 0
+  security_group_id = aws_security_group.server.id
+  description       = "Direct backend API access for debug only"
+  cidr_ipv4         = var.allowed_debug_cidr
+  from_port         = 3000
+  ip_protocol       = "tcp"
+  to_port           = 3000
+}
+
+resource "aws_vpc_security_group_ingress_rule" "grafana" {
+  count             = var.expose_observability_ports ? 1 : 0
+  security_group_id = aws_security_group.server.id
+  description       = "Grafana debug access"
+  cidr_ipv4         = var.allowed_debug_cidr
+  from_port         = 3001
+  ip_protocol       = "tcp"
+  to_port           = 3001
+}
+
+resource "aws_vpc_security_group_egress_rule" "all_ipv4" {
+  security_group_id = aws_security_group.server.id
+  description       = "Allow all outbound IPv4"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
 }
 
 resource "aws_key_pair" "deployer" {
-  key_name   = "eventing-deployer-key-${var.environment}"
+  key_name   = "${local.name_prefix}-deployer-key"
   public_key = var.ssh_public_key
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-deployer-key"
+  })
 }
 
-# Find latest Ubuntu AMI
 data "aws_ami" "ubuntu" {
   most_recent = true
+  owners      = ["099720109477"]
 
   filter {
     name   = "name"
@@ -113,11 +173,8 @@ data "aws_ami" "ubuntu" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
-
-  owners = ["099720109477"] # Canonical
 }
 
-# Compute Instance
 resource "aws_instance" "app_server" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
@@ -126,13 +183,71 @@ resource "aws_instance" "app_server" {
   key_name               = aws_key_pair.deployer.key_name
 
   root_block_device {
-    volume_size           = 30
+    volume_size           = var.root_volume_size_gb
     volume_type           = "gp3"
     delete_on_termination = true
+    encrypted             = true
   }
 
-  tags = {
-    Name        = "eventing-server-${var.environment}"
-    Environment = var.environment
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-server"
+  })
+}
+
+resource "aws_eip" "app_server" {
+  domain   = "vpc"
+  instance = aws_instance.app_server.id
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-eip"
+  })
+}
+
+resource "aws_ecr_repository" "app" {
+  for_each             = local.ecr_repositories
+  name                 = each.key
+  image_tag_mutability = var.ecr_image_tag_mutability
+
+  image_scanning_configuration {
+    scan_on_push = true
   }
+
+  tags = merge(local.tags, {
+    Name = each.key
+  })
+}
+
+resource "aws_ecr_lifecycle_policy" "app" {
+  for_each   = aws_ecr_repository.app
+  repository = each.value.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Expire untagged images after ${var.ecr_untagged_image_retention_days} days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = var.ecr_untagged_image_retention_days
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "cloudflare_dns_record" "app" {
+  for_each = local.create_cloudflare_dns ? var.cloudflare_dns_records : {}
+
+  zone_id = var.cloudflare_zone_id
+  name    = each.value.name
+  type    = "A"
+  content = aws_eip.app_server.public_ip
+  proxied = each.value.proxied
+  ttl     = each.value.proxied ? 1 : each.value.ttl
+  comment = "Managed by Terraform for ${local.name_prefix}"
 }

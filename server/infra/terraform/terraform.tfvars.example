@@ -1,7 +1,35 @@
-# Example Terraform Variables Assignment (DO NOT commit secrets in .tfvars)
+# Copy to terraform.tfvars for local runs. Do not commit terraform.tfvars.
 
-aws_region      = "us-east-1"
-environment     = "staging"
-instance_type   = "t3.medium"
-ssh_public_key  = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD..."
-allowed_ssh_cidr = "203.0.113.0/24" # Lock down SSH to your IP range
+project_name  = "eventing"
+aws_region    = "ap-southeast-2"
+environment   = "staging"
+instance_type = "t3.medium"
+
+# Generate or reuse a local SSH key pair. Put only the public key here.
+# The matching private key goes to GitHub Actions secret EC2_SSH_PRIVATE_KEY.
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleReplaceMe eventing-deployer"
+
+# Strongly prefer your current public IP with /32.
+allowed_ssh_cidr = "203.0.113.10/32"
+
+# HTTP/HTTPS are public so Cloudflare and mobile/web clients can reach the app.
+allowed_http_cidr = "0.0.0.0/0"
+
+# Keep direct debug ports closed by default.
+allowed_debug_cidr          = "203.0.113.10/32"
+expose_backend_port         = false
+expose_observability_ports  = false
+root_volume_size_gb         = 40
+ecr_image_tag_mutability    = "MUTABLE"
+ecr_untagged_image_retention_days = 14
+
+# Optional Cloudflare DNS. Leave these empty to skip Cloudflare from Terraform.
+# Prefer setting CLOUDFLARE_API_TOKEN in your shell/CI instead of putting it here.
+cloudflare_zone_id = ""
+cloudflare_dns_records = {
+  # api = {
+  #   name    = "api.example.com"
+  #   ttl     = 1
+  #   proxied = true
+  # }
+}
