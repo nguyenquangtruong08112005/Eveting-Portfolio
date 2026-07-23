@@ -32,6 +32,7 @@ jobs:
     outputs:
       ansible_inventory: ${{ steps.tf_outputs.outputs.ansible_inventory }}
       ecr_registry: ${{ steps.tf_outputs.outputs.ecr_registry }}
+      ssm_transfer_bucket: ${{ steps.tf_outputs.outputs.ssm_transfer_bucket }}
     defaults:
       run:
         working-directory: server/infra/terraform
@@ -66,6 +67,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
           echo "ecr_registry=$(terraform output -raw ecr_registry)" >> "$GITHUB_OUTPUT"
+          echo "ssm_transfer_bucket=$(terraform output -raw ssm_transfer_bucket)" >> "$GITHUB_OUTPUT"
 
   build-and-push:
     needs: terraform
@@ -168,6 +170,6 @@ jobs:
           else
             echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
           fi
-          pip install ansible
+          pip install boto3 botocore ansible
           ansible-galaxy collection install amazon.aws
           ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }} aws_region=$AWS_REGION"

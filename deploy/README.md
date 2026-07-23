@@ -117,13 +117,18 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 - ~~`EC2_SSH_PRIVATE_KEY`~~
 
 EC2 access now uses AWS Systems Manager (SSM) via the `amazon.aws.aws_ssm`
-Ansible connection plugin. No SSH key pair is needed. The deploy credential must
-have `ssm:StartSession`, `ssm:TerminateSession`, `ssm:DescribeInstanceInformation`,
-and `ec2:DescribeInstances` permissions. The EC2 instance profile (created by
-Terraform) includes the AWS-managed `AmazonSSMManagedInstanceCore` policy.
+Ansible connection plugin with an S3 transfer bucket (`ansible_aws_ssm_bucket_name`).
+No SSH key pair is needed. The deploy credential on the controller must have:
+- SSM: `ssm:StartSession`, `ssm:TerminateSession`, `ssm:DescribeInstanceInformation`, `ec2:DescribeInstances`
+- S3 Bucket: `s3:ListBucket`, `s3:GetBucketLocation` on `arn:aws:s3:::<ssm-transfer-bucket>`
+- S3 Objects: `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on `arn:aws:s3:::<ssm-transfer-bucket>/*`
 
-Terraform creates EC2, ECR, security groups, Elastic IP, and optional DNS. Do not
-create those manually in the AWS Console for normal deploys.
+The EC2 instance profile (created by Terraform) includes `AmazonSSMManagedInstanceCore` policy and requires no S3 credentials because remote transfers use presigned URLs.
+
+> [!WARNING]
+> Module/task arguments can transiently pass runtime secrets through the S3 transfer bucket during execution. Safeguards in place: default `AES256` encryption, public access block, no versioning, and auto-cleanup lifecycle policy (1 day).
+
+Terraform creates EC2, ECR, security groups, Elastic IP, private SSM transfer bucket, and optional DNS. Do not create those manually in the AWS Console for normal deploys.
 
 ### Manual deploy workflow
 
