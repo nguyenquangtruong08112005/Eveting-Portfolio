@@ -22,7 +22,7 @@ const { Pool } = require('pg');
 
 const TEST_PORT = process.env.TEST_PORT || '35434';
 const BASE_URL = `http://localhost:${TEST_PORT}`;
-const ORG_UID = 'w6ZEeGefVWUBmx418EqTmyQcN503';
+const ORG_UID = process.env.SMOKE_ORG_UID || 'plat_org_hanoi';
 const KNOWN_EVENT_ID = process.env.KNOWN_EVENT_ID || 'evt_vdf_hcm_2025';
 
 // ---------------------------------------------------------------------------
@@ -87,9 +87,9 @@ function getCleanupPool() {
 async function cleanupSmokeUsers(likePattern = 'mobile_contract_%@test.com') {
   const pool = getCleanupPool();
   const queries = [
-    { table: 'sessions', text: `DELETE FROM sessions WHERE user_id IN (SELECT id FROM auth_users WHERE email LIKE $1) OR user_id IN (SELECT id FROM user_profiles WHERE email LIKE $1)` },
+    { table: 'sessions', text: `DELETE FROM sessions WHERE user_id IN (SELECT id FROM auth_users WHERE email LIKE $1)` },
     { table: 'auth_tokens', text: `DELETE FROM auth_tokens WHERE email LIKE $1` },
-    { table: 'user_profiles', text: `DELETE FROM user_profiles WHERE email LIKE $1` },
+    { table: 'user_profiles', text: `DELETE FROM user_profiles WHERE id IN (SELECT id FROM auth_users WHERE email LIKE $1)` },
     { table: 'auth_users', text: `DELETE FROM auth_users WHERE email LIKE $1` },
   ];
   for (const { table, text } of queries) {
@@ -106,6 +106,21 @@ async function closeCleanupPool() {
     try { await cleanupPool.end(); } catch { /* ignore */ }
     cleanupPool = null;
   }
+}
+
+async function findBookableTicketType(eventId) {
+  const pool = getCleanupPool();
+  const result = await pool.query(
+    `SELECT code
+       FROM event_ticket_types
+      WHERE event_id = $1
+        AND is_active = true
+        AND available > 0
+      ORDER BY sort_order ASC, price ASC
+      LIMIT 1`,
+    [eventId]
+  );
+  return result.rows[0] ? result.rows[0].code : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -478,11 +493,16 @@ async function run() {
   // If the event doesn't have available tickets or the booking fails, we validate
   // the error response shape instead
   let bookedTicketId = null;
+  const bookableTicketType = await findBookableTicketType(KNOWN_EVENT_ID);
 
   await check('POST /tickets/book returns ticket shape', async () => {
+    if (!bookableTicketType) {
+      skip('POST /tickets/book data setup', `no active available ticket type for ${KNOWN_EVENT_ID}`);
+      return;
+    }
     const r = await httpRequest('POST', '/tickets/book', {
       headers: authHeaders(userToken),
-      body: { eventId: KNOWN_EVENT_ID, ticketType: 'Standard', quantity: 1 },
+      body: { eventId: KNOWN_EVENT_ID, ticketType: bookableTicketType, quantity: 1 },
     });
     if (r.status === 201) {
       const d = r.data;
