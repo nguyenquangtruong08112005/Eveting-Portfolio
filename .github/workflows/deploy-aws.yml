@@ -42,8 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     outputs:
-      ansible_inventory: ${{ steps.tf_outputs.outputs.ansible_inventory }}
-      ecr_registry: ${{ steps.tf_outputs.outputs.ecr_registry }}
       ssm_transfer_bucket: ${{ steps.tf_outputs.outputs.ssm_transfer_bucket }}
       bootstrap_only: ${{ steps.tf_outputs.outputs.bootstrap_only }}
     defaults:
@@ -171,18 +169,10 @@ jobs:
 
           if [ "${SKIP_MAIN_TF}" = "true" ] || [ "${{ inputs.run_terraform_apply }}" != "true" ]; then
             echo "Main Terraform apply did not run; setting empty output values."
-            echo "ansible_inventory=" >> "$GITHUB_OUTPUT"
-            echo "ecr_registry=" >> "$GITHUB_OUTPUT"
             echo "ssm_transfer_bucket=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          {
-            echo "ansible_inventory<<EOF"
-            terraform output -raw ansible_inventory 2>/dev/null || true
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-          echo "ecr_registry=$(terraform output -raw ecr_registry 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
           echo "ssm_transfer_bucket=$(terraform output -raw ssm_transfer_bucket 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
 
   build-and-push:
@@ -205,14 +195,11 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and Push Images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          REGISTRY="${{ needs.terraform.outputs.ecr_registry }}"
           if [ -z "$REGISTRY" ]; then
-            REGISTRY="${{ secrets.ECR_REGISTRY }}"
-          fi
-
-          if [ -z "$REGISTRY" ]; then
-            echo "Error: No ECR registry available. Terraform outputs and ECR_REGISTRY secret are both empty."
+            echo "Error: ECR registry from login action is empty."
             exit 1
           fi
 
@@ -258,7 +245,6 @@ jobs:
         working-directory: server/infra/ansible
         env:
           AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
-          ECR_REGISTRY: ${{ needs.terraform.outputs.ecr_registry || secrets.ECR_REGISTRY }}
           WEB_DOMAIN: ${{ secrets.WEB_DOMAIN || 'eventing.moteo.fun' }}
           API_DOMAIN: ${{ secrets.API_DOMAIN || 'api.eventing.moteo.fun' }}
           CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS || 'https://eventing.moteo.fun' }}
@@ -292,13 +278,43 @@ jobs:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
           LOG_LEVEL: info
           LOG_CONSOLE: "true"
-          TERRAFORM_ANSIBLE_INVENTORY: ${{ needs.terraform.outputs.ansible_inventory }}
         run: |
-          if [ "${{ inputs.run_terraform }}" = "true" ]; then
-            printf '%s\n' "$TERRAFORM_ANSIBLE_INVENTORY" > inventory.ini
-          else
-            echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          export ECR_REGISTRY="${REGISTRY}"
+
+          INSTANCE_ID="$(aws ec2 describe-instances \
+            --filters "Name=tag:Project,Values=eventing" "Name=tag:Environment,Values=${{ inputs.environment }}" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)"
+
+          SSM_BUCKET="eventing-${{ inputs.environment }}-ssm-transfer-${ACCOUNT_ID}"
+
+          if [ -z "${INSTANCE_ID}" ] || [ "${INSTANCE_ID}" = "None" ]; then
+            echo "Error: No running EC2 instance found for Project=eventing, Environment=${{ inputs.environment }}. Cannot proceed with inventory creation."
+            exit 1
           fi
+
+          if [ -z "${SSM_BUCKET}" ]; then
+            echo "Error: SSM transfer bucket 'eventing-${{ inputs.environment }}-ssm-transfer-${ACCOUNT_ID}' not resolvable. Cannot proceed with inventory creation."
+            exit 1
+          fi
+
+          cat > inventory.ini << EOFINVENTORY
+          [app_servers]
+          ${INSTANCE_ID} ansible_connection=amazon.aws.aws_ssm ansible_user=ubuntu
+
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
+          ansible_aws_ssm_bucket_name=${SSM_BUCKET}
+          ansible_aws_ssm_bucket_sse_mode=AES256
+          ansible_aws_ssm_region=${AWS_REGION}
+          web_domain=${WEB_DOMAIN}
+          api_domain=${API_DOMAIN}
+          environment=${{ inputs.environment }}
+          project_root=/opt/server-eventing
+          EOFINVENTORY
+
           pip install boto3 botocore ansible
           ansible-galaxy collection install amazon.aws
-          ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }} aws_region=$AWS_REGION"
+          ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }} aws_region=${AWS_REGION}"
