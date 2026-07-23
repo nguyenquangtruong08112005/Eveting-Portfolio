@@ -76,3 +76,18 @@
 | Env templates | Done | Added root `.env.example`, `server/.env.example`, and `web/.env.example` with placeholders/local defaults |
 | README env pointer | Done | Root README points readers to env templates before provider-backed features |
 | Child repo evidence links | Done | Root README links server and both mobile history repos under `nguyenquangtruong08112005`; web has no separate remote configured |
+| Secret-pattern scan | Needs decision | Android `app/google-services.json` is tracked in both mobile repos and contains Google API key/OAuth client IDs |
+
+## Public-Release Decision Needed
+
+Both Android apps currently track Firebase/Google client config:
+
+- `mobile-attendee/app/google-services.json`
+- `mobile-organizer/app/google-services.json`
+
+These files are client-side configuration, not server-side secrets, but public repos should either:
+
+1. keep them public and restrict the Google API key/OAuth clients in Google Cloud/Firebase, or
+2. untrack them, commit `google-services.example.json`, and require local/CI setup to provide the real file.
+
+Do not remove them without an explicit decision because Android build/sign-in may depend on them.
