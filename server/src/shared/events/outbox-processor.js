@@ -7,7 +7,15 @@ const esClient = require('@/shared/config/elasticsearch.config');
 const { buildElasticData } = require('@/modules/events/application/helpers/event-mappers');
 const eventRepository = require('@/providers/database/event.repository');
 const cacheProvider = require('@/shared/cache/cache-provider');
-const { nowDb } = require('@/providers/database/time.helper');
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 let isProcessing = false;
 
@@ -28,11 +36,12 @@ const PROCESSORS = {
             }
         } else if (channel === 'email') {
             const emailProvider = require('@/providers/email');
+            const safeHtml = payload.html || (body ? `<p>${escapeHtml(body)}</p>` : undefined);
             await emailProvider.sendEmail({
                 to: target,
                 subject: title,
                 text: body,
-                html: payload.html || `<p>${body}</p>`
+                html: safeHtml
             });
         } else if (channel === 'event_update') {
             const { notifyAttendeesAboutUpdate } = require('@/modules/events/application/helpers/notification-sender');

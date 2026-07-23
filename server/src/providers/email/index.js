@@ -4,26 +4,35 @@ const logger = require('@/shared/logger');
 let cachedTransporter = null;
 
 function isMockMode() {
-  if (process.env.AUTH_MOCK_EMAIL === 'true') {
-    return true;
-  }
+  return process.env.AUTH_MOCK_EMAIL === 'true';
+}
+
+function validateSmtpConfig() {
   const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  if (!host || !pass || host.trim() === '' || pass.trim() === '') {
-    return true;
+
+  const missing = [];
+  if (!host || host.trim() === '') missing.push('SMTP_HOST');
+  if (!user || user.trim() === '') missing.push('SMTP_USER');
+  if (!pass || pass.trim() === '') missing.push('SMTP_PASS');
+
+  if (missing.length > 0) {
+    throw new Error(`Email service unconfigured: missing required SMTP setting(s): ${missing.join(', ')}`);
   }
-  return false;
 }
 
 function getTransporter() {
   if (isMockMode()) {
     return null;
   }
+  validateSmtpConfig();
+
   if (!cachedTransporter) {
-    const host = process.env.SMTP_HOST || 'smtp.resend.com';
+    const host = process.env.SMTP_HOST;
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const user = process.env.SMTP_USER || 'resend';
+    const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
     cachedTransporter = nodemailer.createTransport({
