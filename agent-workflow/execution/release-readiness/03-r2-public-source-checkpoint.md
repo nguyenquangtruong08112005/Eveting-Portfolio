@@ -75,3 +75,4 @@
 |---|---|---|
 | Env templates | Done | Added root `.env.example`, `server/.env.example`, and `web/.env.example` with placeholders/local defaults |
 | README env pointer | Done | Root README points readers to env templates before provider-backed features |
+| Child repo evidence links | Done | Root README links server and both mobile history repos under `nguyenquangtruong08112005`; web has no separate remote configured |

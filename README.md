@@ -9,6 +9,17 @@ Full-stack **Eventing** monorepo (portfolio / internship).
 | Attendee | `mobile-attendee/` | Kotlin |
 | Organizer | `mobile-organizer/` | Kotlin |
 
+## Source History
+
+This public monorepo is the release-ready portfolio workspace. Earlier child repositories are kept as implementation history:
+
+| Area | Repository |
+|---|---|
+| Server | [Server-2025-Eventing](https://github.com/nguyenquangtruong08112005/Server-2025-Eventing) |
+| Attendee Android | [Mobile-2025-Eventing](https://github.com/nguyenquangtruong08112005/Mobile-2025-Eventing) |
+| Organizer Android | [Mobile-2025-Eventing-Organizer](https://github.com/nguyenquangtruong08112005/Mobile-2025-Eventing-Organizer) |
+| Web | Monorepo-only in this workspace; no separate remote is configured |
+
 ## Highlights (CV)
 
 - Auth JWT, event lifecycle, tickets/QR check-in, order foundation  
