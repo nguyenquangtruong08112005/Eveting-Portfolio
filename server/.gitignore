@@ -136,3 +136,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 serviceAccountKey.json
+
+# Local deploy inventory. Keep infra/ansible/inventory.ini.example tracked.
+infra/ansible/inventory.ini
