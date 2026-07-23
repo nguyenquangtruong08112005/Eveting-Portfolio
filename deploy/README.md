@@ -117,9 +117,16 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 
 ### Terraform Remote State & Concurrency
 
-- **State Bucket:** `eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}` created idempotently via `server/infra/terraform/bootstrap` on first run.
-- **State Key:** `eventing/${environment}/terraform.tfstate`
+- **State Bucket:** `eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}` created idempotently via `server/infra/terraform/bootstrap`.
+- **First-Run Sequence:**
+  1. Pipeline checks `s3://$STATE_BUCKET/bootstrap/${environment}/terraform.tfstate` via `aws s3api head-object`.
+  2. If absent (first run): Runs local `terraform apply` to create the S3 bucket, then migrates bootstrap state into S3 via `terraform init -migrate-state -force-copy`.
+  3. If present (subsequent runs): Initialises bootstrap directly with S3 backend (`terraform init -reconfigure`) and applies updates using persisted state.
+  4. Main Terraform initialises with S3 backend key `eventing/${environment}/terraform.tfstate`.
 - **State Safeguards:** S3 versioning enabled, default `AES256` encryption, public access block, 90-day noncurrent version expiration, and S3 native lockfile (`use_lockfile = true`). No DynamoDB required.
+- **Required IAM Permissions:**
+  - Bucket management: `s3:CreateBucket`, `s3:ListBucket`, `s3:GetBucketLocation`, `s3:GetBucketVersioning`, `s3:PutBucketVersioning`, `s3:GetEncryptionConfiguration`, `s3:PutEncryptionConfiguration`, `s3:GetLifecycleConfiguration`, `s3:PutLifecycleConfiguration`, `s3:GetBucketPublicAccessBlock`, `s3:PutBucketPublicAccessBlock` on `arn:aws:s3:::eventing-tfstate-*`
+  - State objects: `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on `arn:aws:s3:::eventing-tfstate-*/bootstrap/*` and `arn:aws:s3:::eventing-tfstate-*/eventing/*`.
 - **Workflow Concurrency:** GitHub workflow enforces `concurrency: deploy-${{ inputs.environment }}` to prevent concurrent pipeline runs on the same environment.
 - **State Recovery / Rollback:** Prior state file versions are preserved in S3. Use `aws s3api list-object-versions` and `terraform state push` if state recovery is needed.
 
