@@ -61,7 +61,9 @@
 | Live mobile contract smoke | Done | `npm.cmd run db:smoke:mobile-contracts` passed: 17 pass, 0 fail, 0 skip |
 | Android attendee compile | Done | `gradlew.bat :app:compileDebugKotlin` passed |
 | Android organizer compile | Done | `gradlew.bat :app:compileDebugKotlin` passed |
-| ADB device verification | Blocked | `adb devices -l` starts daemon but lists no devices; phone is not visible/authorized to Windows yet |
+| ADB device verification | Done | `adb devices -l` shows `R5CR30TM9VB` / `SM_A526B` |
+| Attendee device install | Done | `gradlew.bat :app:installDebug` installed on `SM-A526B - 14` |
+| Organizer device install | Done | `gradlew.bat :app:installDebug` installed on `SM-A526B - 14` |
 
 ## R3 CI Baseline Progress
 
