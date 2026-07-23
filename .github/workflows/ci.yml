@@ -88,7 +88,13 @@ jobs:
         run: cp app/google-services.example.json app/google-services.json
       - name: Compile attendee debug Kotlin
         working-directory: mobile-attendee
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
         run: |
+          if [ -z "$MAPBOX_DOWNLOADS_TOKEN" ]; then
+            echo "Error: MAPBOX_DOWNLOADS_TOKEN repository secret is missing. Please add MAPBOX_DOWNLOADS_TOKEN secret in GitHub repository settings to enable Android compilation."
+            exit 1
+          fi
           chmod +x ./gradlew
           ./gradlew :app:compileDebugKotlin --no-daemon
 
@@ -108,7 +114,13 @@ jobs:
         run: cp app/google-services.example.json app/google-services.json
       - name: Compile organizer debug Kotlin
         working-directory: mobile-organizer
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
         run: |
+          if [ -z "$MAPBOX_DOWNLOADS_TOKEN" ]; then
+            echo "Error: MAPBOX_DOWNLOADS_TOKEN repository secret is missing. Please add MAPBOX_DOWNLOADS_TOKEN secret in GitHub repository settings to enable Android compilation."
+            exit 1
+          fi
           chmod +x ./gradlew
           ./gradlew :app:compileDebugKotlin --no-daemon
 
@@ -119,7 +131,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.29.0
         with:
           scan-type: fs
           scan-ref: .
