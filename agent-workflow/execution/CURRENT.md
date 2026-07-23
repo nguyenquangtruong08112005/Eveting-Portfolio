@@ -1,16 +1,16 @@
 # CURRENT — Active execution pointer
 
-> **Updated:** 2026-07-18
+> **Updated:** 2026-07-23
 
 ## Active program
 
 | Field | Value |
 |---|---|
 | Program | **RELEASE-READINESS** |
-| Status | **DRAFT / NEXT ACTIVE** |
+| Status | **R0/R1 COMPLETE — R2 NEXT** |
 | Hub | [release-readiness/](release-readiness/) |
 | Plan | [release-readiness/00-plan.md](release-readiness/00-plan.md) |
-| Immediate next | R0 dirty diff audit |
+| Immediate next | R2 codebase cleanup gate: shared errors/logger/validation, API alias decision, and CI baseline prep |
 
 ## Closed DB programs
 
@@ -32,7 +32,7 @@ node src/jobs/retention.job.js
 
 ## Git policy
 
-Commit after each phase gate.  
+Commit after each phase gate using Conventional Commits, for example `fix(server): ...`, `refactor(web): ...`, `docs(release): ...`.  
 Apps = `server/`, `web/`, `mobile-attendee/`, `mobile-organizer/` (each own repo).  
 Docs = monorepo root. No push unless asked.
 
