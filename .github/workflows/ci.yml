@@ -83,6 +83,9 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      - name: Provide example Google services config
+        working-directory: mobile-attendee
+        run: cp app/google-services.example.json app/google-services.json
       - name: Compile attendee debug Kotlin
         working-directory: mobile-attendee
         run: |
@@ -100,6 +103,9 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      - name: Provide example Google services config
+        working-directory: mobile-organizer
+        run: cp app/google-services.example.json app/google-services.json
       - name: Compile organizer debug Kotlin
         working-directory: mobile-organizer
         run: |
