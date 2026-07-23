@@ -36,7 +36,7 @@
 
 ## Next R2 Tasks
 
-1. Add or document `/api/web/*` aliases for web-only BFF consistency.
+1. Run server contract smoke after the local API is started.
 2. Run `server/scripts/smoke/smoke.mobile-contracts.cjs` while local API is running.
 3. Clean remaining lint warnings where cheap and low-risk.
 4. Add `.env.example` coverage for server/web/mobile-facing configuration.
@@ -51,3 +51,11 @@
 1. Stop if GitHub auth or remotes are not under `nguyenquangtruong08112005`.
 2. Stop before deleting user-created local artifacts unless explicitly approved.
 3. Stop before pushing or publishing the repository.
+
+## R2 Progress
+
+| Item | Status | Evidence |
+|---|---|---|
+| Web BFF alias gap | Done | Server commit `55c5953` adds `/api/web/users`, `/api/web/notifications`, `/api/web/promotions`, `/api/web/storage`, and `/api/web/venues` |
+| Alias syntax check | Done | `node --check src/app.js` passed |
+| Live mobile contract smoke | Blocked | API was not listening on `localhost:3000` during this pass |

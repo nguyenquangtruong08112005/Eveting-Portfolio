@@ -228,4 +228,4 @@ Remaining R1 work:
 
 1. Run server smoke contract script once local server is running.
 2. Run attendee Android compile if mobile-facing contract risk needs a full mobile gate.
-3. Decide whether to add `/api/web/users`, `/api/web/notifications`, `/api/web/promotions`, `/api/web/storage`, `/api/web/venues` aliases or document the mixed-path transitional state.
+3. `/api/web/users`, `/api/web/notifications`, `/api/web/promotions`, `/api/web/storage`, and `/api/web/venues` aliases were added in server commit `55c5953`.
