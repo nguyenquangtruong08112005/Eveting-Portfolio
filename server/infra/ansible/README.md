@@ -32,3 +32,10 @@ ansible-playbook -i inventory.ini playbook.yml --tags common,app \
 ```
 
 The GitHub workflow passes provider/runtime secrets as environment variables so shell quoting cannot corrupt secret values. Required environment variables include `ECR_REGISTRY`, `ECR_PASSWORD`, `PUBLIC_API_URL`, `POSTGRES_PASSWORD`, `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, and `JWT_TICKET_SECRET`.
+
+For GitHub Actions, set `EC2_SSH_PRIVATE_KEY` to the private key that can SSH into the EC2 host, and make `ANSIBLE_INVENTORY` use:
+
+```ini
+[app_servers]
+<ec2-public-ip> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/eventing_ec2
+```
