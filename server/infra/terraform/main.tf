@@ -268,3 +268,47 @@ resource "cloudflare_dns_record" "app" {
   ttl     = each.value.proxied ? 1 : each.value.ttl
   comment = "Managed by Terraform for ${local.name_prefix}"
 }
+
+resource "aws_s3_bucket" "ssm_transfer" {
+  bucket        = "${local.name_prefix}-ssm-transfer-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-ssm-transfer"
+  })
+}
+
+resource "aws_s3_bucket_public_access_block" "ssm_transfer" {
+  bucket = aws_s3_bucket.ssm_transfer.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "ssm_transfer" {
+  bucket = aws_s3_bucket.ssm_transfer.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "ssm_transfer" {
+  bucket = aws_s3_bucket.ssm_transfer.id
+
+  rule {
+    id     = "expire-transient-transfer-files"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = 1
+    }
+  }
+}
+

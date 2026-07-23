@@ -25,6 +25,11 @@ output "ecr_repository_urls" {
   }
 }
 
+output "ssm_transfer_bucket" {
+  description = "Name of the private S3 bucket used for SSM Ansible file transfers."
+  value       = aws_s3_bucket.ssm_transfer.id
+}
+
 output "ansible_inventory" {
   description = "Ansible inventory generated from Terraform-managed EC2, using SSM connection."
   value       = <<-EOT
@@ -33,6 +38,9 @@ output "ansible_inventory" {
 
     [all:vars]
     ansible_python_interpreter=/usr/bin/python3
+    ansible_aws_ssm_bucket_name=${aws_s3_bucket.ssm_transfer.id}
+    ansible_aws_ssm_bucket_sse_mode=AES256
+    ansible_aws_ssm_region=${var.aws_region}
     environment=${var.environment}
     project_root=/opt/server-eventing
   EOT

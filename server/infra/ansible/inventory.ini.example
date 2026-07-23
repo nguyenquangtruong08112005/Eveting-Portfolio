@@ -1,9 +1,12 @@
 [app_servers]
 # Replace with the EC2 instance ID output by Terraform (terraform output -raw instance_id)
-# ansible_connection=amazon.aws.aws_ssm uses AWS SSM Session Manager — no SSH key needed.
+# ansible_connection=amazon.aws.aws_ssm uses AWS SSM Session Manager with S3 transfer bucket — no SSH key needed.
 i-1234567890abcdef0 ansible_connection=amazon.aws.aws_ssm ansible_user=ubuntu
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
+ansible_aws_ssm_bucket_name=eventing-staging-ssm-transfer-123456789012
+ansible_aws_ssm_bucket_sse_mode=AES256
+ansible_aws_ssm_region=ap-southeast-2
 environment=staging
 project_root=/opt/server-eventing
