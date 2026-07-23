@@ -75,16 +75,24 @@ Images:
 | `.github/workflows/ci.yml` | Build server + web + docker images |
 | `.github/workflows/deploy-aws.yml` | Manual: push ECR, optional TF/Ansible |
 
-### Suggested AWS target shape (portfolio)
+### AWS target shape (portfolio demo)
 
 ```text
-Internet → ALB
-            ├─ target group : web (ECS Fargate or EC2)
-            └─ target group : api (ECS Fargate or EC2)
-RDS Postgres  ·  S3 media  ·  ECR images  ·  CloudWatch logs
+GitHub Actions
+  build eventing-api/eventing-web
+  push images to ECR with tags: <github.sha> and <environment>
+  run Ansible over SSH
+
+EC2
+  docker compose pull <github.sha>
+  docker compose --profile tools run --rm migrate
+  docker compose up -d
+
+Cloudflare
+  DNS/proxy/TLS in front of EC2
 ```
 
-Terraform today scaffolds VPC/SG; extend with ECR + ECS/EC2 as next slice.
+This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/ALB can be added later, but they are not required for the first public deploy.
 
 ### GitHub secrets for deploy
 
@@ -92,13 +100,28 @@ Terraform today scaffolds VPC/SG; extend with ECR + ECS/EC2 as next slice.
 |---|---|
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Deploy credentials (or use OIDC later) |
 | `AWS_REGION` | e.g. `ap-southeast-1` |
-| `NEXT_PUBLIC_API_URL` | Public API base for web image |
+| `NEXT_PUBLIC_API_URL` | Public API base for web image and deployed web |
+| `APP_PUBLIC_URL` | Public API callback base for payment/webhooks |
 | `ANSIBLE_INVENTORY` | inventory.ini content |
+| `ECR_REGISTRY` | AWS account ECR registry, e.g. `123456789012.dkr.ecr.ap-southeast-1.amazonaws.com` |
+| `POSTGRES_PASSWORD` | EC2 compose Postgres password |
+| `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `JWT_TICKET_SECRET` | Runtime auth/ticket secrets |
+| Provider secrets | ZaloPay, OpenWeather, OneSignal, R2/S3 values as needed |
 | ECR repositories | Create `eventing-api`, `eventing-web` first |
 
 ### Manual deploy workflow
 
-Actions → **Deploy AWS (manual)** → choose `staging` / `production` → optionally enable Terraform/Ansible.
+Actions → **Deploy AWS (manual)**:
+
+1. choose `staging` / `production`
+2. keep `run_terraform=false` unless you are intentionally changing infra
+3. set `run_ansible=true` to update the EC2 containers
+
+Expected flow:
+
+```text
+GitHub push/manual workflow → ECR image tags → SSH/Ansible → EC2 docker compose pull/up
+```
 
 ---
 

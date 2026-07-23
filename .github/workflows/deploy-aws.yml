@@ -92,12 +92,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+      - name: Get ECR login password
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+        run: echo "ECR_PASSWORD=$(aws ecr get-login-password --region $AWS_REGION)" >> "$GITHUB_ENV"
       - name: Run Ansible (requires inventory secrets)
         working-directory: server/infra/ansible
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          APP_PUBLIC_URL: ${{ secrets.APP_PUBLIC_URL }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          JWT_TICKET_SECRET: ${{ secrets.JWT_TICKET_SECRET }}
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          ZALOPAY_APP_ID: ${{ secrets.ZALOPAY_APP_ID }}
+          ZALOPAY_KEY1: ${{ secrets.ZALOPAY_KEY1 }}
+          ZALOPAY_KEY2: ${{ secrets.ZALOPAY_KEY2 }}
+          ZALOPAY_ENDPOINT: ${{ secrets.ZALOPAY_ENDPOINT }}
+          STORAGE_PROVIDER: ${{ secrets.STORAGE_PROVIDER }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_PUBLIC_URL_BASE: ${{ secrets.S3_PUBLIC_URL_BASE }}
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+          LOG_LEVEL: info
+          LOG_CONSOLE: "true"
         run: |
           echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory.ini
           pip install ansible
-          ansible-playbook -i inventory.ini playbook.yml --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }}"
-        continue-on-error: true
+          ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=${{ github.sha }} environment=${{ inputs.environment }} aws_region=$AWS_REGION"

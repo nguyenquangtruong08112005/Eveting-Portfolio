@@ -83,6 +83,15 @@
 | Child repo evidence links | Done | Root README links server and both mobile history repos under `nguyenquangtruong08112005`; web has no separate remote configured |
 | Secret-pattern scan | Done | Android `app/google-services.json` is untracked/ignored in both mobile repos; checked-in example files replace real config |
 
+## R5/R6 Deploy Progress
+
+| Item | Status | Evidence |
+|---|---|---|
+| EC2 app deploy role | Done | Added Ansible `app` role to render compose/env, pull ECR images, run migrations, and restart containers |
+| Manual AWS workflow | Done | `deploy-aws.yml` build/pushes ECR images and can run Ansible app deploy with `run_ansible=true` |
+| Deploy docs | Done | `deploy/README.md` documents GitHub Actions → ECR → EC2 Docker Compose pull/up |
+| Local deploy validation | Partial | YAML parse passed; `ansible-playbook` is not installed locally, so Ansible syntax check is deferred to CI/runner |
+
 ## Public-Release Decision Needed
 
 Both Android apps currently track Firebase/Google client config:
