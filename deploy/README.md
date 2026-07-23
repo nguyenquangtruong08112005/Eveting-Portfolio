@@ -117,26 +117,36 @@ This is intentionally one-instance Docker Compose for portfolio demo. RDS/ECS/AL
 
 ### Terraform Remote State & Concurrency
 
-- **State Bucket:** `eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}` created idempotently via `server/infra/terraform/bootstrap` (tagged `Environment = "shared"` to prevent tag oscillation).
-- **First-Run Sequence:**
-  1. Pipeline checks `s3://$STATE_BUCKET/bootstrap/terraform.tfstate` (globally shared across environments) via `aws s3api head-object`.
-  2. If absent (first run): Runs local `terraform apply` to create the S3 bucket, then migrates bootstrap state into S3 via `terraform init -migrate-state -force-copy`.
-  3. If present (subsequent runs): Initialises bootstrap directly with S3 backend (`terraform init -reconfigure`) and applies updates using persisted state.
-  4. Main Terraform initialises with environment-isolated S3 backend key `eventing/${environment}/terraform.tfstate`.
-- **State Safeguards:** S3 versioning enabled, default `AES256` encryption, public access block, 90-day noncurrent version expiration, and S3 native lockfile (`use_lockfile = true`). No DynamoDB required.
-- **Required IAM Permissions:**
-  - Bucket management: `s3:CreateBucket`, `s3:ListBucket`, `s3:GetBucketLocation`, `s3:GetBucketVersioning`, `s3:PutBucketVersioning`, `s3:GetEncryptionConfiguration`, `s3:PutEncryptionConfiguration`, `s3:GetLifecycleConfiguration`, `s3:PutLifecycleConfiguration`, `s3:GetBucketPublicAccessBlock`, `s3:PutBucketPublicAccessBlock` on `arn:aws:s3:::eventing-tfstate-*`
-  - State objects: `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on `arn:aws:s3:::eventing-tfstate-*/bootstrap/*` and `arn:aws:s3:::eventing-tfstate-*/eventing/*`.
+- **Dedicated State Storage:** Dedicated Cloudflare R2 bucket (e.g. `eventing-tfstate`), completely isolated from application runtime media storage.
+- **Credential Least Privilege:** R2 state credentials (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) must be a dedicated API token created in Cloudflare R2, scoped exclusively to `Object Read & Write` on the state bucket, separate from application storage tokens.
+- **Bootstrap Architecture:** `server/infra/terraform/bootstrap` operates with local state (ignored by Git) and provisions the dedicated `cloudflare_r2_bucket.tf_state` using Cloudflare API token and Account ID.
+- **Main Stack Backend:** `server/infra/terraform` connects via S3-compatible API using `endpoints = { s3 = "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" }`, `skip_s3_checksum = true`, `use_path_style = true`, `use_lockfile = true`, and key `eventing/${environment}/terraform.tfstate`.
+- **Encryption Note:** Cloudflare R2 encrypts all objects at rest automatically provider-side. `encrypt = true` (S3 SSE header `x-amz-server-side-encryption`) is intentionally omitted because R2 does not implement custom S3 SSE headers.
+- **Idempotent Runner Bootstrap:** Prior to running `bootstrap apply`, workflow uses `aws s3api head-bucket --endpoint-url https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com` with R2 state credentials to check bucket existence, skipping bootstrap apply on subsequent runs.
+- **SSM Private AWS S3 Bucket:** AWS S3 transfer bucket (`aws_s3_bucket.ssm_transfer`) remains dedicated exclusively to Ansible-over-SSM file transfers and is not used for Terraform state.
+### Workflow Dispatch Deployment Modes
+
+| Mode | `run_terraform_plan` | `run_terraform_apply` | `run_build_push` | `run_ansible` | Description |
+|---|---|---|---|---|---|
+| **1. Plan-Only (Default)** | `true` | `false` | `false` | `false` | Dry-run plan for bootstrap (if bucket absent) or main infrastructure (if bucket present). 0 infra mutations, 0 container builds, 0 app deployments. |
+| **2. Infrastructure Apply** | `true` | `true` | `false` | `false` | Provisions state bucket (if absent) and applies AWS/Cloudflare infrastructure via Terraform. No container builds or app rollouts. |
+| **3. Full Application Deploy** | `true` | `true` | `true` | `true` | Full deployment: provisions/applies Terraform infrastructure, builds & pushes ECR container images for the exact commit SHA, and executes Ansible deployment rollout via SSM. |
+
+- **Ansible Safety Constraint:** `run_ansible=true` requires `run_build_push=true` and a successful image build/push step to prevent Ansible from deploying non-existent container image tags.
 - **Workflow Concurrency:** GitHub workflow enforces `concurrency: deploy-${{ inputs.environment }}` to prevent concurrent pipeline runs on the same environment.
-- **State Recovery / Rollback:** Prior state file versions are preserved in S3. Use `aws s3api list-object-versions` and `terraform state push` if state recovery is needed.
 
 ### GitHub secrets for deploy
 
 | Secret | Purpose |
 |---|---|
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Deploy credentials (or OIDC role) |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Deploy credentials for AWS infrastructure (EC2, VPC, ECR, SSM) |
 | `AWS_REGION` | e.g. `ap-southeast-2` |
-| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ZONE_ID` | Optional Terraform-managed DNS |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with R2 and DNS edit permissions |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 32-character hex Account ID |
+| `CLOUDFLARE_ZONE_ID` | Cloudflare Zone ID for DNS record management |
+| `TF_STATE_R2_BUCKET` | Dedicated Cloudflare R2 state bucket name (default: `eventing-tfstate`) |
+| `R2_ACCESS_KEY_ID` | Dedicated Cloudflare R2 S3 API Access Key ID (scoped exclusively to state bucket) |
+| `R2_SECRET_ACCESS_KEY` | Dedicated Cloudflare R2 S3 API Secret Access Key (scoped exclusively to state bucket) |
 | `NEXT_PUBLIC_API_URL` | Public API base for web image and deployed web |
 | `APP_PUBLIC_URL` | Public API callback base for payment/webhooks |
 | `ANSIBLE_INVENTORY` | Fallback inventory.ini content when `run_terraform=false` |

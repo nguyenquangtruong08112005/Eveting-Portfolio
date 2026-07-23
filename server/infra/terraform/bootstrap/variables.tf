@@ -1,17 +1,16 @@
-variable "project_name" {
-  description = "Name of the project."
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with R2 bucket provision permissions."
   type        = string
-  default     = "eventing"
+  sensitive   = true
 }
 
-variable "aws_region" {
-  description = "AWS region for infrastructure."
+variable "cloudflare_account_id" {
+  description = "Cloudflare Account ID hosting the dedicated R2 state bucket."
   type        = string
-  default     = "ap-southeast-2"
 }
 
-variable "environment" {
-  description = "Scope or environment tag for shared bootstrap resources."
+variable "state_r2_bucket_name" {
+  description = "Name of the dedicated Cloudflare R2 bucket for Terraform remote state."
   type        = string
-  default     = "shared"
+  default     = "eventing-tfstate"
 }

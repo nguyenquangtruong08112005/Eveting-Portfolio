@@ -17,7 +17,7 @@ this project unless you are doing temporary debugging.
   - `eventing-web`
 - ECR scan-on-push and lifecycle cleanup for untagged images
 - Optional Cloudflare DNS A records pointing to the Elastic IP
-- Persistent S3 remote state bucket (`eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}`) created idempotently via `bootstrap/` with bucket versioning, default AES256 encryption, public access block, 90-day noncurrent version expiration, and S3 native lockfile (`use_lockfile = true`)
+- Dedicated Cloudflare R2 remote state bucket (`eventing-tfstate`) provisioned via `bootstrap/` using Cloudflare provider, with S3-compatible remote state backend (`endpoints = { s3 = "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" }`), `skip_s3_checksum = true`, provider-side encryption, and S3 native lockfile (`use_lockfile = true`)
 - Deployment outputs for GitHub Actions and Ansible
 
 ## What Terraform Does Not Store

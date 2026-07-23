@@ -1,9 +1,9 @@
-output "state_bucket_name" {
-  description = "Deterministic name of the private S3 bucket created for Terraform remote state."
-  value       = aws_s3_bucket.tf_state.id
+output "state_r2_bucket_name" {
+  description = "Dedicated Cloudflare R2 bucket name created for Terraform remote state."
+  value       = cloudflare_r2_bucket.tf_state.name
 }
 
-output "aws_account_id" {
-  description = "AWS Account ID hosting the state bucket."
-  value       = data.aws_caller_identity.current.account_id
+output "cloudflare_account_id" {
+  description = "Cloudflare Account ID hosting the R2 state bucket."
+  value       = var.cloudflare_account_id
 }

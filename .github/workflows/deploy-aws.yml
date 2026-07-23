@@ -11,12 +11,20 @@ on:
         default: "staging"
         type: choice
         options: [staging, production]
-      run_terraform:
-        description: "run terraform apply"
+      run_terraform_plan:
+        description: "run terraform plan"
         type: boolean
         default: true
+      run_terraform_apply:
+        description: "run terraform apply (requires plan)"
+        type: boolean
+        default: false
+      run_build_push:
+        description: "build and push container images to ECR"
+        type: boolean
+        default: false
       run_ansible:
-        description: "run ansible deploy"
+        description: "run ansible deploy rollout to EC2 host"
         type: boolean
         default: false
 
@@ -30,7 +38,7 @@ concurrency:
 
 jobs:
   terraform:
-    if: ${{ inputs.run_terraform }}
+    if: ${{ inputs.run_terraform_plan || inputs.run_terraform_apply }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     outputs:
@@ -58,78 +66,107 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
-      - name: Derive AWS Account ID and State Bucket Name
-        id: state_bucket
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          AWS_REGION="${{ secrets.AWS_REGION || 'ap-southeast-2' }}"
-          BUCKET_NAME="eventing-tfstate-${ACCOUNT_ID}-${AWS_REGION}"
-          echo "account_id=${ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
-          echo "bucket_name=${BUCKET_NAME}" >> "$GITHUB_OUTPUT"
-      - name: Idempotent Bootstrap of S3 Remote State Bucket
+      - name: Idempotent Bootstrap of Cloudflare R2 State Bucket
         working-directory: server/infra/terraform/bootstrap
         env:
-          TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
-          TF_VAR_environment: "shared"
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_state_r2_bucket_name: ${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          STATE_BUCKET="${{ steps.state_bucket.outputs.bucket_name }}"
-          AWS_REGION="${{ secrets.AWS_REGION || 'ap-southeast-2' }}"
-          BOOTSTRAP_KEY="bootstrap/terraform.tfstate"
+          STATE_BUCKET="${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}"
+          CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          R2_ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
+          terraform init
           terraform fmt -check
+          terraform validate
 
-          if aws s3api head-object --bucket "$STATE_BUCKET" --key "$BOOTSTRAP_KEY" 2>/dev/null; then
-            echo "Bootstrap state object s3://$STATE_BUCKET/$BOOTSTRAP_KEY exists. Initializing bootstrap with S3 backend..."
-            terraform init -reconfigure \
-              -backend-config="bucket=${STATE_BUCKET}" \
-              -backend-config="key=${BOOTSTRAP_KEY}" \
-              -backend-config="region=${AWS_REGION}" \
-              -backend-config="encrypt=true" \
-              -backend-config="use_lockfile=true"
-            terraform validate
-            terraform apply -auto-approve
+          if AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+             AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+             AWS_EC2_METADATA_DISABLED=true \
+             AWS_DEFAULT_REGION=auto \
+             aws s3api head-bucket --bucket "$STATE_BUCKET" --endpoint-url "$R2_ENDPOINT" 2>/dev/null; then
+            echo "Cloudflare R2 state bucket '$STATE_BUCKET' exists. Skipping bootstrap apply."
+            echo "R2_BUCKET_EXISTS=true" >> "$GITHUB_ENV"
           else
-            echo "Bootstrap state object s3://$STATE_BUCKET/$BOOTSTRAP_KEY absent (first run). Initializing local bootstrap..."
-            terraform init -backend=false
-            terraform validate
-            terraform apply -auto-approve
-            echo "Migrating local bootstrap state to remote S3 backend s3://$STATE_BUCKET/$BOOTSTRAP_KEY..."
-            terraform init -migrate-state -force-copy \
-              -backend-config="bucket=${STATE_BUCKET}" \
-              -backend-config="key=${BOOTSTRAP_KEY}" \
-              -backend-config="region=${AWS_REGION}" \
-              -backend-config="encrypt=true" \
-              -backend-config="use_lockfile=true"
+            echo "Cloudflare R2 state bucket '$STATE_BUCKET' absent."
+            echo "R2_BUCKET_EXISTS=false" >> "$GITHUB_ENV"
+            echo "Exposing bootstrap Terraform plan..."
+            terraform plan
+
+            if [ "${{ inputs.run_terraform_apply }}" = "true" ]; then
+              echo "Provisioning Cloudflare R2 state bucket via bootstrap apply..."
+              terraform apply -auto-approve
+              echo "R2_BUCKET_EXISTS=true" >> "$GITHUB_ENV"
+            else
+              echo "run_terraform_apply is false; Cloudflare R2 state bucket provision skipped."
+            fi
           fi
-      - name: Initialize Main Terraform with S3 Backend
+      - name: Initialize Main Terraform with Cloudflare R2 Backend
         run: |
-          STATE_BUCKET="${{ steps.state_bucket.outputs.bucket_name }}"
-          AWS_REGION="${{ secrets.AWS_REGION || 'ap-southeast-2' }}"
+          if [ "${R2_BUCKET_EXISTS}" != "true" ]; then
+            echo "R2 state bucket does not exist yet. Skipping main Terraform init and plan."
+            echo "SKIP_MAIN_TF=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          STATE_BUCKET="${{ secrets.TF_STATE_R2_BUCKET || 'eventing-tfstate' }}"
+          CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          R2_ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
           terraform init -reconfigure \
             -backend-config="bucket=${STATE_BUCKET}" \
             -backend-config="key=eventing/${{ inputs.environment }}/terraform.tfstate" \
-            -backend-config="region=${AWS_REGION}" \
-            -backend-config="encrypt=true" \
+            -backend-config="region=auto" \
+            -backend-config="endpoints={s3=\"${R2_ENDPOINT}\"}" \
+            -backend-config="access_key=${{ secrets.R2_ACCESS_KEY_ID }}" \
+            -backend-config="secret_key=${{ secrets.R2_SECRET_ACCESS_KEY }}" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_requesting_account_id=true" \
+            -backend-config="skip_metadata_api_check=true" \
+            -backend-config="skip_s3_checksum=true" \
+            -backend-config="use_path_style=true" \
             -backend-config="use_lockfile=true"
-      - run: terraform fmt -check
-      - run: terraform validate
-      - run: terraform plan
-      - run: terraform apply -auto-approve
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || inputs.environment == 'staging'
+      - name: Main Terraform Plan & Apply
+        run: |
+          if [ "${SKIP_MAIN_TF}" = "true" ]; then
+            echo "Skipping main Terraform plan/apply."
+            exit 0
+          fi
+          terraform fmt -check
+          terraform validate
+          terraform plan
+          if [ "${{ inputs.run_terraform_apply }}" = "true" ] && { [ "${GITHUB_REF}" = "refs/heads/main" ] || [ "${GITHUB_REF}" = "refs/heads/master" ] || [ "${{ inputs.environment }}" = "staging" ]; }; then
+            echo "Applying main Terraform infrastructure..."
+            terraform apply -auto-approve
+          else
+            echo "run_terraform_apply is false; main apply skipped."
+          fi
       - name: Capture Terraform outputs
         id: tf_outputs
         run: |
+          if [ "${SKIP_MAIN_TF}" = "true" ] || [ "${{ inputs.run_terraform_apply }}" != "true" ]; then
+            echo "Main Terraform apply did not run; setting empty output values."
+            echo "ansible_inventory=" >> "$GITHUB_OUTPUT"
+            echo "ecr_registry=" >> "$GITHUB_OUTPUT"
+            echo "ssm_transfer_bucket=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           {
             echo "ansible_inventory<<EOF"
-            terraform output -raw ansible_inventory
+            terraform output -raw ansible_inventory 2>/dev/null || true
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "ecr_registry=$(terraform output -raw ecr_registry)" >> "$GITHUB_OUTPUT"
-          echo "ssm_transfer_bucket=$(terraform output -raw ssm_transfer_bucket)" >> "$GITHUB_OUTPUT"
+          echo "ecr_registry=$(terraform output -raw ecr_registry 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+          echo "ssm_transfer_bucket=$(terraform output -raw ssm_transfer_bucket 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
 
   build-and-push:
     needs: terraform
-    if: ${{ always() && (!inputs.run_terraform || needs.terraform.result == 'success') }}
+    if: ${{ always() && inputs.run_build_push && (!inputs.run_terraform_plan && !inputs.run_terraform_apply || needs.terraform.result == 'success') }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -146,32 +183,35 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & push API
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE: eventing-api
+      - name: Build and Push Images
         run: |
-          docker build -t $REGISTRY/$IMAGE:${{ github.sha }} ./server
-          docker tag $REGISTRY/$IMAGE:${{ github.sha }} $REGISTRY/$IMAGE:${{ inputs.environment }}
+          REGISTRY="${{ needs.terraform.outputs.ecr_registry }}"
+          if [ -z "$REGISTRY" ]; then
+            REGISTRY="${{ secrets.ECR_REGISTRY }}"
+          fi
+
+          if [ -z "$REGISTRY" ]; then
+            echo "Error: No ECR registry available. Terraform outputs and ECR_REGISTRY secret are both empty."
+            exit 1
+          fi
+
+          IMAGE="eventing-api"
+          docker build -t $REGISTRY/$IMAGE:${{ github.sha }} -t $REGISTRY/$IMAGE:${{ inputs.environment }} ./server
           docker push $REGISTRY/$IMAGE:${{ github.sha }}
           docker push $REGISTRY/$IMAGE:${{ inputs.environment }}
 
-      - name: Build & push Web
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE: eventing-web
-          API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-        run: |
-          docker build -t $REGISTRY/$IMAGE:${{ github.sha }} \
-            --build-arg NEXT_PUBLIC_API_URL=${API_URL:-https://api.example.com} \
+          IMAGE="eventing-web"
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'https://api.example.com' }} \
+            -t $REGISTRY/$IMAGE:${{ github.sha }} \
+            -t $REGISTRY/$IMAGE:${{ inputs.environment }} \
             ./web
-          docker tag $REGISTRY/$IMAGE:${{ github.sha }} $REGISTRY/$IMAGE:${{ inputs.environment }}
           docker push $REGISTRY/$IMAGE:${{ github.sha }}
           docker push $REGISTRY/$IMAGE:${{ inputs.environment }}
 
   ansible:
     needs: [terraform, build-and-push]
-    if: ${{ always() && inputs.run_ansible && needs.build-and-push.result == 'success' && (!inputs.run_terraform || needs.terraform.result == 'success') }}
+    if: ${{ always() && inputs.run_ansible && inputs.run_build_push && needs.build-and-push.result == 'success' && (!inputs.run_terraform_plan && !inputs.run_terraform_apply || needs.terraform.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
