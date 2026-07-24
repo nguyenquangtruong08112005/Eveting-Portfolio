@@ -2,8 +2,8 @@
 
 | Phase | Task ID | Task Description | Status |
 | :--- | :--- | :--- | :--- |
-| **00 Baseline** | `00-T1` | Codegraph Audit & Environment Baseline Freeze | `PLANNED` |
-| | `00-T2` | API Contract & Schema Inventory (Route Aliases & Validation Audit) | `PLANNED` |
+| **00 Baseline** | `00-T1` | Codegraph Audit & Environment Baseline Freeze | `COMPLETED` |
+| | `00-T2` | API Contract & Schema Inventory (Route Aliases & Validation Audit) | `COMPLETED` |
 | **01 Auth** | `01-T1` | Google & Facebook OAuth Integration (`auth_identities`) | `PLANNED` |
 | | `01-T2` | Email Verification, Activation & Redirect Flow | `PLANNED` |
 | | `01-T3` | Session Management, Rotating Refresh & CSRF Defense | `PLANNED` |

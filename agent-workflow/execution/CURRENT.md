@@ -7,10 +7,12 @@
 | Field | Value |
 |---|---|
 | Program | **PORTFOLIO-COMPLETION** |
-| Status | **PLANNED** |
+| Status | **IN_PROGRESS** |
 | Hub | [portfolio-completion/](portfolio-completion/) |
 | Plan | [portfolio-completion/README.md](portfolio-completion/README.md) |
-| Immediate next | Phase 00 Task `00-T1`: Codegraph Audit & Environment Baseline Freeze |
+| Phase 00 Status | **COMPLETED** ([00-baseline/BASELINE_STATE.md](portfolio-completion/00-baseline/BASELINE_STATE.md), [00-baseline/ENVIRONMENT_VARIABLE_FREEZE.md](portfolio-completion/00-baseline/ENVIRONMENT_VARIABLE_FREEZE.md), [00-baseline/API_CONTRACT_INVENTORY.md](portfolio-completion/00-baseline/API_CONTRACT_INVENTORY.md)) |
+| Immediate next | Phase 01 Task `01-T1`: Google & Facebook OAuth Integration (`auth_identities`) |
+| External Blockers | See [portfolio-completion/OPEN_QUESTIONS.md](portfolio-completion/OPEN_QUESTIONS.md) (Q01: Google OAuth Client IDs, Q02: Facebook App credentials, Q03: Play Integrity Service Account) |
 
 ## Workspace Repositories & Components
 
@@ -24,6 +26,7 @@ The monorepo contains the following canonical workspace folders:
 
 | Program | Location | Status |
 |---|---|---|
+| Baseline Phase 00 | [portfolio-completion/00-baseline/](portfolio-completion/00-baseline/) | COMPLETED (Audit, Env Freeze & Contract Inventory) |
 | Release Readiness | [release-readiness/](release-readiness/) | Superseded by PORTFOLIO-COMPLETION |
 | Database Integrity | [db/integrity/](db/integrity/) | Completed (Migrations 031–036) |
 | Database Normalize | [db/normalize/](db/normalize/) | Completed (Migrations 037–046) |
@@ -47,4 +50,4 @@ npm run db:migrate
 
 ## Archive
 
-Old folder names + pre-remake tags: [`../../../archive/legacy-folder-names-2026-07/README.md`](../../../archive/legacy-folder-names-2026-07/README.md)
+Completed execution plans & history: [`../../../archive/legacy-folder-names-2026-07/README.md`](../../../archive/legacy-folder-names-2026-07/README.md)
