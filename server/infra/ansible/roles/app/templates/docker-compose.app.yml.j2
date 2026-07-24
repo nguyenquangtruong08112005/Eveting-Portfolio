@@ -41,7 +41,7 @@ services:
       - "443:443"
     environment:
       WEB_DOMAIN: ${WEB_DOMAIN:-eventing.moteo.fun}
-      API_DOMAIN: ${API_DOMAIN:-api.eventing.moteo.fun}
+      API_DOMAIN: ${API_DOMAIN:-eventing-api.moteo.fun}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

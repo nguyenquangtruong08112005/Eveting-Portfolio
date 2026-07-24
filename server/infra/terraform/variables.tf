@@ -101,7 +101,7 @@ variable "web_domain" {
 variable "api_domain" {
   description = "Target backend API domain name."
   type        = string
-  default     = "api.eventing.moteo.fun"
+  default     = "eventing-api.moteo.fun"
 }
 
 variable "cloudflare_api_token" {

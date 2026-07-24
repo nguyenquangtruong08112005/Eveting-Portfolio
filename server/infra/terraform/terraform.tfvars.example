@@ -22,7 +22,7 @@ ecr_untagged_image_retention_days = 14
 
 # Target domains for reverse proxy routing (Cloudflare A records derive automatically).
 web_domain = "eventing.moteo.fun"
-api_domain = "api.eventing.moteo.fun"
+api_domain = "eventing-api.moteo.fun"
 
 # Optional Cloudflare DNS. Leave cloudflare_zone_id empty to skip Cloudflare from Terraform.
 # Prefer setting CLOUDFLARE_API_TOKEN in your shell/CI instead of putting it here.
