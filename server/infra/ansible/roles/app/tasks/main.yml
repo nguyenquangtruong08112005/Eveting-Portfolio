@@ -73,7 +73,7 @@
   debug:
     var: app_compose_ps.stdout_lines
 
-- name: Verify application container deployment health
+- name: Verify application container deployment health and environment configuration
   shell: |
     set -e
     sleep 5
@@ -81,6 +81,11 @@
     if echo "$CONTAINER_STATUS" | grep -iE "restarting|exited|dead" > /dev/null; then
       echo "Deployment health check failed: One or more containers are restarting or failed!"
       echo "$CONTAINER_STATUS"
+      exit 1
+    fi
+    WEB_ENV=$(docker compose --env-file .env -f docker-compose.app.yml exec -T web env)
+    if ! echo "$WEB_ENV" | grep -i "NEXT_PUBLIC_API_URL" > /dev/null; then
+      echo "Deployment config check failed: NEXT_PUBLIC_API_URL is missing from eventing-web runtime environment!"
       exit 1
     fi
   args:

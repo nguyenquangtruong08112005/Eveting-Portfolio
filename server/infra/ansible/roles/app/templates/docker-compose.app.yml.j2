@@ -68,6 +68,8 @@ services:
   web:
     image: ${ECR_REGISTRY}/eventing-web:${IMAGE_TAG}
     container_name: eventing-web
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
