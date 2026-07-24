@@ -10,11 +10,13 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 RUN addgroup -S app && adduser -S app -G app
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
-COPY src ./src
-COPY db ./db
-COPY scripts ./scripts
+RUN mkdir -p /app/logs && chown -R app:app /app
+
+COPY --chown=app:app --from=deps /app/node_modules ./node_modules
+COPY --chown=app:app package.json ./
+COPY --chown=app:app src ./src
+COPY --chown=app:app db ./db
+COPY --chown=app:app scripts ./scripts
 
 USER app
 EXPOSE 3000

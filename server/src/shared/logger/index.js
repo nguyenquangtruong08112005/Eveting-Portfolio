@@ -15,15 +15,37 @@ const originalConsole = {
 
 const asyncLocalStorage = new AsyncLocalStorage();
 
-if (!fs.existsSync(config.logDir)) {
-  fs.mkdirSync(config.logDir, { recursive: true });
+try {
+  if (!fs.existsSync(config.logDir)) {
+    fs.mkdirSync(config.logDir, { recursive: true });
+  }
+} catch (err) {
+  originalConsole.error(`[Logger] Warning: Could not create log directory ${config.logDir}: ${err.message}`);
 }
 
 const appLogPath = path.join(config.logDir, config.appLogFile);
 const httpLogPath = path.join(config.logDir, config.httpLogFile);
 
-const appStream = fs.createWriteStream(appLogPath, { flags: 'a', encoding: 'utf8' });
-const httpStream = fs.createWriteStream(httpLogPath, { flags: 'a', encoding: 'utf8' });
+let appStream = null;
+let httpStream = null;
+
+try {
+  appStream = fs.createWriteStream(appLogPath, { flags: 'a', encoding: 'utf8' });
+  appStream.on('error', (err) => {
+    originalConsole.error(`[Logger] appStream error: ${err.message}`);
+  });
+} catch (err) {
+  originalConsole.error(`[Logger] Failed to create appStream: ${err.message}`);
+}
+
+try {
+  httpStream = fs.createWriteStream(httpLogPath, { flags: 'a', encoding: 'utf8' });
+  httpStream.on('error', (err) => {
+    originalConsole.error(`[Logger] httpStream error: ${err.message}`);
+  });
+} catch (err) {
+  originalConsole.error(`[Logger] Failed to create httpStream: ${err.message}`);
+}
 
 const levels = {
   debug: 0,
@@ -66,15 +88,20 @@ function formatConsole(level, message, meta) {
 }
 
 function logToStream(stream, level, message, meta = {}) {
-  const contextMeta = getContextMeta();
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...contextMeta,
-    ...meta
-  };
-  stream.write(JSON.stringify(logEntry) + '\n');
+  if (!stream || !stream.writable) return;
+  try {
+    const contextMeta = getContextMeta();
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      ...contextMeta,
+      ...meta
+    };
+    stream.write(JSON.stringify(logEntry) + '\n');
+  } catch (err) {
+    // Ignore stream write errors to prevent process crash
+  }
 }
 
 const logger = {
@@ -82,7 +109,7 @@ const logger = {
   originalConsole,
   debug(message, meta) {
     if (shouldLog('debug')) {
-      if (config.enableConsole && config.env === 'development') {
+      if (config.enableConsole) {
         originalConsole.log(formatConsole('debug', message, meta));
       }
       logToStream(appStream, 'debug', message, meta);
@@ -90,7 +117,7 @@ const logger = {
   },
   info(message, meta) {
     if (shouldLog('info')) {
-      if (config.enableConsole && config.env === 'development') {
+      if (config.enableConsole) {
         originalConsole.log(formatConsole('info', message, meta));
       }
       logToStream(appStream, 'info', message, meta);
@@ -98,7 +125,7 @@ const logger = {
   },
   warn(message, meta) {
     if (shouldLog('warn')) {
-      if (config.enableConsole && config.env === 'development') {
+      if (config.enableConsole) {
         originalConsole.warn(formatConsole('warn', message, meta));
       }
       logToStream(appStream, 'warn', message, meta);
@@ -106,7 +133,7 @@ const logger = {
   },
   error(message, meta) {
     if (shouldLog('error')) {
-      if (config.enableConsole && config.env === 'development') {
+      if (config.enableConsole) {
         originalConsole.error(formatConsole('error', message, meta));
       }
       logToStream(appStream, 'error', message, meta);
@@ -115,7 +142,7 @@ const logger = {
   http(message, meta) {
     logToStream(httpStream, 'info', message, meta);
 
-    if (config.enableConsole && config.env === 'development') {
+    if (config.enableConsole) {
       originalConsole.log(formatConsole('info', `HTTP ${message}`, meta));
     }
   }
