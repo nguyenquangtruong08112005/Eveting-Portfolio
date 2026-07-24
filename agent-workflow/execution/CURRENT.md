@@ -1,40 +1,49 @@
 # CURRENT — Active execution pointer
 
-> **Updated:** 2026-07-23
+> **Updated:** 2026-07-24
 
 ## Active program
 
 | Field | Value |
 |---|---|
-| Program | **RELEASE-READINESS** |
-| Status | **R0/R1 COMPLETE — R2 NEXT** |
-| Hub | [release-readiness/](release-readiness/) |
-| Plan | [release-readiness/00-plan.md](release-readiness/00-plan.md) |
-| Immediate next | R2 codebase cleanup gate: shared errors/logger/validation, API alias decision, and CI baseline prep |
+| Program | **PORTFOLIO-COMPLETION** |
+| Status | **PLANNED** |
+| Hub | [portfolio-completion/](portfolio-completion/) |
+| Plan | [portfolio-completion/README.md](portfolio-completion/README.md) |
+| Immediate next | Phase 00 Task `00-T1`: Codegraph Audit & Environment Baseline Freeze |
 
-## Closed DB programs
+## Workspace Repositories & Components
 
-| Program | Location | Migrations |
+The monorepo contains the following canonical workspace folders:
+- `server/` — Backend API & Services
+- `web/` — Next.js Web Application
+- `mobile-attendee/` — Native Android Attendee Application
+- `mobile-organizer/` — Native Android Organizer Application
+
+## Program History
+
+| Program | Location | Status |
 |---|---|---|
-| Integrity | [db/integrity/](db/integrity/) | 031–036 |
-| Normalize | [db/normalize/](db/normalize/) | 037–046 |
-| Finish | [db/finish/](db/finish/) | 047–060 |
+| Release Readiness | [release-readiness/](release-readiness/) | Superseded by PORTFOLIO-COMPLETION |
+| Database Integrity | [db/integrity/](db/integrity/) | Completed (Migrations 031–036) |
+| Database Normalize | [db/normalize/](db/normalize/) | Completed (Migrations 037–046) |
+| Database Finish | [db/finish/](db/finish/) | Completed (Migrations 047–060) |
 
-## Verify
+## Verification Commands
+
+To verify database state and backend baseline:
 
 ```bash
-cd Server-2025-Eventing
+cd server
 npm run db:migrate
-npm run db:smoke:order-foundation
-npm run db:audit:orphans
-node src/jobs/retention.job.js
 ```
 
-## Git policy
+## Git & Release Policy
 
-Commit after each phase gate using Conventional Commits, for example `fix(server): ...`, `refactor(web): ...`, `docs(release): ...`.  
-Apps = `server/`, `web/`, `mobile-attendee/`, `mobile-organizer/` (each own repo).  
-Docs = monorepo root. No push unless asked.
+- Working branch: `staging`.
+- Target release branch: `main`.
+- Commit convention: Conventional Commits with no scopes, for example `fix: ...`, `feat: ...`, `refactor: ...`, `docs: ...`.
+- Deploy policy: Automated CI checks on PR; reviewed Terraform plan before apply; Ansible container deployment over AWS SSM. No direct push to `main`.
 
 ## Archive
 
