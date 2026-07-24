@@ -302,10 +302,11 @@ jobs:
 
           cat > inventory.ini << EOFINVENTORY
           [app_servers]
-          ${INSTANCE_ID} ansible_connection=amazon.aws.aws_ssm ansible_user=ubuntu
+          ${INSTANCE_ID} ansible_connection=amazon.aws.aws_ssm
 
           [all:vars]
           ansible_python_interpreter=/usr/bin/python3
+          ansible_remote_tmp=/tmp/.ansible-eventing/tmp
           ansible_aws_ssm_bucket_name=${SSM_BUCKET}
           ansible_aws_ssm_bucket_sse_mode=AES256
           ansible_aws_ssm_region=${AWS_REGION}
