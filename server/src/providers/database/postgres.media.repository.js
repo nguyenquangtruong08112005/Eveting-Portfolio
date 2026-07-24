@@ -10,6 +10,7 @@
 // tables (tickets, events) may not exist yet.
 
 const { query } = require('./postgres.client');
+const { toDb, nowDb } = require('./time.helper');
 
 // -------------------------------------------------------------------------
 // Helpers
@@ -192,7 +193,7 @@ const createEventMediaBatch = async (mediaItems) => {
                 media.url,
                 media.type,
                 media.caption || '',
-                Number(media.createdAt)
+                toDb(media.createdAt) || nowDb()
             ]
         );
     }
