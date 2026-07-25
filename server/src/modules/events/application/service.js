@@ -18,7 +18,7 @@ const featuredProfileRepository = require('@/providers/database/featuredProfile.
 const { mapPublicTicketTypes, mapPublicVenue, buildElasticData } = require('./helpers/event-mappers');
 const { hasImportantChanges } = require('./policies/update-policy');
 const { notifyAttendeesAboutUpdate, notifyAttendeesAboutCancellation } = require('./helpers/notification-sender');
-const { buildSearchQuery } = require('./query-builders/search-query.builder');
+const { buildSearchQuery, normalizeSearchParams } = require('./query-builders/search-query.builder');
 const { buildRecommendationQuery } = require('./query-builders/recommendation-query.builder');
 const { findNearbyEvents } = require('./helpers/nearby-events.helper');
 const { resolveVenueAndLocationForCreate, resolveVenueAndLocationForUpdate } = require('./helpers/venue-handler');
@@ -306,10 +306,10 @@ const submitDraft = async (eventId, requestingUserId) => {
     return fullEventData;
 };
 
-const searchEvents = async (queryParams) => {
+const searchEvents = async (rawQueryParams = {}) => {
+    const queryParams = normalizeSearchParams(rawQueryParams);
     const page = parseInt(queryParams.page) || 1;
     const limit = parseInt(queryParams.limit) || 10;
-    const searchString = queryParams.q || '';
 
     // 1. Try Elasticsearch first
     if (esClient) {
@@ -337,7 +337,7 @@ const searchEvents = async (queryParams) => {
     }
 
     // 2. Fallback to PostgreSQL relational query
-    const { entries, totalItems } = await eventRepository.searchPublicEvents(searchString, page, limit);
+    const { entries, totalItems } = await eventRepository.searchPublicEvents(queryParams);
     const events = entries.map(({ id, data }) => ({
         id, name: data.name, date: data.date, imageUrl: data.imageUrl, bannerUrl: data.bannerUrl,
         videoUrl: data.videoUrl, location: data.location, city: data.city || null, venueName: data.venueName || null,

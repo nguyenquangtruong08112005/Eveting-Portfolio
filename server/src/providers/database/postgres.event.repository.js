@@ -568,7 +568,23 @@ const getPublicEventsPage = async (page, limit) => {
     return { entries, totalItems };
 };
 
-const searchPublicEvents = async (searchString, page, limit) => {
+const searchPublicEvents = async (searchStringOrOptions, pageArg, limitArg) => {
+    let rawFilters = {};
+    if (typeof searchStringOrOptions === 'object' && searchStringOrOptions !== null) {
+        rawFilters = searchStringOrOptions;
+    } else {
+        rawFilters = {
+            q: searchStringOrOptions || '',
+            page: pageArg,
+            limit: limitArg,
+        };
+    }
+
+    const { normalizeSearchParams, parseDateToMs } = require('../../modules/events/application/query-builders/search-query.builder');
+    const filters = normalizeSearchParams(rawFilters);
+
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 10;
     const offset = (page - 1) * limit;
     const now = nowDb();
 
@@ -578,10 +594,54 @@ const searchPublicEvents = async (searchString, page, limit) => {
     const params = [VISIBILITY.PUBLIC, STATUS.ACTIVE, now];
     let idx = 4;
 
+    const searchString = filters.q || '';
     if (searchString) {
         sql += ` AND (name ILIKE $${idx} OR description ILIKE $${idx} OR city ILIKE $${idx} OR venue_name ILIKE $${idx})`;
         params.push(`%${searchString}%`);
         idx++;
+    }
+
+    if (filters.category) {
+        const cat = String(filters.category).toLowerCase();
+        sql += ` AND (category @> ARRAY[$${idx}]::text[] OR category::text ILIKE $${idx + 1})`;
+        params.push(cat, `%${cat}%`);
+        idx += 2;
+    }
+
+    if (filters.city) {
+        sql += ` AND city ILIKE $${idx}`;
+        params.push(`%${filters.city}%`);
+        idx++;
+    }
+
+    const startMs = parseDateToMs(filters.startDate, false);
+    if (startMs !== null) {
+        sql += ` AND (date >= $${idx} OR start_at >= to_timestamp($${idx + 1}))`;
+        params.push(startMs, startMs / 1000.0);
+        idx += 2;
+    }
+
+    const endMs = parseDateToMs(filters.endDate, true);
+    if (endMs !== null) {
+        sql += ` AND (date <= $${idx} OR start_at <= to_timestamp($${idx + 1}))`;
+        params.push(endMs, endMs / 1000.0);
+        idx += 2;
+    }
+
+    if (filters.minPrice !== undefined && filters.minPrice !== '' && !isNaN(Number(filters.minPrice))) {
+        sql += ` AND min_price >= $${idx}`;
+        params.push(Number(filters.minPrice));
+        idx++;
+    }
+
+    if (filters.maxPrice !== undefined && filters.maxPrice !== '' && !isNaN(Number(filters.maxPrice))) {
+        sql += ` AND min_price <= $${idx}`;
+        params.push(Number(filters.maxPrice));
+        idx++;
+    }
+
+    if (filters.hasVideo === 'true') {
+        sql += ` AND video_url IS NOT NULL AND video_url != ''`;
     }
 
     const countResult = await query(`SELECT COUNT(*)::int AS count ${sql}`, params);

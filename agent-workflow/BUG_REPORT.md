@@ -12,6 +12,7 @@
 | 6 | Auto-fill user info on buy ticket | **Fixed** | Checkout reads `userName` / `userEmail` from login localStorage |
 | 7 | Past events still on attendee screen | **Fixed** | BE `getPublicEventsPage` + search filter `start_at` / `end_at` vs now |
 | 8 | Nowhere to assign featured profile | **Fixed** | Multi-select on organizer create/edit event → `featuredProfileIds` |
+| 9 | Search filter mismatch (web sends `city`, `dateFrom`, `dateTo`; BE used `location`, `startDate`, `endDate`) | **Fixed** | Parameter alias normalization & precedence (`city`/`location`, `dateFrom`/`startDate`, `dateTo`/`endDate`) in ES & Postgres fallback |
 
 ## Related docs
 
