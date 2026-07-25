@@ -22,27 +22,30 @@ const ELASTIC_INDEX = 'events';
 
 function rowToEvent(row) {
   if (!row) return null;
-  if (row.raw_data) {
-    return { id: row.id, ...row.raw_data };
-  }
+  const rawData = typeof row.raw_data === 'object' && row.raw_data !== null ? row.raw_data : {};
+  const dateVal = row.start_at != null
+    ? new Date(row.start_at).getTime()
+    : (row.date != null ? Number(row.date) : (rawData.date != null ? Number(rawData.date) : null));
+
   return {
+    ...rawData,
     id: row.id,
-    name: row.name,
-    description: row.description || '',
-    imageUrl: row.image_url || null,
-    bannerUrl: row.banner_url || null,
-    featuredProfileIds: row.featured_profile_ids || [],
-    category: row.category || [],
-    tags: row.tags || [],
-    date: row.start_at != null ? new Date(row.start_at).getTime() : (row.date != null ? Number(row.date) : null),
-    eventType: row.event_type || 'physical',
-    location: row.location || null,
-    venueName: row.venue_name || null,
-    city: row.city || null,
-    minPrice: row.min_price != null ? Number(row.min_price) : 0,
-    videoUrl: row.video_url || '',
-    status: row.status || STATUS.PENDING,
-    visibility: row.visibility || VISIBILITY.PRIVATE,
+    name: row.name != null ? row.name : (rawData.name || null),
+    description: row.description != null ? row.description : (rawData.description || ''),
+    imageUrl: row.image_url != null ? row.image_url : (rawData.imageUrl || null),
+    bannerUrl: row.banner_url != null ? row.banner_url : (rawData.bannerUrl || null),
+    featuredProfileIds: row.featured_profile_ids != null ? row.featured_profile_ids : (rawData.featuredProfileIds || []),
+    category: row.category != null ? row.category : (rawData.category || []),
+    tags: row.tags != null ? row.tags : (rawData.tags || []),
+    date: dateVal,
+    eventType: row.event_type != null ? row.event_type : (rawData.eventType || 'physical'),
+    location: row.location != null ? row.location : (rawData.location || null),
+    venueName: row.venue_name != null ? row.venue_name : (rawData.venueName || null),
+    city: row.city != null ? row.city : (rawData.city || null),
+    minPrice: row.min_price != null ? Number(row.min_price) : (rawData.minPrice != null ? Number(rawData.minPrice) : 0),
+    videoUrl: row.video_url != null ? row.video_url : (rawData.videoUrl || ''),
+    status: row.status != null ? row.status : (rawData.status || STATUS.PENDING),
+    visibility: row.visibility != null ? row.visibility : (rawData.visibility || VISIBILITY.PRIVATE),
   };
 }
 
