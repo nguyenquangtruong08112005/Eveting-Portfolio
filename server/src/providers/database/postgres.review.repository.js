@@ -1,5 +1,4 @@
 const { query } = require('./postgres.client');
-const { toDb, nowDb } = require('./time.helper');
 
 async function tableExists(tableName) {
     var result = await query(
@@ -114,7 +113,7 @@ const createReview = async (reviewId, reviewData) => {
             reviewData.userId,
             reviewData.rating,
             reviewData.comment || '',
-            toDb(reviewData.createdAt) || nowDb(),
+            Number(reviewData.createdAt),
             reviewData.user ? reviewData.user.name : null,
             reviewData.user ? reviewData.user.profilePicUrl : null
         ]

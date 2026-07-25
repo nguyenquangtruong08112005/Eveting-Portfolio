@@ -10,8 +10,8 @@
 | **02 Security** | `02-T1` | Public API Security Boundary & RBAC Ownership Enforcement | `PLANNED` |
 | | `02-T2` | Rate Limiting, CORS & Cloudflare WAF Hardening | `PLANNED` |
 | | `02-T3` | Mobile Attestation & App Integrity Design | `PLANNED` |
-| **03 Data** | `03-T1` | Deterministic Vietnam Data Seeding & Relational Scaling | `COMPLETED` |
-| | `03-T2` | Media Asset Licensing, Demo Policy & Elasticsearch Indexing | `COMPLETED` |
+| **03 Data** | `03-T1` | Deterministic Vietnam Data Seeding & Relational Scaling | `PLANNED` |
+| | `03-T2` | Media Asset Licensing, Demo Policy & Elasticsearch Indexing | `PLANNED` |
 | **04 Infra** | `04-T1` | Outbox Pattern Verification & Elasticsearch Auto-Reindexing | `PLANNED` |
 | | `04-T2` | Redis Caching, Rate Limiter & Idempotency Storage Setup | `PLANNED` |
 | **05 Payments** | `05-T1` | Core Idempotency Engine (`idempotency_keys` Spec) | `PLANNED` |

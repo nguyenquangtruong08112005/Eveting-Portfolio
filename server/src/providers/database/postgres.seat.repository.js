@@ -1,5 +1,4 @@
 const { query } = require('./postgres.client');
-const { toDb, nowDb } = require('./time.helper');
 
 const createSeatMap = async (mapId, mapData, transaction = null) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
@@ -7,7 +6,7 @@ const createSeatMap = async (mapId, mapData, transaction = null) => {
         `INSERT INTO seat_maps (id, name, total_rows, total_cols, created_at)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (id) DO UPDATE SET name = $2, total_rows = $3, total_cols = $4`,
-        [mapId, mapData.name, mapData.totalRows, mapData.totalCols, toDb(mapData.createdAt) || nowDb()]
+        [mapId, mapData.name, mapData.totalRows, mapData.totalCols, mapData.createdAt || Date.now()]
     );
 };
 
@@ -18,7 +17,7 @@ const createSeatSections = async (sectionsArray, transaction = null) => {
             `INSERT INTO seat_sections (id, seat_map_id, name, price_multiplier, created_at)
              VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (id) DO UPDATE SET name = $3, price_multiplier = $4`,
-            [section.id, section.seatMapId, section.name, section.priceMultiplier || 1.0, toDb(section.createdAt) || nowDb()]
+            [section.id, section.seatMapId, section.name, section.priceMultiplier || 1.0, section.createdAt || Date.now()]
         );
     }
 };
@@ -30,7 +29,7 @@ const createSeats = async (seatsArray, transaction = null) => {
             `INSERT INTO seats (id, seat_section_id, row_name, seat_number, status, created_at)
              VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (id) DO UPDATE SET status = $5`,
-            [seat.id, seat.seatSectionId, seat.rowName, seat.seatNumber, seat.status || 'available', toDb(seat.createdAt) || nowDb()]
+            [seat.id, seat.seatSectionId, seat.rowName, seat.seatNumber, seat.status || 'available', seat.createdAt || Date.now()]
         );
     }
 };
@@ -113,10 +112,10 @@ const createSeatHold = async (holdData, transaction = null) => {
             holdData.eventId,
             holdData.seatId,
             holdData.userId,
-            toDb(holdData.heldAt) || nowDb(),
-            toDb(holdData.expiresAt) || nowDb(),
+            holdData.heldAt || Date.now(),
+            holdData.expiresAt,
             holdData.status || 'held',
-            toDb(holdData.createdAt) || nowDb()
+            holdData.createdAt || Date.now()
         ]
     );
 };
