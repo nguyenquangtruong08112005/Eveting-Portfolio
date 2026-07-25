@@ -34,7 +34,7 @@ function rowToEvent(row) {
     featuredProfileIds: row.featured_profile_ids || [],
     category: row.category || [],
     tags: row.tags || [],
-    date: row.date != null ? Number(row.date) : null,
+    date: row.start_at != null ? new Date(row.start_at).getTime() : (row.date != null ? Number(row.date) : null),
     eventType: row.event_type || 'physical',
     location: row.location || null,
     venueName: row.venue_name || null,
@@ -118,7 +118,7 @@ async function run() {
   });
 
   const result = await query(
-    `SELECT * FROM events WHERE status = $1 AND visibility = $2 ORDER BY date ASC`,
+    `SELECT * FROM events WHERE status = $1 AND visibility = $2 ORDER BY start_at ASC`,
     [STATUS.ACTIVE, VISIBILITY.PUBLIC]
   );
 
