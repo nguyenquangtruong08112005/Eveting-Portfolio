@@ -9,11 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthService } from '@/features/auth/api';
+import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 import { BrandMark } from '@/components/shared/BrandMark';
+import { applyAuthSession } from './session';
+import { SocialAuthButtons } from './SocialAuthButtons';
 
 export function RegisterForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const t = useTranslations('auth');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -24,18 +28,18 @@ export function RegisterForm() {
   const fieldClass =
     'w-full pl-10 pr-4 py-6 rounded-xl border border-[var(--surface-border)] bg-[var(--background)]/80 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:ring-1 focus-visible:ring-[var(--primary)] focus-visible:border-[var(--primary)]/50 transition-all text-sm';
 
+  const params = new URLSearchParams(
+    typeof window !== 'undefined' ? window.location.search : ''
+  );
+  const requestedRole = params.get('role');
+  const role = requestedRole === 'organizer' ? 'organizer' : 'user';
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // Support ?role=organizer from "Tạo sự kiện" CTA; default to attendee (user)
-      const params = new URLSearchParams(
-        typeof window !== 'undefined' ? window.location.search : ''
-      );
-      const requestedRole = params.get('role');
-      const role = requestedRole === 'organizer' ? 'organizer' : 'user';
       await AuthService.register(name, email, password, role);
       // After register: verify email (not login). Best-effort send verify link.
       try {
@@ -152,6 +156,19 @@ export function RegisterForm() {
               <ArrowRight className="size-4" />
             </Button>
           </form>
+
+          <div className="mt-5 space-y-2.5">
+            <p className="text-[10px] text-center text-[var(--text-muted)] uppercase tracking-wider font-bold">
+              {t('or_continue_with')}
+            </p>
+            <SocialAuthButtons
+              role={role}
+              onSuccess={(data) => applyAuthSession(data, login, router)}
+              onError={(msg) => setError(msg)}
+              loading={loading}
+              setLoading={setLoading}
+            />
+          </div>
 
           <div className="mt-6 pt-6 border-t border-[var(--surface-border)] text-center">
             <p className="text-[var(--text-muted)] text-xs">

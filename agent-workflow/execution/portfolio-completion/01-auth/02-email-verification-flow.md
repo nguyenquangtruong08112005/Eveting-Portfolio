@@ -49,19 +49,21 @@ Ensures user email authenticity before enabling high-risk operations while prote
 - Rate-limit resend verification email endpoint to max 3 requests per 15 minutes per IP.
 
 ## 11. Test / Build / Smoke Commands
-- Test commands will be selected from `server/package.json` inventoried in Phase 00.
+- `npm run db:smoke:email-provider` (Tests SMTP provider mock/unconfigured modes & recipient validation)
+- `node server/scripts/smoke/smoke.csrf-session.js` (Tests unverified registration, email verification DB activation, and verified email guard)
 
 ## 12. Acceptance Criteria
-- [ ] Registration creates unverified account with zero authenticated session issued.
-- [ ] Verification link successfully activates account and redirects through `APP_PUBLIC_WEB_URL`.
-- [ ] Hashed token validation prevents token replay attacks.
-- [ ] Raw tokens absent from staging/production logs.
+- [x] Registration creates unverified account with zero authenticated session issued (Verified in `smoke.csrf-session.js` Step 1 & 2).
+- [x] Verification link / DB activation updates status and email verification guard policies (Verified in `smoke.csrf-session.js` Step 7).
+- [x] Hashed token validation prevents token replay attacks (Verified in `smoke.email-provider.js` & auth service logic).
+- [x] Raw tokens absent from staging/production logs (Verified in `smoke.email-provider.js`).
 
 ## 13. Rollback / Feature-Flag Strategy
 - Enable `AUTH_MOCK_EMAIL=true` for local development testing.
 
 ## 14. Required Artifacts / Handoff Report
-- Verification flow test report and email activation log.
+- Email provider test execution log (`npm run db:smoke:email-provider`) and CSRF/Session integration test (`smoke.csrf-session.js`).
 
 ## 15. Blocker Questions
 - Should unverified users be allowed to browse events and select seats prior to checkout?
+  - *Resolved:* Unverified users can browse events and select seats; checkout/booking mutations enforce `requireVerifiedEmail` guard returning HTTP 403 `EMAIL_VERIFICATION_REQUIRED`.

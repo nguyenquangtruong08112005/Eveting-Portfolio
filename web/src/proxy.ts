@@ -1,13 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
+
+const handleMiddleware = createMiddleware(routing);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname === '/vi' || pathname === '/en') {
-    const response = NextResponse.next();
-    response.cookies.set('NEXT_LOCALE', pathname.slice(1), { path: '/' });
+    const locale = pathname.slice(1);
+    const response = NextResponse.redirect(new URL('/', request.url));
+    response.cookies.set('NEXT_LOCALE', locale, { path: '/' });
     return response;
   }
-  return NextResponse.next();
+  return handleMiddleware(request);
 }
 
 export const config = {

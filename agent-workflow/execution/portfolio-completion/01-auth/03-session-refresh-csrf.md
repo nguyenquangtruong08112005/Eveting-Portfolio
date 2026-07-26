@@ -46,19 +46,20 @@ Enforces strict token isolation against XSS token theft while requiring explicit
 - Mandatory `X-CSRF-Token` header validation on cookie-authenticated mutations.
 
 ## 11. Test / Build / Smoke Commands
-- Test commands will be selected from Phase 00 inventory — [Proposed Command].
+- `node server/scripts/smoke/smoke.csrf-session.js` (Verified locally: Steps 1-7 testing cookie flags, zero JSON body tokens, CSRF protection 403, mobile bearer tokens, rotating refresh token, and token reuse detection)
 
 ## 12. Acceptance Criteria
-- [ ] Both access and refresh tokens set as HttpOnly Secure cookies on Web login.
-- [ ] Web JSON response body contains zero auth tokens.
-- [ ] Cookie-authenticated `POST` request without valid `X-CSRF-Token` header rejected with HTTP 403 Forbidden.
-- [ ] Mobile clients using `/api/mobile/auth/*` receive bearer tokens for Android secure storage.
+- [x] Both access and refresh tokens set as HttpOnly Secure cookies on Web login (Verified in `smoke.csrf-session.js` Step 2).
+- [x] Web JSON response body contains zero auth tokens (Verified in `smoke.csrf-session.js` Step 2 & 5).
+- [x] Cookie-authenticated `POST` request without valid `X-CSRF-Token` header rejected with HTTP 403 Forbidden (Verified in `smoke.csrf-session.js` Step 3).
+- [x] Mobile clients using `/api/mobile/auth/*` receive bearer tokens for Android secure storage (Verified in `smoke.csrf-session.js` Step 4).
 
 ## 13. Rollback / Feature-Flag Strategy
 - Fallback to non-secure cookies in local HTTP dev environments via `COOKIE_SECURE=false`.
 
 ## 14. Required Artifacts / Handoff Report
-- Security session test report and CSRF test execution log — [Proposed Artifact].
+- Security session test report and CSRF test execution log (`node server/scripts/smoke/smoke.csrf-session.js`).
 
 ## 15. Blocker Questions
 - Should cross-subdomain cookie sharing (`.moteo.fun`) be enabled for future microservice split?
+  - *Resolved:* Current cookie path is `/` with Lax sameSite; cross-subdomain configuration can be toggled via `COOKIE_DOMAIN` env var if required.

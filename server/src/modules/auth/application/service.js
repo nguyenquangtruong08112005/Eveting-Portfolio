@@ -1,14 +1,46 @@
 const { BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError } = require('@/shared/errors');
 const backendAuthProvider = require('@/providers/auth/backend.auth.provider');
+const googleAuthProvider = require('@/providers/auth/google.auth.provider');
+const facebookAuthProvider = require('@/providers/auth/facebook.auth.provider');
 const authRepository = require('@/providers/database/postgres.auth.repository');
 const userProfileRepository = require('@/providers/database/postgres.user.repository');
-const axios = require('axios');
 const crypto = require('crypto');
+const logger = require('@/shared/logger');
 const { REFRESH_TOKEN_EXPIRY_MS, makeTokens } = require('./helpers/token.helper');
 const { sendEmail } = require('./helpers/email.helper');
 const { provisionAuthUserFromProfile, ensureUserProfileForAuthUser } = require('./helpers/profile.helper');
 
-async function register({ email, password, name, role }) {
+async function createAndSendEmailVerification(email, userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await authRepository.saveEmailVerification({
+    tokenHash,
+    userId,
+    email,
+    expiresAt,
+  });
+
+  const baseUrl = process.env.APP_PUBLIC_WEB_URL || process.env.WEB_APP_URL || 'http://localhost:3000';
+  const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
+
+  try {
+    await sendEmail({
+      to: email,
+      subject: 'Verify your email address - Eventing',
+      text: `Please verify your email address by clicking the link: ${verificationUrl}`,
+      html: `<p>Please verify your email address by clicking the link below:</p><p><a href="${verificationUrl}">${verificationUrl}</a></p>`,
+    });
+    logger.info(`[AuthService] Verification email sent to ${email}`);
+  } catch (e) {
+    logger.error(`[AuthService] Failed to send email verification: ${e.message}`);
+  }
+
+  return { token, tokenHash };
+}
+
+async function register({ email, password, name, role, clientTransport }) {
   const ALLOWED_ROLES = new Set(['user', 'organizer']);
   const safeRole = role || 'user';
   if (!ALLOWED_ROLES.has(safeRole)) {
@@ -31,11 +63,25 @@ async function register({ email, password, name, role }) {
     name: name || '',
     passwordHash,
     roles: [safeRole],
+    emailVerified: false,
   });
   if (!uid) {
     throw new ConflictError('Email already registered');
   }
 
+  await ensureUserProfileForAuthUser({ id: uid, email, name: name || '', roles: [safeRole] });
+  await createAndSendEmailVerification(email, uid);
+
+  // If web transport, registration creates an unverified account with no session issued
+  if (clientTransport === 'web') {
+    return {
+      pendingVerification: true,
+      message: 'Registration successful. Please check your email to verify your account.',
+      user: { id: uid, email, name: name || '', roles: [safeRole], emailVerified: false },
+    };
+  }
+
+  // Legacy / Mobile transport: issue session & tokens
   const { accessToken, refreshToken, refreshTokenHash } = makeTokens(uid, email, [safeRole]);
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
 
@@ -45,12 +91,10 @@ async function register({ email, password, name, role }) {
     expiresAt,
   });
 
-  await ensureUserProfileForAuthUser({ id: uid, email, name: name || '', roles: [safeRole] });
-
   return {
     accessToken,
     refreshToken,
-    user: { id: uid, email, name: name || '', roles: [safeRole] },
+    user: { id: uid, email, name: name || '', roles: [safeRole], emailVerified: false },
   };
 }
 
@@ -85,7 +129,7 @@ async function login({ email, password }) {
   return {
     accessToken,
     refreshToken,
-    user: { id: user.id, email: user.email, name: user.name, roles: user.roles },
+    user: { id: user.id, email: user.email, name: user.name, roles: user.roles, emailVerified: user.email_verified ?? false },
   };
 }
 
@@ -97,6 +141,7 @@ async function refreshToken(refreshTokenRaw) {
   }
 
   if (session.revoked_at) {
+    await authRepository.revokeAllUserSessions(session.user_id);
     throw new UnauthorizedError('Refresh token revoked');
   }
 
@@ -125,7 +170,7 @@ async function refreshToken(refreshTokenRaw) {
   return {
     accessToken,
     refreshToken,
-    user: { id: user.id, email: user.email, name: user.name, roles: user.roles },
+    user: { id: user.id, email: user.email, name: user.name, roles: user.roles, emailVerified: user.email_verified ?? false },
   };
 }
 
@@ -143,39 +188,76 @@ async function logoutAll(userId) {
   return { success: true };
 }
 
-async function socialLogin({ email, name, role, profilePicUrl }) {
+async function handleSocialLogin({ provider, providerSubject, providerEmail, emailVerified = true, name = '', picture = '', role }) {
   const ALLOWED_ROLES = new Set(['user', 'organizer']);
   const safeRole = role || 'user';
   if (!ALLOWED_ROLES.has(safeRole)) {
     throw new BadRequestError(`Invalid role '${role}'. Allowed roles: user, organizer`);
   }
 
-  if (!email) {
+  if (!providerEmail) {
     throw new BadRequestError('Social provider did not return an email address');
   }
 
-  let user = await authRepository.findUserByEmail(email);
+  let identity = await authRepository.findIdentityByProviderAndSubject(provider, providerSubject);
+  let user = null;
+
+  if (identity) {
+    user = await authRepository.findUserById(identity.user_id);
+  }
 
   if (!user) {
-    var profile = await userProfileRepository.findUserByEmail(email);
-    if (profile && profile.email && profile.email.trim() !== '') {
-      user = await provisionAuthUserFromProfile(profile, safeRole);
+    user = await authRepository.findUserByEmail(providerEmail);
+    if (user) {
+      // Account Takeover Prevention:
+      // Reject unverified social email attempting to claim an unverified existing account
+      if (!emailVerified && !user.email_verified) {
+        throw new UnauthorizedError('Unverified social email cannot claim existing account without verification.');
+      }
+      // Safe account linking
+      await authRepository.createAuthIdentity({
+        userId: user.id,
+        provider,
+        providerSubject,
+        providerEmail,
+      });
+
+      if (emailVerified && !user.email_verified) {
+        await authRepository.verifyUserEmailById(user.id);
+        await authRepository.verifyUserEmail(user.email);
+        user.email_verified = true;
+      }
+    } else {
+      const profile = await userProfileRepository.findUserByEmail(providerEmail);
+      if (profile && profile.email && profile.email.trim() !== '') {
+        user = await provisionAuthUserFromProfile(profile, safeRole);
+      }
     }
   }
 
   if (!user) {
-    const unusablePassword = `social:${email}:${Date.now()}:${crypto.randomBytes(32).toString('hex')}`;
+    const unusablePassword = `social:${provider}:${providerSubject}:${Date.now()}:${crypto.randomBytes(16).toString('hex')}`;
     const passwordHash = await backendAuthProvider.hashPassword(unusablePassword);
     const uid = await authRepository.createUser({
-      email,
-      name,
+      email: providerEmail,
+      name: name || '',
       passwordHash,
       roles: [safeRole],
+      emailVerified: emailVerified ?? true,
     });
     if (!uid) {
-      user = await authRepository.findUserByEmail(email);
+      user = await authRepository.findUserByEmail(providerEmail);
     } else {
       user = await authRepository.findUserById(uid);
+    }
+
+    if (user) {
+      await authRepository.createAuthIdentity({
+        userId: user.id,
+        provider,
+        providerSubject,
+        providerEmail,
+      });
     }
   }
 
@@ -207,110 +289,48 @@ async function socialLogin({ email, name, role, profilePicUrl }) {
 
   await ensureUserProfileForAuthUser({ id: user.id, email: user.email, name: user.name || name, roles });
 
-  if (profilePicUrl) {
+  if (picture) {
     try {
       const existingProfile = await userProfileRepository.getUserDataById(user.id);
       if (existingProfile && !existingProfile.profilePicUrl) {
-        await userProfileRepository.updateUserProfile(user.id, { profilePicUrl });
+        await userProfileRepository.updateUserProfile(user.id, { profilePicUrl: picture });
       }
     } catch (e) {
-      // Ignore profile pic update failures
+      // Ignore profile pic update error
     }
   }
 
   return {
     accessToken,
     refreshToken,
-    user: { id: user.id, email: user.email, name: user.name || name, roles },
+    user: { id: user.id, email: user.email, name: user.name || name || '', roles, emailVerified: user.email_verified ?? true },
   };
 }
 
 async function googleLogin({ idToken, role }) {
-  const bypass = process.env.AUTH_SOCIAL_DEV_BYPASS === 'true' && 
-                 process.env.NODE_ENV === 'development' && 
-                 idToken && 
-                 idToken.startsWith('mock_google_token_');
-  if (bypass) {
-    const email = idToken.replace('mock_google_token_', '') + '@example.com';
-    const name = 'Mock Google User';
-    return await socialLogin({ email, name, role, profilePicUrl: '' });
-  }
-
-  try {
-    const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-    if (response.status !== 200) {
-      throw new Error('Google token verification failed');
-    }
-    const payload = response.data;
-    const allowedGoogleClientIds = (process.env.GOOGLE_ALLOWED_CLIENT_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (allowedGoogleClientIds.length === 0) {
-      throw new Error('Google allowed client IDs not configured');
-    }
-    const aud = payload.aud;
-    if (!allowedGoogleClientIds.includes(aud)) {
-      throw new Error('Google token audience mismatch');
-    }
-    if (payload.email_verified !== true && payload.email_verified !== 'true') {
-      throw new Error('Google email is not verified');
-    }
-    const email = payload.email;
-    const name = payload.name || email.split('@')[0];
-    const profilePicUrl = payload.picture || '';
-    return await socialLogin({ email, name, role, profilePicUrl });
-  } catch (error) {
-    throw new UnauthorizedError(error.message || 'Invalid Google ID token');
-  }
+  const payload = await googleAuthProvider.verifyGoogleIdToken(idToken);
+  return handleSocialLogin({
+    provider: payload.provider,
+    providerSubject: payload.providerSubject,
+    providerEmail: payload.providerEmail,
+    emailVerified: payload.emailVerified,
+    name: payload.name,
+    picture: payload.picture,
+    role,
+  });
 }
 
 async function facebookLogin({ accessToken, role }) {
-  const bypass = process.env.AUTH_SOCIAL_DEV_BYPASS === 'true' && 
-                 process.env.NODE_ENV === 'development' && 
-                 accessToken && 
-                 accessToken.startsWith('mock_facebook_token_');
-  if (bypass) {
-    const email = accessToken.replace('mock_facebook_token_', '') + '@example.com';
-    const name = 'Mock Facebook User';
-    return await socialLogin({ email, name, role, profilePicUrl: '' });
-  }
-
-  try {
-    const appId = process.env.FACEBOOK_APP_ID;
-    const appSecret = process.env.FACEBOOK_APP_SECRET;
-    if (!appId || !appSecret) {
-      throw new Error('Facebook App ID or Secret not configured');
-    }
-
-    const debugResponse = await axios.get(
-      `https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
-    );
-    if (debugResponse.status !== 200 || !debugResponse.data?.data) {
-      throw new Error('Facebook token debugging failed');
-    }
-    const debugData = debugResponse.data.data;
-    if (!debugData.is_valid) {
-      throw new Error('Facebook token is invalid');
-    }
-    if (debugData.app_id !== appId) {
-      throw new Error('Facebook App ID mismatch');
-    }
-
-    const profileResponse = await axios.get(
-      `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${accessToken}`
-    );
-    if (profileResponse.status !== 200) {
-      throw new Error('Facebook profile fetch failed');
-    }
-    const payload = profileResponse.data;
-    const email = payload.email;
-    if (!email) {
-      throw new Error('Facebook profile did not return email');
-    }
-    const name = payload.name || email.split('@')[0];
-    const profilePicUrl = payload.picture?.data?.url || '';
-    return await socialLogin({ email, name, role, profilePicUrl });
-  } catch (error) {
-    throw new UnauthorizedError(error.message || 'Invalid Facebook access token');
-  }
+  const payload = await facebookAuthProvider.verifyFacebookAccessToken(accessToken);
+  return handleSocialLogin({
+    provider: payload.provider,
+    providerSubject: payload.providerSubject,
+    providerEmail: payload.providerEmail,
+    emailVerified: payload.emailVerified,
+    name: payload.name,
+    picture: payload.picture,
+    role,
+  });
 }
 
 async function requestPasswordReset(email) {
@@ -337,7 +357,7 @@ async function requestPasswordReset(email) {
         html: `<p>Use this token to reset your password: <strong>${token}</strong></p>`
       });
     } catch (e) {
-      console.error('Failed to send password reset email:', e.message);
+      logger.error(`Failed to send password reset email: ${e.message}`);
     }
   }
   return { message: 'If the email is registered, a password reset link has been sent.' };
@@ -366,20 +386,10 @@ async function confirmPasswordReset(token, newPassword) {
 async function requestEmailVerification(email) {
   const user = await authRepository.findUserByEmail(email);
   if (user) {
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + 86400000); // 24 hours
-    await authRepository.saveToken({ tokenHash, purpose: 'email_verification', email, expiresAt });
-    try {
-      await sendEmail({
-        to: email,
-        subject: 'Verify your email',
-        text: `Use this token to verify your email: ${token}`,
-        html: `<p>Use this token to verify your email: <strong>${token}</strong></p>`
-      });
-    } catch (e) {
-      console.error('Failed to send email verification:', e.message);
+    if (user.email_verified) {
+      return { message: 'Email is already verified.' };
     }
+    await createAndSendEmailVerification(email, user.id);
   }
   return { message: 'If the email is registered, a verification link has been sent.' };
 }
@@ -389,13 +399,11 @@ async function confirmEmailVerification(token) {
     throw new BadRequestError('Token is required');
   }
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-  const dbToken = await authRepository.findTokenByHash(tokenHash, 'email_verification');
-  if (!dbToken || dbToken.used_at || new Date() > new Date(dbToken.expires_at)) {
-    throw new BadRequestError('Invalid or expired token');
+  const record = await authRepository.consumeEmailVerification(tokenHash);
+  if (!record) {
+    throw new BadRequestError('Invalid or expired verification token');
   }
-  await authRepository.verifyUserEmail(dbToken.email);
-  await authRepository.markTokenUsed(dbToken.id);
-  return { success: true, message: 'Email has been verified successfully.' };
+  return { success: true, message: 'Email has been verified successfully.', email: record.email };
 }
 
 module.exports = {
@@ -410,4 +418,6 @@ module.exports = {
   confirmPasswordReset,
   requestEmailVerification,
   confirmEmailVerification,
+  createAndSendEmailVerification,
+  handleSocialLogin,
 };

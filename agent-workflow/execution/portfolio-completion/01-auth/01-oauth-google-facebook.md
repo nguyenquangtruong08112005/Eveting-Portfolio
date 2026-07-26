@@ -49,18 +49,22 @@ Provides social login for Vietnamese users on Web and Mobile platforms while mai
 - Dev bypass mode (`AUTH_SOCIAL_DEV_BYPASS=true`) restricted to local/test environments only.
 
 ## 11. Test / Build / Smoke Commands
-- Test commands will be selected from Phase 00 inventory — [Proposed Command].
+- Syntax and Provider Loader Verification: `npm run db:smoke:lazy-providers` and `node scripts/ci/check-js-syntax.js` (Verified locally).
+- Manual Provider Token Exchange: Live Google/Facebook provider exchange requires real provider tokens/credentials (`GOOGLE_ALLOWED_CLIENT_IDS`, `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`).
 
 ## 12. Acceptance Criteria
-- [ ] Valid Google ID Token exchanges for authenticated session via `auth_identities` table.
-- [ ] Social email matching existing verified account links identity safely.
-- [ ] Invalid/tampered social tokens rejected with HTTP 401.
+> [!NOTE]
+> Implementation is complete (`server/src/providers/auth/google.auth.provider.js`, `facebook.auth.provider.js`, `server/src/providers/database/postgres.auth.repository.js`, `server/db/migrations/061_create_auth_identities_and_email_verifications.sql`). Live Google/Facebook provider exchange remains a manual runtime validation requiring real external provider tokens and configuration.
+- [x] Backend database schema (`auth_identities`), repositories, and OAuth service endpoints implemented.
+- [ ] Valid Google ID Token exchanges for authenticated session via `auth_identities` table (Requires manual runtime validation with real Google credentials/tokens).
+- [ ] Social email matching existing verified account links identity safely (Requires manual runtime validation with real provider accounts).
+- [ ] Invalid/tampered social tokens rejected with HTTP 401 (Requires manual runtime validation with real provider tokens).
 
 ## 13. Rollback / Feature-Flag Strategy
 - Disable social login routes via `AUTH_SOCIAL_ENABLED=false` feature flag.
 
 ## 14. Required Artifacts / Handoff Report
-- Verification test logs and OAuth provider unit test suite — [Proposed Artifact].
+- Verification test logs (`npm run db:smoke:lazy-providers`) and `061_create_auth_identities_and_email_verifications.sql` migration.
 
 ## 15. Blocker Questions
-- See `OPEN_QUESTIONS.md` Q01 & Q02 regarding Google Client IDs and Facebook App credentials.
+- See `OPEN_QUESTIONS.md` Q01 & Q02 regarding Google Client IDs and Facebook App credentials (requires live provider app registration).

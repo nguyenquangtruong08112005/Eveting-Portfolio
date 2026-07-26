@@ -12,30 +12,8 @@ import { AuthService } from '@/features/auth/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 import { BrandMark } from '@/components/shared/BrandMark';
-import type { AuthResponse } from '@/types';
-
-function applyAuthSession(
-  data: AuthResponse,
-  login: (token: string, role: string, uid: string, refreshToken?: string) => void,
-  router: ReturnType<typeof useRouter>
-) {
-  const roles = data.user?.roles ?? [];
-  const role =
-    roles.find((r) => r === 'admin') ||
-    roles.find((r) => r === 'organizer') ||
-    roles[0] ||
-    'user';
-  const normalizedRole = role === 'user' ? 'attendee' : role;
-  login(data.accessToken, normalizedRole, data.user.id, data.refreshToken);
-  // Persist profile basics for checkout autofill
-  if (typeof window !== 'undefined') {
-    if (data.user?.email) localStorage.setItem('userEmail', data.user.email);
-    if (data.user?.name) localStorage.setItem('userName', data.user.name);
-  }
-  if (normalizedRole === 'admin') router.push('/admin/moderation');
-  else if (normalizedRole === 'organizer') router.push('/organizer/dashboard');
-  else router.push('/');
-}
+import { applyAuthSession } from './session';
+import { SocialAuthButtons } from './SocialAuthButtons';
 
 export function LoginForm() {
   const router = useRouter();
@@ -69,35 +47,6 @@ export function LoginForm() {
         }
       }
       setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /** Social login: uses env token providers when configured; otherwise shows setup hint. */
-  const handleSocial = async (provider: 'google' | 'facebook') => {
-    setError('');
-    setLoading(true);
-    try {
-      if (provider === 'google') {
-        const googleToken = (window as unknown as { __GOOGLE_ID_TOKEN__?: string }).__GOOGLE_ID_TOKEN__;
-        if (!googleToken) {
-          setError(t('social_not_configured'));
-          return;
-        }
-        const data = await AuthService.googleLogin(googleToken);
-        applyAuthSession(data, login, router);
-      } else {
-        const fbToken = (window as unknown as { __FACEBOOK_ACCESS_TOKEN__?: string }).__FACEBOOK_ACCESS_TOKEN__;
-        if (!fbToken) {
-          setError(t('social_not_configured'));
-          return;
-        }
-        const data = await AuthService.facebookLogin(fbToken);
-        applyAuthSession(data, login, router);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('login_error'));
     } finally {
       setLoading(false);
     }
@@ -199,26 +148,12 @@ export function LoginForm() {
             <p className="text-[10px] text-center text-[var(--text-muted)] uppercase tracking-wider font-bold">
               {t('or_continue_with')}
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={loading}
-                onClick={() => handleSocial('google')}
-                className="rounded-xl h-11 text-xs font-bold cursor-pointer"
-              >
-                Google
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={loading}
-                onClick={() => handleSocial('facebook')}
-                className="rounded-xl h-11 text-xs font-bold cursor-pointer"
-              >
-                Facebook
-              </Button>
-            </div>
+            <SocialAuthButtons
+              onSuccess={(data) => applyAuthSession(data, login, router)}
+              onError={(msg) => setError(msg)}
+              loading={loading}
+              setLoading={setLoading}
+            />
           </div>
 
           <div className="mt-6 pt-6 border-t border-[var(--surface-border)] text-center">

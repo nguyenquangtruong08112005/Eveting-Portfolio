@@ -106,17 +106,20 @@ const env = {
   ACCESS_TOKEN_EXPIRES_IN: '5m',
   REFRESH_TOKEN_EXPIRES_IN: '1d',
   DATABASE_PROVIDER: 'postgres',
+  AUTH_SOCIAL_DEV_BYPASS: 'true',
+  AUTH_MOCK_EMAIL: 'true',
+  NODE_ENV: 'test',
 };
 
 let serverProcess = null;
+let lastCapturedToken = null;
 
 // Helper function to wait
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function run() {
-  // 1. Start the server as a child process
-  console.log('Spawning application server...');
-  serverProcess = spawn('node', ['src/server.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const path = require('path');
+  serverProcess = spawn('node', ['src/server.js'], { cwd: path.resolve(__dirname, '../..'), env, stdio: ['ignore', 'pipe', 'pipe'] });
 
   let serverStarted = false;
   
@@ -126,6 +129,10 @@ async function run() {
     console.log(`[Server stdout] ${output.trim()}`);
     if (output.includes('Server address') || output.includes('localhost:')) {
       serverStarted = true;
+    }
+    const tokenMatch = output.match(/token=([a-f0-9]{64})/);
+    if (tokenMatch) {
+      lastCapturedToken = tokenMatch[1];
     }
   });
 
@@ -413,6 +420,197 @@ async function run() {
     }
   }
   console.log('[OK] Logout-all test passed.');
+
+  // 7.1. Route-based Transport Selection Verification (req.body.clientTransport IGNORED)
+  console.log('\nTesting: POST /auth/register with clientTransport in body (Must derive mobile transport from route prefix)');
+  const mobileLegacyEmail = `legacy_mobile_${Date.now()}@test.com`;
+  const mobileLegacyRes = await axios.post(`${BASE_URL}/auth/register`, {
+    email: mobileLegacyEmail,
+    password: 'Password123!',
+    name: 'Legacy Mobile User',
+    clientTransport: 'web', // Intentionally untrusted body property
+  });
+  if (mobileLegacyRes.status !== 201) {
+    throw new Error(`Expected 201 from legacy register, got ${mobileLegacyRes.status}`);
+  }
+  if (mobileLegacyRes.data.pendingVerification) {
+    throw new Error('Failure: /auth route accepted clientTransport from req.body instead of deriving mobile transport from route prefix');
+  }
+  if (!mobileLegacyRes.data.accessToken || !mobileLegacyRes.data.refreshToken) {
+    throw new Error('Failure: Legacy mobile transport did not issue session tokens');
+  }
+  console.log('[OK] Route-based transport selection test passed (untrusted body/header ignored).');
+
+  // 8. Web Transport Registration & Pending Verification
+  console.log('\nTesting: POST /api/web/auth/register (Web Transport Pending Verification)');
+  const webRegEmail = `web_pending_${Date.now()}@test.com`;
+  const webRegRes = await axios.post(`${BASE_URL}/api/web/auth/register`, {
+    email: webRegEmail,
+    password: 'Password123!',
+    name: 'Web Pending User',
+  });
+  if (webRegRes.status !== 201) {
+    throw new Error(`Expected 201 from web register, got ${webRegRes.status}`);
+  }
+  if (!webRegRes.data.pendingVerification) {
+    throw new Error('Expected pendingVerification: true for web registration.');
+  }
+  if (webRegRes.data.accessToken || webRegRes.data.refreshToken) {
+    throw new Error('Security violation: Issued tokens prior to email verification on web transport.');
+  }
+  console.log('[OK] Web transport pending verification test passed.');
+
+  // 9. Resend Verification & Verification Flow
+  console.log('\nTesting: POST /api/web/auth/resend-verification');
+  const resendRes = await axios.post(`${BASE_URL}/api/web/auth/resend-verification`, { email: webRegEmail });
+  if (resendRes.status !== 200) {
+    throw new Error(`Expected 200 from resend-verification, got ${resendRes.status}`);
+  }
+  console.log('[OK] Resend verification endpoint test passed.');
+
+  // Query DB directly to verify email_verifications record exists
+  const { Client } = require('pg');
+  const pgClient = new Client({ connectionString: DATABASE_URL });
+  await pgClient.connect();
+  const dbVerRes = await pgClient.query('SELECT token_hash FROM email_verifications WHERE email = $1 ORDER BY created_at DESC LIMIT 1', [webRegEmail]);
+  if (!dbVerRes.rows.length) {
+    await pgClient.end();
+    throw new Error('Email verification record not found in database');
+  }
+
+  if (!lastCapturedToken) {
+    await pgClient.end();
+    throw new Error('Raw verification token was not captured from mock email log');
+  }
+
+  // Consume verification token via API
+  console.log('\nTesting: POST /api/web/auth/verify-email (Token Consumption)');
+  const verifyRes = await axios.post(`${BASE_URL}/api/web/auth/verify-email`, { token: lastCapturedToken });
+  if (verifyRes.status !== 200 || !verifyRes.data.success) {
+    await pgClient.end();
+    throw new Error('Failed to verify email via API token consumption');
+  }
+  console.log('[OK] Email token verification test passed.');
+
+  // 9.1. Verify Atomic Single-Use Token Consumption (Re-consumption MUST fail)
+  console.log('\nTesting: Re-consuming already used email verification token (Atomic Single-Use Check)');
+  try {
+    await axios.post(`${BASE_URL}/api/web/auth/verify-email`, { token: lastCapturedToken });
+    await pgClient.end();
+    throw new Error('Failure: Token was consumed twice! Atomic single-use behavior broken.');
+  } catch (err) {
+    if (!err.response || err.response.status !== 400) {
+      await pgClient.end();
+      throw new Error(`Expected 400 when re-consuming used token, got ${err.response ? err.response.status : 'no response'}`);
+    }
+  }
+  console.log('[OK] Atomic single-use token consumption test passed.');
+
+  // 10. Safe GET Redirect on /verify-email
+  console.log('\nTesting: GET /api/web/auth/verify-email (Safe Redirect)');
+  try {
+    await axios.get(`${BASE_URL}/api/web/auth/verify-email?token=${lastCapturedToken}`, {
+      maxRedirects: 0,
+      headers: { Accept: 'text/html' }
+    });
+  } catch (err) {
+    if (err.response && [301, 302, 303, 307, 308].includes(err.response.status)) {
+      console.log('Redirect Location:', err.response.headers.location);
+      if (!err.response.headers.location || !err.response.headers.location.startsWith('http://localhost:3000/verify-email')) {
+        await pgClient.end();
+        throw new Error(`Invalid redirect location (open redirect vulnerability): ${err.response.headers.location}`);
+      }
+    } else {
+      await pgClient.end();
+      throw err;
+    }
+  }
+  console.log('[OK] Safe redirect on GET /verify-email test passed.');
+
+  // 10.1. Social Provider Invalid Tokens Map to 401
+  console.log('\nTesting: Social provider invalid tokens map to 401');
+  try {
+    await axios.post(`${BASE_URL}/api/web/auth/google`, { idToken: 'invalid_google_token_999' });
+    await pgClient.end();
+    throw new Error('Expected 401 for invalid Google token, but request succeeded');
+  } catch (err) {
+    if (!err.response || err.response.status !== 401) {
+      await pgClient.end();
+      throw new Error(`Expected 401 for invalid Google token, got ${err.response ? err.response.status : 'no response'}`);
+    }
+  }
+  try {
+    await axios.post(`${BASE_URL}/api/web/auth/facebook`, { accessToken: 'invalid_facebook_token_999' });
+    await pgClient.end();
+    throw new Error('Expected 401 for invalid Facebook token, but request succeeded');
+  } catch (err) {
+    if (!err.response || err.response.status !== 401) {
+      await pgClient.end();
+      throw new Error(`Expected 401 for invalid Facebook token, got ${err.response ? err.response.status : 'no response'}`);
+    }
+  }
+  console.log('[OK] Social provider invalid token 401 mapping test passed.');
+
+  // 11. Google OAuth Dev Bypass & Identity Storage
+  console.log('\nTesting: POST /api/web/auth/google (OAuth Dev Bypass & Identity Creation)');
+  const googleRes = await axios.post(`${BASE_URL}/api/web/auth/google`, {
+    idToken: 'mock_google_token_social_user_123',
+    role: 'user',
+  });
+  if (googleRes.status !== 200 || !googleRes.data.user) {
+    await pgClient.end();
+    throw new Error('Google social login failed');
+  }
+  if (googleRes.data.accessToken) {
+    await pgClient.end();
+    throw new Error('Security violation: accessToken returned in web social login JSON response body');
+  }
+  const googleUserId = googleRes.data.user.id;
+  const dbGoogleIdentity = await pgClient.query('SELECT * FROM auth_identities WHERE user_id = $1 AND provider = $2', [googleUserId, 'google']);
+  if (!dbGoogleIdentity.rows.length) {
+    await pgClient.end();
+    throw new Error('Expected auth_identities record for Google user');
+  }
+  console.log('[OK] Google OAuth dev bypass and identity storage test passed.');
+
+  // 12. Facebook OAuth Dev Bypass & Safe Account Linking
+  console.log('\nTesting: POST /api/web/auth/facebook (OAuth Dev Bypass & Account Linking)');
+  const facebookRes = await axios.post(`${BASE_URL}/api/web/auth/facebook`, {
+    accessToken: 'mock_facebook_token_social_user_123',
+    role: 'user',
+  });
+  if (facebookRes.status !== 200 || !facebookRes.data.user) {
+    await pgClient.end();
+    throw new Error('Facebook social login failed');
+  }
+  if (facebookRes.data.accessToken) {
+    await pgClient.end();
+    throw new Error('Security violation: accessToken returned in web social login JSON response body');
+  }
+  const facebookUserId = facebookRes.data.user.id;
+  if (facebookUserId !== googleUserId) {
+    await pgClient.end();
+    throw new Error(`Expected safe account linking to same user ID (${googleUserId}), but got ${facebookUserId}`);
+  }
+  const dbFacebookIdentity = await pgClient.query('SELECT * FROM auth_identities WHERE user_id = $1 AND provider = $2', [googleUserId, 'facebook']);
+  if (!dbFacebookIdentity.rows.length) {
+    await pgClient.end();
+    throw new Error('Expected auth_identities record for linked Facebook identity');
+  }
+  console.log('[OK] Safe account linking for social identities test passed.');
+
+  // 13. Canonical Route Aliases (/api/mobile/auth)
+  console.log('\nTesting: Canonical Route Alias POST /api/mobile/auth/google');
+  const mobileAliasRes = await axios.post(`${BASE_URL}/api/mobile/auth/google`, {
+    idToken: 'mock_google_token_mobile_alias_user',
+  });
+  if (mobileAliasRes.status !== 200 || !mobileAliasRes.data.accessToken) {
+    await pgClient.end();
+    throw new Error('Failed to authenticate via /api/mobile/auth/google alias');
+  }
+  console.log('[OK] Canonical route alias /api/mobile/auth/google test passed.');
+
+  await pgClient.end();
 
   console.log('\n--- All Auth Smoke Tests Passed Successfully! ---');
 }

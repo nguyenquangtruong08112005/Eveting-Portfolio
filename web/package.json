@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --experimental-strip-types src/lib/safe-redirect.test.ts"
+    "test:unit": "node --experimental-strip-types src/lib/safe-redirect.test.ts && node --experimental-strip-types src/features/auth/social-auth.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

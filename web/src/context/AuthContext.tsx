@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import type { AuthState, AuthContextType } from '@/types/auth';
+import { request } from '@/services/apiClient';
 
 export type { AuthState, AuthContextType };
 
@@ -17,27 +18,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    const uid = localStorage.getItem('uid');
-    setState({
-      token,
-      role,
-      uid,
-      isAuthenticated: !!token,
-      isLoading: false,
-    });
+    let isMounted = true;
+    (async () => {
+      try {
+        const user = await request<{ id: string; roles?: string[] }>('GET', '/api/web/users/me', {
+          allowAnonymous: true,
+        });
+        if (isMounted && user && user.id) {
+          const role = user.roles?.[0] || 'user';
+          localStorage.setItem('role', role);
+          localStorage.setItem('uid', user.id);
+          setState({
+            token: null,
+            role,
+            uid: user.id,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return;
+        }
+      } catch {
+        /* Not logged in or cookie expired */
+      }
+      if (isMounted) {
+        localStorage.removeItem('role');
+        localStorage.removeItem('uid');
+        setState({
+          token: null,
+          role: null,
+          uid: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const login = useCallback((token: string, role: string, uid: string, refreshToken?: string) => {
-    localStorage.setItem('token', token);
+  const login = useCallback((_token: string, role: string, uid: string, _refreshToken?: string) => {
     localStorage.setItem('role', role);
     localStorage.setItem('uid', uid);
-    if (refreshToken) {
-      localStorage.setItem('refreshToken', refreshToken);
-    }
     setState({
-      token,
+      token: null,
       role,
       uid,
       isAuthenticated: true,
@@ -45,11 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
+  const logout = useCallback(async () => {
+    try {
+      await request('POST', '/api/web/auth/logout');
+    } catch {
+      /* ignore */
+    }
     localStorage.removeItem('role');
     localStorage.removeItem('uid');
-    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
     setState({
@@ -67,4 +95,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-

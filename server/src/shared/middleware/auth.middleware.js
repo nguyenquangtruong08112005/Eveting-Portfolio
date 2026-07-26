@@ -1,6 +1,7 @@
 const config = require('@/shared/config/env.config');
 const authProvider = require('@/providers/auth');
 const userRepository = require('@/providers/database/user.repository');
+const authRepository = require('@/providers/database/postgres.auth.repository');
 const { userHasRole, sendLegacyError } = require('@/shared/middleware/authz.middleware');
 const { UnauthorizedError, ForbiddenError } = require('@/shared/errors');
 
@@ -18,13 +19,22 @@ const attachRequestUser = async (req, decodedToken) => {
   };
 };
 
+const extractToken = (req) => {
+  const authHeader = req.headers ? req.headers.authorization : null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split('Bearer ')[1];
+  }
+  if (req.cookies && (req.cookies.accessToken || req.cookies.access_token)) {
+    return req.cookies.accessToken || req.cookies.access_token;
+  }
+  return null;
+};
+
 const verifyAuthToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const idToken = extractToken(req);
+  if (!idToken) {
     return res.status(401).send({ error: 'Unauthorized: No token provided or malformed header.' });
   }
-
-  const idToken = authHeader.split('Bearer ')[1];
 
   try {
     const decodedToken = await authProvider.verifyToken(idToken);
@@ -44,14 +54,11 @@ const verifyAuthToken = async (req, res, next) => {
 };
 
 const optionalAuthToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
   req.user = null;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const idToken = extractToken(req);
+  if (!idToken) {
     return next();
   }
-
-  const idToken = authHeader.split('Bearer ')[1];
 
   try {
     const decodedToken = await authProvider.verifyToken(idToken);
@@ -79,8 +86,40 @@ const isOrganizer = (req, res, next) => {
   next();
 };
 
+const requireVerifiedEmail = async (req, res, next) => {
+  if (!req.user) {
+    return sendLegacyError(res, new UnauthorizedError(), 'Unauthorized: No authenticated user.');
+  }
+
+  const userId = req.user.uid || req.user.id;
+  let isVerified = req.user.emailVerified ?? req.user.email_verified;
+
+  if (isVerified !== true && userId) {
+    try {
+      const user = await authRepository.findUserById(userId);
+      isVerified = user?.email_verified ?? false;
+    } catch (e) {
+      isVerified = false;
+    }
+  }
+
+  if (!isVerified) {
+    return res.status(403).json({
+      error: 'Forbidden: Email verification required.',
+      code: 'EMAIL_VERIFICATION_REQUIRED'
+    });
+  }
+
+  next();
+};
+
+const { requireRole, requireOwnership } = require('@/shared/middleware/authz.middleware');
+
 module.exports = {
   verifyAuthToken,
   optionalAuthToken,
-  isOrganizer
+  isOrganizer,
+  requireRole,
+  requireOwnership,
+  requireVerifiedEmail,
 };

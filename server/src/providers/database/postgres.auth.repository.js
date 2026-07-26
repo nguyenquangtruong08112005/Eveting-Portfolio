@@ -21,14 +21,14 @@ function mapAuthUser(row) {
   };
 }
 
-async function createUser({ id, email, name, passwordHash, roles }) {
+async function createUser({ id, email, name, passwordHash, roles, emailVerified = false }) {
   const userId = id || crypto.randomUUID();
   const result = await query(
-    `INSERT INTO auth_users (id, email, password_hash, roles)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO auth_users (id, email, password_hash, roles, email_verified)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (email) DO NOTHING
      RETURNING id`,
-    [userId, email, passwordHash, roles || ['user']]
+    [userId, email, passwordHash, roles || ['user'], emailVerified]
   );
   if (result.rows.length === 0) {
     return null;
@@ -215,6 +215,119 @@ async function updateUserProfileFields(userId, { name, profilePicUrl, bio } = {}
   );
 }
 
+async function findIdentityByProviderAndSubject(provider, providerSubject) {
+  const result = await query(
+    `SELECT id, user_id, provider, provider_subject, provider_email, created_at
+     FROM auth_identities
+     WHERE provider = $1 AND provider_subject = $2`,
+    [provider, providerSubject]
+  );
+  return result.rows.length ? result.rows[0] : null;
+}
+
+async function findIdentitiesByUserId(userId) {
+  const result = await query(
+    `SELECT id, user_id, provider, provider_subject, provider_email, created_at
+     FROM auth_identities
+     WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows;
+}
+
+async function createAuthIdentity({ id, userId, provider, providerSubject, providerEmail }) {
+  const identityId = id || crypto.randomUUID();
+  const result = await query(
+    `INSERT INTO auth_identities (id, user_id, provider, provider_subject, provider_email, created_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())
+     ON CONFLICT (provider, provider_subject) DO NOTHING
+     RETURNING id`,
+    [identityId, userId, provider, providerSubject, providerEmail]
+  );
+  return result.rows.length ? result.rows[0].id : null;
+}
+
+async function saveEmailVerification({ id, tokenHash, userId, email, expiresAt }) {
+  const verificationId = id || crypto.randomUUID();
+  await query(
+    `INSERT INTO email_verifications (id, token_hash, user_id, email, expires_at, created_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())`,
+    [verificationId, tokenHash, userId, email, expiresAt]
+  );
+  return verificationId;
+}
+
+async function findEmailVerificationByHash(tokenHash) {
+  const result = await query(
+    `SELECT id, token_hash, user_id, email, expires_at, created_at, consumed_at
+     FROM email_verifications
+     WHERE token_hash = $1`,
+    [tokenHash]
+  );
+  if (result.rows.length) return result.rows[0];
+  const legacy = await findTokenByHash(tokenHash, 'email_verification');
+  if (legacy) {
+    return {
+      id: legacy.id,
+      token_hash: legacy.token_hash,
+      user_id: legacy.user_id,
+      email: legacy.email,
+      expires_at: legacy.expires_at,
+      created_at: legacy.created_at,
+      consumed_at: legacy.used_at,
+    };
+  }
+  return null;
+}
+
+async function consumeEmailVerification(tokenHash) {
+  const existing = await query(
+    `SELECT id FROM email_verifications WHERE token_hash = $1`,
+    [tokenHash]
+  );
+  if (existing.rows.length > 0) {
+    const result = await query(
+      `UPDATE email_verifications
+       SET consumed_at = NOW()
+       WHERE token_hash = $1 AND consumed_at IS NULL AND expires_at > NOW()
+       RETURNING id, user_id, email`,
+      [tokenHash]
+    );
+    if (result.rows.length) {
+      const record = result.rows[0];
+      await verifyUserEmail(record.email);
+      if (record.user_id) {
+        await verifyUserEmailById(record.user_id);
+      }
+      return record;
+    }
+    return null;
+  }
+  const legacyResult = await query(
+    `UPDATE auth_tokens
+     SET used_at = NOW()
+     WHERE token_hash = $1 AND purpose = 'email_verification' AND used_at IS NULL AND expires_at > NOW()
+     RETURNING id, user_id, email`,
+    [tokenHash]
+  );
+  if (legacyResult.rows.length) {
+    const record = legacyResult.rows[0];
+    await verifyUserEmail(record.email);
+    if (record.user_id) {
+      await verifyUserEmailById(record.user_id);
+    }
+    return record;
+  }
+  return null;
+}
+
+async function verifyUserEmailById(userId) {
+  await query(
+    'UPDATE auth_users SET email_verified = true, updated_at = NOW() WHERE id = $1',
+    [userId]
+  );
+}
+
 module.exports = {
   createUser,
   findUserByEmail,
@@ -231,6 +344,13 @@ module.exports = {
   findTokenByHash,
   markTokenUsed,
   verifyUserEmail,
+  verifyUserEmailById,
   updateUserProfileFields,
+  findIdentityByProviderAndSubject,
+  findIdentitiesByUserId,
+  createAuthIdentity,
+  saveEmailVerification,
+  findEmailVerificationByHash,
+  consumeEmailVerification,
   now,
 };

@@ -66,10 +66,26 @@ export class AuthService {
     );
   }
 
+  static async resendVerification(email: string): Promise<{ message: string }> {
+    return request<{ message: string }>(
+      "POST",
+      "/api/web/auth/resend-verification",
+      { body: { email } },
+    );
+  }
+
   static async confirmEmailVerify(token: string): Promise<{ message: string }> {
     return request<{ message: string }>(
       "POST",
       "/api/web/auth/email-verification/confirm",
+      { body: { token } },
+    );
+  }
+
+  static async verifyEmail(token: string): Promise<{ message: string }> {
+    return request<{ message: string }>(
+      "POST",
+      "/api/web/auth/verify-email",
       { body: { token } },
     );
   }

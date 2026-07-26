@@ -14,41 +14,37 @@ export class HttpError extends Error {
   }
 }
 
-// ─── Token refresh mutex ─────────────────────────────────────────────────────
-let refreshPromise: Promise<string> | null = null;
+function getCsrfTokenFromCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
-async function refreshAccessToken(): Promise<string> {
+// ─── Token refresh mutex ─────────────────────────────────────────────────────
+let refreshPromise: Promise<void> | null = null;
+
+async function refreshAccessToken(): Promise<void> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) throw new Error('No refresh token');
-
     const res = await fetch(`${API_BASE}/api/web/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
 
     if (!res.ok) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('role');
-      localStorage.removeItem('uid');
-      window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('role');
+        localStorage.removeItem('uid');
+        window.location.href = '/login';
+      }
       throw new Error('Refresh failed');
     }
-
-    const data = await res.json();
-    localStorage.setItem('token', data.accessToken);
-    if (data.refreshToken) {
-      localStorage.setItem('refreshToken', data.refreshToken);
-    }
-    return data.accessToken;
   })();
 
   try {
-    return await refreshPromise;
+    await refreshPromise;
   } finally {
     refreshPromise = null;
   }
@@ -64,7 +60,7 @@ const responseCache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<unknown>>();
 
 function cacheKey(method: string, path: string, options: RequestOptions): string {
-  return `${method}:${path}:${JSON.stringify(options.body ?? null)}:${options.headers?.Authorization ?? ''}`;
+  return `${method}:${path}:${JSON.stringify(options.body ?? null)}`;
 }
 
 export function invalidateApiCache(pathPrefix?: string): void {
@@ -88,7 +84,7 @@ async function fetchWithRetry(
 ): Promise<Response> {
   let lastRes: Response | null = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(url, init);
+    const res = await fetch(url, { ...init, credentials: 'include' });
     lastRes = res;
     if (res.status !== 429) return res;
 
@@ -112,9 +108,11 @@ export async function request<T>(
     ...options.headers,
   };
 
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (method !== 'GET') {
+    const csrfToken = getCsrfTokenFromCookie();
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
   }
 
   const url = `${API_BASE}${path}`;
@@ -136,21 +134,27 @@ export async function request<T>(
         method,
         headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
+        credentials: 'include',
       });
 
       if (
         res.status === 401 &&
+        !options.allowAnonymous &&
         path !== '/api/web/auth/refresh' &&
         path !== '/api/web/auth/login' &&
         typeof window !== 'undefined'
       ) {
         try {
-          const newToken = await refreshAccessToken();
-          headers['Authorization'] = `Bearer ${newToken}`;
+          await refreshAccessToken();
+          const csrfToken = getCsrfTokenFromCookie();
+          if (csrfToken && method !== 'GET') {
+            headers['X-CSRF-Token'] = csrfToken;
+          }
           res = await fetchWithRetry(url, {
             method,
             headers,
             body: options.body ? JSON.stringify(options.body) : undefined,
+            credentials: 'include',
           });
         } catch {
           /* redirect handled in refresh */
@@ -230,10 +234,6 @@ export async function requestCached<T>(
   }
 
   const headers: Record<string, string> = { ...options.headers };
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  }
   const key = cacheKey(method, path, { ...options, headers });
   const hit = responseCache.get(key);
   if (hit && hit.expiry > Date.now()) {

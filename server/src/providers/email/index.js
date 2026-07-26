@@ -4,7 +4,9 @@ const logger = require('@/shared/logger');
 let cachedTransporter = null;
 
 function isMockMode() {
-  return process.env.AUTH_MOCK_EMAIL === 'true';
+  if (process.env.AUTH_MOCK_EMAIL === 'true') return true;
+  if (process.env.NODE_ENV === 'test' && process.env.AUTH_MOCK_EMAIL !== 'false') return true;
+  return false;
 }
 
 function validateSmtpConfig() {
@@ -65,7 +67,12 @@ async function sendEmail({ to, subject, text, html, from }) {
   const sender = from || process.env.EMAIL_FROM || 'Eventing <noreply@eventing.moteo.fun>';
 
   if (isMockMode()) {
-    logger.info(`[Email Provider (Mock)] Sent email to ${to} | Subject: "${subject || ''}"`);
+    const isAllowedEnv = ['local', 'development', 'test'].includes(process.env.NODE_ENV);
+    if (isAllowedEnv) {
+      logger.info(`[Email Provider (Mock)] Sent email to ${to} | Subject: "${subject || ''}" | Text: "${text || ''}"`);
+    } else {
+      logger.info(`[Email Provider (Mock)] Sent email to ${to} | Subject: "${subject || ''}"`);
+    }
     return { success: true, messageId: `mock-${Date.now()}`, mock: true };
   }
 
