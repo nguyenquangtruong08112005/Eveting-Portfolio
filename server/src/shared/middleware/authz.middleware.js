@@ -1,10 +1,21 @@
 const rbacRepository = require('@/providers/database/rbac.repository');
-const { UnauthorizedError, ForbiddenError, InternalServerError } = require('@/shared/errors');
+const eventRepository = require('@/providers/database/event.repository');
+const orderRepository = require('@/providers/database/order.repository');
+const ticketRepository = require('@/providers/database/ticket.repository');
+const venueRepository = require('@/providers/database/venue.repository');
+const { BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, InternalServerError } = require('@/shared/errors');
 const logger = require('@/shared/logger');
+
+const REPOSITORY_LOADERS = Object.freeze({
+  event: async (id) => eventRepository.getEventById(id),
+  order: async (id) => orderRepository.getOrderById(id),
+  ticket: async (id) => ticketRepository.getTicketById(id),
+  venue: async (id) => venueRepository.getVenueById(id),
+});
 
 function userHasRole(req, role) {
   if (!req.user) return false;
-  const userRoles = req.user.roles || [];
+  const userRoles = req.user.roles || (Array.isArray(req.user.role) ? req.user.role : [req.user.role]).filter(Boolean);
   return userRoles.includes(role);
 }
 
@@ -13,17 +24,95 @@ function sendLegacyError(res, appError, legacyMessage) {
 }
 
 function requireRole(...allowedRoles) {
+  const roles = allowedRoles.flat(Infinity);
   return function(req, res, next) {
     if (!req.user) {
+      logger.warn('Unauthorized access attempt: No user context', {
+        path: req.originalUrl || req.url,
+        method: req.method,
+      });
       return sendLegacyError(res, new UnauthorizedError(), 'Unauthorized: No authenticated user.');
     }
-    const hasRole = allowedRoles.some(function(role) {
+    const hasRole = roles.some(function(role) {
       return userHasRole(req, role);
     });
     if (!hasRole) {
-      return sendLegacyError(res, new ForbiddenError(), 'Forbidden: Requires one of roles: ' + allowedRoles.join(', '));
+      logger.warn('Forbidden access attempt: Insufficient roles', {
+        userId: req.user.uid || req.user.id || req.user.user_id,
+        userRoles: req.user.roles || req.user.role,
+        requiredRoles: roles,
+        path: req.originalUrl || req.url,
+        method: req.method,
+      });
+      return sendLegacyError(res, new ForbiddenError(), 'Forbidden: Requires one of roles: ' + roles.join(', '));
     }
     next();
+  };
+}
+
+function requireOwnership(resourceType, idParam = 'id', options = {}) {
+  const normalizedType = String(resourceType).toLowerCase();
+  const loader = REPOSITORY_LOADERS[normalizedType];
+  if (!loader) {
+    throw new Error(`[requireOwnership] Unsupported resource type '${resourceType}'. Allowed: Event, Order, Ticket, Venue.`);
+  }
+
+  return async function(req, res, next) {
+    if (!req.user) {
+      logger.warn(`Unauthorized ownership check attempt for ${resourceType}: No user context`);
+      return sendLegacyError(res, new UnauthorizedError(), 'Unauthorized: No authenticated user.');
+    }
+
+    const userId = req.user.uid || req.user.id || req.user.user_id;
+
+    // Explicit and minimal Admin bypass policy
+    const allowAdminBypass = options.allowAdminBypass !== false;
+    if (allowAdminBypass && userHasRole(req, 'admin')) {
+      return next();
+    }
+
+    const resourceId = req.params[idParam] || req.body[idParam] || req.query[idParam];
+    if (!resourceId) {
+      logger.warn(`Bad Request: Missing parameter '${idParam}' for ${resourceType} ownership check`);
+      return sendLegacyError(res, new BadRequestError(), `Bad Request: Missing resource identifier parameter '${idParam}'.`);
+    }
+
+    try {
+      const resource = await loader(resourceId);
+      if (!resource) {
+        return sendLegacyError(res, new NotFoundError(), `${resourceType} not found.`);
+      }
+
+      // Direct owner check
+      const ownerId = resource.organizerId || resource.organizer_id || resource.userId || resource.user_id;
+      let hasOwnership = ownerId && (String(ownerId) === String(userId));
+
+      // For Ticket or Order: if user is organizer of the event associated with ticket/order
+      if (!hasOwnership && resource.eventId) {
+        try {
+          const event = await eventRepository.getEventById(resource.eventId);
+          if (event && (String(event.organizerId || event.organizer_id) === String(userId))) {
+            hasOwnership = true;
+          }
+        } catch (_) {}
+      }
+
+      if (!hasOwnership) {
+        logger.warn(`Forbidden: User ${userId} does not own ${resourceType} ${resourceId}`, {
+          userId,
+          resourceType,
+          resourceId,
+          ownerId,
+        });
+        return sendLegacyError(res, new ForbiddenError(), `Forbidden: You do not have ownership permission for this ${resourceType.toLowerCase()}.`);
+      }
+
+      req.targetResource = resource;
+      next();
+    } catch (err) {
+      logger.error(`[requireOwnership] Error checking ${resourceType} ${resourceId}: ${err.message}`);
+      return sendLegacyError(res, new InternalServerError(), `Internal Error verifying ownership for ${resourceType}.`);
+    }
   };
 }
 
@@ -138,6 +227,7 @@ module.exports = {
   userHasRole,
   sendLegacyError,
   requireRole,
+  requireOwnership,
   requirePermission,
   requireOrganizationRole,
   auditLog,

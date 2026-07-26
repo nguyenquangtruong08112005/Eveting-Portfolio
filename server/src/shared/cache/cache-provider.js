@@ -122,9 +122,20 @@ async function del(key) {
   await fallbackCache.del(key);
 }
 
+function isRedisAvailable() {
+  return Boolean(isRedisConnected && redisClient);
+}
+
+function getRedisClient() {
+  if (isRedisAvailable()) return redisClient;
+  return null;
+}
+
 module.exports = {
   get,
   set,
   del,
-  MemoryCache
+  MemoryCache,
+  isRedisAvailable,
+  getRedisClient,
 };

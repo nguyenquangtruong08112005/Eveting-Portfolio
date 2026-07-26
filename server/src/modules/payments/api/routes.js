@@ -3,18 +3,20 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const paymentController = require('@/modules/payments/api/controller');
-const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
+const { verifyAuthToken, requireVerifiedEmail } = require('@/shared/middleware/auth.middleware');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 const { bookingLimiter, webhookLimiter } = require('@/shared/middleware/rateLimit.middleware');
-const { auditLog } = require('@/shared/middleware/authz.middleware');
+const { auditLog, requireOwnership } = require('@/shared/middleware/authz.middleware');
 
 router.post(
     '/create-order',
     verifyAuthToken,
+    requireVerifiedEmail,
     bookingLimiter,
     auditLog('payment:create-order', 'ticket', 'ticketId'),
     body('ticketId').notEmpty().withMessage('ticketId is required'),
     validateRequest,
+    requireOwnership('Ticket', 'ticketId'),
     paymentController.createPaymentOrder
 );
 
@@ -37,6 +39,7 @@ router.post(
     auditLog('payment:check-status', 'ticket', 'ticketId'),
     body('ticketId').notEmpty().withMessage('ticketId is required'),
     validateRequest,
+    requireOwnership('Ticket', 'ticketId'),
     paymentController.manualCheckPaymentStatus
 );
 

@@ -47,15 +47,31 @@ Prevents Broken Object Level Authorization (BOLA / IDOR) and privilege escalatio
 - Test commands will be selected from `server/package.json` inventoried in Phase 00.
 
 ## 12. Acceptance Criteria
-- [ ] Organizer A attempting to update Organizer B's event receives HTTP 403.
-- [ ] Attendee attempting to access Admin endpoint receives HTTP 403.
-- [ ] Invalid payload parameters rejected with HTTP 400 `express-validator` error payload.
+- [x] Organizer A attempting to update Organizer B's event receives HTTP 403. (Verified in `npm run db:smoke:rbac-ownership`)
+- [x] Attendee attempting to access Admin endpoint receives HTTP 403. (Verified in `npm run db:smoke:rbac-ownership`)
+- [x] Invalid payload parameters rejected with HTTP 400 `express-validator` error payload. (Verified in `npm run db:smoke:rbac-ownership`)
 
 ## 13. Rollback / Feature-Flag Strategy
 - Revert middleware changes via Git commit if valid request flows are blocked.
 
 ## 14. Required Artifacts / Handoff Report
-- Authorization test execution matrix.
+### Authorization Test Execution Matrix
+
+| Test ID | Boundary Check / Scenario | Expected Result | Execution Evidence / Verification | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **AUTHZ-01** | `requireRole` single role (`admin`) vs attendee | HTTP 403 Forbidden | `npm run db:smoke:rbac-ownership` (Test 1) | **PASSED** |
+| **AUTHZ-02** | `requireRole` multi-role (`admin`, `organizer`) vs organizer | HTTP 200 / Next() | `npm run db:smoke:rbac-ownership` (Test 1) | **PASSED** |
+| **AUTHZ-03** | Attendee accessing `/admin` endpoints | HTTP 403 Forbidden | `npm run db:smoke:rbac-ownership` (Test 2) | **PASSED** |
+| **AUTHZ-04** | Unauthenticated user accessing protected route | HTTP 401 Unauthorized | `npm run db:smoke:rbac-ownership` (Test 3) | **PASSED** |
+| **AUTHZ-05** | Organizer A attempting to mutate Organizer B Event | HTTP 403 Forbidden | `npm run db:smoke:rbac-ownership` (Test 4) | **PASSED** |
+| **AUTHZ-06** | Organizer B mutating their own Event | HTTP 200 / Next() | `npm run db:smoke:rbac-ownership` (Test 4) | **PASSED** |
+| **AUTHZ-07** | Admin bypass policy on Event ownership | Next() (Allowed) | `npm run db:smoke:rbac-ownership` (Test 4) | **PASSED** |
+| **AUTHZ-08** | Non-owner attempting to mutate Venue | HTTP 403 Forbidden | `npm run db:smoke:rbac-ownership` (Test 5) | **PASSED** |
+| **AUTHZ-09** | Non-owner attempting to view/access Ticket details | HTTP 403 Forbidden | `npm run db:smoke:rbac-ownership` (Test 5) | **PASSED** |
+| **AUTHZ-10** | Non-owner attempting to access Order details | HTTP 403 Forbidden | `npm run db:smoke:rbac-ownership` (Test 5) | **PASSED** |
+| **AUTHZ-11** | `express-validator` invalid request payload | HTTP 400 Bad Request | `npm run db:smoke:rbac-ownership` (Test 6) | **PASSED** |
+| **AUTHZ-12** | PostgreSQL SQL query parameterization audit | 0 unsafe interpolations | `npm run db:audit:sql-params` (89 queries scanned) | **PASSED** |
 
 ## 15. Blocker Questions
 - Are platform Admins permitted to edit organizer events directly, or view only?
+  - *Resolved:* Admins have explicit, minimal bypass capability on `requireOwnership` by default.

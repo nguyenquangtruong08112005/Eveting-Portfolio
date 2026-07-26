@@ -1,60 +1,191 @@
-# Task 02-T3: Mobile Attestation & App Integrity Design
+# Task 02-T3: Mobile Attestation & App Integrity Architecture Specification
 
-## 1. Goal
-Design and document the Google Play Integrity API verification architecture for the Android Attendee and Organizer mobile applications.
+## 1. Executive Summary
+This document specifies the Google Play Integrity API verification architecture for the **Eventing Android Attendee** and **Organizer** mobile applications. It establishes a cryptographically backed security boundary ensuring all high-value backend requests originate from legitimate, un-tampered APK binaries installed via official distribution channels.
 
-## 2. Why
-Ensures backend API requests originate from legitimate, un-tampered Android app binaries installed via official distribution channels, preventing API abuse by unauthorized automated scripts or modified APKs.
+---
 
-## 3. Dependencies
-- Task `02-T2` (Rate Limiting, CORS & WAF).
+## 2. Sequence Diagram & Token Flow
 
-## 4. Preconditions
-- Mobile architecture specs established in `mobile-attendee/` and `mobile-organizer/`.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Android App User
+    participant App as Android Client (Attendee/Organizer)
+    participant API as Backend Server (/auth/mobile)
+    participant Redis as Redis Cache (5-min TTL)
+    participant Google as Google Play Integrity API
 
-## 5. In-Scope / Out-of-Scope
-- **In-Scope:**
-  - Architecture blueprint for Google Play Integrity token generation on Android client.
-  - Server-side verification handler design (`POST /auth/mobile/attest`) using Google API client libraries.
-  - Nonce generation strategy to prevent token replay attacks.
-  - Graceful degradation policy for development/testing builds vs production builds.
-- **Out-of-Scope:**
-  - Purchasing Google Play Console developer account or embedding live Play Integrity secrets during initial portfolio baseline.
+    User->>App: Action requiring security attestation
+    App->>API: GET /auth/mobile/nonce
+    API->>Redis: SET attestation:nonce:<nonce> (TTL 300s)
+    API-->>App: { "nonce": "<32-byte-hex>", "expiresAt": "..." }
 
-## 6. Likely Source Modules / Files
-- `server/src/providers/mobile/` — [Discovery Target: Mobile attestation verification service]
-- `mobile-attendee/app/src/main/` — [Discovery Target: Android Play Integrity client manager]
-- `mobile-organizer/app/src/main/` — [Discovery Target: Android Play Integrity client manager]
+    App->>Google: requestIntegrityToken(nonce)
+    Google-->>App: integrityToken (JWE/JWT string)
 
-## 7. Contracts / Behavior to Preserve
-- `X-App-Integrity-Token` request header contract.
+    App->>API: POST /auth/mobile/attest { nonce, integrityToken }
+    API->>Redis: GET & DEL attestation:nonce:<nonce> (Atomic Use-Once)
 
-## 8. Ordered Implementation Steps
-1. Document Play Integrity token flow sequence (Client $\rightarrow$ Server Nonce $\rightarrow$ Client Play Integrity API $\rightarrow$ Server Verification).
-2. Design `MobileAttestationProvider` in `server/src/providers/mobile/playIntegrity.js`.
-3. Specify Android client implementation using `com.google.android.play:integrity` library.
-4. Define verification response caching in Redis (nonces expire in 5 minutes).
-5. Document mock verification mode for emulator / local development builds (`MOBILE_ATTESTATION_MOCK=true`).
+    alt Nonce Invalid or Expired
+        API-->>App: 400 Bad Request { "code": "INVALID_NONCE" }
+    else Nonce Valid
+        alt Mock Mode (MOBILE_ATTESTATION_MOCK=true)
+            API-->>App: 200 OK { "attested": true, "mock": true }
+        else Production Mode (MOBILE_ATTESTATION_ENFORCE=true)
+            API->>Google: decodeIntegrityToken(packageName, integrityToken)
+            Google-->>API: IntegrityVerdict (appLicensing, deviceRecognition, appIntegrity)
+            alt Verdict Valid (LICENSED & MEETS_DEVICE_INTEGRITY)
+                API-->>App: 200 OK { "attested": true }
+            else Verdict Rejected
+                API-->>App: 403 Forbidden { "code": "UNTRUSTED_DEVICE" }
+            end
+        end
+    end
 
-## 9. Database / Migration Needs
-- None.
+    Note over App,API: Subsequent requests include X-App-Integrity-Token header
+```
 
-## 10. Security Requirements
-- Cryptographic verification of Play Integrity token signatures.
-- Rejection of payloads failing `appLicensingVerdict` or `deviceRecognitionVerdict` in production enforcement mode.
+---
 
-## 11. Test / Build / Smoke Commands
-- `npm run test:unit` (in `server/`)
+## 3. Core Specification Parameters
 
-## 12. Acceptance Criteria
-- [ ] Comprehensive Play Integrity Architecture Specification document completed.
-- [ ] Server verification handler interface designed with mock dev bypass support.
+### A. Cryptographic Nonce & Storage Lifecycle
+- **Entropy:** 32-byte random hex string generated via `crypto.randomBytes(32).toString('hex')`.
+- **Redis Storage Key:** `attestation:nonce:<nonce>`
+- **TTL:** 300 seconds (5 minutes).
+- **Single-Use Enforcement:** The server atomically fetches and deletes (`GET` + `DEL`) the nonce from Redis upon the first verification attempt to strictly prevent replay attacks.
 
-## 13. Rollback / Feature-Flag Strategy
-- Feature flag `MOBILE_ATTESTATION_ENFORCE=false` allows disabling hard enforcement during initial beta or staging testing.
+### B. HTTP Request Headers
+- **Header Key:** `X-App-Integrity-Token`
+- **Allowed Header in CORS:** Included in `Access-Control-Allow-Headers`.
 
-## 14. Required Artifacts / Handoff Report
-- `MOBILE_ATTESTATION_DESIGN.md` specification file.
+### C. API Interface Definitions
 
-## 15. Blocker Questions
-- Will iOS app support (App Attest / DeviceCheck) be required in a future phase?
+#### 1. Nonce Request Endpoint
+- **HTTP Method:** `GET`
+- **Route:** `/auth/mobile/nonce` (and alias `/api/mobile/auth/nonce`)
+- **Response (200 OK):**
+```json
+{
+  "nonce": "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
+  "expiresAt": "2026-07-25T20:45:00.000Z"
+}
+```
+
+#### 2. Attestation Verification Endpoint
+- **HTTP Method:** `POST`
+- **Route:** `/auth/mobile/attest` (and alias `/api/mobile/auth/attest`)
+- **Request Payload:**
+```json
+{
+  "nonce": "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
+  "integrityToken": "eyJhbGciOiJBMjU2S1d...[Google Play Integrity Token]...",
+  "packageName": "com.eventing.attendee"
+}
+```
+- **Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "attested": true,
+  "appLicensingVerdict": "LICENSED",
+  "deviceRecognitionVerdict": ["MEETS_DEVICE_INTEGRITY", "MEETS_BASIC_INTEGRITY"],
+  "packageName": "com.eventing.attendee",
+  "timestampMs": 1784986696185,
+  "mock": false
+}
+```
+
+---
+
+## 4. Production Enforcement vs Local/Mock Mode
+
+| Environment | `MOBILE_ATTESTATION_ENFORCE` | `MOBILE_ATTESTATION_MOCK` | Behavior |
+| :--- | :--- | :--- | :--- |
+| **Development / Emulator** | `false` | `true` | Mock attestation enabled. Nonces validated from cache. Valid tokens starting with `mock_` return `attested: true`. Emulator test builds supported without Google Play API account. |
+| **Staging / Beta** | `false` | `true` | Mock mode with real nonce lifecycle testing. |
+| **Production** | `true` | `false` | Strict enforcement. Tokens decoded via Google Play Integrity REST API. Non-attested requests blocked with 403 Forbidden. |
+
+---
+
+## 5. Google Play Integrity Verdict Policy
+
+When decoding tokens in production enforcement mode:
+1. `appLicensingVerdict`: Must equal `LICENSED`.
+2. `deviceRecognitionVerdict`: Must include `MEETS_DEVICE_INTEGRITY` or `MEETS_STRONG_INTEGRITY`. Rejects `MEETS_VIRTUAL_INTEGRITY` in strict production mode.
+3. `appIntegrity`: `packageName` must match `com.eventing.attendee` or `com.eventing.organizer`.
+4. `accountDetails`: Validates app licensing account status.
+
+---
+
+## 6. Error Contract
+
+| HTTP Status | Error Code | Description |
+| :--- | :--- | :--- |
+| `400 Bad Request` | `INVALID_NONCE` | Nonce missing, expired, or already consumed. |
+| `400 Bad Request` | `MISSING_TOKEN` | Request payload lacks `integrityToken`. |
+| `403 Forbidden` | `ATTESTATION_REQUIRED` | Missing required `X-App-Integrity-Token` header on enforced route. |
+| `403 Forbidden` | `UNTRUSTED_DEVICE` | Token verdict failed device recognition or app licensing check. |
+| `500 Server Error` | `PROVIDER_CREDENTIALS_MISSING` | Production enforcement enabled but server lacks service account credentials. |
+
+---
+
+## 7. Threat Limits & Rate Protection
+- `/auth/mobile/nonce` is rate-limited to **20 requests/minute per IP** to prevent nonce cache flooding.
+- `/auth/mobile/attest` is rate-limited to **10 requests/minute per IP**.
+
+---
+
+## 8. Android Client Implementation Reference (Design Only)
+
+```kotlin
+// Android Client Reference Architecture (Kotlin)
+package com.eventing.mobile.security
+
+import com.google.android.play.core.integrity.IntegrityManagerFactory
+import com.google.android.play.core.integrity.StandardIntegrityManager
+import com.google.android.play.core.integrity.StandardIntegrityManager.PrepareIntegrityTokenRequest
+import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
+
+class PlayIntegrityClientManager(private val context: android.content.Context) {
+
+    suspend fun obtainAttestationToken(serverNonce: String): Result<String> {
+        return try {
+            val integrityManager = IntegrityManagerFactory.createStandard(context)
+            val request = PrepareIntegrityTokenRequest.builder()
+                .setCloudProjectNumber(123456789012L) // Google Cloud Project Number
+                .build()
+
+            // Prepare token provider
+            val tokenProvider = integrityManager.prepareIntegrityToken(request).await()
+
+            // Request integrity token using server nonce
+            val tokenRequest = StandardIntegrityTokenRequest.builder()
+                .setRequestHash(serverNonce)
+                .build()
+            val response = tokenProvider.request(tokenRequest).await()
+            Result.success(response.token())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+```
+
+---
+
+## 9. Verification Evidence & Acceptance Criteria
+
+> [!NOTE]
+> Server-side nonce generation, single-use atomic consumption, and mock-mode attestation verification are 100% locally verified. Real production token decryption against Google Play API requires Google Play Console app registration, Google Cloud service account key (`GOOGLE_PLAY_INTEGRITY_CREDENTIALS`), and Play Store binary signing.
+
+### Test / Smoke Script Evidence
+- Execution Script: `node server/scripts/smoke/smoke.rate-limit-cors.js` (Test 5)
+
+### Acceptance Criteria
+- [x] Nonce issuance endpoint `GET /auth/mobile/nonce` returns valid single-use nonce string with TTL (Verified in `smoke.rate-limit-cors.js` Test 5).
+- [x] Nonce consumption `POST /auth/mobile/attest` is single-use atomic; replay attacks with reused nonce rejected with HTTP 400 `INVALID_NONCE` (Verified in `smoke.rate-limit-cors.js` Test 5).
+- [x] Mock mode (`MOBILE_ATTESTATION_MOCK=true`) enables local emulator testing without Google Play credentials (Verified in `smoke.rate-limit-cors.js` Test 5).
+- [ ] Live Google Play Integrity API token decryption (Requires manual runtime setup with Google Play Console app registration & service account credentials).
+

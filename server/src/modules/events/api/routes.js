@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { param, query } = require('express-validator');
-const { verifyAuthToken, optionalAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
-const { auditLog } = require('@/shared/middleware/authz.middleware');
+const { verifyAuthToken, optionalAuthToken, isOrganizer, requireVerifiedEmail } = require('@/shared/middleware/auth.middleware');
+const { requireRole, requireOwnership, auditLog } = require('@/shared/middleware/authz.middleware');
 const reviewsRouter = require('@/modules/reviews').router;
 const eventController = require('@/modules/events/api/controller');
 const { publicApiLimiter } = require('@/shared/middleware/rateLimit.middleware');
@@ -50,19 +50,19 @@ router.get('/:eventId', publicApiLimiter, optionalAuthToken, [
     validateRequest
 ], eventController.getEventById);
 
-router.post('/', verifyAuthToken, isOrganizer, auditLog('event:create', 'event', 'id'), eventController.createEvent);
+router.post('/', verifyAuthToken, requireVerifiedEmail, requireRole('organizer', 'admin'), auditLog('event:create', 'event', 'id'), eventController.createEvent);
 
-router.put('/:eventId', verifyAuthToken, [
+router.put('/:eventId', verifyAuthToken, requireRole('organizer', 'admin'), requireOwnership('Event', 'eventId'), [
     param('eventId').notEmpty().withMessage('eventId is required'),
     validateRequest
 ], auditLog('event:update', 'event', 'eventId'), eventController.updateEvent);
 
-router.delete('/:eventId', verifyAuthToken, [
+router.delete('/:eventId', verifyAuthToken, requireRole('organizer', 'admin'), requireOwnership('Event', 'eventId'), [
     param('eventId').notEmpty().withMessage('eventId is required'),
     validateRequest
 ], auditLog('event:cancel', 'event', 'eventId'), eventController.cancelEventController);
 
-router.post('/:eventId/submit-draft', verifyAuthToken, [
+router.post('/:eventId/submit-draft', verifyAuthToken, requireVerifiedEmail, requireRole('organizer', 'admin'), requireOwnership('Event', 'eventId'), [
     param('eventId').notEmpty().withMessage('eventId is required'),
     validateRequest
 ], auditLog('event:submit-draft', 'event', 'eventId'), eventController.submitDraftController);

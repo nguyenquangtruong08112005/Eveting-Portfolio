@@ -108,6 +108,7 @@ async function run() {
     const regRes = await axios.post(`${BASE_URL}/auth/register`, { email, password, name });
     const accessToken = regRes.data.accessToken;
     const testUserId = regRes.data.user.id;
+    await query('UPDATE auth_users SET email_verified = true WHERE id = $1', [testUserId]);
     assert('Test user registered and logged in', !!accessToken);
 
     // Register Organizer
@@ -213,7 +214,7 @@ async function run() {
     await query(
         `INSERT INTO tickets (id, event_id, user_id, organizer_id, type, price, original_price, quantity, unit_price, status, purchase_date, qr_code)
          VALUES ($1, $2, $3, $4, 'standard', 100000, 100000, 1, 100000, 'paid', $5, 'legacy_mock_token')`,
-        [legacyTicketId, testEventId, testUserId, testUserId, now]
+        [legacyTicketId, testEventId, testUserId, testUserId, new Date(now).toISOString()]
     );
 
     // Generate static legacy JWT (no expiration claim)
@@ -238,7 +239,7 @@ async function run() {
     await query(
         `INSERT INTO tickets (id, event_id, user_id, organizer_id, type, price, original_price, quantity, unit_price, status, purchase_date, qr_code)
          VALUES ($1, $2, $3, $4, 'standard', 100000, 100000, 1, 100000, 'paid', $5, 'expired_mock_token')`,
-        [expiredTicketId, testEventId, testUserId, testUserId, now]
+        [expiredTicketId, testEventId, testUserId, testUserId, new Date(now).toISOString()]
     );
 
     // Generate expired JWT (signed with negative expiry)

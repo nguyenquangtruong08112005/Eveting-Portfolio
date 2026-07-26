@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
-const { verifyAuthToken } = require('@/shared/middleware/auth.middleware');
+const { verifyAuthToken, requireVerifiedEmail } = require('@/shared/middleware/auth.middleware');
 const ticketController = require('@/modules/tickets/api/controller');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 const idempotency = require('@/shared/middleware/idempotency.middleware');
 const { bookingLimiter } = require('@/shared/middleware/rateLimit.middleware');
-const { auditLog } = require('@/shared/middleware/authz.middleware');
+const { auditLog, requireOwnership } = require('@/shared/middleware/authz.middleware');
 
 router.get('/',
     verifyAuthToken,
@@ -15,6 +15,7 @@ router.get('/',
 
 router.post('/book',
     verifyAuthToken,
+    requireVerifiedEmail,
     bookingLimiter,
     auditLog('ticket:book', 'ticket', 'id'),
     idempotency(),
@@ -30,11 +31,13 @@ router.get('/:ticketId',
     verifyAuthToken,
     param('ticketId').notEmpty().withMessage('ticketId is required'),
     validateRequest,
+    requireOwnership('Ticket', 'ticketId'),
     ticketController.getTicketDetails
 );
 
 router.post('/hold-seat',
     verifyAuthToken,
+    requireVerifiedEmail,
     bookingLimiter,
     auditLog('seat:hold', 'event', 'eventId'),
     body('eventId').notEmpty().withMessage('eventId is required'),
@@ -55,6 +58,7 @@ router.post('/release-seat',
 
 router.post('/book-held-seats',
     verifyAuthToken,
+    requireVerifiedEmail,
     bookingLimiter,
     auditLog('seat:book-held', 'event', 'eventId'),
     idempotency(),

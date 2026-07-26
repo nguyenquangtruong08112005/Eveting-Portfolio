@@ -4,12 +4,12 @@
 | :--- | :--- | :--- | :--- |
 | **00 Baseline** | `00-T1` | Codegraph Audit & Environment Baseline Freeze | `COMPLETED` |
 | | `00-T2` | API Contract & Schema Inventory (Route Aliases & Validation Audit) | `COMPLETED` |
-| **01 Auth** | `01-T1` | Google & Facebook OAuth Integration (`auth_identities`) | `PLANNED` |
-| | `01-T2` | Email Verification, Activation & Redirect Flow | `PLANNED` |
-| | `01-T3` | Session Management, Rotating Refresh & CSRF Defense | `PLANNED` |
-| **02 Security** | `02-T1` | Public API Security Boundary & RBAC Ownership Enforcement | `PLANNED` |
-| | `02-T2` | Rate Limiting, CORS & Cloudflare WAF Hardening | `PLANNED` |
-| | `02-T3` | Mobile Attestation & App Integrity Design | `PLANNED` |
+| **01 Auth** | `01-T1` | Google & Facebook OAuth Integration (`auth_identities`) | `COMPLETED (Manual OAuth Setup Required)` |
+| | `01-T2` | Email Verification, Activation & Redirect Flow | `COMPLETED` |
+| | `01-T3` | Session Management, Rotating Refresh & CSRF Defense | `COMPLETED` |
+| **02 Security** | `02-T1` | Public API Security Boundary & RBAC Ownership Enforcement | `COMPLETED` |
+| | `02-T2` | Rate Limiting, CORS & Cloudflare WAF Hardening | `COMPLETED` |
+| | `02-T3` | Mobile Attestation & App Integrity Design | `COMPLETED` |
 | **03 Data** | `03-T1` | Deterministic Vietnam Data Seeding & Relational Scaling | `COMPLETED` |
 | | `03-T2` | Media Asset Licensing, Demo Policy & Elasticsearch Indexing | `COMPLETED` |
 | **04 Infra** | `04-T1` | Outbox Pattern Verification & Elasticsearch Auto-Reindexing | `PLANNED` |

@@ -4,16 +4,19 @@ const { param, body, query } = require('express-validator');
 const { verifyAuthToken, isOrganizer } = require('@/shared/middleware/auth.middleware');
 const organizerController = require('@/modules/organizer/api/controller');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
-const { auditLog } = require('@/shared/middleware/authz.middleware');
+const { requireRole, requireOwnership, auditLog } = require('@/shared/middleware/authz.middleware');
 
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.use(verifyAuthToken);
 
-router.post('/register', auditLog('organizer:register', 'organizer', 'userId'), organizerController.registerOrganizer);
+router.post('/register', [
+    body('organizationName').notEmpty().withMessage('organizationName is required'),
+    validateRequest
+], auditLog('organizer:register', 'organizer', 'userId'), organizerController.registerOrganizer);
 
-router.use(isOrganizer);
+router.use(isOrganizer, requireRole('organizer', 'admin'));
 
 router.get('/me', organizerController.getOrganizerProfile);
 
@@ -35,7 +38,7 @@ router.get(
         param('eventId').notEmpty().withMessage('eventId is required'),
         validateRequest
     ],
-    organizerController.verifyEventOwnership,
+    requireOwnership('Event', 'eventId'),
     organizerController.getEventStats
 );
 
@@ -45,11 +48,14 @@ router.get(
         param('eventId').notEmpty().withMessage('eventId is required'),
         validateRequest
     ],
-    organizerController.verifyEventOwnership,
+    requireOwnership('Event', 'eventId'),
     organizerController.getEventAttendees
 );
 
-router.post('/check-in-qr', auditLog('ticket:check-in', 'ticket', 'qrToken'), organizerController.checkInByQr);
+router.post('/check-in-qr', [
+    body('qrToken').notEmpty().withMessage('qrToken is required'),
+    validateRequest
+], auditLog('ticket:check-in', 'ticket', 'qrToken'), organizerController.checkInByQr);
 
 router.post(
     '/events/:eventId/attendees/import',
@@ -57,7 +63,7 @@ router.post(
         param('eventId').notEmpty().withMessage('eventId is required'),
         validateRequest
     ],
-    organizerController.verifyEventOwnership,
+    requireOwnership('Event', 'eventId'),
     upload.single('file'),
     auditLog('attendees:import', 'event', 'eventId'),
     organizerController.importAttendees
@@ -69,7 +75,7 @@ router.get(
         param('eventId').notEmpty().withMessage('eventId is required'),
         validateRequest
     ],
-    organizerController.verifyEventOwnership,
+    requireOwnership('Event', 'eventId'),
     auditLog('attendees:export', 'event', 'eventId'),
     organizerController.exportAttendees
 );
@@ -82,7 +88,7 @@ router.post(
         body('message').notEmpty().withMessage('message is required'),
         validateRequest
     ],
-    organizerController.verifyEventOwnership,
+    requireOwnership('Event', 'eventId'),
     auditLog('notification:broadcast', 'event', 'eventId'),
     organizerController.broadcastNotification
 );

@@ -20,41 +20,56 @@ var vouchersRouter = require('@/modules/vouchers/api/routes');
 var activeStorageProvider = require('@/providers/storage');
 const { observabilityMiddleware, metricsHandler } = require('@/shared/middleware/observability.middleware');
 const { notFoundHandler, globalErrorHandler } = require('@/shared/middleware/error.middleware');
+const { csrfProtection } = require('@/shared/middleware/csrf.middleware');
+const { publicApiLimiter } = require('@/shared/middleware/rateLimit.middleware');
 var app = express();
 
-app.set('trust proxy', 1);
+app.set('trust proxy', process.env.TRUST_PROXY ? (isNaN(Number(process.env.TRUST_PROXY)) ? process.env.TRUST_PROXY : Number(process.env.TRUST_PROXY)) : 1);
 
 app.use(observabilityMiddleware);
 app.get('/metrics', metricsHandler);
 
-// CORS middleware with domain allowlist for https://eventing.moteo.fun
+// Strict CORS middleware with exact whitelist
 app.use((req, res, next) => {
-  const defaultAllowed = ['https://eventing.moteo.fun', 'http://localhost:3001', 'http://localhost:3000'];
-  const envAllowed = (process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGIN || '')
+  const envAllowed = (process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGIN || process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
-  const allowedOrigins = envAllowed.length > 0 ? envAllowed : defaultAllowed;
+
+  const baseProdOrigins = ['https://eventing.moteo.fun', 'https://eventing-api.moteo.fun'];
+  const devOrigins = process.env.NODE_ENV !== 'production'
+    ? ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
+    : [];
+
+  const allowedOrigins = envAllowed.length > 0
+    ? envAllowed
+    : [...baseProdOrigins, ...devOrigins];
 
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Vary', 'Origin');
-  } else {
-    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+
+  if (origin) {
+    if (allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-App-Integrity-Token');
+      if (req.method === 'OPTIONS') {
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        return res.status(204).end();
+      }
+    } else {
+      return res.status(403).json({ error: 'CORS_ORIGIN_NOT_ALLOWED', message: 'Cross-origin request rejected' });
+    }
   }
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
-    return res.status(200).json({});
-  }
+
   next();
 });
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(csrfProtection);
+app.use(publicApiLimiter);
 
 app.get('/', function(req, res) { res.send("Welcome"); });
 app.get('/health', function(req, res) {
@@ -78,6 +93,7 @@ app.use('/storage', storageRouter);
 
 // BFF Route Prefixes
 app.use('/api/web/auth', authRouter);
+app.use('/api/mobile/auth', authRouter);
 app.use('/api/web/events', eventsRouter);
 app.use('/api/web/tickets', ticketsRouter);
 app.use('/api/web/payments', paymentsRouter);
