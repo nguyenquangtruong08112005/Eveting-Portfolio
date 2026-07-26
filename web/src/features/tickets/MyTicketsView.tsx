@@ -21,7 +21,7 @@ import { TicketQr, buildClientTicketQrValue } from '@/components/tickets/TicketQ
 export function MyTicketsView() {
   const t = useTranslations('my_tickets');
   const router = useRouter();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [eventsMap, setEventsMap] = useState<Record<string, Event>>({});
@@ -41,7 +41,7 @@ export function MyTicketsView() {
   };
 
   const loadData = useCallback(async (pageNum = 1) => {
-    if (!token) {
+    if (!isAuthenticated) {
       router.push('/login?redirect=/my-tickets');
       return;
     }
@@ -92,7 +92,7 @@ export function MyTicketsView() {
       setRefreshing(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load by page; avoid eventsMap loop
-  }, [token, router]);
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     loadData(1);

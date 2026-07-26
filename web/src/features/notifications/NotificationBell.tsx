@@ -45,13 +45,13 @@ export function NotificationBell() {
   const t = useTranslations('notifications');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     let cancelled = false;
 
     const poll = async () => {
@@ -77,9 +77,9 @@ export function NotificationBell() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [token]);
+  }, [isAuthenticated]);
 
-  if (!token) return null;
+  if (!isAuthenticated) return null;
 
   const unreadCount = items.filter((n) => !n.read).length;
   const recent = [...items]

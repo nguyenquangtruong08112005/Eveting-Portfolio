@@ -33,7 +33,7 @@ const PAGE_SIZE = 20;
 export function ModerationView() {
   const t = useTranslations('moderation');
   const tCommon = useTranslations('common');
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
   const [approvedEvents, setApprovedEvents] = useState<Event[]>([]);
   const [rejectedEvents, setRejectedEvents] = useState<RejectedEvent[]>([]);
@@ -46,7 +46,7 @@ export function ModerationView() {
 
   const loadPending = useCallback(
     async (pageNum: number, append: boolean) => {
-      if (!token) {
+      if (!isAuthenticated) {
         setLoading(false);
         return;
       }
@@ -72,7 +72,7 @@ export function ModerationView() {
         setLoadingMore(false);
       }
     },
-    [token, t]
+    [isAuthenticated, t]
   );
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export function ModerationView() {
     setErrorMessage(null);
     const event = pendingEvents.find((e) => e.id === eventId);
     try {
-      if (!token) throw new Error(t('auth_error'));
+      if (!isAuthenticated) throw new Error(t('auth_error'));
       await AdminService.approveEvent(eventId);
       toast.success(t('approve_success', { name: event?.name || '' }));
       if (event) setApprovedEvents((prev) => [event, ...prev]);
@@ -102,7 +102,7 @@ export function ModerationView() {
     setErrorMessage(null);
     const event = pendingEvents.find((e) => e.id === eventId);
     try {
-      if (!token) throw new Error(t('auth_error'));
+      if (!isAuthenticated) throw new Error(t('auth_error'));
       await AdminService.rejectEvent(eventId, reason);
       toast.success(t('reject_success', { name: event?.name || '' }));
       if (event) setRejectedEvents((prev) => [{ ...event, reason }, ...prev]);

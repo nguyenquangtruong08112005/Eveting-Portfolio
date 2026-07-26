@@ -38,13 +38,13 @@ function timeAgo(createdAt: string | number, fmt: (key: string, params?: any) =>
 
 export function NotificationsView() {
   const t = useTranslations('notifications');
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
 
   const load = useCallback(async () => {
-    if (!token) {
+    if (!isAuthenticated) {
       setLoading(false);
       return;
     }
@@ -56,7 +56,7 @@ export function NotificationsView() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     load();

@@ -19,7 +19,7 @@ export function TicketDetailView() {
   const t = useTranslations('my_tickets');
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const ticketId = params.id as string;
 
   const [ticket, setTicket] = useState<any>(null);
@@ -27,7 +27,7 @@ export function TicketDetailView() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated) {
       router.push('/login?redirect=/my-tickets');
       return;
     }
@@ -52,7 +52,7 @@ export function TicketDetailView() {
         setError('Could not load ticket details.');
       })
       .finally(() => setLoading(false));
-  }, [ticketId, token, router]);
+  }, [ticketId, isAuthenticated, router]);
 
   const statusConfig = {
     paid: { label: t('active'), icon: CheckCircle, color: 'text-[var(--primary)]', bg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/20' },

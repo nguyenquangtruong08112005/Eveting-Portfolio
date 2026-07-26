@@ -16,7 +16,7 @@ import { TicketQr, buildClientTicketQrValue } from '@/components/tickets/TicketQ
 function CheckoutSuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const t = useTranslations('checkout');
   const tTickets = useTranslations('my_tickets');
 
@@ -130,7 +130,7 @@ function CheckoutSuccessPageContent() {
             {paymentVerified === true && (
               <p className="text-[var(--success)] text-[11px] font-bold mt-2">{t('payment_verified')}</p>
             )}
-            {!token && (
+            {!isAuthenticated && (
               <p className="text-[var(--primary)] text-[11px] font-bold mt-2">
                 {t('email_sent')}
               </p>
@@ -192,7 +192,7 @@ function CheckoutSuccessPageContent() {
 
           {/* Actions */}
           <div className="flex flex-col gap-2.5 pt-2">
-            {token ? (
+            {isAuthenticated ? (
               <Link
                 href="/my-tickets"
                 className="w-full py-3 rounded-xl btn-primary-gradient font-black text-sm tracking-wide text-[var(--on-primary)] hover:scale-[1.01] active:scale-[0.99] transition-all border-none flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/10"

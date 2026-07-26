@@ -10,6 +10,12 @@ export interface UploadResult {
   size?: number;
 }
 
+function getCsrfTokenFromCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 /**
  * Multipart upload to server → R2/S3 (or local) via POST /storage/upload.
  * Matches mobile attendee: field `file` + optional `purpose` (profile | event | media | misc).
@@ -24,15 +30,16 @@ export class StorageService {
     formData.append('purpose', purpose);
 
     const headers: Record<string, string> = {};
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+    const csrfToken = getCsrfTokenFromCookie();
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
     }
 
-    const res = await fetch(`${API_BASE}/storage/upload`, {
+    const res = await fetch(`${API_BASE}/api/web/storage/upload`, {
       method: 'POST',
       headers,
       body: formData,
+      credentials: 'include',
       // do not set Content-Type — browser sets multipart boundary
     });
 

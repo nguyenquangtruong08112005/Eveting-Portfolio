@@ -19,7 +19,7 @@ import type { UserProfile, Membership, FeaturedProfile } from '@/types';
 
 export function ProfileView() {
   const t = useTranslations('profile');
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [organizers, setOrganizers] = useState<FeaturedProfile[]>([]);
@@ -27,7 +27,7 @@ export function ProfileView() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!token) {
+    if (!isAuthenticated) {
       setLoading(false);
       return;
     }
@@ -45,7 +45,7 @@ export function ProfileView() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     load();

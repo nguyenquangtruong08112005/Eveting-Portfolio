@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 export function OrganizerDashboardView() {
   const t = useTranslations('organizer');
   const tCommon = useTranslations('common');
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [stats, setStats] = useState<OrganizerStats>({
     totalSales: 0,
     grossRevenue: 0,
@@ -75,9 +75,9 @@ export function OrganizerDashboardView() {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     loadData();
-  }, [token, loadData]);
+  }, [isAuthenticated, loadData]);
 
   const handleSubmitDraft = async (id: string) => {
     setActionLoadingId(id);

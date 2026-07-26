@@ -33,7 +33,7 @@ export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<import('@/types').Event | null>(null);
@@ -316,7 +316,7 @@ export default function EventDetailPage() {
             )}
 
             {/* Login prompt if not authenticated */}
-            {!token && (
+            {!isAuthenticated && (
               <div className="glass-card rounded-xl p-4 text-center bg-[var(--surface)]/80 border border-[var(--surface-border)]">
                 <p className="text-xs text-[var(--text-secondary)] mb-2">
                   {t('guest_hint')}

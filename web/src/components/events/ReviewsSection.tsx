@@ -53,7 +53,7 @@ export function ReviewsSection({
   lockedReason = null,
 }: ReviewsSectionProps) {
   const t = useTranslations('reviews');
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -107,7 +107,7 @@ export function ReviewsSection({
           <MessageSquare className="size-5 text-[var(--primary)]" />
           <h3 className="text-base font-bold text-[var(--text-primary)]">{t('title')}</h3>
         </div>
-        {token && canWrite ? (
+        {isAuthenticated && canWrite ? (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger
               render={
@@ -182,7 +182,7 @@ export function ReviewsSection({
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        ) : token && !canWrite ? (
+        ) : isAuthenticated && !canWrite ? (
           <p className="text-[11px] text-[var(--text-muted)] max-w-[220px] text-right">
             {lockedReason === 'not_ended'
               ? t('locked_not_ended')
