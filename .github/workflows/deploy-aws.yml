@@ -11,6 +11,12 @@ on:
         default: "staging"
         type: choice
         options: [staging, production]
+      instance_type:
+        description: "EC2 instance type for cost control"
+        required: false
+        default: "t3.small"
+        type: choice
+        options: [t3.small, t3.medium]
       run_terraform_plan:
         description: "run terraform plan"
         type: boolean
@@ -49,6 +55,7 @@ jobs:
         working-directory: server/infra/terraform
     env:
       TF_VAR_environment: ${{ inputs.environment }}
+      TF_VAR_instance_type: ${{ inputs.instance_type || 't3.small' }}
       TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
       TF_VAR_web_domain: ${{ secrets.WEB_DOMAIN || 'eventing.moteo.fun' }}
       TF_VAR_api_domain: ${{ secrets.API_DOMAIN || 'eventing-api.moteo.fun' }}
@@ -151,10 +158,10 @@ jobs:
           fi
           terraform fmt -check
           terraform validate
-          terraform plan
+          terraform plan -out=tfplan
           if [ "${{ inputs.run_terraform_apply }}" = "true" ] && { [ "${GITHUB_REF}" = "refs/heads/main" ] || [ "${GITHUB_REF}" = "refs/heads/master" ] || [ "${{ inputs.environment }}" = "staging" ]; }; then
-            echo "Applying main Terraform infrastructure..."
-            terraform apply -auto-approve
+            echo "Applying main Terraform infrastructure from tfplan..."
+            terraform apply -auto-approve tfplan
           else
             echo "run_terraform_apply is false; main apply skipped."
           fi
@@ -297,6 +304,27 @@ jobs:
 
           if [ -z "${SSM_BUCKET}" ]; then
             echo "Error: SSM transfer bucket 'eventing-${{ inputs.environment }}-ssm-transfer-${ACCOUNT_ID}' not resolvable. Cannot proceed with inventory creation."
+            exit 1
+          fi
+
+          echo "Waiting for EC2 instance ${INSTANCE_ID} to reach SSM Online status..."
+          SSM_ONLINE=false
+          for attempt in $(seq 1 18); do
+            STATUS="$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=${INSTANCE_ID}" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text 2>/dev/null || true)"
+            if [ "${STATUS}" = "Online" ]; then
+              echo "EC2 instance ${INSTANCE_ID} is SSM Online (attempt ${attempt}/18)."
+              SSM_ONLINE=true
+              break
+            fi
+            echo "Attempt ${attempt}/18: SSM ping status is '${STATUS:-Offline/Unregistered}'. Waiting 10s..."
+            sleep 10
+          done
+
+          if [ "${SSM_ONLINE}" != "true" ]; then
+            echo "Error: EC2 instance ${INSTANCE_ID} did not reach SSM Online status within 180 seconds."
             exit 1
           fi
 

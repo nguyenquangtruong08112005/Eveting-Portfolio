@@ -140,3 +140,59 @@ The AWS CLI `aws login` profile can work for AWS CLI commands while still being
 unusable by the Terraform AWS provider. If `terraform plan` reports `No valid
 credential sources found`, run Terraform with standard AWS environment
 credentials or use the GitHub Actions workflow with the AWS secrets above.
+
+## EC2 Sizing & Cost Reduction Runbook
+
+### Target Specifications
+
+| Instance Type | vCPU | Memory | Support Status | Notes |
+|---------------|------|--------|----------------|-------|
+| `t3.small` | 2 | 2 GiB | **Minimum Supported** | Default cost-optimized target. Deployed Elasticsearch allocates 512 MB JVM heap alongside Node.js, Next.js, Postgres, Redis, and Caddy containers. |
+| `t3.medium` | 2 | 4 GiB | Supported | Previous default size for high concurrency testing. |
+| `t3.micro` | 2 | 1 GiB | **UNSUPPORTED** | Excluded due to Docker stack Out-Of-Memory (OOM) failures with Elasticsearch JVM heap allocations. |
+
+### EC2 Resizing Runbook
+
+Resizing the EC2 host can be executed via GitHub Actions or local Terraform CLI.
+
+#### Option A: GitHub Actions (Recommended)
+1. Go to **Actions** -> **Deploy AWS (manual)** -> **Run workflow**.
+2. Select target environment (`staging` / `production`).
+3. Set `instance_type` choice to `t3.small` (or `t3.medium`).
+4. Enable `run_terraform_plan: true` and `run_terraform_apply: true`.
+5. Run workflow. The CI/CD step passes `TF_VAR_instance_type` to Terraform, generates `tfplan`, and applies it safely.
+
+#### Option B: Local Terraform CLI
+```bash
+terraform plan -out=tfplan -var="instance_type=t3.small"
+terraform apply tfplan
+```
+
+### Operational Hazards & Behavior
+
+When modifying `instance_type` on an existing EC2 instance:
+1. **Downtime**: AWS stops and starts the underlying EC2 instance during a resize operation. Service downtime occurs during the resize window (typically 1–3 minutes).
+2. **IP Addressing**: The instance is attached to a managed Elastic IP (`aws_eip.app_server`), preserving its public IPv4 address across stop/start cycles. If resizing an unassociated EC2 instance without an Elastic IP, the public IPv4 address changes upon restart.
+3. **Storage Persistence**: Data stored on attached EBS volumes (`/dev/sda1` root disk) is fully persisted across instance stops and starts.
+4. **SSM Agent Readiness Delay**: After boot, the AWS Systems Manager (SSM) agent requires 1 to 3 minutes to register with AWS SSM endpoints. Ansible or SSM session operations immediately following an apply may fail until the SSM agent reports `Online`.
+
+### Post-Apply Verification Commands
+
+Run these verification commands after an apply (AWS CLI credentials with read permissions are required, but no secret values are printed or embedded):
+
+```bash
+# 1. Verify EC2 instance state, size, and public IP address
+aws ec2 describe-instances \
+  --filters "Name=tag:Project,Values=eventing" "Name=instance-state-name,Values=running" \
+  --query "Reservations[*].Instances[*].{InstanceId:InstanceId,Type:InstanceType,State:State.Name,PublicIp:PublicIpAddress}" \
+  --output table
+
+# 2. Check SSM Managed Instance status (wait until PingStatus is Online)
+aws ssm describe-instance-information \
+  --query "InstanceInformationList[*].{InstanceId:InstanceId,PingStatus:PingStatus,PlatformName:PlatformName,IPAddress:IPAddress}" \
+  --output table
+
+# 3. Verify public Web and API health endpoints
+curl -Iv https://eventing.moteo.fun/
+curl -Iv https://eventing-api.moteo.fun/health
+```

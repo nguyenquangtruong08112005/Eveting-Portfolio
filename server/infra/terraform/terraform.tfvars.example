@@ -3,7 +3,7 @@
 project_name  = "eventing"
 aws_region    = "ap-southeast-2"
 environment   = "staging"
-instance_type = "t3.medium"
+instance_type = "t3.small"
 
 # Remote access uses AWS Systems Manager (SSM) — no SSH key pair required.
 # The EC2 instance profile includes AmazonSSMManagedInstanceCore.

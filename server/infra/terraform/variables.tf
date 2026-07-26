@@ -42,7 +42,7 @@ variable "availability_zone" {
 variable "instance_type" {
   description = "EC2 instance size for the one-instance portfolio deployment."
   type        = string
-  default     = "t3.medium"
+  default     = "t3.small"
 }
 
 variable "root_volume_size_gb" {
