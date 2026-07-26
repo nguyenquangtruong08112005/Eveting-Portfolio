@@ -7,6 +7,7 @@
 process.env.STORAGE_PROVIDER = 'local';
 
 const assert = require('assert');
+const axios = require('axios');
 require('../../src/alias-bootstrap');
 const storageProvider = require('../../src/providers/storage');
 const storageService = require('../../src/modules/storage/application/service');
@@ -134,6 +135,43 @@ async function runTests() {
   assert.strictEqual(jsonResult.originalName, 'photo.jpg');
   assert.ok(jsonResult.key.startsWith('event/user_controller_test/'));
   console.log('Successfully validated successful upload path (201)');
+
+  // Test 4: Verify mounted BFF route (/api/web/storage/upload) middleware & mounting
+  console.log('\n[Test 4] Testing BFF route (/api/web/storage/upload) mounting & CSRF/auth rules...');
+  const express = require('express');
+  const cookieParser = require('cookie-parser');
+  const { csrfProtection } = require('../../src/shared/middleware/csrf.middleware');
+  const storageRouter = require('../../src/modules/storage/api/routes');
+
+  const testApp = express();
+  testApp.use(cookieParser());
+  testApp.use(csrfProtection);
+  testApp.use('/api/web/storage', storageRouter);
+
+  const server = testApp.listen(0);
+  const port = server.address().port;
+
+  try {
+    // 4a. Missing CSRF header on state-changing request -> 403
+    const resCsrfMissing = await axios.post(`http://localhost:${port}/api/web/storage/upload`, {}, {
+      validateStatus: () => true
+    });
+    assert.strictEqual(resCsrfMissing.status, 403, 'Missing CSRF header on web storage upload must return 403');
+    console.log('Successfully verified 403 on missing CSRF header for /api/web/storage/upload');
+
+    // 4b. Valid CSRF cookie/header but missing auth token -> 401
+    const resUnauth = await axios.post(`http://localhost:${port}/api/web/storage/upload`, {}, {
+      headers: {
+        Cookie: 'csrfToken=test_csrf_token_123',
+        'X-CSRF-Token': 'test_csrf_token_123'
+      },
+      validateStatus: () => true
+    });
+    assert.strictEqual(resUnauth.status, 401, 'Unauthenticated request to BFF upload route must return 401');
+    console.log('Successfully verified 401 on missing auth token for /api/web/storage/upload');
+  } finally {
+    server.close();
+  }
 
   // Clean up uploaded files in local storage mock Map
   await storageProvider.deleteObject(result.key);

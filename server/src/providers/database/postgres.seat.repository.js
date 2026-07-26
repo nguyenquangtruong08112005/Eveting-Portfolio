@@ -1,4 +1,5 @@
 const { query } = require('./postgres.client');
+const { toDb, fromDb, nowDb } = require('./time.helper');
 
 const createSeatMap = async (mapId, mapData, transaction = null) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
@@ -6,7 +7,7 @@ const createSeatMap = async (mapId, mapData, transaction = null) => {
         `INSERT INTO seat_maps (id, name, total_rows, total_cols, created_at)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (id) DO UPDATE SET name = $2, total_rows = $3, total_cols = $4`,
-        [mapId, mapData.name, mapData.totalRows, mapData.totalCols, mapData.createdAt || Date.now()]
+        [mapId, mapData.name, mapData.totalRows, mapData.totalCols, toDb(mapData.createdAt) || nowDb()]
     );
 };
 
@@ -17,7 +18,7 @@ const createSeatSections = async (sectionsArray, transaction = null) => {
             `INSERT INTO seat_sections (id, seat_map_id, name, price_multiplier, created_at)
              VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (id) DO UPDATE SET name = $3, price_multiplier = $4`,
-            [section.id, section.seatMapId, section.name, section.priceMultiplier || 1.0, section.createdAt || Date.now()]
+            [section.id, section.seatMapId, section.name, section.priceMultiplier || 1.0, toDb(section.createdAt) || nowDb()]
         );
     }
 };
@@ -29,7 +30,7 @@ const createSeats = async (seatsArray, transaction = null) => {
             `INSERT INTO seats (id, seat_section_id, row_name, seat_number, status, created_at)
              VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (id) DO UPDATE SET status = $5`,
-            [seat.id, seat.seatSectionId, seat.rowName, seat.seatNumber, seat.status || 'available', seat.createdAt || Date.now()]
+            [seat.id, seat.seatSectionId, seat.rowName, seat.seatNumber, seat.status || 'available', toDb(seat.createdAt) || nowDb()]
         );
     }
 };
@@ -45,7 +46,7 @@ const getSeatsBySection = async (sectionId) => {
         rowName: row.row_name,
         seatNumber: row.seat_number,
         status: row.status,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     }));
 };
 
@@ -58,7 +59,7 @@ const getSeatMapById = async (mapId) => {
         name: row.name,
         totalRows: row.total_rows,
         totalCols: row.total_cols,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 };
 
@@ -76,7 +77,7 @@ const getSeatsByMapId = async (mapId) => {
         rowName: row.row_name,
         seatNumber: row.seat_number,
         status: row.status,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     }));
 };
 
@@ -98,7 +99,7 @@ const getSeatById = async (seatId) => {
         rowName: row.row_name,
         seatNumber: row.seat_number,
         status: row.status,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 };
 
@@ -112,10 +113,10 @@ const createSeatHold = async (holdData, transaction = null) => {
             holdData.eventId,
             holdData.seatId,
             holdData.userId,
-            holdData.heldAt || Date.now(),
-            holdData.expiresAt,
+            toDb(holdData.heldAt) || nowDb(),
+            toDb(holdData.expiresAt),
             holdData.status || 'held',
-            holdData.createdAt || Date.now()
+            toDb(holdData.createdAt) || nowDb()
         ]
     );
 };
@@ -129,10 +130,10 @@ const getSeatHold = async (holdId) => {
         eventId: row.event_id,
         seatId: row.seat_id,
         userId: row.user_id,
-        heldAt: Number(row.held_at),
-        expiresAt: Number(row.expires_at),
+        heldAt: fromDb(row.held_at),
+        expiresAt: fromDb(row.expires_at),
         status: row.status,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 };
 
@@ -140,7 +141,7 @@ const getActiveHoldForSeat = async (eventId, seatId) => {
     const result = await query(
         `SELECT * FROM seat_holds 
          WHERE event_id = $1 AND seat_id = $2 AND status = 'held' AND expires_at > $3`,
-        [eventId, seatId, Date.now()]
+        [eventId, seatId, nowDb()]
     );
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
@@ -149,10 +150,10 @@ const getActiveHoldForSeat = async (eventId, seatId) => {
         eventId: row.event_id,
         seatId: row.seat_id,
         userId: row.user_id,
-        heldAt: Number(row.held_at),
-        expiresAt: Number(row.expires_at),
+        heldAt: fromDb(row.held_at),
+        expiresAt: fromDb(row.expires_at),
         status: row.status,
-        createdAt: Number(row.created_at)
+        createdAt: fromDb(row.created_at)
     };
 };
 
@@ -171,7 +172,7 @@ const releaseExpiredHolds = async (currentTime = Date.now(), transaction = null)
          SET status = 'released' 
          WHERE status = 'held' AND expires_at <= $1
          RETURNING id`,
-        [currentTime]
+        [toDb(currentTime)]
     );
     return result.rows.map(row => row.id);
 };
@@ -179,7 +180,7 @@ const releaseExpiredHolds = async (currentTime = Date.now(), transaction = null)
 const convertHoldToSold = async (holdId, transaction = null) => {
     const client = (transaction && typeof transaction.query === 'function') ? transaction : { query };
     await client.query(
-        `UPDATE seat_holds SET status = 'sold' WHERE id = $1`,
+        `UPDATE seat_holds SET status = 'converted' WHERE id = $1`,
         [holdId]
     );
 };
@@ -215,7 +216,7 @@ const getSeatsWithStatuses = async (eventId) => {
     const holdsResult = await query(
         `SELECT seat_id FROM seat_holds 
          WHERE event_id = $1 AND status = 'held' AND expires_at > $2`,
-        [eventId, Date.now()]
+        [eventId, nowDb()]
     );
     const heldSeats = new Set(holdsResult.rows.map(r => r.seat_id));
 

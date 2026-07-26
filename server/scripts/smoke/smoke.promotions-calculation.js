@@ -61,12 +61,22 @@ async function run() {
 
     console.log('\n  [Setup Test DB Data]');
 
-    // Insert user
-    await query(
-        `INSERT INTO auth_users (id, email, name, password_hash, roles, is_active)
-         VALUES ($1, $2, 'Promo Test User', 'mock_hash', $3, true)`,
-        [testUserId, `promo_${uuidv4()}@test.com`, ['user']]
-    );
+    // Insert user & organizer via repository
+    const authRepository = require('@/providers/database/postgres.auth.repository');
+    await authRepository.createUser({
+        id: testUserId,
+        email: `promo_${uuidv4()}@test.com`,
+        name: 'Promo Test User',
+        passwordHash: 'mock_hash',
+        roles: ['user']
+    });
+    await authRepository.createUser({
+        id: testOrganizerId,
+        email: `org_promo_${uuidv4()}@test.com`,
+        name: 'Promo Organizer',
+        passwordHash: 'mock_hash',
+        roles: ['organizer']
+    });
 
     // Insert Event
     const ticketTypes = {
@@ -75,15 +85,15 @@ async function run() {
     await eventRepository.createEvent(testEventId, {
         name: 'Promo Test Event',
         description: 'Testing promo codes',
-        date: now,
+        date: new Date(now + 86400000).toISOString(),
         eventType: 'physical',
         organizerId: testOrganizerId,
         ticketTypes: ticketTypes,
         minPrice: 100000,
         status: 'active',
         visibility: 'public',
-        createdAt: now,
-        lastUpdatedAt: now,
+        createdAt: new Date(now).toISOString(),
+        lastUpdatedAt: new Date(now).toISOString(),
     });
 
     // Insert Seat Map, Section, Seat for seating test
@@ -105,12 +115,12 @@ async function run() {
         discountType: 'percent',
         discountValue: 0.20,
         minTicketQuantity: 1,
-        validFrom: now - 3600000,
-        validUntil: now + 3600000,
+        validFrom: new Date(now - 3600000).toISOString(),
+        validUntil: new Date(now + 3600000).toISOString(),
         usageLimit: 100,
         usedCount: 0,
         isPublic: true,
-        createdAt: now
+        createdAt: new Date(now).toISOString()
     };
     await promotionRepository.createPromotion(promoPercentData.id, promoPercentData);
 
@@ -123,12 +133,12 @@ async function run() {
         discountType: 'amount',
         discountValue: 30000,
         minTicketQuantity: 1,
-        validFrom: now - 3600000,
-        validUntil: now + 3600000,
+        validFrom: new Date(now - 3600000).toISOString(),
+        validUntil: new Date(now + 3600000).toISOString(),
         usageLimit: 100,
         usedCount: 0,
         isPublic: true,
-        createdAt: now
+        createdAt: new Date(now).toISOString()
     };
     await promotionRepository.createPromotion(promoAmountData.id, promoAmountData);
 
@@ -141,12 +151,12 @@ async function run() {
         discountType: 'percent',
         discountValue: 0.50,
         minTicketQuantity: 1,
-        validFrom: now - 3600000,
-        validUntil: now + 3600000,
+        validFrom: new Date(now - 3600000).toISOString(),
+        validUntil: new Date(now + 3600000).toISOString(),
         usageLimit: 1,
         usedCount: 0,
         isPublic: true,
-        createdAt: now
+        createdAt: new Date(now).toISOString()
     };
     await promotionRepository.createPromotion(promoLimitData.id, promoLimitData);
 

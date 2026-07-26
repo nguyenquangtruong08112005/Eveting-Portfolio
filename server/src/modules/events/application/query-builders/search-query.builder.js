@@ -21,6 +21,16 @@ const parseDateToMs = (val, isEndOfDay = false) => {
 };
 
 /**
+ * Legacy category aliases that must resolve to a canonical key server-side.
+ * Mirrors a subset of web/src/lib/constants.ts CATEGORIES aliases.
+ */
+const CATEGORY_ALIAS_TO_CANONICAL = {
+    'theater': 'arts',
+    'theatre': 'arts',
+    'exhibition': 'arts',
+};
+
+/**
  * Normalizes search parameters across web-shaped and legacy-shaped parameter aliases.
  * Precedence rules when both are supplied:
  * - city takes precedence over location (city ?? location)
@@ -44,6 +54,11 @@ const normalizeSearchParams = (queryParams = {}) => {
     const normalizedStartDate = (startDate !== undefined && startDate !== '') ? startDate : undefined;
     const normalizedEndDate = (endDate !== undefined && endDate !== '') ? endDate : undefined;
 
+    const rawCategory = queryParams.category;
+    const normalizedCategory = rawCategory
+        ? (CATEGORY_ALIAS_TO_CANONICAL[String(rawCategory).toLowerCase().trim()] || rawCategory)
+        : rawCategory;
+
     return {
         ...queryParams,
         city: normalizedCity,
@@ -52,6 +67,7 @@ const normalizeSearchParams = (queryParams = {}) => {
         dateFrom: normalizedStartDate,
         endDate: normalizedEndDate,
         dateTo: normalizedEndDate,
+        category: normalizedCategory,
     };
 };
 

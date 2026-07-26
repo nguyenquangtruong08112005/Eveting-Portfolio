@@ -207,12 +207,16 @@ async function main() {
     );
   }
 
-  // 6. Seed 50 Published Future Public Events (10 per category)
+  // 6. Seed 50 Published Future Public Events
+  // Overlap: music→music+nightlife(10ea), theater→arts+theater(10), workshop→workshop+tech(10ea),
+  // sports→sports(10), exhibition→arts+exhibition(10). Totals per canonical category:
+  // music=10, arts=20, sports=10, workshop=10, nightlife=10, tech=10 (50 unique events preserved)
   console.log('6. Seeding 50 Published Future Public Events...');
 
   const categoryConfigs = [
     {
       cat: 'music',
+      categories: ['music', 'nightlife'],
       label: 'Âm Nhạc',
       titlePrefixes: ['Đêm Nhạc Acoustics', 'Concert Âm Nhạc Mùa Hè', 'Symphony Orchestral Gala', 'Festival V-Pop Alive', 'Liveshow Giai Điệu Mới', 'Đêm Nhạc Trịnh Công Sơn', 'Hòa Nhạc Tháp Rùa', 'Saigon Sunset Jazz', 'Mộc Acoustic Night', 'Việt Nam Rock Fest'],
       imgs: [
@@ -226,6 +230,7 @@ async function main() {
     },
     {
       cat: 'theater',
+      categories: ['arts', 'theater'],
       label: 'Sân Khấu / Nghệ Thuật',
       titlePrefixes: ['Vở Kịch Kinh Điển', 'Đêm Nhạc Kịch Sài Gòn', 'Kịch Nói Dân Gian', 'Múa Đương Đại Việt Nam', 'Tuồng Cổ Hào Khí', 'Múa Rối Nước Dân Gian', 'Sân Khấu Cải Lương Mới', 'Hài Kịch Mùa Cười', 'Vở Diễn Hồn Trống Đồng', 'Show Diễn Ký Ức Việt'],
       imgs: [
@@ -239,6 +244,7 @@ async function main() {
     },
     {
       cat: 'workshop',
+      categories: ['workshop', 'tech'],
       label: 'Hội Thảo / Công Nghệ',
       titlePrefixes: ['Vietnam AI & Cloud Summit', 'Mobile App TechDay 2026', 'Hội Thảo Startup Innovation', 'DevOps & Cyber Security', 'UI/UX Design Masterclass', 'Blockchain & Web3 Summit', 'Hội Thảo Kỹ Thuật Phần Mềm', 'Lập Trình Web Modern Summit', 'Data Science & BigData Day', 'Sáng Tạo Sản Phẩm Số'],
       imgs: [
@@ -252,6 +258,7 @@ async function main() {
     },
     {
       cat: 'sports',
+      categories: ['sports'],
       label: 'Thể Thao',
       titlePrefixes: ['Giải Marathon Quốc Tế', 'Giải Bóng Rổ Động Lực', 'Hội Thao Thể Thao Biển', 'Giải Cầu Lông Mở Rộng', 'Giải Bơi Lội Miền Trung', 'Giải Đạp Xe Chinh Phục', 'Giải Quần Vợt Toàn Quốc', 'Hội Thao Yoga & Wellness', 'Giải Điền Kinh Thanh Niên', 'Giải Võ Thuật Cổ Truyền'],
       imgs: [
@@ -265,6 +272,7 @@ async function main() {
     },
     {
       cat: 'exhibition',
+      categories: ['arts', 'exhibition'],
       label: 'Triển Lãm',
       titlePrefixes: ['Triển Lãm Hội Hội Mỹ Thuật', 'Triển Lãm Nhiếp Ảnh Việt Nam', 'Triển Lãm Công Nghệ Số', 'Triển Lãm Di Sản Văn Hóa', 'Triển Lãm Thời Trang Đương Đại', 'Triển Lãm Kiến Trúc Đô Thị', 'Triển Lãm Thủ Công Mỹ Nghệ', 'Triển Lãm Gốm Sứ Truyền Thống', 'Triển Lãm Sách & Tri Thức', 'Triển Lãm Sáng Tạo Trẻ'],
       imgs: [
@@ -332,7 +340,7 @@ async function main() {
           desc,
           img,
           img,
-          [cfg.cat],
+          cfg.categories,
           [cfg.cat, 'vietnam', 'demo', venue.city.toLowerCase().replace(/\s+/g, '')],
           start,
           end,

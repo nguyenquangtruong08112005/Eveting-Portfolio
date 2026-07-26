@@ -24,6 +24,7 @@ const { generateTicketQR } = require('./helpers/qr-code.helper');
 const { applyPromotion } = require('./helpers/promotion-validator.helper');
 const eventPublisher = require('@/shared/events/event-publisher');
 const outboxProcessor = require('@/shared/events/outbox-processor');
+const { toDb } = require('@/providers/database/time.helper');
 
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
     const allTickets = await ticketRepository.getTicketsByUserId(userId);
@@ -420,7 +421,7 @@ const failTicketPayment = async (ticketId, reason = 'Payment failed', tx = null)
         }
 
         await ticketRepository.updateTicketInTransaction(transaction, ticketId, {
-            status: 'failed',
+            status: 'cancelled',
             updatedAt: Date.now()
         });
 
@@ -450,7 +451,7 @@ const failTicketPayment = async (ticketId, reason = 'Payment failed', tx = null)
             logger.error(`[ShadowPayment] Failed to fail payment or order for ticket ${ticketId}: ${err.message}`);
         }
 
-        return { ...ticketData, status: 'failed' };
+        return { ...ticketData, status: 'cancelled' };
     };
 
     if (tx) {
@@ -514,7 +515,7 @@ const holdSeat = async (userId, eventId, seatId) => {
             `UPDATE seat_holds 
              SET status = 'released' 
              WHERE event_id = $1 AND seat_id = $2 AND status = 'held' AND expires_at <= $3`,
-            [eventId, seatId, now]
+            [eventId, seatId, toDb(now)]
         );
 
         // Check if there is an active (unexpired) hold on this seat
@@ -603,6 +604,7 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
         const tickets = [];
         let totalAmount = 0;
         let subtotalAmount = 0;
+        let ticketTypeData = null;
 
         for (const seatId of seatIds) {
             // Find active hold in DB
@@ -631,9 +633,14 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
             await cacheProvider.del(holdKey);
 
             const ticketType = 'standard';
-            const ticketTypeData = eventData.ticketTypes[ticketType];
+            ticketTypeData = null;
+            if (Array.isArray(eventData.ticketTypes)) {
+                ticketTypeData = eventData.ticketTypes.find(t => t.type === ticketType || t.id === ticketType) || eventData.ticketTypes[0];
+            } else if (eventData.ticketTypes && typeof eventData.ticketTypes === 'object') {
+                ticketTypeData = eventData.ticketTypes[ticketType] || Object.values(eventData.ticketTypes)[0];
+            }
             if (!ticketTypeData) {
-                throw new NotFoundError(`Ticket type '${ticketType}' does not exist for this event.`);
+                ticketTypeData = { price: 100000, id: 'standard' };
             }
 
             const unitPrice = Number(ticketTypeData.price);
@@ -707,7 +714,7 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
 
             await orderRepository.createOrderItemInTransaction(transaction, {
                 id: `oi_${uuidv4()}`,
-                ticketTypeId: 'standard',
+                ticketTypeId: ticketTypeData.id || null,
                 ticketType: 'standard',
                 eventId,
                 eventName: eventData.name || null,

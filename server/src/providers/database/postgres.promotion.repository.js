@@ -100,6 +100,10 @@ const updatePromotion = async (promoId, updates) => {
         colSets.push(`usage_limit = $${idx++}`);
         params.push(updates.usageLimit);
     }
+    if (updates.validFrom !== undefined) {
+        colSets.push(`valid_from = $${idx++}`);
+        params.push(toDb(updates.validFrom));
+    }
     if (updates.validUntil !== undefined) {
         colSets.push(`valid_until = $${idx++}`);
         params.push(toDb(updates.validUntil));
@@ -110,7 +114,7 @@ const updatePromotion = async (promoId, updates) => {
     }
 
     const dataKeys = Object.keys(updates).filter(function(k) {
-        return ['usageLimit', 'validUntil', 'isPublic', 'id'].indexOf(k) === -1;
+        return ['usageLimit', 'validFrom', 'validUntil', 'isPublic', 'id'].indexOf(k) === -1;
     });
     for (var i = 0; i < dataKeys.length; i++) {
         dataUpdates[dataKeys[i]] = updates[dataKeys[i]];

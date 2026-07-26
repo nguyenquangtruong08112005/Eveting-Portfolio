@@ -15,6 +15,13 @@ function toDb(value) {
         return Number.isNaN(d.getTime()) ? null : d;
     }
     if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d+$/.test(trimmed)) {
+            const num = Number(trimmed);
+            const ms = num < 1e11 ? num * 1000 : num;
+            const d = new Date(ms);
+            return Number.isNaN(d.getTime()) ? null : d;
+        }
         const d = new Date(value);
         return Number.isNaN(d.getTime()) ? null : d;
     }

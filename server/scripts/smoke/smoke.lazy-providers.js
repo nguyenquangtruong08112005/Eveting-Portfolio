@@ -46,7 +46,7 @@ require('../../src/alias-bootstrap');
     'user', 'venue'
   ];
   for (const repo of repoNames) {
-    const repository = require(`../src/providers/database/${repo}.repository`);
+    const repository = require(`../../src/providers/database/${repo}.repository`);
     if (!repository) {
       throw new Error(`Default ${repo} repository is null`);
     }
@@ -65,7 +65,7 @@ require('../../src/alias-bootstrap');
   // Auth: 'firebase' is no longer supported
   process.env.AUTH_PROVIDER = 'firebase';
   try {
-    delete require.cache[require.resolve('../src/providers/auth')];
+    delete require.cache[require.resolve('../../src/providers/auth')];
     require('../../src/providers/auth');
     console.error('FAIL: Auth provider "firebase" should have thrown');
     process.exit(1);
@@ -80,7 +80,7 @@ require('../../src/alias-bootstrap');
   // Database: 'firebase' is no longer supported
   process.env.DATABASE_PROVIDER = 'firebase';
   try {
-    delete require.cache[require.resolve('../src/providers/database/user.repository')];
+    delete require.cache[require.resolve('../../src/providers/database/user.repository')];
     require('../../src/providers/database/user.repository');
     console.error('FAIL: DB provider "firebase" should have thrown');
     process.exit(1);
@@ -95,7 +95,7 @@ require('../../src/alias-bootstrap');
   // Notification: 'firebase' is no longer supported
   process.env.NOTIFICATION_PROVIDER = 'firebase';
   try {
-    delete require.cache[require.resolve('../src/providers/notification')];
+    delete require.cache[require.resolve('../../src/providers/notification')];
     require('../../src/providers/notification');
     console.error('FAIL: Notification provider "firebase" should have thrown');
     process.exit(1);

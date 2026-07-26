@@ -98,6 +98,8 @@ function rowToFirebaseDoc(row, extras = {}) {
     data.city = row.city != null ? row.city : (data.city || null);
     data.status = row.status || data.status || STATUS.PENDING;
     data.visibility = row.visibility || data.visibility || VISIBILITY.PRIVATE;
+    if (row.category != null) data.category = row.category;
+    if (row.tags != null) data.tags = row.tags;
     if (row.name != null) data.name = row.name;
     if (row.description != null) data.description = row.description;
     if (row.image_url !== undefined) data.imageUrl = row.image_url;

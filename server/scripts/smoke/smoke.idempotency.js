@@ -96,6 +96,7 @@ async function run() {
     const regRes = await axios.post(`${BASE_URL}/auth/register`, { email, password, name });
     const accessToken = regRes.data.accessToken;
     const testUserId = regRes.data.user.id;
+    await query('UPDATE auth_users SET email_verified = true WHERE id = $1', [testUserId]);
     assert('Test user registered and logged in', !!accessToken);
 
     // Create Event

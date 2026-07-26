@@ -91,6 +91,14 @@ async function run() {
     const testOrganizerId = `usr_org_${uuidv4()}`;
     const testEventId = `evt_conc_${uuidv4()}`;
     const now = Date.now();
+    const authRepository = require('@/providers/database/postgres.auth.repository');
+    await authRepository.createUser({
+        id: testOrganizerId,
+        email: `org_${uuidv4()}@test.com`,
+        name: 'Organizer User',
+        passwordHash: 'dummy_hash',
+        roles: ['organizer']
+    });
     const eventData = {
         name: 'Concurrency Test Event',
         description: 'Only 3 tickets available!',
@@ -118,6 +126,7 @@ async function run() {
         const name = `Concurrent User ${i}`;
 
         const regRes = await axios.post(`${BASE_URL}/auth/register`, { email, password, name });
+        await query('UPDATE auth_users SET email_verified = true WHERE id = $1', [regRes.data.user.id]);
         users.push({
             id: regRes.data.user.id,
             email: email,

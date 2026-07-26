@@ -46,8 +46,8 @@ async function main() {
   const eCount = eRes.rows[0]?.count || 0;
   record('Total Published Future Public Events', eCount, 50, eCount >= 50);
 
-  // 3. Category Breakdown
-  const categories = ['music', 'theater', 'workshop', 'sports', 'exhibition'];
+  // 3. Category Breakdown — 6 canonical categories matching web/src/lib/constants.ts
+  const categories = ['music', 'arts', 'sports', 'workshop', 'nightlife', 'tech'];
   for (const cat of categories) {
     const catRes = await query(
       `SELECT COUNT(*)::int AS count FROM events
