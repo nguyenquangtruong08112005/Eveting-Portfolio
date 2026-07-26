@@ -107,7 +107,7 @@ export class EventService {
     const data = await requestCached<Event[] | { events: Event[] }>(
       'GET',
       `/api/web/events/recommendations?limit=${limit}`,
-      {},
+      { allowAnonymous: true },
       LIST_TTL
     );
     return { events: Array.isArray(data) ? data : data.events || [] };

@@ -1,6 +1,5 @@
 'use client';
 
-import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { BrandMark } from '@/components/shared/BrandMark';
@@ -52,23 +51,6 @@ const AppStoreButton = ({ store }: { store: 'google' | 'apple' }) => {
         <span className="text-[10px] font-black text-[var(--text-primary)] mt-0.5 whitespace-nowrap">
           {isGoogle ? 'Google Play' : 'App Store'}
         </span>
-      </div>
-    </div>
-  );
-};
-
-const RegisteredBadge = () => {
-  const t = useTranslations('footer');
-  return (
-    <div className="inline-flex items-center gap-2 bg-[#E12A2A] border border-[#ff4e4e] px-4 py-1.5 rounded-full select-none shrink-0 shadow">
-      <div className="size-4 rounded-full bg-white flex items-center justify-center text-[#E12A2A]">
-        <svg viewBox="0 0 24 24" className="size-2.5 fill-current stroke-current stroke-2">
-          <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z" />
-        </svg>
-      </div>
-      <div className="flex flex-col leading-none text-left">
-        <span className="text-[7px] font-black text-white tracking-widest uppercase">{t('registered')}</span>
-        <span className="text-[8px] font-extrabold text-white uppercase mt-0.5 tracking-tight">{t('registered_dept')}</span>
       </div>
     </div>
   );
@@ -180,7 +162,7 @@ export function Footer() {
         </div>
       </div>
 
-      {/* ── Bottom Footer ── */}
+      {/* ── Bottom Footer with Truthful Portfolio Demo Disclaimer ── */}
       <div className="w-full bg-[var(--background)] border-t border-[var(--surface-border)] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-[var(--text-muted)] text-[10px]">
           <div className="flex flex-col items-center md:items-start text-center md:text-left space-y-2">
@@ -194,13 +176,21 @@ export function Footer() {
           </div>
 
           <div className="text-[var(--text-muted)] text-[10px] text-center md:text-left max-w-md leading-relaxed">
-            <p className="font-bold text-[var(--text-secondary)] mb-0.5">{t('company_name')}</p>
-            <p>{t('company_rep')}</p>
-            <p>{t('company_cert')}</p>
+            <p className="font-bold text-[var(--text-secondary)] mb-0.5">{t('demo_notice_title')}</p>
+            <p className="text-[var(--text-muted)]">{t('demo_notice_body')}</p>
           </div>
 
           <div className="shrink-0">
-            <RegisteredBadge />
+            <div className="inline-flex items-center gap-2 bg-[var(--surface)] border border-[var(--surface-border)] px-4 py-2 rounded-xl text-[var(--text-muted)] text-[10px] select-none shrink-0 shadow-sm">
+              <div className="flex flex-col leading-tight text-left">
+                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[9px]">
+                  {t('demo_notice_title')}
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                  Portfolio Showcase
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

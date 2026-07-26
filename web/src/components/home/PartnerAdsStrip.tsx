@@ -1,39 +1,37 @@
 'use client';
 
-import { Gift, Sparkles, Ticket, Tag } from 'lucide-react';
+import { Gift, Sparkles, Ticket } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PromoBanner } from '@/components/home/PromoBanner';
-import { SectionHeading } from '@/components/shared/SectionHeading';
 import { cn } from '@/lib/utils';
+
+export type PartnerId = 'vib' | 'shopee' | 'hdbank';
 
 interface PartnerAdsStripProps {
   className?: string;
-  /** Which partner banners to show */
-  partners?: Array<'vib' | 'shopee' | 'hdbank'>;
-  showHeading?: boolean;
+  /** Single partner card to render */
+  singlePartner?: PartnerId;
+  /** Array of partner ids (renders the first partner as single card) */
+  partners?: PartnerId[];
 }
 
 /**
- * Landing-style partner advertise badges: ShopeePay, HDBank, VIB.
+ * Landing-style single partner advertise banner: ShopeePay, HDBank, or VIB.
  * Always visible (not dependent on promotions API).
+ * Heading is removed entirely for clean inline category insertion.
  */
 export function PartnerAdsStrip({
   className,
-  partners = ['shopee', 'hdbank'],
-  showHeading = true,
+  singlePartner,
+  partners,
 }: PartnerAdsStripProps) {
   const t = useTranslations('home');
-  const tDetail = useTranslations('event_detail');
+
+  const partnerToRender: PartnerId = singlePartner || (partners && partners[0]) || 'shopee';
 
   return (
     <div className={cn('w-full', className)}>
-      {showHeading ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 w-full">
-          <SectionHeading title={tDetail('advertise_title')} icon={Tag} />
-        </div>
-      ) : null}
-
-      {partners.includes('vib') && (
+      {partnerToRender === 'vib' && (
         <PromoBanner
           variant="vib"
           icon={<Ticket className="size-7 text-[var(--primary)]" />}
@@ -44,7 +42,7 @@ export function PartnerAdsStrip({
           cta={t('promo_vib_cta')}
         />
       )}
-      {partners.includes('shopee') && (
+      {partnerToRender === 'shopee' && (
         <PromoBanner
           variant="shopee"
           icon={<Gift className="size-7 text-[var(--primary)]" />}
@@ -55,7 +53,7 @@ export function PartnerAdsStrip({
           cta={t('promo_shopee_cta')}
         />
       )}
-      {partners.includes('hdbank') && (
+      {partnerToRender === 'hdbank' && (
         <PromoBanner
           variant="hdbank"
           icon={<Sparkles className="size-7 text-[var(--primary)]" />}

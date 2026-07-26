@@ -8,4 +8,5 @@ export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
+  allowAnonymous?: boolean;
 }

@@ -13,8 +13,23 @@ interface HeroCarouselProps {
   events: Event[];
 }
 
+function extractYouTubeId(url?: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+  const match = trimmed.match(regExp);
+  return match && match[1] ? match[1] : null;
+}
+
+function isDirectVideoUrl(url?: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(trimmed) || trimmed.startsWith('blob:');
+}
+
 export function HeroCarousel({ events }: HeroCarouselProps) {
   const [activeSlide, setActiveSlide] = useState(0);
+  const [failedVideoIds, setFailedVideoIds] = useState<Record<string, boolean>>({});
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
 
@@ -29,10 +44,21 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
     return () => clearInterval(timer);
   }, [slides.length]);
 
+  const handleVideoError = (slideId: string) => {
+    setFailedVideoIds((prev) => ({ ...prev, [slideId]: true }));
+  };
+
   if (slides.length === 0) {
     return (
-      <section className="relative w-full h-[300px] flex items-center justify-center bg-[var(--background)] border-b border-[var(--surface-border)]">
-        <div className="text-[var(--text-muted)] text-sm">{t('no_featured_events')}</div>
+      <section className="relative w-full h-[300px] flex items-center justify-center bg-[var(--background)] border-b border-[var(--surface-border)] overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center brightness-[0.35] scale-105"
+          style={{ backgroundImage: `url(${FALLBACK_IMAGE})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--background)] via-[var(--background)]/60 to-transparent" />
+        <div className="relative z-10 text-[var(--text-muted)] text-sm font-semibold">
+          {t('no_featured_events')}
+        </div>
       </section>
     );
   }
@@ -45,6 +71,13 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
         const isActive = index === activeSlide;
         const tag = slide.tags?.[0] || tags[index % tags.length];
         
+        // Priority 1: Direct Video, Priority 2: YouTube source, Priority 3 & Fallback: Banner / Image / FALLBACK_IMAGE (Never Blank)
+        const bgImage = slide.bannerUrl || slide.imageUrl || FALLBACK_IMAGE;
+        const rawVideoUrl = slide.videoUrl?.trim();
+        const youtubeId = extractYouTubeId(rawVideoUrl);
+        const isDirectVideo = !!rawVideoUrl && !youtubeId && (isDirectVideoUrl(rawVideoUrl) || rawVideoUrl.startsWith('http'));
+        const isVideoFailed = !!failedVideoIds[slide.id];
+
         return (
           <div
             key={slide.id}
@@ -53,11 +86,38 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
               isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
             )}
           >
+            {/* Always render background image backdrop to guarantee it is NEVER blank */}
             <div
               className="absolute inset-0 bg-cover bg-center brightness-[0.35] scale-105 transition-transform duration-[10000ms]"
-              style={{ backgroundImage: `url(${slide.imageUrl || FALLBACK_IMAGE})` }}
+              style={{ backgroundImage: `url(${bgImage})` }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--background)] via-[var(--background)]/50 to-transparent" />
+
+            {/* Prioritize Direct Video (Muted Autoplay Only) */}
+            {isDirectVideo && !isVideoFailed && rawVideoUrl && (
+              <video
+                src={rawVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                onError={() => handleVideoError(slide.id)}
+                className="absolute inset-0 w-full h-full object-cover brightness-[0.35] scale-105 pointer-events-none"
+              />
+            )}
+
+            {/* Prioritize YouTube source if direct video not present or if URL is YouTube */}
+            {youtubeId && !isVideoFailed && (
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeId}&playsinline=1`}
+                title={slide.name}
+                allow="autoplay; encrypted-media"
+                onError={() => handleVideoError(slide.id)}
+                className="absolute inset-0 w-full h-full object-cover scale-150 pointer-events-none brightness-[0.35]"
+              />
+            )}
+
+            {/* Gradient Overlay for Text Legibility */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--background)] via-[var(--background)]/60 to-transparent" />
             
             <div className="relative max-w-7xl mx-auto px-6 w-full text-white">
               <span className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-[var(--on-primary)] px-3.5 py-1 rounded-full text-[10px] font-bold self-start mb-4 uppercase tracking-wider inline-block">
@@ -104,9 +164,11 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
           {slides.map((_, index) => (
             <button
               key={index}
+              type="button"
               onClick={() => setActiveSlide(index)}
+              aria-label={`Go to slide ${index + 1}`}
               className={cn(
-                "h-2 rounded-full transition-all duration-300 cursor-pointer border-none",
+                "h-2 rounded-full transition-all duration-300 cursor-pointer border-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]",
                 index === activeSlide ? "w-6 bg-[var(--primary)]" : "w-2 bg-white/40 hover:bg-white/70"
               )}
             />

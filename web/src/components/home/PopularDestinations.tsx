@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { EventService, Destination } from '@/services/event.service';
+import { SafeImage } from '@/components/shared/SafeImage';
 import { FALLBACK_IMAGE } from '@/lib/constants';
 
 const FALLBACK_DESTINATIONS: Destination[] = [
@@ -13,9 +14,10 @@ const FALLBACK_DESTINATIONS: Destination[] = [
 ];
 
 const DESTINATION_IMAGES: Record<string, string> = {
-  'Hồ Chí Minh': FALLBACK_IMAGE,
-  'Hà Nội': FALLBACK_IMAGE,
-  'Đà Lạt': FALLBACK_IMAGE,
+  'Hồ Chí Minh': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?q=80&w=800&auto=format&fit=crop',
+  'Hà Nội': 'https://images.unsplash.com/photo-1509030450996-939a26bbe815?q=80&w=800&auto=format&fit=crop',
+  'Đà Lạt': 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?q=80&w=800&auto=format&fit=crop',
+  'Đà Nẵng': 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=800&auto=format&fit=crop',
 };
 
 interface PopularDestinationsProps {
@@ -65,12 +67,15 @@ export function PopularDestinations({ onSelectCity }: PopularDestinationsProps) 
             onClick={() => onSelectCity(city.query)}
             className="group relative h-40 rounded-2xl overflow-hidden cursor-pointer shadow-lg border border-[var(--surface-border)] hover:border-[var(--primary)]/40 transition-all duration-500"
           >
-            <div
-              className="absolute inset-0 bg-cover bg-center brightness-[0.5] group-hover:scale-110 transition-transform duration-700"
-              style={{ backgroundImage: `url(${DESTINATION_IMAGES[city.query] || FALLBACK_IMAGE})` }}
+            <SafeImage
+              src={DESTINATION_IMAGES[city.query] || FALLBACK_IMAGE}
+              alt={city.name}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover w-full h-full brightness-[0.55] group-hover:scale-110 transition-transform duration-700"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-col justify-end h-full">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+            <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-col justify-end h-full">
               <h4 className="text-base font-black text-white group-hover:text-[var(--primary)] transition-colors leading-tight">
                 {city.name}
               </h4>

@@ -6,6 +6,8 @@
     "theater_arts": "Sân khấu & Nghệ thuật",
     "workshops": "Hội thảo & Workshop",
     "tech_science": "Khoa học & Công nghệ",
+    "sports": "Thể thao",
+    "nightlife": "Đời sống & Tiệc",
     "popular_destinations": "Điểm đến thú vị",
     "featured_artists": "Nghệ sĩ & Diễn giả nổi bật",
     "see_more": "Xem thêm",
@@ -646,11 +648,8 @@
     "follow_us": "Follow us",
     "platform_tagline": "Nền tảng quản lý và phân phối vé sự kiện hàng đầu Việt Nam",
     "copyright": "© 2026 Eventing. All rights reserved.",
-    "company_name": "Công ty TNHH Eventing",
-    "company_rep": "Đại diện theo pháp luật: Nguyễn Văn A",
-    "company_cert": "Giấy chứng nhận đăng ký doanh nghiệp số: 0313605444, cấp lần đầu ngày 07/01/2016 bởi Sở Kế Hoạch và Đầu Tư TP. Hồ Chí Minh",
-    "registered": "ĐÃ ĐĂNG KÝ",
-    "registered_dept": "BỘ CÔNG THƯƠNG"
+    "demo_notice_title": "Dự Án Portfolio Demo",
+    "demo_notice_body": "Website này là sản phẩm thử nghiệm và portfolio cá nhân nhằm mục đích học thuật. Trang web không kinh doanh thương mại."
   },
   "profile": {
     "title": "Hồ sơ của tôi",

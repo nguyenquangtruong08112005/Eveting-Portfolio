@@ -14,11 +14,32 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Social Authentication Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To enable Google or Facebook authentication in the web client, set the corresponding public environment variables in `.env.local`:
+
+```env
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here.apps.googleusercontent.com
+NEXT_PUBLIC_FACEBOOK_APP_ID=your_facebook_app_id_here
+```
+
+> **Security Note:** Never put private client secrets (e.g. `FACEBOOK_APP_SECRET` or Google Client Secret) in `.env.local` or any `NEXT_PUBLIC_*` variables. The browser client only uses public App / Client IDs.
+
+### Developer Console Prerequisites
+
+1. **Google Identity Services (Google Cloud Console):**
+   - Go to **Google Cloud Console** > **APIs & Services** > **Credentials**.
+   - Create or select an **OAuth 2.0 Client ID** of type **Web Application**.
+   - Under **Authorized JavaScript origins**, add your local dev URL (e.g. `http://localhost:3001`) and production domain.
+   - Copy the Client ID and set `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+
+2. **Facebook JS SDK (Meta for Developers Console):**
+   - Go to **Meta for Developers** > **My Apps** > Select or create your App.
+   - Go to **App Settings** > **Basic** and add **App Domains** (e.g. `localhost`).
+   - Enable **Facebook Login** product, and under **Settings**, configure **Valid OAuth Redirect URIs** and allowed domains (e.g. `http://localhost:3001/`).
+   - Copy the App ID and set `NEXT_PUBLIC_FACEBOOK_APP_ID`.
 
 ## Learn More
 

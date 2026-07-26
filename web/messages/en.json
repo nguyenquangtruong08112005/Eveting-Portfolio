@@ -6,6 +6,8 @@
     "theater_arts": "Theater & Arts",
     "workshops": "Workshops",
     "tech_science": "Science & Technology",
+    "sports": "Sports",
+    "nightlife": "Nightlife & Parties",
     "popular_destinations": "Popular Destinations",
     "featured_artists": "Featured Artists & Speakers",
     "see_more": "See more",
@@ -695,11 +697,8 @@
     "follow_us": "Follow us",
     "platform_tagline": "Vietnam's leading event ticketing & management platform",
     "copyright": "© 2026 Eventing. All rights reserved.",
-    "company_name": "Eventing Co., Ltd.",
-    "company_rep": "Legal Representative: Nguyen Van A",
-    "company_cert": "Business Registration No: 0313605444, first issued on 07/01/2016 by Ho Chi Minh City Department of Planning and Investment",
-    "registered": "REGISTERED",
-    "registered_dept": "MINISTRY OF INDUSTRY AND TRADE"
+    "demo_notice_title": "Portfolio Showcase Project",
+    "demo_notice_body": "This website is an educational & portfolio demonstration project. It is non-commercial and does not conduct live business transactions."
   },
   "reviews": {
     "title": "Reviews",

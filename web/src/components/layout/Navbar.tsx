@@ -62,7 +62,7 @@ function NavbarContent({
   const t = useTranslations('common');
   const navT = useTranslations('navbar');
 
-  const token = userToken !== undefined ? userToken : auth.token;
+  const isAuthenticated = userToken !== undefined ? !!userToken : auth.isAuthenticated;
   const role = userRole !== undefined ? userRole : auth.role;
   const handleLogout = onLogout !== undefined ? onLogout : auth.logout;
 
@@ -72,7 +72,7 @@ function NavbarContent({
 
   // Load user avatar for top-right account dropdown
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated) {
       setAvatarUrl(null);
       setDisplayName('');
       return;
@@ -93,7 +93,7 @@ function NavbarContent({
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [isAuthenticated]);
 
   const roleLabel =
     role === 'organizer'
@@ -157,7 +157,7 @@ function NavbarContent({
           </Link>
 
           {/* Tickets Link */}
-          {token && (
+          {isAuthenticated && (
             <Link
               href="/my-tickets"
               className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-all"
@@ -179,7 +179,7 @@ function NavbarContent({
           )}
 
           {/* Notification bell */}
-          {token && (
+          {isAuthenticated && (
             <div className="hidden sm:block">
               <NotificationBell />
             </div>
@@ -189,7 +189,7 @@ function NavbarContent({
           <LanguageSwitcher />
 
           {/* Auth */}
-          {token ? (
+          {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
@@ -312,7 +312,7 @@ function NavbarContent({
 
               {/* Mobile nav */}
               <nav className="px-5 py-4 flex flex-col gap-1">
-                {token && (
+                {isAuthenticated && (
                   <>
                     <Link
                       href="/my-tickets"
@@ -374,7 +374,7 @@ function NavbarContent({
                   ))}
                 </div>
 
-                {token ? (
+                {isAuthenticated ? (
                   <button
                     onClick={() => {
                       handleLogout();
