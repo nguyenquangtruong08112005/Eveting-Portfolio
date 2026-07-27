@@ -16,6 +16,11 @@ const config = {
     get endpoint() { return process.env.ZALOPAY_ENDPOINT; },
   },
 
+  // Payouts
+  payout: {
+    get bankAccountEncryptionKey() { return process.env.BANK_ACCOUNT_ENCRYPTION_KEY; },
+  },
+
   // Storage
   get storageProvider() { return process.env.STORAGE_PROVIDER || 'local'; },
   s3: {
