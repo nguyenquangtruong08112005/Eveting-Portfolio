@@ -2,7 +2,28 @@ const crypto = require('crypto');
 const idempotencyRepository = require('@/providers/database/idempotency.repository');
 const logger = require('@/shared/logger');
 
-const idempotency = () => {
+function canonicalize(val) {
+    if (val === null || typeof val !== 'object') {
+        return val;
+    }
+    if (Array.isArray(val)) {
+        return val.map(canonicalize);
+    }
+    const sortedKeys = Object.keys(val).sort();
+    const result = {};
+    for (const key of sortedKeys) {
+        result[key] = canonicalize(val[key]);
+    }
+    return result;
+}
+
+function computePayloadHash(body) {
+    const canonical = canonicalize(body || {});
+    const jsonString = JSON.stringify(canonical);
+    return crypto.createHash('sha256').update(jsonString).digest('hex');
+}
+
+const idempotency = ({ required = true } = {}) => {
     return async (req, res, next) => {
         if (process.env.IDEMPOTENCY_ENFORCE === 'false') {
             return next();
@@ -13,39 +34,47 @@ const idempotency = () => {
             return next();
         }
 
-        const userId = req.user ? req.user.uid : 'anonymous';
-        const endpoint = req.originalUrl || req.path;
-
-        // Extract key from headers or body
-        let key = req.headers['x-idempotency-key'] || req.headers['idempotency-key'];
-        if (!key && req.body) {
-            key = req.body.idempotencyKey || req.body.idempotency_key;
+        // Idempotency is for authenticated high-risk routes only
+        const userId = req.user ? (req.user.uid || req.user.id || req.user.user_id) : null;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                error: 'Unauthorized',
+                message: 'Authentication required for idempotent operations.'
+            });
         }
 
-        // Fallback fingerprint: deterministic hash of request details in 5-second window
+        // Extract key strictly from HTTP headers
+        const key = req.headers['x-idempotency-key'] || req.headers['idempotency-key'];
+
         if (!key) {
-            const hash = crypto.createHash('sha256');
-            hash.update(userId);
-            hash.update(endpoint);
-            hash.update(JSON.stringify(req.body || {}));
-            
-            // 5-second sliding time window
-            const timeWindow = Math.floor(Date.now() / 5000);
-            hash.update(String(timeWindow));
-            
-            key = `fingerprint:${userId}:${hash.digest('hex')}`;
+            if (required) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Bad Request',
+                    code: 'IDEMPOTENCY_KEY_REQUIRED',
+                    message: 'Idempotency-Key header is required for this endpoint.'
+                });
+            }
+            return next();
         }
 
-        // Generate payload hash containing user_id to prevent cross-user key collision attacks
-        const requestHash = crypto.createHash('sha256')
-            .update(`${userId}:${JSON.stringify(req.body || {})}`)
-            .digest('hex');
+        const endpoint = `${req.method}:${(req.originalUrl || req.path || '').split('?')[0]}`;
+        const requestHash = computePayloadHash(req.body);
 
         try {
             // Acquire lock (status: IN_PROGRESS)
             const lockResult = await idempotencyRepository.acquireLock(key, userId, endpoint, requestHash);
 
             if (!lockResult.success) {
+                if (lockResult.ownedByOther) {
+                    return res.status(409).json({
+                        success: false,
+                        error: 'Conflict',
+                        code: 'IDEMPOTENCY_KEY_OWNED_BY_OTHER',
+                        message: 'Idempotency key is already in use by another principal or endpoint.'
+                    });
+                }
                 if (lockResult.mismatch) {
                     return res.status(422).json({
                         success: false,
@@ -63,8 +92,8 @@ const idempotency = () => {
                     });
                 }
                 if (lockResult.record) {
-                    // Completed request, return cached response
-                    logger.info(`[Idempotency] Returning cached response for key: ${key}`);
+                    // Completed request, replay cached response
+                    logger.info('[Idempotency] Returning cached response for completed request');
                     res.set('X-Idempotency-Cache', 'HIT');
                     return res.status(lockResult.record.responseCode).json(lockResult.record.responseBody);
                 }
@@ -85,7 +114,7 @@ const idempotency = () => {
                     try {
                         responseBody = JSON.parse(body);
                     } catch (_) {
-                        // Keep as text if not parseable
+                        // Keep text if not parseable
                     }
                 }
 
@@ -94,14 +123,14 @@ const idempotency = () => {
                     try {
                         await idempotencyRepository.deleteKey(key, userId, endpoint);
                     } catch (delErr) {
-                        logger.error(`[Idempotency] Failed to delete key on 500 error: ${delErr.message}`);
+                        logger.error('[Idempotency] Failed to delete key on 500 error');
                     }
                 } else {
-                    // Save response on success or validation errors (2xx, 4xx)
+                    // Save response on success or client errors (2xx, 4xx)
                     try {
                         await idempotencyRepository.saveResponse(key, userId, endpoint, statusCode, responseBody);
                     } catch (saveErr) {
-                        logger.error(`[Idempotency] Failed to save completed response: ${saveErr.message}`);
+                        logger.error('[Idempotency] Failed to save completed response');
                     }
                 }
             };
@@ -110,7 +139,7 @@ const idempotency = () => {
                 saveResult(res.statusCode, data, true).then(() => {
                     originalJson.call(res, data);
                 }).catch(err => {
-                    logger.error(`[Idempotency] Error saving response JSON: ${err.message}`);
+                    logger.error('[Idempotency] Error in res.json interceptor');
                     originalJson.call(res, data);
                 });
             };
@@ -119,14 +148,14 @@ const idempotency = () => {
                 saveResult(res.statusCode, data, false).then(() => {
                     originalSend.call(res, data);
                 }).catch(err => {
-                    logger.error(`[Idempotency] Error saving response send: ${err.message}`);
+                    logger.error('[Idempotency] Error in res.send interceptor');
                     originalSend.call(res, data);
                 });
             };
 
             next();
         } catch (err) {
-            logger.error(`[Idempotency] Middleware error: ${err.message}`);
+            logger.error('[Idempotency] Middleware error');
             next(err);
         }
     };

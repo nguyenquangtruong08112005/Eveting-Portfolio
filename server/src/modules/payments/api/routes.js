@@ -16,10 +16,10 @@ router.post(
     requireVerifiedEmail,
     bookingLimiter,
     auditLog('payment:create-order', 'ticket', 'ticketId'),
-    idempotency(),
     body('ticketId').notEmpty().withMessage('ticketId is required'),
     validateRequest,
     requireOwnership('Ticket', 'ticketId'),
+    idempotency(),
     paymentController.createPaymentOrder
 );
 

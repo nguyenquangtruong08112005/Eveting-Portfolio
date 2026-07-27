@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * smoke.idempotency.js
- * Smoke test for Phase P1.3-S4 Idempotent Booking
+ * Comprehensive Smoke test for Idempotency Engine
  */
 
 require('dotenv').config({ quiet: true });
@@ -23,6 +23,8 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const { query } = require('@/providers/database/postgres.client');
 const eventRepository = require('@/providers/database/event.repository');
+const idempotencyRepository = require('@/providers/database/idempotency.repository');
+const idempotencyMiddleware = require('@/shared/middleware/idempotency.middleware');
 
 const TEST_PORT = process.env.TEST_PORT || '35433';
 const BASE_URL = `http://localhost:${TEST_PORT}`;
@@ -69,11 +71,11 @@ async function run() {
         }
     });
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 40; i++) {
         if (serverStarted) break;
         try {
-            const res = await axios.get(BASE_URL);
-            if (res.status === 200) {
+            const res = await axios.get(BASE_URL, { validateStatus: () => true });
+            if (res.status < 500) {
                 serverStarted = true;
                 break;
             }
@@ -86,30 +88,38 @@ async function run() {
     }
     console.log('Server is responsive at:', BASE_URL);
 
-    // 2. Setup Test User and Event
-    console.log('\n  [Setup Test User & Event]');
-    const email = `idempotent_test_${Date.now()}@test.com`;
+    // 2. Setup Test Users & Event
+    console.log('\n  [Setup Test Users & Event]');
+    const prefix = `idem_smoke_${Date.now()}`;
+    const email1 = `${prefix}_user1@test.com`;
+    const email2 = `${prefix}_user2@test.com`;
     const password = 'Password123!';
-    const name = 'Idempotency User';
 
-    // Register User
-    const regRes = await axios.post(`${BASE_URL}/auth/register`, { email, password, name });
-    const accessToken = regRes.data.accessToken;
-    const testUserId = regRes.data.user.id;
-    await query('UPDATE auth_users SET email_verified = true WHERE id = $1', [testUserId]);
-    assert('Test user registered and logged in', !!accessToken);
+    // Register User 1
+    const regRes1 = await axios.post(`${BASE_URL}/auth/register`, { email: email1, password, name: 'User One' });
+    const accessToken1 = regRes1.data.accessToken;
+    const testUserId1 = regRes1.data.user.id;
+    await query('UPDATE auth_users SET email_verified = true WHERE id = $1', [testUserId1]);
+    assert('User 1 registered and logged in', !!accessToken1);
+
+    // Register User 2
+    const regRes2 = await axios.post(`${BASE_URL}/auth/register`, { email: email2, password, name: 'User Two' });
+    const accessToken2 = regRes2.data.accessToken;
+    const testUserId2 = regRes2.data.user.id;
+    await query('UPDATE auth_users SET email_verified = true WHERE id = $1', [testUserId2]);
+    assert('User 2 registered and logged in', !!accessToken2);
 
     // Create Event
-    const testEventId = `evt_idem_${uuidv4()}`;
+    const testEventId = `evt_${prefix}_${uuidv4()}`;
     const now = Date.now();
     const eventData = {
         name: 'Idempotency Test Event',
         description: 'Test event description',
         date: now + 86400000,
         eventType: 'physical',
-        organizerId: testUserId,
+        organizerId: testUserId1,
         ticketTypes: {
-            standard: { name: 'Standard', price: 50000, available: 10, total: 10 }
+            standard: { name: 'Standard', price: 50000, available: 20, total: 20 }
         },
         minPrice: 50000,
         status: 'active',
@@ -120,115 +130,213 @@ async function run() {
     await eventRepository.createEvent(testEventId, eventData);
     assert('Test event created', true);
 
-    // 3. Test Explicit Idempotency Key
-    console.log('\n  [Test Explicit Idempotency Key (Headers)]');
-    const idempotencyKey = `key_${uuidv4()}`;
-    const bookPayload = { eventId: testEventId, ticketType: 'standard', quantity: 1 };
-
-    // Request 1
-    const res1 = await axios.post(`${BASE_URL}/tickets/book`, bookPayload, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'X-Idempotency-Key': idempotencyKey
+    try {
+        // 3. Test Header Required
+        console.log('\n  [Test Header Required]');
+        try {
+            await axios.post(`${BASE_URL}/tickets/book`, { eventId: testEventId, ticketType: 'standard', quantity: 1 }, {
+                headers: { Authorization: `Bearer ${accessToken1}` }
+            });
+            assert('Missing header returns 400 Bad Request', false);
+        } catch (err) {
+            assert('Missing header returns 400 Bad Request', err.response && err.response.status === 400 && err.response.data.code === 'IDEMPOTENCY_KEY_REQUIRED');
         }
-    });
-    assert('First request succeeds (201)', res1.status === 201);
-    const firstTicketId = res1.data.id;
-    assert('Ticket was created', !!firstTicketId);
 
-    // Verify availability decreased to 9
-    let ev = await eventRepository.getEventById(testEventId);
-    assert('Ticket availability decremented to 9', ev.ticketTypes.standard.available === 9);
+        // 4. Test Key Reordering & Exact Replay
+        console.log('\n  [Test Key Reordering & Exact Replay]');
+        const key1 = `key_${prefix}_1_${uuidv4()}`;
+        const payloadOriginal = { eventId: testEventId, ticketType: 'standard', quantity: 1 };
+        const payloadReordered = { quantity: 1, ticketType: 'standard', eventId: testEventId };
 
-    // Request 2 (Duplicate)
-    const res2 = await axios.post(`${BASE_URL}/tickets/book`, bookPayload, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'X-Idempotency-Key': idempotencyKey
+        // Initial Request
+        const res1 = await axios.post(`${BASE_URL}/tickets/book`, payloadOriginal, {
+            headers: { Authorization: `Bearer ${accessToken1}`, 'X-Idempotency-Key': key1 }
+        });
+        assert('Initial request succeeds (201)', res1.status === 201);
+        const createdTicketId = res1.data.id;
+
+        // Reordered Key Request (Should be Cache HIT)
+        const resReordered = await axios.post(`${BASE_URL}/tickets/book`, payloadReordered, {
+            headers: { Authorization: `Bearer ${accessToken1}`, 'X-Idempotency-Key': key1 }
+        });
+        assert('Reordered payload keys return cached response (201)', resReordered.status === 201);
+        assert('Reordered payload returns X-Idempotency-Cache: HIT', resReordered.headers['x-idempotency-cache'] === 'HIT');
+        assert('Reordered payload returns same ticket ID', resReordered.data.id === createdTicketId);
+
+        // Exact Replay Request
+        const resReplay = await axios.post(`${BASE_URL}/tickets/book`, payloadOriginal, {
+            headers: { Authorization: `Bearer ${accessToken1}`, 'X-Idempotency-Key': key1 }
+        });
+        assert('Exact replay returns cached response (201)', resReplay.status === 201);
+        assert('Exact replay returns X-Idempotency-Cache: HIT', resReplay.headers['x-idempotency-cache'] === 'HIT');
+        assert('Exact replay returns same ticket ID', resReplay.data.id === createdTicketId);
+
+        // 5. Test Payload Mismatch (422)
+        console.log('\n  [Test Payload Mismatch (422)]');
+        const payloadDifferent = { eventId: testEventId, ticketType: 'standard', quantity: 2 };
+        try {
+            await axios.post(`${BASE_URL}/tickets/book`, payloadDifferent, {
+                headers: { Authorization: `Bearer ${accessToken1}`, 'X-Idempotency-Key': key1 }
+            });
+            assert('Different payload with same key returns 422', false);
+        } catch (err) {
+            assert('Different payload with same key returns 422', err.response && err.response.status === 422 && err.response.data.code === 'IDEMPOTENCY_KEY_REUSE_PAYLOAD_MISMATCH');
         }
-    });
-    assert('Second duplicate request returns cached response (201)', res2.status === 201);
-    assert('Second response has same ticket ID', res2.data.id === firstTicketId);
 
-    // Verify availability is STILL 9 (no double-decrement)
-    ev = await eventRepository.getEventById(testEventId);
-    assert('Ticket availability remains 9 (no double-decrement)', ev.ticketTypes.standard.available === 9);
+        // 6. Test Concurrent Duplicate Requests (409)
+        console.log('\n  [Test Concurrent Duplicate Requests (409)]');
+        const keyConcurrent = `key_${prefix}_concurrent_${uuidv4()}`;
+        const payloadConcurrent = { eventId: testEventId, ticketType: 'standard', quantity: 1 };
 
-    // Verify database has exactly 1 ticket created for this event
-    const ticketCountRes = await query('SELECT COUNT(*)::int as count FROM tickets WHERE event_id = $1', [testEventId]);
-    assert('Exactly 1 ticket exists in database', ticketCountRes.rows[0].count === 1);
+        const reqPromise1 = axios.post(`${BASE_URL}/tickets/book`, payloadConcurrent, {
+            headers: { Authorization: `Bearer ${accessToken1}`, 'X-Idempotency-Key': keyConcurrent }
+        });
+        const reqPromise2 = axios.post(`${BASE_URL}/tickets/book`, payloadConcurrent, {
+            headers: { Authorization: `Bearer ${accessToken1}`, 'X-Idempotency-Key': keyConcurrent }
+        });
 
-    // 4. Test Fallback Request Fingerprinting (Double Submit Prevention)
-    console.log('\n  [Test Fallback Request Fingerprinting]');
-    // Send two identical requests in parallel without idempotency key
-    const payloadNoKey = { eventId: testEventId, ticketType: 'standard', quantity: 1 };
-    
-    console.log('Sending two concurrent requests without explicit key...');
-    const reqPromise1 = axios.post(`${BASE_URL}/tickets/book`, payloadNoKey, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    
-    const reqPromise2 = axios.post(`${BASE_URL}/tickets/book`, payloadNoKey, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-    });
+        const results = await Promise.allSettled([reqPromise1, reqPromise2]);
+        let successCount = 0;
+        let conflictCount = 0;
 
-    const results = await Promise.allSettled([reqPromise1, reqPromise2]);
-    
-    let successCount = 0;
-    let conflictCount = 0;
-    let fallbackTicketId = null;
-    let duplicateReturned = false;
-
-    for (let idx = 0; idx < results.length; idx++) {
-        const r = results[idx];
-        console.log(`[Concurrent Request ${idx}] Status: ${r.status}`);
-        if (r.status === 'fulfilled') {
-            successCount++;
-            if (!fallbackTicketId) {
-                fallbackTicketId = r.value.data.id;
-            } else if (fallbackTicketId === r.value.data.id) {
-                duplicateReturned = true;
-            }
-            console.log(`[Concurrent Request ${idx}] Success response data:`, r.value.data);
-        } else {
-            console.log(`[Concurrent Request ${idx}] Failure response:`, r.reason.response ? { status: r.reason.response.status, data: r.reason.response.data } : r.reason.message);
-            if (r.reason.response && r.reason.response.status === 409) {
+        for (const r of results) {
+            if (r.status === 'fulfilled') {
+                successCount++;
+            } else if (r.reason.response && r.reason.response.status === 409) {
                 conflictCount++;
-            } else {
-                console.error('Unexpected request failure:', r.reason);
+                assert('Concurrent duplicate returns CONCURRENT_REQUEST_IN_PROGRESS', r.reason.response.data.code === 'CONCURRENT_REQUEST_IN_PROGRESS');
             }
         }
-    }
+        assert('Concurrent requests result in 1 success and 1 conflict', successCount === 1 && conflictCount === 1);
 
-    const passedFingerprintCheck = (successCount === 1 && conflictCount === 1) || (successCount === 2 && duplicateReturned);
-    assert('Fallback fingerprint successfully prevented duplicate booking', passedFingerprintCheck);
+        // 7. Test Cross-Principal / Cross-Route Collision Safety
+        console.log('\n  [Test Cross-Principal / Cross-Route Collision Safety]');
+        try {
+            await axios.post(`${BASE_URL}/tickets/book`, payloadOriginal, {
+                headers: { Authorization: `Bearer ${accessToken2}`, 'X-Idempotency-Key': key1 }
+            });
+            assert('Key owned by another user returns 409 Conflict', false);
+        } catch (err) {
+            assert('Key owned by another user returns 409 Conflict', err.response && err.response.status === 409 && err.response.data.code === 'IDEMPOTENCY_KEY_OWNED_BY_OTHER');
+        }
 
-    // Verify final availability is 8 (since only 1 book succeeded)
-    ev = await eventRepository.getEventById(testEventId);
-    assert('Final ticket availability decremented to 8', ev.ticketTypes.standard.available === 8);
+        // 8. Test 5xx Error Key Cleanup (Deterministic Unit-Style Middleware Check)
+        console.log('\n  [Test 5xx Error Key Cleanup]');
+        const middleware = idempotencyMiddleware({ required: true });
 
-    // 5. Cleanup
-    console.log('\n  [Cleanup]');
-    // Delete tickets, orders, and idempotency keys
-    await query('DELETE FROM idempotency_keys WHERE key = $1 OR key LIKE $2', [idempotencyKey, `%${testUserId}%`]);
-    
-    const tickets = await query('SELECT id FROM tickets WHERE event_id = $1', [testEventId]);
-    for (const t of tickets.rows) {
-        const orderLink = await query('SELECT order_id FROM tickets WHERE id = $1', [t.id]);
-        if (orderLink.rows.length > 0 && orderLink.rows[0].order_id) {
-            const orderId = orderLink.rows[0].order_id;
-            await query('DELETE FROM payment_attempts WHERE order_id = $1', [orderId]);
-            await query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
-            await query('DELETE FROM orders WHERE id = $1', [orderId]);
+        const key5xx = `key_${prefix}_5xx_${uuidv4()}`;
+        const mockEndpoint = '/api/unit-500-release-test';
+        const mockPayload = { testData: 'unit_500_retry' };
+
+        // Step 8a: Downstream handler sends 500
+        const mockReq1 = {
+            method: 'POST',
+            user: { uid: testUserId1 },
+            headers: { 'x-idempotency-key': key5xx },
+            originalUrl: mockEndpoint,
+            body: mockPayload
+        };
+
+        let nextCalled1 = false;
+        let resolveRes1;
+        const res1Promise = new Promise((resolve) => { resolveRes1 = resolve; });
+
+        const mockRes1 = {
+            statusCode: 200,
+            status(code) {
+                this.statusCode = code;
+                return this;
+            },
+            json(data) {
+                resolveRes1(data);
+                return this;
+            },
+            send(data) {
+                resolveRes1(data);
+                return this;
+            }
+        };
+
+        await middleware(mockReq1, mockRes1, async () => {
+            nextCalled1 = true;
+            mockRes1.statusCode = 500;
+            await mockRes1.json({ error: 'Internal Server Error' });
+        });
+
+        await res1Promise;
+        assert('Downstream handler called on 500 error attempt', nextCalled1);
+
+        const keyAfter500 = await idempotencyRepository.getByKey(key5xx);
+        assert('Exact scoped key is released on 500 error', keyAfter500 === null);
+
+        // Step 8b: Next valid attempt with same key acquires lock and succeeds
+        const mockReq2 = {
+            method: 'POST',
+            user: { uid: testUserId1 },
+            headers: { 'x-idempotency-key': key5xx },
+            originalUrl: mockEndpoint,
+            body: mockPayload
+        };
+
+        let nextCalled2 = false;
+        let resolveRes2;
+        const res2Promise = new Promise((resolve) => { resolveRes2 = resolve; });
+
+        const mockRes2 = {
+            statusCode: 200,
+            status(code) {
+                this.statusCode = code;
+                return this;
+            },
+            json(data) {
+                resolveRes2(data);
+                return this;
+            },
+            send(data) {
+                resolveRes2(data);
+                return this;
+            }
+        };
+
+        await middleware(mockReq2, mockRes2, async () => {
+            nextCalled2 = true;
+            mockRes2.statusCode = 200;
+            await mockRes2.json({ success: true, message: 'Recovered after 500' });
+        });
+
+        await res2Promise;
+        assert('Next valid attempt with released key acquires lock', nextCalled2);
+
+        const keyAfterRecovery = await idempotencyRepository.getByKey(key5xx);
+        assert('Recovery request completes and caches 200 response', keyAfterRecovery !== null && keyAfterRecovery.status === 'COMPLETED' && keyAfterRecovery.responseCode === 200);
+
+    } finally {
+        // 9. Cleanup Uniquely Prefixed Data
+        console.log('\n  [Cleanup]');
+        try {
+            await query('DELETE FROM idempotency_keys WHERE key LIKE $1', [`%${prefix}%`]);
+
+            const tickets = await query('SELECT id FROM tickets WHERE event_id = $1', [testEventId]);
+            for (const t of tickets.rows) {
+                const orderLink = await query('SELECT order_id FROM tickets WHERE id = $1', [t.id]);
+                if (orderLink.rows.length > 0 && orderLink.rows[0].order_id) {
+                    const orderId = orderLink.rows[0].order_id;
+                    await query('DELETE FROM payment_attempts WHERE order_id = $1', [orderId]);
+                    await query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
+                    await query('DELETE FROM orders WHERE id = $1', [orderId]);
+                }
+            }
+            await query('DELETE FROM tickets WHERE event_id = $1', [testEventId]);
+            await query('DELETE FROM events WHERE id = $1', [testEventId]);
+            await query('DELETE FROM auth_tokens WHERE email LIKE $1', [`%${prefix}%`]);
+            await query('DELETE FROM sessions WHERE user_id IN ($1, $2)', [testUserId1, testUserId2]);
+            await query('DELETE FROM user_profiles WHERE id IN ($1, $2)', [testUserId1, testUserId2]);
+            await query('DELETE FROM auth_users WHERE id IN ($1, $2)', [testUserId1, testUserId2]);
+            assert('Cleanup database successful', true);
+        } catch (cleanupErr) {
+            console.error('Error during database cleanup:', cleanupErr.message);
         }
     }
-    await query('DELETE FROM tickets WHERE event_id = $1', [testEventId]);
-    await query('DELETE FROM events WHERE id = $1', [testEventId]);
-    await query('DELETE FROM auth_tokens WHERE email = $1', [email]);
-    await query('DELETE FROM sessions WHERE user_id = $1', [testUserId]);
-    await query('DELETE FROM user_profiles WHERE id = $1', [testUserId]);
-    await query('DELETE FROM auth_users WHERE id = $1', [testUserId]);
-    assert('Cleanup database successful', true);
 }
 
 function cleanup() {

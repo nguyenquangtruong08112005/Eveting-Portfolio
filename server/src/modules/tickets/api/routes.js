@@ -18,12 +18,12 @@ router.post('/book',
     requireVerifiedEmail,
     bookingLimiter,
     auditLog('ticket:book', 'ticket', 'id'),
-    idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('ticketType').notEmpty().withMessage('ticketType is required'),
     body('quantity').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('quantity must be a positive integer'),
     body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),
     validateRequest,
+    idempotency(),
     ticketController.bookTicket
 );
 
@@ -40,10 +40,10 @@ router.post('/hold-seat',
     requireVerifiedEmail,
     bookingLimiter,
     auditLog('seat:hold', 'event', 'eventId'),
-    idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('seatId').notEmpty().withMessage('seatId is required'),
     validateRequest,
+    idempotency(),
     ticketController.holdSeat
 );
 
@@ -62,11 +62,11 @@ router.post('/book-held-seats',
     requireVerifiedEmail,
     bookingLimiter,
     auditLog('seat:book-held', 'event', 'eventId'),
-    idempotency(),
     body('eventId').notEmpty().withMessage('eventId is required'),
     body('seatIds').isArray({ min: 1 }).withMessage('seatIds must be a non-empty array'),
     body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),
     validateRequest,
+    idempotency(),
     ticketController.bookHeldSeats
 );
 
