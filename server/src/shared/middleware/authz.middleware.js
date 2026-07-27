@@ -179,7 +179,7 @@ function auditLog(action, resourceType, idParamName = 'id') {
   return async function(req, res, next) {
     const originalSend = res.json.bind(res);
     res.json = function(body) {
-      const userId = req.user ? (req.user.uid || req.user.id || req.user.user_id) : 'system';
+      const userId = req.user ? (req.user.uid || req.user.id || req.user.user_id) : null;
       let resourceId = req.params[idParamName] || 
                          req.body[idParamName] || 
                          req.query[idParamName] || 
@@ -200,7 +200,7 @@ function auditLog(action, resourceType, idParamName = 'id') {
         }
       }
 
-      if (userId && resourceId) {
+      if (resourceId) {
         const metadata = {
           method: req.method,
           path: req.originalUrl || req.url,

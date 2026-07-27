@@ -200,10 +200,10 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
 
     if (ticket.status === 'paid') return res.json({ status: 'paid', message: 'Paid confirmed' });
 
-    // Prefer payment_attempts (SoT); fall back to ticket.raw_data.zaloAppTransId
-    const latestAttempt = await orderRepository.getLatestPaymentAttemptByTicketId(ticketId);
+    // Best-effort provider order ID for ZaloPay query (refreshed under lock later)
+    const initialAttempt = await orderRepository.getLatestPaymentAttemptByTicketId(ticketId);
     const providerOrderId =
-        latestAttempt?.providerOrderId || ticket.zaloAppTransId || null;
+        initialAttempt?.providerOrderId || ticket.zaloAppTransId || null;
     if (!providerOrderId) {
         throw new BadRequestError('No payment transaction ID for this ticket.');
     }
@@ -211,22 +211,25 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
     const queryResult = await paymentService.queryZaloPayOrder(providerOrderId);
 
     const result = await ticketRepository.runTransaction(async (tx) => {
-        const existingAttempt = await orderRepository.getPaymentAttemptByProviderOrderId(
-            providerOrderId,
+        // Lock the latest payment attempt under transaction to serialise
+        // concurrent check-status and callback races
+        const latestAttempt = await orderRepository.getLatestPaymentAttemptByTicketId(
+            ticketId,
             tx,
             true
         );
-        if (!existingAttempt) {
+        if (!latestAttempt) {
             throw new NotFoundError('Payment attempt not found.');
         }
 
-        if (existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
+        // Re-check terminal state after acquiring the lock
+        if (latestAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
             return { status: 'paid', message: 'Paid confirmed (already succeeded)', raw: queryResult };
         }
-        if (existingAttempt.status === PAYMENT_STATUS.FAILED) {
+        if (latestAttempt.status === PAYMENT_STATUS.FAILED) {
             return { status: 'failed', message: 'Payment failed (already failed)', raw: queryResult };
         }
-        if (existingAttempt.status === PAYMENT_STATUS.CANCELLED) {
+        if (latestAttempt.status === PAYMENT_STATUS.CANCELLED) {
             return {
                 status: 'cancelled',
                 message: 'Payment cancelled (already cancelled)',

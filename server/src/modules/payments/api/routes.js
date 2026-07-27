@@ -43,6 +43,7 @@ router.post(
     body('ticketId').notEmpty().withMessage('ticketId is required'),
     validateRequest,
     requireOwnership('Ticket', 'ticketId'),
+    idempotency(),
     paymentController.manualCheckPaymentStatus
 );
 

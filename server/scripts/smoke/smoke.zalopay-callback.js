@@ -72,8 +72,8 @@ async function run() {
 
     // 1. Create user
     await query(
-        `INSERT INTO auth_users (id, email, name, password_hash, roles, is_active)
-         VALUES ($1, $2, 'Payment Test User', 'mock_hash', $3, true)`,
+        `INSERT INTO auth_users (id, email, password_hash, roles, is_active)
+         VALUES ($1, $2, 'mock_hash', $3, true)`,
         [testUserId, testUserEmail, ['user']]
     );
 
