@@ -128,7 +128,7 @@ export class TicketService {
     return request<{ status: string; message?: string }>(
       "POST",
       "/api/web/payments/check-status",
-      { body: { ticketId } },
+      { body: { ticketId }, headers: ik() },
     );
   }
 }
