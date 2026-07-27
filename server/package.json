@@ -69,7 +69,15 @@
     "db:audit:orphans": "node scripts/db/run-orphan-audit.js",
     "db:audit:fks": "node scripts/db/probes/_fk_count.js",
     "test:unit:qr": "node scripts/ci/test-qr-generator.mjs",
-    "job:retention": "node src/jobs/retention.job.js"
+    "job:retention": "node src/jobs/retention.job.js",
+    "job:retention:cron": "node src/jobs/retention.job.js --cron",
+    "job:outbox-publisher": "node src/jobs/outbox-publisher.js",
+    "job:outbox-publisher:once": "node src/jobs/outbox-publisher.js --once",
+    "db:smoke:phase04-outbox": "node scripts/smoke/phase04-outbox.smoke.js",
+    "db:smoke:cache-namespace": "node scripts/smoke/smoke.cache-namespace.js",
+    "dlq:list": "node scripts/maintenance/retry-dlq.js list",
+    "dlq:retry-all": "node scripts/maintenance/retry-dlq.js retry-all",
+    "dlq:retry": "node scripts/maintenance/retry-dlq.js retry"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.800.0",

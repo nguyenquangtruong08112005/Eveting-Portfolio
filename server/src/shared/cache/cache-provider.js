@@ -27,17 +27,29 @@ class MemoryCache {
     this.store.delete(key);
     this.ttls.delete(key);
   }
+
+  async delByPattern(pattern) {
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+    for (const key of this.store.keys()) {
+      if (regex.test(key)) {
+        this.store.delete(key);
+        this.ttls.delete(key);
+      }
+    }
+  }
 }
 
 const fallbackCache = new MemoryCache();
 let redisClient = null;
 let isRedisConnected = false;
+let initGen = 0;
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
 async function initRedis() {
+  const gen = ++initGen;
   try {
-    redisClient = createClient({
+    const candidate = createClient({
       url: redisUrl,
       socket: {
         reconnectStrategy: (retries) => {
@@ -51,30 +63,36 @@ async function initRedis() {
       }
     });
 
-    redisClient.on('error', (err) => {
+    redisClient = candidate;
+
+    candidate.on('error', (err) => {
       logger.warn(`[Redis Cache Provider] Client Error: ${err.message}`);
       isRedisConnected = false;
     });
 
-    redisClient.on('connect', () => {
+    candidate.on('connect', () => {
       logger.info(`[Redis Cache Provider] Connected to Redis at ${redisUrl}`);
       isRedisConnected = true;
     });
 
-    redisClient.on('ready', () => {
+    candidate.on('ready', () => {
       isRedisConnected = true;
     });
 
-    redisClient.on('end', () => {
+    candidate.on('end', () => {
       isRedisConnected = false;
     });
 
-    await redisClient.connect();
-    isRedisConnected = true;
-    logger.info(`[Redis Cache Provider] Ready at ${redisUrl}`);
+    await candidate.connect();
+    if (candidate === redisClient && candidate.isReady) {
+      isRedisConnected = true;
+      logger.info(`[Redis Cache Provider] Ready at ${redisUrl}`);
+    }
   } catch (err) {
-    logger.warn(`[Redis Cache Provider] Initialization failed: ${err.message}. Using MemoryCache fallback.`);
-    isRedisConnected = false;
+    if (gen === initGen) {
+      logger.warn(`[Redis Cache Provider] Initialization failed: ${err.message}. Using MemoryCache fallback.`);
+      isRedisConnected = false;
+    }
   }
 }
 
@@ -122,6 +140,28 @@ async function del(key) {
   await fallbackCache.del(key);
 }
 
+async function delByPattern(pattern) {
+  if (isRedisConnected && redisClient) {
+    try {
+      const matched = [];
+      let cursor = '0';
+      do {
+        const reply = await redisClient.scan(cursor, { MATCH: pattern, COUNT: 100 });
+        cursor = reply.cursor;
+        matched.push(...reply.keys);
+      } while (cursor !== '0');
+      if (matched.length > 0) {
+        await redisClient.del(matched);
+        logger.info(`[Redis Cache Provider] Invalidated ${matched.length} keys matching ${pattern}`);
+      }
+      return;
+    } catch (err) {
+      logger.warn(`[Redis Cache Provider] delByPattern failed: ${err.message}. Falling back to MemoryCache.`);
+    }
+  }
+  await fallbackCache.delByPattern(pattern);
+}
+
 function isRedisAvailable() {
   return Boolean(isRedisConnected && redisClient);
 }
@@ -131,11 +171,26 @@ function getRedisClient() {
   return null;
 }
 
+async function disconnect() {
+  initGen++;
+  if (redisClient) {
+    try {
+      await redisClient.quit();
+    } catch (err) {
+      logger.warn(`[Redis Cache Provider] quit error: ${err.message}`);
+    }
+    isRedisConnected = false;
+    redisClient = null;
+  }
+}
+
 module.exports = {
   get,
   set,
   del,
+  delByPattern,
   MemoryCache,
   isRedisAvailable,
   getRedisClient,
+  disconnect,
 };

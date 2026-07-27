@@ -8,6 +8,7 @@ const orderRepository = require('@/providers/database/order.repository');
 const seatRepository = require('@/providers/database/seat.repository');
 const membershipRepository = require('@/providers/database/membership.repository');
 const cacheProvider = require('@/shared/cache/cache-provider');
+const cacheNamespace = require('@/shared/cache/namespace-helpers');
 const { getIo } = require('@/shared/socket/socket-server');
 const { v4: uuidv4 } = require('uuid');
 const {
@@ -192,6 +193,8 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
         }
         // ── End order wiring ──
 
+        await cacheNamespace.invalidateSeatAvailability(eventId);
+
         return newTicketData;
     });
 };
@@ -221,6 +224,7 @@ const cancelPendingTicket = async (ticketId) => {
         }
 
         console.log(`Ticket ${ticketId} cancelled, 1 ticket of type ${ticketData.type} returned to event ${ticketData.eventId}.`);
+        await cacheNamespace.invalidateSeatAvailability(ticketData.eventId);
         return { ...ticketData, status: 'cancelled' };
     });
 };
@@ -391,6 +395,8 @@ const confirmTicketPayment = async (ticketId, zpTransId = null, tx = null) => {
             logger.error(`[NotificationOutbox] Failed to publish outbox event: ${err.message}`);
         }
 
+        await cacheNamespace.invalidateSeatAvailability(ticketData.eventId);
+
         console.log(`Ticket ${ticketId} confirmed. Analytics updated for date: ${now.toISOString()}`);
 
         return { ...ticketData, status: 'paid' };
@@ -450,6 +456,8 @@ const failTicketPayment = async (ticketId, reason = 'Payment failed', tx = null)
         } catch (err) {
             logger.error(`[ShadowPayment] Failed to fail payment or order for ticket ${ticketId}: ${err.message}`);
         }
+
+        await cacheNamespace.invalidateSeatAvailability(ticketData.eventId);
 
         return { ...ticketData, status: 'cancelled' };
     };
@@ -555,6 +563,8 @@ const holdSeat = async (userId, eventId, seatId) => {
         const holdKey = `hold:event:${eventId}:seat:${seatId}`;
         await cacheProvider.set(holdKey, JSON.stringify({ userId, expiresAt }), 600);
 
+        await cacheNamespace.invalidateSeatAvailability(eventId);
+
         const io = getIo();
         if (io) {
             io.to(`event_${eventId}`).emit('seat:held', { eventId, seatId, expiresAt });
@@ -580,6 +590,8 @@ const releaseSeat = async (userId, eventId, seatId) => {
         // Delete Redis key
         const holdKey = `hold:event:${eventId}:seat:${seatId}`;
         await cacheProvider.del(holdKey);
+
+        await cacheNamespace.invalidateSeatAvailability(eventId);
 
         const io = getIo();
         if (io) {
@@ -730,6 +742,8 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
 
             tickets.push(newTicketData);
         }
+
+        await cacheNamespace.invalidateSeatAvailability(eventId);
 
         const io = getIo();
         if (io) {

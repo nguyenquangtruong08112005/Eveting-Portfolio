@@ -6,7 +6,7 @@ const { BadRequestError, NotFoundError, ForbiddenError, ServiceUnavailableError 
 const { transaction: dbTransaction } = require('@/providers/database/postgres.client');
 const eventPublisher = require('@/shared/events/event-publisher');
 const outboxProcessor = require('@/shared/events/outbox-processor');
-const cacheProvider = require('@/shared/cache/cache-provider');
+const cacheNamespace = require('@/shared/cache/namespace-helpers');
 
 const eventRepository = require('@/providers/database/event.repository');
 const venueRepository = require('@/providers/database/venue.repository');
@@ -41,11 +41,9 @@ const getAllEvents = async (page = 1, limit = 10) => {
 };
 
 const getEventById = async (eventId, requestingUser = null) => {
-    const cacheKey = `cache:event:${eventId}`;
     try {
-        const cachedDataStr = await cacheProvider.get(cacheKey);
-        if (cachedDataStr) {
-            const cachedEvent = JSON.parse(cachedDataStr);
+        const cachedEvent = await cacheNamespace.getEvent(eventId);
+        if (cachedEvent) {
             let isOwnerOrAdmin = false;
             if (requestingUser) {
                 const isAdmin = requestingUser.roles?.includes('organizer') || requestingUser.roles?.includes('admin');
@@ -102,7 +100,7 @@ const getEventById = async (eventId, requestingUser = null) => {
 
     // Cache the public event view
     try {
-        await cacheProvider.set(cacheKey, JSON.stringify(publicEventView), 3600);
+        await cacheNamespace.setEvent(eventId, publicEventView);
     } catch (err) {
         console.error(`[Cache] Error setting event cache: ${err.message}`);
     }
@@ -199,6 +197,9 @@ const createEvent = async (eventData, organizerId) => {
 
     outboxProcessor.triggerProcess();
 
+    await cacheNamespace.invalidateCategories();
+    await cacheNamespace.invalidateAllVenues();
+
     // Expose lifecycle clearly: legacy `status` is "pending" for BOTH draft & submitted
     return {
         ...newEventData,
@@ -252,6 +253,9 @@ const updateEvent = async (eventId, eventData) => {
 
     outboxProcessor.triggerProcess();
 
+    await cacheNamespace.invalidateEvent(eventId);
+    await cacheNamespace.invalidateCategories();
+
     return fullEventData;
 };
 
@@ -278,6 +282,9 @@ const cancelEvent = async (eventId) => {
     });
 
     outboxProcessor.triggerProcess();
+
+    await cacheNamespace.invalidateEvent(eventId);
+    await cacheNamespace.invalidateCategories();
 
     return fullEventData;
 };
