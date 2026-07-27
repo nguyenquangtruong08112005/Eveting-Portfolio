@@ -16,8 +16,8 @@
 | | `04-T2` | Redis Caching, Rate Limiter & Idempotency Storage Setup | `COMPLETED` ^[Cache smoke passed (normal Redis + forced MemoryCache fallback)] |
 | | `04-T3` | Outbox Worker & Dead Letter Queue (retry, DLQ, manual requeue CLI, retention) | `COMPLETED` ^[Phase 04 outbox smoke 61/0; retention cron 02:30 Asia/Ho_Chi_Minh, 7d, batch 500; TIMESTAMPTZ; migration 064] |
 | | `04-T4` | Cache Namespace Helpers (gzip64, SCAN invalidation, MemoryCache fallback, invalidation hooks) | `COMPLETED` ^[Cache smoke passed (normal + forced fallback)] |
-| **05 Payments** | `05-T1` | Core Idempotency Engine (`idempotency_keys` Spec) | `COMPLETED` |
-| | `05-T2` | ZaloPay Gateway Integration, Refund & Payout Safeguards | `PLANNED` |
+| **05 Payments** | `05-T1` | Core Idempotency Engine (`idempotency_keys` Spec) | `COMPLETED` ^[Migration 065 additive-only not executed; explicit Idempotency-Key header; canonical nested object hashing array-order preserved; exact replay HIT 422 mismatch 409 in-progress 409 cross-principal global key no payload leak; 5xx scoped key release; ticket/payment route middleware after validation+ownership; smoke 20/0 passed 2026-07-27; web uuid crypto.randomUUID on 4 mutations; attendee+organizer Retrofit Header on tickets/book + payments/create-order; web lint 0 errors; both android compileDebugKotlin successful] |
+| | `05-T2` | ZaloPay Gateway Integration, Refund & Payout Safeguards | `PENDING` ^[No refund or payout work included by current approved scope] |
 | **06 Seatmap** | `06-T1` | Organizer Visual Seat Map Editor & Schema Engine | `PLANNED` |
 | | `06-T2` | Seat Hold TTL & Database Transactional Locking | `PLANNED` |
 | | `06-T3` | Concurrency Race-Condition Testing & Auto-Release Worker | `PLANNED` |

@@ -10,5 +10,5 @@ Phase 05 builds the core financial transaction engine, implementing the strict `
 - Financial safeguards against double-refunding and unauthorized payouts.
 
 ## Tasks
-1. [`01-idempotency-engine.md`](01-idempotency-engine.md) — Core Idempotency Engine (`Idempotency-Key` Spec)
-2. [`02-payment-zalopay-payout.md`](02-payment-zalopay-payout.md) — ZaloPay Gateway Integration, Refund & Payout Safeguards
+1. [`01-idempotency-engine.md`](01-idempotency-engine.md) — Core Idempotency Engine (`Idempotency-Key` Spec) — **COMPLETED** ^[Recovery tasks A-C: engine correction, additive migration 065, route middleware ordering. Smoke 20/0 passed 2026-07-27]
+2. [`02-payment-zalopay-payout.md`](02-payment-zalopay-payout.md) — ZaloPay Gateway Integration, Refund & Payout Safeguards — **PENDING**
