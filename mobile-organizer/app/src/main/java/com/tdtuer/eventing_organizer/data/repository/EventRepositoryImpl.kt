@@ -26,6 +26,7 @@ import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing_organizer.data.network.model.MediaItemRequest
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
+import com.tdtuer.eventing_organizer.data.network.model.PayoutSummaryResponse
 import com.tdtuer.eventing_organizer.data.network.model.PostMediaRequest
 import com.tdtuer.eventing_organizer.data.network.model.PostReviewRequest
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
@@ -323,6 +324,20 @@ class EventRepositoryImpl @Inject constructor(
         emit(Result.Loading)
         try {
             val response = apiService.getDashboardStats()
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.Success(response.body()!!))
+            } else {
+                emit(Result.Failure(UserFacingErrors.fromHttp(response.code(), response.errorBody()?.string())))
+            }
+        } catch (e: Exception) {
+            emit(Result.Failure(e))
+        }
+    }
+
+    override fun getPayoutSummary(): Flow<Result<PayoutSummaryResponse>> = flow {
+        emit(Result.Loading)
+        try {
+            val response = apiService.getPayoutSummary()
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.Success(response.body()!!))
             } else {

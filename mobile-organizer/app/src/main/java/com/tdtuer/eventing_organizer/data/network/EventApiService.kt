@@ -24,6 +24,7 @@ import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.MyEventsResponse
 import com.tdtuer.eventing_organizer.data.network.model.NotificationDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
+import com.tdtuer.eventing_organizer.data.network.model.PayoutSummaryResponse
 import com.tdtuer.eventing_organizer.data.network.model.PendingEventsResponse
 import com.tdtuer.eventing_organizer.data.network.model.PostMediaRequest
 import com.tdtuer.eventing_organizer.data.network.model.PostReviewRequest
@@ -191,6 +192,9 @@ interface EventApiService {
 
     @GET("organizer/me/stats")
     suspend fun getDashboardStats(): Response<DashboardStatsResponse>
+
+    @GET("organizer/me/payout-summary")
+    suspend fun getPayoutSummary(): Response<PayoutSummaryResponse>
 
     @POST("organizer/check-in-qr")
     suspend fun checkInQr(@Body request: CheckInRequest): Response<CheckInResponse>

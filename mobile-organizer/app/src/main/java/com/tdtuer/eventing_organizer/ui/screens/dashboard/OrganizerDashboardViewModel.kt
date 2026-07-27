@@ -7,11 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
+import com.tdtuer.eventing_organizer.data.network.model.PayoutSummaryResponse
 import com.tdtuer.eventing_organizer.domain.model.Result
 import com.tdtuer.eventing_organizer.data.repository.EventRepository
 import com.tdtuer.eventing_organizer.domain.usecase.authentication.SignOutUseCase // Nhớ import UseCase
 import com.tdtuer.eventing_organizer.domain.usecase.organizer.GetDashboardStatsUseCase
 import com.tdtuer.eventing_organizer.domain.usecase.organizer.GetMyEventsUseCase
+import com.tdtuer.eventing_organizer.domain.usecase.organizer.GetPayoutSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,8 @@ data class DashboardUiState(
     val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val stats: DashboardStatsResponse? = null,
+    val payoutSummary: PayoutSummaryResponse? = null,
+    val payoutError: Boolean = false,
     val myEvents: List<MyEventDto> = emptyList(),
     val error: String? = null,
     val successMessage: String? = null
@@ -34,6 +38,7 @@ data class DashboardUiState(
 class OrganizerDashboardViewModel @Inject constructor(
     private val getDashboardStatsUseCase: GetDashboardStatsUseCase,
     private val getMyEventsUseCase: GetMyEventsUseCase,
+    private val getPayoutSummaryUseCase: GetPayoutSummaryUseCase,
     private val signOutUseCase: SignOutUseCase, // Inject thêm SignOutUseCase
     private val eventRepository: EventRepository
 ) : ViewModel() {
@@ -64,6 +69,7 @@ class OrganizerDashboardViewModel @Inject constructor(
 
             if (isRefresh || isInitial) {
                 loadStats()
+                loadPayoutSummary()
             }
 
             getMyEventsUseCase(page = currentPage, limit = pageSize).collectLatest { result ->
@@ -99,6 +105,16 @@ class OrganizerDashboardViewModel @Inject constructor(
         getDashboardStatsUseCase().collectLatest { result ->
             if (result is Result.Success) {
                 _uiState.update { it.copy(stats = result.data) }
+            }
+        }
+    }
+
+    private suspend fun loadPayoutSummary() {
+        getPayoutSummaryUseCase().collectLatest { result ->
+            when (result) {
+                is Result.Success -> _uiState.update { it.copy(payoutSummary = result.data, payoutError = false) }
+                is Result.Failure -> _uiState.update { it.copy(payoutSummary = null, payoutError = true) }
+                else -> {}
             }
         }
     }

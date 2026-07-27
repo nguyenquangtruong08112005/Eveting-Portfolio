@@ -124,6 +124,14 @@ data class DashboardStatsResponse(
     @SerializedName("upcomingEvents") val upcomingEvents: Int
 )
 
+data class PayoutSummaryResponse(
+    @SerializedName("eligibleNetAmount") val eligibleNetAmount: Double,
+    @SerializedName("pendingApprovalAmount") val pendingApprovalAmount: Double,
+    @SerializedName("processingAmount") val processingAmount: Double,
+    @SerializedName("completedAmount") val completedAmount: Double,
+    @SerializedName("nextScheduledPayoutAt") val nextScheduledPayoutAt: String?
+)
+
 data class CheckInResponse(
     @SerializedName("valid") val valid: Boolean,
     @SerializedName("message") val message: String,

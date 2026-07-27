@@ -27,12 +27,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tdtuer.eventing_organizer.data.network.model.DashboardStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
+import com.tdtuer.eventing_organizer.data.network.model.PayoutSummaryResponse
 import com.tdtuer.eventing_organizer.helpers.AppUtils
 import com.tdtuer.eventing_organizer.helpers.formatTimestampToDay
 import com.tdtuer.eventing_organizer.helpers.formatTimestampToMonth
 import com.tdtuer.eventing_organizer.ui.navigation.Graph
 import com.tdtuer.eventing_organizer.ui.navigation.Screen
 import com.tdtuer.eventing_organizer.ui.theme.AppTheme
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,6 +183,7 @@ fun OrganizerDashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item { uiState.stats?.let { stats -> StatsSection(stats) } }
+                    item { FinanceSummaryCard(uiState.payoutSummary, uiState.payoutError) }
                     item {
                         Text(
                             "Sự kiện của tôi",
@@ -337,6 +341,80 @@ fun MenuItemRow(icon: ImageVector, text: String, onClick: () -> Unit, color: Col
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
         Text(text, fontSize = 16.sp, color = color, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun FinanceSummaryCard(summary: PayoutSummaryResponse?, isError: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Tổng quan tài chính",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (summary == null) {
+                Text(
+                    if (isError) "Thông tin tài chính chưa khả dụng" else "Đang tải...",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FinanceAmountCard("Đủ điều kiện", summary.eligibleNetAmount, Color(0xFF4CAF50), Modifier.weight(1f))
+                    FinanceAmountCard("Chờ duyệt", summary.pendingApprovalAmount, Color(0xFFFF9800), Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FinanceAmountCard("Đang xử lý", summary.processingAmount, Color(0xFF2196F3), Modifier.weight(1f))
+                    FinanceAmountCard("Đã nhận", summary.completedAmount, Color(0xFF9C27B0), Modifier.weight(1f))
+                }
+                if (summary.nextScheduledPayoutAt != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val formattedDate = try {
+                        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+                        parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        val formatter = SimpleDateFormat("dd/MM/yyyy", Locale("vi", "VN"))
+                        formatter.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+                        formatter.format(parser.parse(summary.nextScheduledPayoutAt)!!)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    if (formattedDate != null) {
+                        Text(
+                            "Thanh toán tiếp theo: $formattedDate",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FinanceAmountCard(title: String, amount: Double, color: Color, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(text = title, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = AppUtils.formatPrice(amount),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
     }
 }
 

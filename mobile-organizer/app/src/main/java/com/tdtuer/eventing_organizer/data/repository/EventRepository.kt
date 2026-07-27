@@ -11,6 +11,7 @@ import com.tdtuer.eventing_organizer.data.network.model.EventStatsResponse
 import com.tdtuer.eventing_organizer.data.network.model.FeaturedProfileDto
 import com.tdtuer.eventing_organizer.data.network.model.MyEventDto
 import com.tdtuer.eventing_organizer.data.network.model.OrganizerProfileResponse
+import com.tdtuer.eventing_organizer.data.network.model.PayoutSummaryResponse
 import com.tdtuer.eventing_organizer.data.network.model.RegisterOrganizerRequest
 import com.tdtuer.eventing_organizer.data.network.model.UpdateOrganizerProfileRequest
 import com.tdtuer.eventing_organizer.data.network.model.UpdatePromotionRequest
@@ -78,6 +79,7 @@ interface EventRepository {
     ): Flow<Result<List<MyEventDto>>>
 
     fun getDashboardStats(): Flow<Result<DashboardStatsResponse>>
+    fun getPayoutSummary(): Flow<Result<PayoutSummaryResponse>>
     suspend fun createEvent(request: CreateEventRequest): Result<Unit>
     suspend fun checkInTicket(qrToken: String): Result<CheckInResponse>
 
