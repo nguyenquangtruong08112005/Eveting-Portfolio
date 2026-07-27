@@ -202,6 +202,54 @@ async function upsertOrganizerSettings(organizerId, platformFeeRate) {
         [organizerId, platformFeeRate, nowDb()]
     );
 }
+
+async function getEligibleOrganizers() {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await query(
+        `SELECT DISTINCT le.organizer_id
+         FROM ledger_entries le
+         WHERE NOT EXISTS (
+               SELECT 1 FROM payout_items pi WHERE pi.ledger_entry_id = le.id
+           )
+           AND EXISTS (
+               SELECT 1 FROM order_items oi
+               JOIN events e ON e.id = oi.event_id
+               WHERE oi.order_id = le.order_id
+                 AND e.end_at IS NOT NULL AND e.end_at <= $1
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM order_items oi
+               JOIN events e ON e.id = oi.event_id
+               WHERE oi.order_id = le.order_id
+                 AND (e.end_at IS NULL OR e.end_at > $1)
+           )`,
+        [cutoff]
+    );
+    return result.rows.map(r => r.organizer_id);
+}
+
+async function getProcessingPayouts() {
+    const result = await query(
+        "SELECT * FROM payouts WHERE status = 'processing' ORDER BY created_at ASC"
+    );
+    return result.rows.map(rowToPayout);
+}
+
+async function getPendingProviderSubmissionPayouts() {
+    const result = await query(
+        "SELECT * FROM payouts WHERE status = 'pending_provider_submission' ORDER BY created_at ASC"
+    );
+    return result.rows.map(rowToPayout);
+}
+
+async function lockAndUpdatePayout(payoutId, fromStatus, toStatus, updates, tx) {
+    const client = getClient(tx);
+    const locked = await lockPayoutById(payoutId, tx);
+    if (!locked || locked.status !== fromStatus) return false;
+    await updatePayoutStatus(payoutId, toStatus, updates, tx);
+    return true;
+}
+
 async function runTransaction(fn) {
     const { transaction } = require('./postgres.client');
     return transaction(fn);
@@ -238,5 +286,9 @@ module.exports = {
     getPayoutItems,
     getPreviousPayoutsCount,
     lockPayoutById,
+    getEligibleOrganizers,
+    getProcessingPayouts,
+    getPendingProviderSubmissionPayouts,
+    lockAndUpdatePayout,
     runTransaction,
 };

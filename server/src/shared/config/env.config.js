@@ -19,6 +19,7 @@ const config = {
   // Payouts
   payout: {
     get bankAccountEncryptionKey() { return process.env.BANK_ACCOUNT_ENCRYPTION_KEY; },
+    get workersEnabled() { return process.env.PAYOUT_WORKERS_ENABLED !== 'false'; },
   },
 
   // Storage

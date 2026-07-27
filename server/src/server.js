@@ -7,6 +7,7 @@ const { startReminderJob } = require('@/jobs/reminder.job');
 const { startCronJob } = require('@/shared/events/outbox-processor');
 const { startPolling } = require('@/jobs/outbox-publisher');
 const { startRetentionCron } = require('@/jobs/retention.job');
+const { startPayoutCron } = require('@/jobs/payout.job');
 
 const PORT = process.env.PORT || 3000;
 const WORKER_ENABLED = process.env.OUTBOX_WORKER_ENABLED !== 'false';
@@ -19,6 +20,7 @@ server.listen(PORT, () => {
   console.log(`Server address http://localhost:${PORT}`);
   startReminderJob();
   startRetentionCron();
+  startPayoutCron();
   if (WORKER_ENABLED) {
     startPolling();
   } else {
