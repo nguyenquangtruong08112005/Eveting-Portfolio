@@ -3,6 +3,10 @@ import type { Ticket, BackendSeat, VoucherResult } from "@/types";
 
 export type { VoucherResult };
 
+function ik(): Record<string, string> {
+  return { 'X-Idempotency-Key': crypto.randomUUID() };
+}
+
 export class TicketService {
   static async getEventSeats(eventId: string): Promise<BackendSeat[]> {
     return request<BackendSeat[]>(
@@ -17,6 +21,7 @@ export class TicketService {
   ): Promise<{ message: string }> {
     return request<{ message: string }>("POST", "/api/web/tickets/hold-seat", {
       body: { eventId, seatId },
+      headers: ik(),
     });
   }
 
@@ -48,6 +53,7 @@ export class TicketService {
       tickets?: { id: string }[];
     }>("POST", "/api/web/tickets/book-held-seats", {
       body: { eventId, seatIds, promoCode },
+      headers: ik(),
     });
   }
 
@@ -68,6 +74,7 @@ export class TicketService {
             quantity: item.quantity,
             promoCode,
           },
+          headers: ik(),
         },
       );
       if (res && res.id) {
@@ -84,7 +91,7 @@ export class TicketService {
     return request<{ order_url: string; app_trans_id: string }>(
       "POST",
       "/api/web/payments/create-order",
-      { body: { ticketId, redirectUrl } },
+      { body: { ticketId, redirectUrl }, headers: ik() },
     );
   }
 
