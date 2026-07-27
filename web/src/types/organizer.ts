@@ -42,3 +42,41 @@ export interface OrganizerAttendeeRow {
     profilePicUrl?: string;
   };
 }
+
+// ── Phase 05: Finance / Payouts ──────────────────────────────────────────
+
+export interface PayoutSummary {
+  eligibleNetAmount: number;
+  pendingApprovalAmount: number;
+  processingAmount: number;
+  completedAmount: number;
+  nextScheduledPayoutAt: string | null;
+}
+
+export interface Payout {
+  id: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+export interface PaginatedPayouts {
+  page: number;
+  limit: number;
+  total: number;
+  payouts: Payout[];
+}
+
+export interface BankAccountInfo {
+  registered: boolean;
+  maskedDisplay?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BankAccountUpdateBody {
+  accountNumber: string;
+  accountHolder: string;
+  bankName: string;
+}

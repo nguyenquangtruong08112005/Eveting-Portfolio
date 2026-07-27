@@ -4,6 +4,7 @@ import {
   TicketPercent,
   MapPin,
   QrCode,
+  Wallet,
 } from 'lucide-react';
 import type { NavItem } from '@/components/layout/AppShell';
 
@@ -16,4 +17,5 @@ export const ORG_NAV: NavItem[] = [
   { href: '/organizer/promotions', labelKey: 'org_promotions', icon: TicketPercent },
   { href: '/organizer/venues', labelKey: 'org_venues', icon: MapPin },
   { href: '/organizer/check-in', labelKey: 'org_check_in', icon: QrCode },
+  { href: '/organizer/finance', labelKey: 'org_finance', icon: Wallet },
 ];
