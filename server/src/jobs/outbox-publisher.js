@@ -1,16 +1,22 @@
+require('dotenv').config({ quiet: true });
+require('../alias-bootstrap');
 const { query } = require('@/providers/database/postgres.client');
 const { getIo } = require('@/shared/socket/socket-server');
 const fcmService = require('@/modules/notifications/infrastructure/providers/fcm.service');
 const logger = require('@/shared/logger');
-const cron = require('node-cron');
 const esClient = require('@/shared/config/elasticsearch.config');
 const { buildElasticData } = require('@/modules/events/application/helpers/event-mappers');
 const eventRepository = require('@/providers/database/event.repository');
 const cacheNamespace = require('@/shared/cache/namespace-helpers');
 
 const BATCH_SIZE = Number(process.env.OUTBOX_BATCH_SIZE) || 50;
-const MAX_RETRIES = Number(process.env.OUTBOX_MAX_RETRIES) || 5;
 const POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS) || 2000;
+const MAX_RETRIES = Number(process.env.OUTBOX_MAX_RETRIES) || 5;
+const WORKER_ENABLED = process.env.OUTBOX_WORKER_ENABLED !== 'false';
+const RUN_ONCE = process.argv.includes('--once');
+
+let active = false;
+let pollTimer = null;
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -21,10 +27,6 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-let isProcessing = false;
-
-const OUTBOX_WORKER_ENABLED = process.env.OUTBOX_WORKER_ENABLED !== 'false';
 
 const PROCESSORS = {
     notification: async (payload) => {
@@ -56,27 +58,26 @@ const PROCESSORS = {
             const { notifyAttendeesAboutCancellation } = require('@/modules/events/application/helpers/notification-sender');
             await notifyAttendeesAboutCancellation(payload.eventId, payload.eventName);
         } else {
-            logger.warn(`[Outbox Processor] Unknown notification channel: ${channel}`);
+            logger.warn(`[OutboxPublisher] Unknown notification channel: ${channel}`);
         }
     },
     search_index: async (payload) => {
         const { action, eventId } = payload;
-        const ELASTIC_INDEX = 'events';
 
         await cacheNamespace.invalidateEvent(eventId);
 
         if (!esClient) {
-            logger.warn(`[Elastic Search Index Projector] esClient is not configured. Skipping.`);
+            logger.warn(`[OutboxPublisher] esClient not configured. Skipping search_index.`);
             return;
         }
 
         if (action === 'delete') {
             try {
-                await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
-                logger.info(`[Elastic Search Index Projector] Deleted event ${eventId} from search index.`);
+                await esClient.delete({ index: 'events', id: eventId });
+                logger.info(`[OutboxPublisher] Deleted event ${eventId} from search index.`);
             } catch (error) {
                 if (error.meta && error.meta.statusCode === 404) {
-                    logger.info(`[Elastic Search Index Projector] Event ${eventId} was already deleted or not found in index.`);
+                    logger.info(`[OutboxPublisher] Event ${eventId} already deleted from index.`);
                 } else {
                     throw error;
                 }
@@ -85,9 +86,9 @@ const PROCESSORS = {
             const eventData = await eventRepository.getEventById(eventId);
             if (!eventData) {
                 try {
-                    await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
+                    await esClient.delete({ index: 'events', id: eventId });
                 } catch (e) {}
-                logger.info(`[Elastic Search Index Projector] Event ${eventId} not found in DB or inactive. Removed from index.`);
+                logger.info(`[OutboxPublisher] Event ${eventId} not found in DB. Removed from index.`);
                 return;
             }
 
@@ -95,19 +96,19 @@ const PROCESSORS = {
             const VISIBILITY = { PUBLIC: 'public' };
             if (eventData.status !== STATUS.ACTIVE || eventData.visibility !== VISIBILITY.PUBLIC) {
                 try {
-                    await esClient.delete({ index: ELASTIC_INDEX, id: eventId });
+                    await esClient.delete({ index: 'events', id: eventId });
                 } catch (e) {}
-                logger.info(`[Elastic Search Index Projector] Event ${eventId} is status=${eventData.status}, visibility=${eventData.visibility}. Removed from index.`);
+                logger.info(`[OutboxPublisher] Event ${eventId} status=${eventData.status}, visibility=${eventData.visibility}. Removed.`);
                 return;
             }
 
             const elasticData = await buildElasticData(eventData);
             await esClient.index({
-                index: ELASTIC_INDEX,
+                index: 'events',
                 id: eventId,
                 body: elasticData
             });
-            logger.info(`[Elastic Search Index Projector] Indexed event ${eventId} successfully.`);
+            logger.info(`[OutboxPublisher] Indexed event ${eventId} successfully.`);
         }
     }
 };
@@ -145,17 +146,18 @@ async function processRows(rows) {
             if (processor) {
                 await processor(row.payload);
             } else {
-                logger.warn(`[Outbox Processor] No handler for event type: ${row.event_type}`);
+                logger.warn(`[OutboxPublisher] No processor for event_type: ${row.event_type}`);
             }
 
-            const doneNow = new Date();
+            const completeNow = new Date();
             await query(
                 `UPDATE outbox SET status = 'completed', updated_at = $1 WHERE id = $2`,
-                [doneNow, row.id]
+                [completeNow, row.id]
             );
+            logger.info(`[OutboxPublisher] Completed outbox ${row.id} (${row.event_type})`);
         } catch (err) {
-            logger.error(`[Outbox Processor] Error processing entry ${row.id}: ${err.message}`);
             const nextRetry = row.retry_count + 1;
+            logger.error(`[OutboxPublisher] Failed outbox ${row.id} (${row.event_type}): ${err.message} (retry ${nextRetry}/${MAX_RETRIES})`);
 
             if (nextRetry >= MAX_RETRIES) {
                 const dlqNow = new Date();
@@ -167,69 +169,91 @@ async function processRows(rows) {
                     [`dlq_${row.id}`, row.id, row.event_type, JSON.stringify(row.payload), nextRetry, err.message, dlqNow]
                 );
                 if (dlqResult.rows.length > 0) {
-                    logger.info(`[Outbox Processor] Moved ${row.id} to DLQ as ${dlqResult.rows[0].id}`);
+                    logger.info(`[OutboxPublisher] Moved ${row.id} to DLQ as ${dlqResult.rows[0].id}`);
                 }
                 await query(
                     `UPDATE outbox SET status = 'failed', retry_count = $1, error_message = $2, updated_at = $3 WHERE id = $4`,
                     [nextRetry, err.message, dlqNow, row.id]
                 );
             } else {
-                const failNow = new Date();
+                const backoffMs = Math.min(1000 * Math.pow(2, nextRetry - 1), 30000);
+                const retryAt = new Date();
                 await query(
                     `UPDATE outbox SET status = 'pending', retry_count = $1, error_message = $2, updated_at = $3 WHERE id = $4`,
-                    [nextRetry, err.message, failNow, row.id]
+                    [nextRetry, err.message, retryAt, row.id]
                 );
+                logger.info(`[OutboxPublisher] Scheduled retry ${nextRetry}/${MAX_RETRIES} for ${row.id} in ${backoffMs}ms`);
             }
         }
     }
 }
 
 async function processPending() {
-    if (isProcessing) return;
-    isProcessing = true;
+    if (active) return;
+    active = true;
 
     try {
-        const rows = OUTBOX_WORKER_ENABLED
-            ? []
-            : await claimBatch();
+        const rows = await claimBatch();
+        if (rows.length > 0) {
+            logger.info(`[OutboxPublisher] Claimed ${rows.length} outbox rows for processing`);
+            await processRows(rows);
+        }
+    } catch (err) {
+        logger.error(`[OutboxPublisher] processPending error: ${err.message}`);
+    } finally {
+        active = false;
+    }
+}
 
-        if (rows.length === 0) {
-            isProcessing = false;
+function startPolling() {
+    if (!WORKER_ENABLED) {
+        logger.info('[OutboxPublisher] Worker disabled via OUTBOX_WORKER_ENABLED=false');
+        return;
+    }
+
+    logger.info(`[OutboxPublisher] Starting polling (interval=${POLL_INTERVAL_MS}ms, batch=${BATCH_SIZE}, maxRetries=${MAX_RETRIES})`);
+
+    async function poll() {
+        if (RUN_ONCE) {
+            logger.info('[OutboxPublisher] --once mode: single run');
+            await processPending();
+            logger.info('[OutboxPublisher] --once run complete');
             return;
         }
-
-        logger.info(`[Outbox Processor] Found ${rows.length} entries to process.`);
-        await processRows(rows);
-    } catch (err) {
-        logger.error(`[Outbox Processor] Runner error: ${err.message}`);
-    } finally {
-        isProcessing = false;
+        await processPending();
+        pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
     }
+
+    poll().catch(err => logger.error(`[OutboxPublisher] Poll loop error: ${err.message}`));
 }
 
-function triggerProcess() {
-    if (OUTBOX_WORKER_ENABLED) {
-        return;
+function stopPolling() {
+    if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
     }
-    setImmediate(() => {
-        processPending().catch(err => logger.error(`[Outbox Processor] Immediate trigger failed: ${err.message}`));
-    });
+    logger.info('[OutboxPublisher] Polling stopped');
 }
 
-function startCronJob() {
-    if (OUTBOX_WORKER_ENABLED) {
-        logger.info('[Outbox Processor] OUTBOX_WORKER_ENABLED=true - worker handles polling; skipping cron to avoid double-processing');
-        return;
-    }
-    cron.schedule(`*/${Math.max(1, Math.round(POLL_INTERVAL_MS / 1000))} * * * * *`, () => {
-        processPending().catch(err => logger.error(`[Outbox Processor] Cron run failed: ${err.message}`));
+if (require.main === module) {
+    startPolling();
+
+    process.on('SIGINT', () => {
+        logger.info('[OutboxPublisher] Shutting down...');
+        stopPolling();
+        process.exit(0);
     });
-    logger.info(`[Outbox Processor] Background cron scheduled every ${POLL_INTERVAL_MS}ms (batch=${BATCH_SIZE}, maxRetries=${MAX_RETRIES}).`);
+
+    process.on('SIGTERM', () => {
+        logger.info('[OutboxPublisher] Shutting down...');
+        stopPolling();
+        process.exit(0);
+    });
 }
 
 module.exports = {
     processPending,
-    triggerProcess,
-    startCronJob,
+    startPolling,
+    stopPolling,
     PROCESSORS
 };

@@ -5,8 +5,11 @@ const app = require('./app');
 const { initSocketServer } = require('@/shared/socket/socket-server');
 const { startReminderJob } = require('@/jobs/reminder.job');
 const { startCronJob } = require('@/shared/events/outbox-processor');
+const { startPolling } = require('@/jobs/outbox-publisher');
+const { startRetentionCron } = require('@/jobs/retention.job');
 
 const PORT = process.env.PORT || 3000;
+const WORKER_ENABLED = process.env.OUTBOX_WORKER_ENABLED !== 'false';
 const server = http.createServer(app);
 
 // Initialize Socket.IO
@@ -15,7 +18,12 @@ initSocketServer(server);
 server.listen(PORT, () => {
   console.log(`Server address http://localhost:${PORT}`);
   startReminderJob();
-  startCronJob();
+  startRetentionCron();
+  if (WORKER_ENABLED) {
+    startPolling();
+  } else {
+    startCronJob();
+  }
 });
 
 module.exports = app;
