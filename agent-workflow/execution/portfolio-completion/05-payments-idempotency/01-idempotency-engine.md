@@ -79,7 +79,7 @@ npm run db:smoke:idempotency → 20 passed, 0 failed (2026-07-27)
 
 ### Web (`web/src/services/ticket.service.ts`)
 - Attaches `X-Idempotency-Key` (via `crypto.randomUUID()`) to: `tickets/book`, `tickets/hold-seat`, `tickets/book-held-seats`, `payments/create-order`.
-- Not attached to `releaseSeat`, `validateVoucher`, `checkPaymentStatus`, or any GET endpoint.
+- Not attached to `releaseSeat`, `validateVoucher`, or any GET endpoint.
 - UUID generated per call; `apiClient.ts` spreads the same `headers` object across `fetchWithRetry` retries and 401-refresh retry, so the key is preserved.
 
 ### Mobile Attendee (`mobile-attendee/`)
@@ -92,13 +92,15 @@ npm run db:smoke:idempotency → 20 passed, 0 failed (2026-07-27)
 
 ### Endpoint coverage per client
 
-| Client | tickets/book | tickets/hold-seat | tickets/book-held-seats | payments/create-order |
-|---|---|---|---|---|
-| Web | ✅ | ✅ | ✅ | ✅ |
-| Attendee | ✅ | ❌ | ❌ | ✅ |
-| Organizer | ✅ | ❌ | ❌ | ✅ |
+| Client | tickets/book | tickets/hold-seat | tickets/book-held-seats | payments/create-order | payments/check-status |
+|---|---|---|---|---|---|
+| Web | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Attendee | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Organizer | ✅ | ❌ | ❌ | ✅ | ❌ |
 
 ## 15. Verification Evidence
+
+### Phase 05-T1 Evidence
 
 | Check | Result |
 |---|---|
@@ -107,12 +109,46 @@ npm run db:smoke:idempotency → 20 passed, 0 failed (2026-07-27)
 | Attendee compile (`gradlew.bat :app:compileDebugKotlin`) | BUILD SUCCESSFUL |
 | Organizer compile (`gradlew.bat :app:compileDebugKotlin`) | BUILD SUCCESSFUL |
 
-**Phase 05-T1 contract is verified for web, attendee, and organizer.** 05-T2 remains pending; no refund or payout work is included by current approved scope.
+### Phase 05-T2 Evidence
+
+| Check | Result |
+|---|---|
+| ZaloPay callback/idempotency smoke | 40 passed, 0 failed |
+| Server `node --check` (routes + smoke JS) | Pass |
+| Web lint (`npm run lint`) | 0 errors, 6 pre-existing warnings |
+| Attendee compile (`gradlew.bat :app:compileDebugKotlin`) | BUILD SUCCESSFUL |
+| `git diff --check` | Clean |
+
+**Phase 05-T1 and T2 contracts are verified for web, attendee, and organizer.** No refund or payout work is included by current approved scope. No real ZaloPay sandbox transaction was run; all provider interactions are mocked/stubbed in smoke.
 
 ## 16. Recovery Task Evidence
-- Recovery tasks A (engine correction), B (migration + route ordering), C (migration cleanup), D (docs), E+F (web+mobile client header injection) completed.
+- Recovery tasks A (engine correction), B (migration + route ordering), C (migration cleanup), D (docs), E+F (web+mobile client header injection), T2A (payment-state concurrency hardening), T2B (attendee confirmation polling), T2C (check-status idempotency wiring) completed.
 - `git diff --check`: clean.
 - `node --check`: syntax valid on all three engine files.
 
-## 17. Blocker Questions
-- Resolved: anonymous checkout is out-of-scope; only authenticated high-risk mutations require idempotency.
+## 17. Phase 05-T2 Deliverables Summary
+
+### T2A — Payment Status Concurrency Hardening
+- `manualCheckPaymentStatus` locks the latest payment attempt via `getLatestPaymentAttemptByTicketId(ticketId, tx, true)` with `FOR UPDATE` inside the existing `runTransaction`, re-checks terminal state after acquiring the lock.
+- Callback (`handleZaloPayCallback`) and check-status (`manualCheckPaymentStatus`) races serialised by the row lock; callback/status race smoke proven with exactly one ledger entry.
+- `auditLog` middleware uses nullable `null` actor for webhook routes (no `req.user`), matching `audit_logs.user_id` nullable column and `ON DELETE SET NULL` FK — no FK violations on callback audit entries.
+
+### T2B — Attendee ZaloPay Confirmation Polling
+- `PaymentViewModel` polls `POST /payments/check-status` every 3 seconds, max 8 attempts (24 seconds).
+- On `paid`: emits `PaymentSuccess(navigates to ticket detail)`. On `failed`/`cancelled`: emits `PaymentError(stops polling)`.
+- After 8 attempts exhaust without terminal status: shows "pending confirmation" with a single bounded manual Refresh button; no automatic retry, no re-opening ZaloPay SDK.
+- `paymentInProgress` flag disables Checkout button throughout: order creation, ZaloPay SDK open, backend confirmation polling, and manual refresh. Cleared on SDK cancel/error and terminal backend statuses.
+- No self-cancellation of polling coroutine before emitting terminal events.
+
+### T2C — Check-Status Idempotency Wiring
+- `POST /payments/check-status` route now includes `idempotency()` after `requireOwnership`, matching create-order ordering.
+- Web `TicketService.checkPaymentStatus` sends `crypto.randomUUID()` per call, preserved through existing retry.
+- Smoke proves duplicate same-key check-status replays cached response without extra ZaloPay query or duplicate ledger; new key after state transition observes `paid` without double-processing.
+- Attendee already sends fresh `java.util.UUID` per check-status call via existing `@Header("X-Idempotency-Key")` wiring.
+
+### Out-of-Scope (not included in Phase 05)
+- No refund or payout workflows.
+- No ZaloPay provider switch or real sandbox transaction.
+- No organizer payment UI.
+- No anonymous checkout idempotency.
+- No callback route idempotency (existing state-machine guard is sufficient).
