@@ -255,6 +255,106 @@ async function runTransaction(fn) {
     return transaction(fn);
 }
 
+async function getPayoutSummaryByOrganizer(organizerId) {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await query(
+        `SELECT
+           (SELECT COALESCE(SUM(le.net_amount), 0)
+            FROM ledger_entries le
+            WHERE le.organizer_id = $1
+              AND NOT EXISTS (SELECT 1 FROM payout_items pi WHERE pi.ledger_entry_id = le.id)
+              AND NOT EXISTS (
+                  SELECT 1 FROM order_items oi JOIN events e ON e.id = oi.event_id
+                  WHERE oi.order_id = le.order_id AND (e.end_at IS NULL OR e.end_at > $2))
+              AND EXISTS (
+                  SELECT 1 FROM order_items oi JOIN events e ON e.id = oi.event_id
+                  WHERE oi.order_id = le.order_id AND e.end_at IS NOT NULL)
+           ) AS eligible_net,
+           (SELECT COALESCE(SUM(amount), 0) FROM payouts WHERE organizer_id = $1 AND status = 'pending_admin_approval') AS pending_approval,
+           (SELECT COALESCE(SUM(amount), 0) FROM payouts WHERE organizer_id = $1 AND status = 'processing') AS processing,
+           (SELECT COALESCE(SUM(amount), 0) FROM payouts WHERE organizer_id = $1 AND status = 'completed') AS completed`,
+        [organizerId, cutoff]
+    );
+    const r = result.rows[0];
+    return {
+        eligibleNetAmount: Number(r.eligible_net),
+        pendingApprovalAmount: Number(r.pending_approval),
+        processingAmount: Number(r.processing),
+        completedAmount: Number(r.completed),
+    };
+}
+
+async function getPayoutsByOrganizerPaginated(organizerId, limit = 20, offset = 0) {
+    const result = await query(
+        'SELECT * FROM payouts WHERE organizer_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+        [organizerId, limit, offset]
+    );
+    const countResult = await query(
+        'SELECT COUNT(*)::int AS total FROM payouts WHERE organizer_id = $1',
+        [organizerId]
+    );
+    return {
+        payouts: result.rows.map(safePayoutDto),
+        total: countResult.rows[0].total,
+    };
+}
+
+async function getAllPayoutsPaginated(limit = 20, offset = 0, status) {
+    const baseQuery = 'SELECT * FROM payouts';
+    const countQuery = 'SELECT COUNT(*)::int AS total FROM payouts';
+    let where = '';
+    const params = [];
+    const countParams = [];
+    if (status) {
+        where = ' WHERE status = $1';
+        params.push(status);
+        countParams.push(status);
+    }
+    params.push(limit, offset);
+    const result = await query(
+        `${baseQuery}${where} ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params
+    );
+    const countResult = await query(
+        `${countQuery}${where}`,
+        countParams
+    );
+    return {
+        payouts: result.rows.map(safePayoutDto),
+        total: countResult.rows[0].total,
+    };
+}
+
+function safePayoutDto(r) {
+    return {
+        id: r.id,
+        organizerId: r.organizer_id,
+        amount: Number(r.amount),
+        status: r.status,
+        providerReference: r.provider_reference,
+        providerMessage: r.provider_message,
+        adminApprovalReason: r.admin_approval_reason,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        completedAt: r.completed_at,
+    };
+}
+
+async function getBankAccountSafe(organizerId) {
+    const result = await query(
+        'SELECT organizer_id, masked_display, created_at, updated_at FROM bank_accounts WHERE organizer_id = $1 AND encrypted_payload IS NOT NULL',
+        [organizerId]
+    );
+    if (result.rows.length === 0) return null;
+    const r = result.rows[0];
+    return {
+        organizerId: r.organizer_id,
+        maskedDisplay: r.masked_display,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+    };
+}
+
 function rowToPayout(r) {
     return {
         id: r.id,
@@ -290,5 +390,9 @@ module.exports = {
     getProcessingPayouts,
     getPendingProviderSubmissionPayouts,
     lockAndUpdatePayout,
+    getPayoutSummaryByOrganizer,
+    getPayoutsByOrganizerPaginated,
+    getAllPayoutsPaginated,
+    getBankAccountSafe,
     runTransaction,
 };

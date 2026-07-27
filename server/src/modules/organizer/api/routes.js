@@ -5,6 +5,7 @@ const { verifyAuthToken, isOrganizer } = require('@/shared/middleware/auth.middl
 const organizerController = require('@/modules/organizer/api/controller');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 const { requireRole, requireOwnership, auditLog } = require('@/shared/middleware/authz.middleware');
+const idempotency = require('@/shared/middleware/idempotency.middleware');
 
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
@@ -91,6 +92,39 @@ router.post(
     requireOwnership('Event', 'eventId'),
     auditLog('notification:broadcast', 'event', 'eventId'),
     organizerController.broadcastNotification
+);
+
+router.get(
+    '/me/payout-summary',
+    organizerController.getPayoutSummary
+);
+
+router.get(
+    '/me/payouts',
+    [
+        query('page').optional().isInt({ min: 1 }),
+        query('limit').optional().isInt({ min: 1, max: 100 }),
+        validateRequest
+    ],
+    organizerController.getPayoutList
+);
+
+router.get(
+    '/me/payout-bank-account',
+    organizerController.getBankAccountInfo
+);
+
+router.put(
+    '/me/payout-bank-account',
+    idempotency(),
+    [
+        body('accountNumber').notEmpty().withMessage('accountNumber is required'),
+        body('accountHolder').notEmpty().withMessage('accountHolder is required'),
+        body('bankName').notEmpty().withMessage('bankName is required'),
+        validateRequest
+    ],
+    auditLog('payout:register-bank', 'organizer', 'userId'),
+    organizerController.registerBankAccount
 );
 
 module.exports = router;

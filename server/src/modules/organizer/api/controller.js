@@ -3,6 +3,8 @@ const { BadRequestError, NotFoundError, ForbiddenError } = require('@/shared/err
 const organizerService = require('@/modules/organizer/application/service');
 const analyticsService = require('@/modules/analytics/application/service');
 const eventRepository = require('@/providers/database/event.repository');
+const payoutRepository = require('@/providers/database/payout.repository');
+const payoutService = require('@/modules/payments/application/payout.service');
 
 const verifyEventOwnership = asyncHandler(async (req, res, next) => {
     const eventId = req.params.eventId || req.body.eventId || req.query.eventId;
@@ -153,6 +155,58 @@ const getLedger = asyncHandler(async (req, res) => {
     res.status(200).json({ entries });
 });
 
+function nextSundayMidnightVNInUTC() {
+    const now = new Date();
+    // Sunday 00:00 Vietnam (UTC+7) = Saturday 17:00 UTC
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
+    const utcSeconds = now.getUTCSeconds();
+
+    // Saturday is day 6 in UTC; 17:00 UTC = Sunday 00:00 Vietnam (UTC+7)
+    let daysUntilSaturday = (6 - now.getUTCDay() + 7) % 7;
+    if (daysUntilSaturday === 0) {
+        const isPast17 = utcHours > 17 ||
+                         (utcHours === 17 && (utcMinutes > 0 || utcSeconds > 0 || now.getUTCMilliseconds() > 0));
+        if (isPast17) daysUntilSaturday = 7;
+    }
+
+    const target = new Date(now);
+    target.setUTCDate(target.getUTCDate() + daysUntilSaturday);
+    target.setUTCHours(17, 0, 0, 0);
+    return target.toISOString();
+}
+
+const getPayoutSummary = asyncHandler(async (req, res) => {
+    const summary = await payoutRepository.getPayoutSummaryByOrganizer(req.user.uid);
+    res.json({
+        eligibleNetAmount: summary.eligibleNetAmount,
+        pendingApprovalAmount: summary.pendingApprovalAmount,
+        processingAmount: summary.processingAmount,
+        completedAmount: summary.completedAmount,
+        nextScheduledPayoutAt: nextSundayMidnightVNInUTC(),
+    });
+});
+
+const getPayoutList = asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const result = await payoutRepository.getPayoutsByOrganizerPaginated(req.user.uid, limit, offset);
+    res.json({ page, limit, total: result.total, payouts: result.payouts });
+});
+
+const getBankAccountInfo = asyncHandler(async (req, res) => {
+    const acct = await payoutRepository.getBankAccountSafe(req.user.uid);
+    if (!acct) return res.json({ registered: false });
+    res.json({ registered: true, maskedDisplay: acct.maskedDisplay, createdAt: acct.createdAt, updatedAt: acct.updatedAt });
+});
+
+const registerBankAccount = asyncHandler(async (req, res) => {
+    const { accountNumber, accountHolder, bankName } = req.body;
+    const result = await payoutService.registerBankAccount(req.user.uid, accountNumber, accountHolder, bankName);
+    res.json(result);
+});
+
 module.exports = {
     verifyEventOwnership,
     checkInByQr,
@@ -166,5 +220,9 @@ module.exports = {
     importAttendees,
     exportAttendees,
     broadcastNotification,
-    getLedger
+    getLedger,
+    getPayoutSummary,
+    getPayoutList,
+    getBankAccountInfo,
+    registerBankAccount,
 };
