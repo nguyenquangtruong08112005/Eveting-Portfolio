@@ -8,12 +8,15 @@ const { validateRequest } = require('@/shared/middleware/validateRequest.middlew
 const { bookingLimiter, webhookLimiter } = require('@/shared/middleware/rateLimit.middleware');
 const { auditLog, requireOwnership } = require('@/shared/middleware/authz.middleware');
 
+const idempotency = require('@/shared/middleware/idempotency.middleware');
+
 router.post(
     '/create-order',
     verifyAuthToken,
     requireVerifiedEmail,
     bookingLimiter,
     auditLog('payment:create-order', 'ticket', 'ticketId'),
+    idempotency(),
     body('ticketId').notEmpty().withMessage('ticketId is required'),
     validateRequest,
     requireOwnership('Ticket', 'ticketId'),

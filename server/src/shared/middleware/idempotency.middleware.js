@@ -4,13 +4,18 @@ const logger = require('@/shared/logger');
 
 const idempotency = () => {
     return async (req, res, next) => {
-        // Idempotency is only relevant for mutation requests (POST/PUT)
-        if (req.method !== 'POST' && req.method !== 'PUT') {
+        if (process.env.IDEMPOTENCY_ENFORCE === 'false') {
+            return next();
+        }
+
+        // Idempotency is only relevant for mutation requests (POST/PUT/DELETE)
+        if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'DELETE') {
             return next();
         }
 
         const userId = req.user ? req.user.uid : 'anonymous';
-        
+        const endpoint = req.originalUrl || req.path;
+
         // Extract key from headers or body
         let key = req.headers['x-idempotency-key'] || req.headers['idempotency-key'];
         if (!key && req.body) {
@@ -21,7 +26,7 @@ const idempotency = () => {
         if (!key) {
             const hash = crypto.createHash('sha256');
             hash.update(userId);
-            hash.update(req.originalUrl || req.path);
+            hash.update(endpoint);
             hash.update(JSON.stringify(req.body || {}));
             
             // 5-second sliding time window
@@ -31,35 +36,41 @@ const idempotency = () => {
             key = `fingerprint:${userId}:${hash.digest('hex')}`;
         }
 
-        try {
-            // Attempt to insert a placeholder to lock the request in-flight
-            const now = Date.now();
-            const lockTimeout = 120000; // 2 minutes lock timeout for in-flight requests
-            const expiresAt = now + lockTimeout;
+        // Generate payload hash containing user_id to prevent cross-user key collision attacks
+        const requestHash = crypto.createHash('sha256')
+            .update(`${userId}:${JSON.stringify(req.body || {})}`)
+            .digest('hex');
 
-            try {
-                await idempotencyRepository.saveIdempotencyKey(key, 0, {}, lockTimeout / 1000, false);
-            } catch (dbErr) {
-                // Key already exists (Conflict / duplicate request)
-                const record = await idempotencyRepository.findIdempotencyKey(key);
-                if (record) {
-                    if (record.responseCode === 0) {
-                        // Request is in progress
-                        return res.status(409).json({
-                            success: false,
-                            error: 'Conflict',
-                            message: 'Duplicate request in progress. Please wait and try again.'
-                        });
-                    } else {
-                        // Completed request, return cached response
-                        logger.info(`[Idempotency] Returning cached response for key: ${key}`);
-                        return res.status(record.responseCode).json(record.responseBody);
-                    }
+        try {
+            // Acquire lock (status: IN_PROGRESS)
+            const lockResult = await idempotencyRepository.acquireLock(key, userId, endpoint, requestHash);
+
+            if (!lockResult.success) {
+                if (lockResult.mismatch) {
+                    return res.status(422).json({
+                        success: false,
+                        error: 'Unprocessable Entity',
+                        code: 'IDEMPOTENCY_KEY_REUSE_PAYLOAD_MISMATCH',
+                        message: 'Idempotency key reused with a different request payload.'
+                    });
                 }
-                throw dbErr;
+                if (lockResult.conflict) {
+                    return res.status(409).json({
+                        success: false,
+                        error: 'Conflict',
+                        code: 'CONCURRENT_REQUEST_IN_PROGRESS',
+                        message: 'A duplicate request is already in progress. Please try again later.'
+                    });
+                }
+                if (lockResult.record) {
+                    // Completed request, return cached response
+                    logger.info(`[Idempotency] Returning cached response for key: ${key}`);
+                    res.set('X-Idempotency-Cache', 'HIT');
+                    return res.status(lockResult.record.responseCode).json(lockResult.record.responseBody);
+                }
             }
 
-            // Successfully set placeholder/lock, proceed with request interceptor
+            // Successfully acquired lock (IN_PROGRESS)
             let finished = false;
 
             const originalJson = res.json;
@@ -81,15 +92,14 @@ const idempotency = () => {
                 if (statusCode >= 500) {
                     // Delete key on server errors to allow retries
                     try {
-                        const { query } = require('@/providers/database/postgres.client');
-                        await query('DELETE FROM idempotency_keys WHERE key = $1', [key]);
+                        await idempotencyRepository.deleteKey(key, userId, endpoint);
                     } catch (delErr) {
                         logger.error(`[Idempotency] Failed to delete key on 500 error: ${delErr.message}`);
                     }
                 } else {
                     // Save response on success or validation errors (2xx, 4xx)
                     try {
-                        await idempotencyRepository.saveIdempotencyKey(key, statusCode, responseBody, 86400); // Cache for 24 hours
+                        await idempotencyRepository.saveResponse(key, userId, endpoint, statusCode, responseBody);
                     } catch (saveErr) {
                         logger.error(`[Idempotency] Failed to save completed response: ${saveErr.message}`);
                     }
