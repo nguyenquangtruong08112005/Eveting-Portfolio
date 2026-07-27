@@ -38,6 +38,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -89,12 +90,14 @@ interface EventApiService {
 
     @POST("tickets/book")
     suspend fun bookTicket(
-        @Body request: BookTicketRequest
+        @Body request: BookTicketRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String
     ): Response<Ticket>
 
     @POST("payments/create-order")
     suspend fun createZaloPayOrder(
-        @Body request: CreatePaymentOrderRequest
+        @Body request: CreatePaymentOrderRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String
     ): Response<CreatePaymentOrderResponse>
 
     @GET("tickets/{ticketId}")

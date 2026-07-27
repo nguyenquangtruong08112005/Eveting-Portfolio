@@ -55,7 +55,10 @@ class TicketRepositoryImpl @Inject constructor(
                 ticketType = ticketType,
                 promoCode = promoCode
             )
-            val response = apiService.bookTicket(request = request)
+            val response = apiService.bookTicket(
+                request = request,
+                idempotencyKey = java.util.UUID.randomUUID().toString()
+            )
 
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -70,7 +73,10 @@ class TicketRepositoryImpl @Inject constructor(
     override suspend fun createZaloPayOrder(ticketId: String): Result<CreatePaymentOrderResponse> {
         return try {
             val request = CreatePaymentOrderRequest(ticketId = ticketId)
-            val response = apiService.createZaloPayOrder(request = request)
+            val response = apiService.createZaloPayOrder(
+                request = request,
+                idempotencyKey = java.util.UUID.randomUUID().toString()
+            )
 
             if (response.isSuccessful && response.body() != null) {
                 if (response.body()!!.returnCode == 1) {
