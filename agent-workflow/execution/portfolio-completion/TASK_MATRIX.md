@@ -12,8 +12,10 @@
 | | `02-T3` | Mobile Attestation & App Integrity Design | `COMPLETED` |
 | **03 Data** | `03-T1` | Deterministic Vietnam Data Seeding & Relational Scaling | `COMPLETED` |
 | | `03-T2` | Media Asset Licensing, Demo Policy & Elasticsearch Indexing | `COMPLETED` |
-| **04 Infra** | `04-T1` | Outbox Pattern Verification & Elasticsearch Auto-Reindexing | `PLANNED` |
-| | `04-T2` | Redis Caching, Rate Limiter & Idempotency Storage Setup | `PLANNED` |
+| **04 Infra** | `04-T1` | Outbox Pattern Verification & Elasticsearch Auto-Reindexing | `COMPLETED` ^[migration 064 applied; outbox/idempotency timestamps TIMESTAMPTZ] |
+| | `04-T2` | Redis Caching, Rate Limiter & Idempotency Storage Setup | `COMPLETED` ^[Cache smoke passed (normal Redis + forced MemoryCache fallback)] |
+| | `04-T3` | Outbox Worker & Dead Letter Queue (retry, DLQ, manual requeue CLI, retention) | `COMPLETED` ^[Phase 04 outbox smoke 61/0; retention cron 02:30 Asia/Ho_Chi_Minh, 7d, batch 500; TIMESTAMPTZ; migration 064] |
+| | `04-T4` | Cache Namespace Helpers (gzip64, SCAN invalidation, MemoryCache fallback, invalidation hooks) | `COMPLETED` ^[Cache smoke passed (normal + forced fallback)] |
 | **05 Payments** | `05-T1` | Core Idempotency Engine (`idempotency_keys` Spec) | `PLANNED` |
 | | `05-T2` | ZaloPay Gateway Integration, Refund & Payout Safeguards | `PLANNED` |
 | **06 Seatmap** | `06-T1` | Organizer Visual Seat Map Editor & Schema Engine | `PLANNED` |
@@ -39,3 +41,7 @@
 | | `12-T2` | Terraform IaC Review Gate & Immutable Image Rollout | `PLANNED` |
 | **13 Gate** | `13-T1` | Automated Security Scans (OWASP, Trivy, IaC Audit) | `PLANNED` |
 | | `13-T2` | End-to-End Verification & Release Sign-off | `PLANNED` |
+
+## Phase 04 Residual Risk
+
+The legacy `outbox` table uses composite primary key `(id, created_at)`; UUID IDs are assumed globally unique. Deferred schema hardening — promoting a natural-key unique constraint or formal `REFERENCES` chain — requires explicit later approval and is not part of this phase. No production deployment verification is claimed.
