@@ -7,9 +7,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdtuer.eventing.R
 import com.tdtuer.eventing.domain.model.Result
+import com.tdtuer.eventing.domain.usecase.payment.CheckPaymentStatusUseCase
 import com.tdtuer.eventing.domain.usecase.payment.CreateZaloPayOrderUseCase
 import com.tdtuer.eventing.domain.usecase.tickets.GetTicketDetailsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -27,7 +30,7 @@ data class PaymentMethod(
 )
 
 data class PaymentUiState(
-    val isLoading: Boolean = false, // Loading chung (lấy vé hoặc tạo order)
+    val isLoading: Boolean = false,
     val paymentMethods: List<PaymentMethod> = emptyList(),
     val selectedMethod: PaymentMethod? = null,
 
@@ -35,7 +38,14 @@ data class PaymentUiState(
     val totalAmount: Double = 0.0,
     val eventName: String = "",
 
-    // State cho Card Sheet (Giữ nguyên nếu bạn muốn phát triển sau này)
+    // Trạng thái thanh toán
+    val paymentStatus: String? = null, // null, 'paid', 'failed', 'cancelled', 'pending'
+    val paymentMessage: String? = null,
+    val paymentInProgress: Boolean = false, // disables checkout throughout order creation, SDK open, polling, manual refresh
+    val isConfirmingPayment: Boolean = false, // true khi đang poll
+    val pollAttempts: Int = 0,
+
+    // State cho Card Sheet
     val showAddNewCardSheet: Boolean = false,
     val newCardNumber: String = "",
     val newCardExpiry: String = "",
@@ -47,12 +57,14 @@ sealed class PaymentEvent {
     data class RequestZaloPay(val zpToken: String) : PaymentEvent()
     data class PaymentError(val message: String) : PaymentEvent()
     data class PaymentSuccess(val ticketId: String) : PaymentEvent()
+    data class PendingConfirmation(val ticketId: String) : PaymentEvent()
 }
 
 @HiltViewModel
 class PaymentViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val createZaloPayOrderUseCase: CreateZaloPayOrderUseCase,
+    private val checkPaymentStatusUseCase: CheckPaymentStatusUseCase,
     private val getTicketDetailsUseCase: GetTicketDetailsUseCase // Inject UseCase lấy chi tiết vé
 ) : ViewModel() {
 
@@ -63,6 +75,13 @@ class PaymentViewModel @Inject constructor(
     val paymentEvent = _paymentEvent.asSharedFlow()
 
     val ticketId: String = savedStateHandle.get<String>("ticketId") ?: ""
+
+    private var pollingJob: Job? = null
+
+    companion object {
+        private const val POLL_INTERVAL_MS = 3000L
+        private const val MAX_POLL_ATTEMPTS = 8
+    }
 
     init {
         loadPaymentMethods()
@@ -117,13 +136,13 @@ class PaymentViewModel @Inject constructor(
     }
 
     fun onCheckoutClick() {
-        if (ticketId.isEmpty()) return
+        if (ticketId.isEmpty() || uiState.value.paymentInProgress) return
 
         val selectedMethod = uiState.value.selectedMethod?.name
 
         viewModelScope.launch {
             if (selectedMethod == "ZaloPay") {
-                _uiState.update { it.copy(isLoading = true) }
+                _uiState.update { it.copy(isLoading = true, paymentInProgress = true) }
                 when (val result = createZaloPayOrderUseCase(ticketId)) {
                     is Result.Success -> {
                         _uiState.update { it.copy(isLoading = false) }
@@ -131,7 +150,7 @@ class PaymentViewModel @Inject constructor(
                     }
 
                     is Result.Failure -> {
-                        _uiState.update { it.copy(isLoading = false) }
+                        _uiState.update { it.copy(isLoading = false, paymentInProgress = false) }
                         _paymentEvent.emit(
                             PaymentEvent.PaymentError(
                                 result.exception.message ?: "Payment error"
@@ -142,16 +161,127 @@ class PaymentViewModel @Inject constructor(
                     is Result.Loading -> {}
                 }
             } else {
-                // Xử lý các phương thức khác
                 _paymentEvent.emit(PaymentEvent.PaymentError("This method is not supported"))
             }
         }
     }
 
+    /** Called when ZaloPay SDK reports user cancelled */
+    fun onPaymentCanceled() {
+        _uiState.update { it.copy(paymentInProgress = false) }
+    }
+
+    /** Called when ZaloPay SDK reports an error */
+    fun onPaymentErrorOccurred() {
+        _uiState.update { it.copy(paymentInProgress = false) }
+    }
+
     fun onPaymentSuccess() {
-        viewModelScope.launch {
-            _paymentEvent.emit(PaymentEvent.PaymentSuccess(ticketId))
+        // ZaloPay SDK reported success — begin polling backend for confirmation
+        startPolling()
+    }
+
+    private fun startPolling() {
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch {
+            _uiState.update { it.copy(isConfirmingPayment = true, pollAttempts = 0) }
+            _paymentEvent.emit(PaymentEvent.PendingConfirmation(ticketId))
+            pollForConfirmation()
         }
+    }
+
+    private suspend fun pollForConfirmation() {
+        for (attempt in 1..MAX_POLL_ATTEMPTS) {
+            delay(POLL_INTERVAL_MS)
+            _uiState.update { it.copy(pollAttempts = attempt) }
+
+            when (val result = checkPaymentStatusUseCase(ticketId)) {
+                is Result.Success -> {
+                    val status = result.data.status
+                    when (status) {
+                        "paid" -> {
+                            _uiState.update { it.copy(
+                                isConfirmingPayment = false,
+                                paymentInProgress = false,
+                                paymentStatus = "paid"
+                            )}
+                            _paymentEvent.emit(PaymentEvent.PaymentSuccess(ticketId))
+                            return
+                        }
+                        "failed", "cancelled" -> {
+                            _uiState.update { it.copy(
+                                isConfirmingPayment = false,
+                                paymentInProgress = false,
+                                paymentStatus = status,
+                                paymentMessage = result.data.message
+                            )}
+                            _paymentEvent.emit(PaymentEvent.PaymentError(
+                                result.data.message ?: "Payment $status"
+                            ))
+                            return
+                        }
+                    }
+                }
+                is Result.Failure -> {
+                    Log.w("PaymentVM", "Poll attempt $attempt failed: ${result.exception.message}")
+                }
+                is Result.Loading -> {}
+            }
+        }
+
+        // All 8 attempts exhausted without terminal status — pending-confirmation state
+        _uiState.update { it.copy(
+            isConfirmingPayment = false,
+            paymentStatus = "pending",
+            paymentMessage = "Payment confirmation is taking longer than expected"
+        )}
+        _paymentEvent.emit(PaymentEvent.PendingConfirmation(ticketId))
+    }
+
+    fun onManualRefresh() {
+        // Bounded manual refresh — single check-status call, no automatic retry, no re-opening ZaloPay
+        if (uiState.value.isConfirmingPayment) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isConfirmingPayment = true, paymentInProgress = true) }
+            when (val result = checkPaymentStatusUseCase(ticketId)) {
+                is Result.Success -> {
+                    val status = result.data.status
+                    when (status) {
+                        "paid" -> {
+                            _uiState.update { it.copy(
+                                isConfirmingPayment = false,
+                                paymentInProgress = false,
+                                paymentStatus = "paid"
+                            )}
+                            _paymentEvent.emit(PaymentEvent.PaymentSuccess(ticketId))
+                            return@launch
+                        }
+                        "failed", "cancelled" -> {
+                            _uiState.update { it.copy(
+                                isConfirmingPayment = false,
+                                paymentInProgress = false,
+                                paymentStatus = status,
+                                paymentMessage = result.data.message
+                            )}
+                            _paymentEvent.emit(PaymentEvent.PaymentError(
+                                result.data.message ?: "Payment $status"
+                            ))
+                            return@launch
+                        }
+                    }
+                }
+                is Result.Failure -> {
+                    Log.w("PaymentVM", "Manual refresh failed: ${result.exception.message}")
+                }
+                is Result.Loading -> {}
+            }
+            _uiState.update { it.copy(isConfirmingPayment = false, paymentInProgress = false) }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        pollingJob?.cancel()
     }
 
     // --- UI Events ---

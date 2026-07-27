@@ -2,6 +2,7 @@
 package com.tdtuer.eventing.data.repository
 
 import androidx.compose.ui.graphics.ImageBitmap
+import com.tdtuer.eventing.data.network.model.CheckPaymentStatusResponse
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.UserTicketDto
 import com.tdtuer.eventing.domain.model.DetailedTicket
@@ -23,6 +24,10 @@ interface TicketRepository {
     suspend fun createZaloPayOrder(
         ticketId: String
     ): Result<CreatePaymentOrderResponse>
+
+    suspend fun checkPaymentStatus(
+        ticketId: String
+    ): Result<CheckPaymentStatusResponse>
 
     suspend fun getTicketDetails(ticketId: String): Result<DetailedTicket>
 

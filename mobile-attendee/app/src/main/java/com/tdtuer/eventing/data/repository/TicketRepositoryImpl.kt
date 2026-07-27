@@ -22,6 +22,7 @@ import com.tdtuer.eventing.data.local.entity.toEntity // Import Mapper
 import com.tdtuer.eventing.data.mapper.toDomainModel
 import com.tdtuer.eventing.data.network.EventApiService
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
+import com.tdtuer.eventing.data.network.model.CheckPaymentStatusResponse
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.UserTicketDto
@@ -98,6 +99,22 @@ class TicketRepositoryImpl @Inject constructor(
                 }
             } else {
                 Result.failure(Exception("Server error zalopay: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun checkPaymentStatus(ticketId: String): Result<CheckPaymentStatusResponse> {
+        return try {
+            val response = apiService.checkPaymentStatus(
+                body = mapOf("ticketId" to ticketId),
+                idempotencyKey = java.util.UUID.randomUUID().toString()
+            )
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Server error: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

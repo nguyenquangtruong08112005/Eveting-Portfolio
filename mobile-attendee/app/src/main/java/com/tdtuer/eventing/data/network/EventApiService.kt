@@ -5,6 +5,7 @@ import com.tdtuer.eventing.data.network.model.AuthLoginRequest
 import com.tdtuer.eventing.data.network.model.AuthRegisterRequest
 import com.tdtuer.eventing.data.network.model.AuthResponse
 import com.tdtuer.eventing.data.network.model.BookTicketRequest
+import com.tdtuer.eventing.data.network.model.CheckPaymentStatusResponse
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderRequest
 import com.tdtuer.eventing.data.network.model.CreatePaymentOrderResponse
 import com.tdtuer.eventing.data.network.model.EventDetailDto
@@ -99,6 +100,12 @@ interface EventApiService {
         @Body request: CreatePaymentOrderRequest,
         @Header("X-Idempotency-Key") idempotencyKey: String
     ): Response<CreatePaymentOrderResponse>
+
+    @POST("payments/check-status")
+    suspend fun checkPaymentStatus(
+        @Body body: Map<String, String>,
+        @Header("X-Idempotency-Key") idempotencyKey: String
+    ): Response<CheckPaymentStatusResponse>
 
     @GET("tickets/{ticketId}")
     suspend fun getTicketDetails(

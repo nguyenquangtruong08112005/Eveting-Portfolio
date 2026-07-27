@@ -67,6 +67,7 @@ fun PaymentScreen(
                                 zpTransToken: String,
                                 appTransID: String
                             ) {
+                                viewModel.onPaymentCanceled()
                                 Toast.makeText(context, "Payment canceled.", Toast.LENGTH_SHORT)
                                     .show()
                             }
@@ -76,6 +77,7 @@ fun PaymentScreen(
                                 zpTransToken: String,
                                 appTransID: String
                             ) {
+                                viewModel.onPaymentErrorOccurred()
                                 Toast.makeText(
                                     context,
                                     "Error: ${zaloPayError.name}",
@@ -94,6 +96,10 @@ fun PaymentScreen(
                     navController.navigate(Screen.Ticket.createRoute(event.ticketId)) {
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
+                }
+
+                is PaymentEvent.PendingConfirmation -> {
+                    // Stay on payment screen — polling is active or pending
                 }
             }
         }
@@ -126,108 +132,148 @@ fun PaymentScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    // Có thể bỏ giỏ hàng nếu không dùng
-//                    IconButton(onClick = { viewModel.onCartClick() }) {
-//                        Icon(Icons.Default.ShoppingBasket, contentDescription = "Basket")
-//                    }
-                }
             )
         }
     ) { innerPadding ->
-        if (uiState.isLoading && uiState.totalAmount == 0.0) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .padding(horizontal = 24.dp)
-                    .fillMaxSize()
-            ) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Thông tin sự kiện tóm tắt
-                if (uiState.eventName.isNotEmpty()) {
-                    Text(
-                        text = uiState.eventName,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                // Phương thức thanh toán
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+        when {
+            uiState.isConfirmingPayment || uiState.paymentStatus == "pending" -> {
+                // Polling or pending-confirmation state
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("Payment Method", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    // Tạm ẩn Add New Card nếu chưa dùng
-                    // TextButton(onClick = { viewModel.onAddNewCardClick() }) { Text("Thêm thẻ") }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(uiState.paymentMethods.size) { index ->
-                        val method = uiState.paymentMethods[index]
-                        val isSelected = uiState.selectedMethod?.id == method.id
-                        PaymentOptionRow(
-                            method = method,
-                            isSelected = isSelected,
-                            onClick = { viewModel.onPaymentMethodSelected(method) }
-                        )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (uiState.isConfirmingPayment) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Confirming payment...",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                "Attempt ${uiState.pollAttempts}/8",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        } else {
+                            Text(
+                                "Payment pending confirmation",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                uiState.paymentMessage ?: "",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = { viewModel.onManualRefresh() },
+                                enabled = !uiState.isConfirmingPayment,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Refresh")
+                            }
+                        }
                     }
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Tổng tiền và Nút Thanh toán
+            }
+            uiState.isLoading && uiState.totalAmount == 0.0 -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            else -> {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .padding(top = 16.dp, bottom = 24.dp)
+                        .padding(innerPadding)
+                        .padding(horizontal = 24.dp)
+                        .fillMaxSize()
                 ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (uiState.eventName.isNotEmpty()) {
+                        Text(
+                            text = uiState.eventName,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total Amount", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text(
-                            formatVNCurrency(uiState.totalAmount),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = AppTheme.colorScheme.primary
-                        )
+                        Text("Payment Method", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = { viewModel.onCheckoutClick() },
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        items(uiState.paymentMethods.size) { index ->
+                            val method = uiState.paymentMethods[index]
+                            val isSelected = uiState.selectedMethod?.id == method.id
+                            PaymentOptionRow(
+                                method = method,
+                                isSelected = isSelected,
+                                onClick = { viewModel.onPaymentMethodSelected(method) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
-                        enabled = !uiState.isLoading,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF212121))
+                            .background(Color.White)
+                            .padding(top = 16.dp, bottom = 24.dp)
                     ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                modifier = Modifier.size(24.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Total Amount", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(
+                                formatVNCurrency(uiState.totalAmount),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = AppTheme.colorScheme.primary
                             )
-                        } else {
-                            Text("CHECK OUT", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { viewModel.onCheckoutClick() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            enabled = !uiState.isLoading && !uiState.paymentInProgress,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF212121))
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            } else {
+                                Text("CHECK OUT", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
                         }
                     }
                 }
