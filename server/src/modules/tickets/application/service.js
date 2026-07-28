@@ -12,6 +12,7 @@ const cacheNamespace = require('@/shared/cache/namespace-helpers');
 const { getIo } = require('@/shared/socket/socket-server');
 const { v4: uuidv4 } = require('uuid');
 const {
+  AppError,
   BadRequestError,
   NotFoundError,
   ConflictError,
@@ -23,9 +24,206 @@ const logger = require('@/shared/logger');
 const { sortTicketsByPriorityAndDate, buildPagination, mapTicketWithEvent, mapTicketDetailResponse } = require('./helpers/ticket-mappers');
 const { generateTicketQR } = require('./helpers/qr-code.helper');
 const { applyPromotion } = require('./helpers/promotion-validator.helper');
+const promotionService = require('@/modules/promotions/application/service');
 const eventPublisher = require('@/shared/events/event-publisher');
 const outboxProcessor = require('@/shared/events/outbox-processor');
 const { toDb } = require('@/providers/database/time.helper');
+
+const PERFORMANCE_SEAT_HOLD_TTL_MS = 10 * 60 * 1000;
+const MAX_SEATS_PER_HOLD = 10;
+
+const normalizeSeatIds = (seatIds) => {
+    if (!Array.isArray(seatIds) || seatIds.length === 0 || seatIds.length > MAX_SEATS_PER_HOLD) {
+        throw new BadRequestError(`seatIds must contain between 1 and ${MAX_SEATS_PER_HOLD} seats.`);
+    }
+    const normalized = seatIds.map((seatId) => String(seatId || '').trim()).sort();
+    if (normalized.some((seatId) => !seatId) || new Set(normalized).size !== normalized.length) {
+        throw new BadRequestError('seatIds must be unique non-empty values.');
+    }
+    return normalized;
+};
+
+const seatAlreadyReservedError = () => new AppError(
+    'One or more requested seats are already reserved.',
+    409,
+    'SEAT_ALREADY_RESERVED'
+);
+
+const getTicketType = (event, ticketType) => {
+    const types = event.ticketTypes || {};
+    if (Array.isArray(types)) {
+        return types.find((type) => type.id === ticketType || type.type === ticketType) || null;
+    }
+    return types[ticketType] || null;
+};
+
+const validateCheckoutAttendees = (questions, attendees, ticketQuantity) => {
+    if (attendees == null) return [];
+    if (!Array.isArray(attendees) || attendees.length !== ticketQuantity) {
+        throw new BadRequestError('attendees must contain exactly one entry per ticket.');
+    }
+    const byId = new Map((questions || []).map((question) => [question.id, question]));
+    return attendees.map((attendee, index) => {
+        if (!attendee || typeof attendee !== 'object' || Array.isArray(attendee)) {
+            throw new BadRequestError(`attendees[${index}] must be an object.`);
+        }
+        const answers = attendee.answers || {};
+        if (typeof answers !== 'object' || Array.isArray(answers)) {
+            throw new BadRequestError(`attendees[${index}].answers must be keyed by question ID.`);
+        }
+        for (const questionId of Object.keys(answers)) {
+            if (!byId.has(questionId)) throw new BadRequestError(`Unknown custom question '${questionId}'.`);
+        }
+        for (const question of byId.values()) {
+            const answer = answers[question.id];
+            const empty = answer == null || answer === '' || (Array.isArray(answer) && answer.length === 0);
+            if (question.isRequired && empty) throw new BadRequestError(`Question '${question.id}' is required.`);
+            if (empty) continue;
+            const options = question.options || [];
+            if (question.questionType === 'single_choice' && !options.includes(answer)) {
+                throw new BadRequestError(`Invalid answer for question '${question.id}'.`);
+            }
+            if (question.questionType === 'multi_choice' && (!Array.isArray(answer) || answer.some((value) => !options.includes(value)))) {
+                throw new BadRequestError(`Invalid answer for question '${question.id}'.`);
+            }
+        }
+        return { id: `att_${uuidv4()}`, name: attendee.name || null, email: attendee.email || null, answers };
+    });
+};
+
+const createCheckout = async (userId, payload) => {
+    const { eventId, items, promoCode, voucherCode, attendees, seatHold } = payload || {};
+    if (!eventId || !Array.isArray(items) || items.length === 0 || items.length > 20) {
+        throw new BadRequestError('eventId and between 1 and 20 checkout items are required.');
+    }
+    if (promoCode && voucherCode) throw new BadRequestError('Only one promoCode or voucherCode may be applied.');
+    const promotionCode = promoCode || voucherCode || null;
+    const seen = new Set();
+    const normalizedItems = items.map((item) => {
+        const ticketType = String(item?.ticketType || '').trim();
+        const quantity = Number(item?.quantity);
+        if (!ticketType || !Number.isInteger(quantity) || quantity < 1 || seen.has(ticketType)) {
+            throw new BadRequestError('Each checkout item needs a unique ticketType and positive integer quantity.');
+        }
+        seen.add(ticketType);
+        return { ticketType, quantity };
+    });
+
+    return ticketRepository.runTransaction(async (transaction) => {
+        const event = await eventRepository.getEventInTransaction(transaction, eventId);
+        if (!event) throw new NotFoundError('Event not found.');
+        const now = Date.now();
+        const pricedItems = normalizedItems.map((item) => {
+            const type = getTicketType(event, item.ticketType);
+            if (!type) throw new NotFoundError(`Ticket type '${item.ticketType}' does not exist.`);
+            if (!Number.isSafeInteger(Number(type.price)) || Number(type.price) < 0) {
+                throw new BadRequestError(`Ticket type '${item.ticketType}' price must be an integer VND amount.`);
+            }
+            if (Number(type.available) < item.quantity) {
+                throw new ConflictError(`Not enough '${item.ticketType}' tickets available.`);
+            }
+            return { ...item, type, price: Number(type.price) };
+        });
+        const ticketQuantity = pricedItems.reduce((total, item) => total + item.quantity, 0);
+        const subtotalAmount = pricedItems.reduce((total, item) => total + item.price * item.quantity, 0);
+        const questions = await eventRepository.getCustomQuestions(eventId, transaction);
+        const validatedAttendees = validateCheckoutAttendees(questions, attendees, ticketQuantity);
+        const normalizedSeatHold = seatHold ? {
+            performanceId: String(seatHold.performanceId || ''),
+            holdToken: String(seatHold.holdToken || ''),
+            seatIds: normalizeSeatIds(seatHold.seatIds),
+        } : null;
+        if (normalizedSeatHold && (!normalizedSeatHold.performanceId || !normalizedSeatHold.holdToken || normalizedSeatHold.seatIds.length !== ticketQuantity)) {
+            throw new BadRequestError('seatHold must match checkout ticket quantity.');
+        }
+
+        const orderId = `ord_${uuidv4()}`;
+        let discountAmount = 0;
+        let totalAmount = subtotalAmount;
+        await orderRepository.createOrderInTransaction(transaction, {
+            id: orderId,
+            userId,
+            eventId,
+            organizerId: event.organizerId || null,
+            status: ORDER_STATUS.PENDING_PAYMENT,
+            subtotalAmount,
+            discountAmount,
+            feeAmount: 0,
+            totalAmount,
+            currency: 'VND',
+            expiresAt: now + PERFORMANCE_SEAT_HOLD_TTL_MS,
+            createdAt: now,
+            updatedAt: now,
+            rawData: { promotionCode, seatHold: normalizedSeatHold, messageForAttendee: event.messageForAttendee || '' },
+        });
+        let promotion = null;
+        if (promotionCode) {
+            promotion = await promotionService.reserveDiscountInTransaction(transaction, {
+                code: promotionCode,
+                userId,
+                orderId,
+                eventId,
+                organizerId: event.organizerId || null,
+                ticketQuantity,
+                subtotalVnd: subtotalAmount,
+            });
+            discountAmount = Number(promotion.discountAmount);
+            totalAmount = Number(promotion.totalAmount);
+            await orderRepository.updateOrderTotalsInTransaction(transaction, orderId, {
+                subtotalAmount, discountAmount, feeAmount: 0, totalAmount, updatedAt: now,
+            });
+        }
+        const tickets = [];
+        let remainingDiscount = discountAmount;
+        for (let index = 0; index < pricedItems.length; index += 1) {
+            const item = pricedItems[index];
+            const lineSubtotal = item.price * item.quantity;
+            const lineDiscount = index === pricedItems.length - 1
+                ? remainingDiscount
+                : Math.floor((discountAmount * lineSubtotal) / subtotalAmount);
+            remainingDiscount -= lineDiscount;
+            const ticketId = `tkt_${uuidv4()}`;
+            const orderItemId = `oi_${uuidv4()}`;
+            const ticket = {
+                id: ticketId, eventId, userId, organizerId: event.organizerId || null,
+                type: item.ticketType, price: lineSubtotal - lineDiscount, originalPrice: lineSubtotal,
+                quantity: item.quantity, unitPrice: item.price, appliedPromoCode: promotionCode,
+                seat: null, qrCode: generateTicketQR(ticketId, userId, eventId, item.quantity),
+                status: 'pending', purchaseDate: now,
+            };
+            await ticketRepository.createTicketInTransaction(transaction, ticketId, ticket);
+            await orderRepository.createOrderItemInTransaction(transaction, {
+                id: orderItemId, ticketTypeId: item.type.id || null, ticketType: item.ticketType,
+                eventId, eventName: event.name || null, ticketId, quantity: item.quantity,
+                unitPrice: item.price, subtotal: lineSubtotal, totalAmount: ticket.price,
+                status: 'pending', createdAt: now,
+            }, orderId);
+            await orderRepository.linkTicketToOrderInTransaction(transaction, ticketId, orderId, orderItemId, null);
+            await eventRepository.updateEventInTransaction(transaction, eventId, {
+                [`ticketTypes.${item.ticketType}.available`]: Number(item.type.available) - item.quantity,
+            });
+            tickets.push(ticket);
+        }
+        if (validatedAttendees.length > 0) {
+            await eventRepository.replaceOrderAttendeesInTransaction(transaction, eventId, orderId, validatedAttendees, questions);
+        }
+        await cacheNamespace.invalidateSeatAvailability(eventId);
+        if (totalAmount === 0) {
+            await confirmPaymentForOrderInTransaction(transaction, orderId, 'free-order');
+        }
+        return { orderId, status: totalAmount === 0 ? ORDER_STATUS.PAID : ORDER_STATUS.PENDING_PAYMENT, currency: 'VND', subtotalAmount, discountAmount, totalAmount, tickets, promotion, buyerMessage: event.messageForAttendee || '' };
+    });
+};
+
+const submitOrderAttendees = async (userId, eventId, orderId, attendees) => ticketRepository.runTransaction(async (transaction) => {
+    const order = await eventRepository.getBuyerOrderInTransaction(transaction, eventId, orderId, userId);
+    if (!order) throw new NotFoundError('Order not found.');
+    if (order.status !== ORDER_STATUS.PENDING_PAYMENT) throw new ConflictError('Attendee answers cannot be changed after payment.');
+    const questions = await eventRepository.getCustomQuestions(eventId, transaction);
+    const validated = validateCheckoutAttendees(questions, attendees, Number(order.ticket_quantity));
+    await eventRepository.replaceOrderAttendeesInTransaction(transaction, eventId, orderId, validated, questions);
+    return { orderId, attendees: validated };
+});
 
 const getTicketsByUserId = async (userId, page = 1, limit = 10) => {
     const allTickets = await ticketRepository.getTicketsByUserId(userId);
@@ -896,6 +1094,17 @@ const confirmPaymentForOrderInTransaction = async (tx, orderId, zpTransId = null
     }
 
     const orderData = await orderRepository.getOrderInTransaction(tx, orderId);
+    const seatHold = orderData?.rawData?.seatHold;
+    if (seatHold) {
+        const converted = await seatRepository.convertPerformanceSeatHoldToSold({
+            userId: orderData.userId,
+            eventId: orderData.eventId,
+            performanceId: seatHold.performanceId,
+            holdToken: seatHold.holdToken,
+            seatIds: normalizeSeatIds(seatHold.seatIds),
+        }, tx);
+        if (!converted.converted) throw seatAlreadyReservedError();
+    }
     const items = await orderRepository.getOrderItemsInTransaction(tx, orderId);
     const ticketIds = items.map(i => i.ticketId).filter(Boolean);
 
@@ -1044,6 +1253,8 @@ const confirmPaymentForOrderInTransaction = async (tx, orderId, zpTransId = null
         }
     }
 
+    await promotionService.redeemReservedDiscountInTransaction(tx, orderId);
+
     await cacheNamespace.invalidateSeatAvailability(orderData.eventId);
     logger.info(`[confirmPaymentForOrder] Order ${orderId}: ${confirmedTickets.length}/${ticketIds.length} tickets.`);
     return { orderId, confirmedCount: confirmedTickets.length, tickets: confirmedTickets };
@@ -1055,22 +1266,107 @@ const confirmPaymentForOrder = async (orderId, ticketIds, zpTransId = null) => {
     });
 };
 
+const failOrderPayment = async (orderId, reason = 'Payment failed', tx = null) => {
+    const execute = async (transaction) => {
+        const order = await orderRepository.getOrderInTransaction(transaction, orderId);
+        if (!order) throw new NotFoundError('Order not found.');
+        if (order.status === ORDER_STATUS.PAID) return order;
+        const items = await orderRepository.getOrderItemsInTransaction(transaction, orderId);
+        for (const item of items) {
+            if (!item.ticketId) continue;
+            const ticket = await ticketRepository.getTicketInTransaction(transaction, item.ticketId);
+            if (!ticket || ticket.status !== 'pending') continue;
+            await ticketRepository.updateTicketInTransaction(transaction, ticket.id, { status: 'cancelled', updatedAt: Date.now() });
+            await eventRepository.incrementEventTicketTypeAvailableInTransaction(transaction, ticket.eventId, ticket.type, ticket.quantity || 1);
+        }
+        const seatHold = order.rawData?.seatHold;
+        if (seatHold) {
+            await seatRepository.releasePerformanceSeatHold({
+                userId: order.userId,
+                eventId: order.eventId,
+                performanceId: seatHold.performanceId,
+                holdToken: seatHold.holdToken,
+                seatIds: normalizeSeatIds(seatHold.seatIds),
+            }, transaction);
+        }
+        await promotionService.releaseReservedDiscountInTransaction(transaction, orderId);
+        await orderRepository.updateOrderStatusInTransaction(transaction, orderId, ORDER_STATUS.FAILED, null);
+        await cacheNamespace.invalidateSeatAvailability(order.eventId);
+        return { ...order, status: ORDER_STATUS.FAILED, reason };
+    };
+    return tx ? execute(tx) : ticketRepository.runTransaction(execute);
+};
+
 const getSeatsWithStatuses = async (eventId) => {
     return await seatRepository.getSeatsWithStatuses(eventId);
+};
+
+const getPerformanceSeatAvailability = async (eventId, performanceId = null) => (
+    seatRepository.getPerformanceSeatAvailability(eventId, performanceId)
+);
+
+const cachePerformanceSeatStatuses = async (performanceId, seatIds, status, ttlSeconds = 600) => {
+    await Promise.all(seatIds.map((seatId) => cacheProvider.set(
+        `seat:status:${performanceId}:${seatId}`,
+        JSON.stringify({ status, updatedAt: Date.now() }),
+        ttlSeconds
+    )));
+};
+
+const holdPerformanceSeats = async (userId, eventId, performanceId, seatIds) => {
+    const normalizedSeatIds = normalizeSeatIds(seatIds);
+    const holdToken = `seat_hold_${uuidv4()}`;
+    const result = await ticketRepository.runTransaction((transaction) => (
+        seatRepository.holdPerformanceSeats({
+            userId,
+            eventId,
+            performanceId,
+            seatIds: normalizedSeatIds,
+            holdToken,
+            expiresAt: Date.now() + PERFORMANCE_SEAT_HOLD_TTL_MS,
+        }, transaction)
+    ));
+    if (!result.held) throw seatAlreadyReservedError();
+    const heldSeatIds = result.seats.map((seat) => seat.seatId).sort();
+    const expiresAt = result.seats.reduce((latest, seat) => Math.max(latest, Number(seat.expiresAt) || 0), 0);
+    await cachePerformanceSeatStatuses(performanceId, heldSeatIds, seatRepository.PERFORMANCE_SEAT_STATUSES.HELD);
+    await cacheNamespace.invalidateSeatAvailability(eventId);
+    const io = getIo();
+    if (io) io.to(`event_${eventId}`).emit('seat:held', { eventId, performanceId, seatIds: heldSeatIds, holdToken, expiresAt });
+    return { eventId, performanceId, holdToken, seatIds: heldSeatIds, expiresAt, status: seatRepository.PERFORMANCE_SEAT_STATUSES.HELD };
+};
+
+const releasePerformanceSeatHold = async (userId, eventId, performanceId, holdToken, seatIds = null) => {
+    const normalizedSeatIds = seatIds ? normalizeSeatIds(seatIds) : null;
+    const result = await ticketRepository.runTransaction((transaction) => (
+        seatRepository.releasePerformanceSeatHold({ userId, eventId, performanceId, holdToken, seatIds: normalizedSeatIds }, transaction)
+    ));
+    if (!result.released) throw seatAlreadyReservedError();
+    await cachePerformanceSeatStatuses(performanceId, result.seatIds, seatRepository.PERFORMANCE_SEAT_STATUSES.AVAILABLE);
+    await cacheNamespace.invalidateSeatAvailability(eventId);
+    const io = getIo();
+    if (io) io.to(`event_${eventId}`).emit('seat:released', { eventId, performanceId, seatIds: result.seatIds });
+    return { eventId, performanceId, holdToken, seatIds: result.seatIds, status: seatRepository.PERFORMANCE_SEAT_STATUSES.AVAILABLE };
 };
 
 module.exports = {
     getTicketsByUserId,
     bookTicket,
     bookOrderAtomic,
+    createCheckout,
+    submitOrderAttendees,
     cancelPendingTicket,
     confirmTicketPayment,
     confirmPaymentForOrder,
     confirmPaymentForOrderInTransaction,
+    failOrderPayment,
     failTicketPayment,
     getTicketDetailsById,
     holdSeat,
     releaseSeat,
     bookHeldSeats,
     getSeatsWithStatuses,
+    getPerformanceSeatAvailability,
+    holdPerformanceSeats,
+    releasePerformanceSeatHold,
 };

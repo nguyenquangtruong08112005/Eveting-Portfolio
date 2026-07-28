@@ -67,13 +67,62 @@ const bookOrderAtomic = asyncHandler(async (req, res) => {
     res.status(201).json(result);
 });
 
+const createCheckout = asyncHandler(async (req, res) => {
+    const checkout = await ticketService.createCheckout(req.user.uid, req.body);
+    res.status(201).json(checkout);
+});
+
+const submitOrderAttendees = asyncHandler(async (req, res) => {
+    const result = await ticketService.submitOrderAttendees(
+        req.user.uid,
+        req.body.eventId,
+        req.params.orderId,
+        req.body.attendees
+    );
+    res.status(200).json(result);
+});
+
+const getPerformanceSeatAvailability = asyncHandler(async (req, res) => {
+    const result = await ticketService.getPerformanceSeatAvailability(
+        req.params.eventId,
+        req.query.performanceId || null
+    );
+    res.status(200).json(result);
+});
+
+const holdPerformanceSeats = asyncHandler(async (req, res) => {
+    const result = await ticketService.holdPerformanceSeats(
+        req.user.uid,
+        req.params.eventId,
+        req.body.performanceId,
+        req.body.seatIds
+    );
+    res.status(201).json(result);
+});
+
+const releasePerformanceSeatHold = asyncHandler(async (req, res) => {
+    const result = await ticketService.releasePerformanceSeatHold(
+        req.user.uid,
+        req.params.eventId,
+        req.body.performanceId,
+        req.body.holdToken,
+        req.body.seatIds || null
+    );
+    res.status(200).json(result);
+});
+
 module.exports = {
     getCurrentUserTickets,
     bookTicket,
     bookOrderAtomic,
+    createCheckout,
+    submitOrderAttendees,
     getTicketDetails,
     holdSeat,
     releaseSeat,
     bookHeldSeats,
     getSeatsWithStatuses,
+    getPerformanceSeatAvailability,
+    holdPerformanceSeats,
+    releasePerformanceSeatHold,
 };

@@ -94,7 +94,11 @@ const PROCESSORS = {
 
             const STATUS = { ACTIVE: 'active' };
             const VISIBILITY = { PUBLIC: 'public' };
-            if (eventData.status !== STATUS.ACTIVE || eventData.visibility !== VISIBILITY.PUBLIC) {
+            if (
+                eventData.status !== STATUS.ACTIVE
+                || eventData.visibility !== VISIBILITY.PUBLIC
+                || eventData.isPrivate === true
+            ) {
                 try {
                     await esClient.delete({ index: 'events', id: eventId });
                 } catch (e) {}

@@ -17,7 +17,16 @@ const REQUIRED_METHODS = [
   'releaseSeatHold',
   'releaseExpiredHolds',
   'convertHoldToSold',
-  'getSeatsWithStatuses'
+  'getSeatsWithStatuses',
+  'createPerformance',
+  'materializePerformanceSeats',
+  'getPerformanceSeatAvailability',
+  'getPerformanceSeatLayout',
+  'savePerformanceSeatLayout',
+  'holdPerformanceSeats',
+  'releasePerformanceSeatHold',
+  'convertPerformanceSeatHoldToSold',
+  'releaseExpiredPerformanceSeatHolds'
 ];
 
 function validateAdapter(adapter) {
