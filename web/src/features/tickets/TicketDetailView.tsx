@@ -98,13 +98,13 @@ export function TicketDetailView() {
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
-      <Navbar />
+      <div className="no-print"><Navbar /></div>
 
       <main className="max-w-2xl mx-auto px-6 py-10 w-full flex-grow space-y-6">
         {/* Back */}
         <Link
           href="/my-tickets"
-          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+          className="no-print inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
           {t('title')}
@@ -207,7 +207,7 @@ export function TicketDetailView() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-2">
+            <div className="no-print flex gap-3 pt-2">
               <Link
                 href={`/attendee/events/${ticket.event?.id || ticket.eventId}`}
                 className="flex-1 py-2.5 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[var(--primary)] text-xs font-bold text-center hover:bg-[var(--primary)]/20 transition-colors"
@@ -225,7 +225,7 @@ export function TicketDetailView() {
         </div>
       </main>
 
-      <Footer />
+      <div className="no-print"><Footer /></div>
     </div>
   );
 }

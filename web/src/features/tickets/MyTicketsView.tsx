@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Ticket as TicketIcon, Calendar, MapPin, ArrowRight, RefreshCw, Printer } from 'lucide-react';
+import { Ticket as TicketIcon, Calendar, MapPin, RefreshCw, Printer } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/badge';
@@ -121,9 +121,9 @@ export function MyTicketsView() {
 
   if (loading) {
     return (
-      <div className="flex-grow flex flex-col bg-[var(--background)] min-h-screen text-[var(--text-primary)]">
-        <Navbar />
-        <main className="max-w-4xl mx-auto px-6 py-10 w-full flex-grow space-y-8 animate-pulse">
+      <div className="flex flex-col bg-[var(--background)] text-[var(--text-primary)]" style={{ minHeight: 'calc(100vh + 80px)' }}>
+        <div className="no-print"><Navbar /></div>
+        <main className="max-w-4xl mx-auto px-6 py-10 w-full space-y-8 animate-pulse">
           {/* Skeleton Title */}
           <div className="flex items-center justify-between border-b border-[var(--surface-border)] pb-4">
             <div className="h-8 w-48 bg-[var(--surface-hover)] rounded-xl" />
@@ -136,18 +136,19 @@ export function MyTicketsView() {
             ))}
           </div>
         </main>
-        <Footer />
+        <div className="flex-1 no-print" />
+        <div className="no-print"><Footer /></div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[var(--background)] min-h-screen">
-      <Navbar />
+    <div className="flex flex-col bg-[var(--background)]" style={{ minHeight: 'calc(100vh + 80px)' }}>
+      <div className="no-print"><Navbar /></div>
 
-      <main className="max-w-4xl mx-auto px-6 py-10 w-full flex-grow space-y-8">
+      <main className="max-w-4xl mx-auto px-6 py-10 w-full space-y-8">
         {/* Title row */}
-        <div className="flex items-center justify-between border-b border-[var(--surface-border)] pb-4">
+        <div className="no-print flex items-center justify-between border-b border-[var(--surface-border)] pb-4">
           <div>
             <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight flex items-center gap-2">
               <TicketIcon className="size-6 text-[var(--primary)]" />
@@ -186,9 +187,10 @@ export function MyTicketsView() {
             {tickets.map((ticket) => {
               const eventInfo = eventsMap[ticket.eventId];
               return (
-                <div
+                <Link
                   key={ticket.id}
-                  className="relative rounded-2xl overflow-hidden bg-[var(--surface)] border border-[var(--surface-border)] flex flex-col md:flex-row hover:border-[var(--surface-border)] transition-all duration-300 shadow-xl"
+                  href={`/my-tickets/${ticket.id}`}
+                  className="relative rounded-2xl overflow-hidden bg-[var(--surface)] border border-[var(--surface-border)] flex flex-col md:flex-row hover:border-[var(--primary)] hover:ring-1 hover:ring-[var(--primary)]/30 transition-all duration-300 shadow-xl cursor-pointer no-print"
                 >
                   {/* Left Ticket Stub (70%) */}
                   <div className="flex-1 p-6 flex gap-5">
@@ -284,29 +286,21 @@ export function MyTicketsView() {
                       </span>
                     </div>
 
-                    <div className="flex gap-2 w-full mt-1">
+                    {/* <div className="no-print flex gap-2 w-full mt-1">
                       <button
-                        onClick={handlePrint}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePrint(); }}
                         className="flex-1 py-2 bg-[var(--surface-hover)] hover:bg-[var(--muted)] text-[var(--text-primary)] font-bold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all border-none"
                       >
                         <Printer className="size-3.5" />
                         {t('print_ticket')}
                       </button>
-                      
-                      <Link
-                        href={`/my-tickets/${ticket.id}`}
-                        className="px-3 py-2 bg-[var(--primary)] text-[var(--on-primary)] font-bold rounded-xl text-xs flex items-center justify-center hover:opacity-90 cursor-pointer transition-all"
-                        title={t('view_event')}
-                      >
-                        <ArrowRight className="size-3.5" />
-                      </Link>
-                    </div>
+                    </div> */}
                   </div>
-                </div>
+                </Link>
               );
             })}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="no-print flex items-center justify-center gap-3 pt-2">
                 <button
                   type="button"
                   disabled={page <= 1 || refreshing}
@@ -338,7 +332,8 @@ export function MyTicketsView() {
         )}
       </main>
 
-      <Footer />
+      <div className="flex-1 no-print" />
+      <div className="no-print"><Footer /></div>
     </div>
   );
 }
