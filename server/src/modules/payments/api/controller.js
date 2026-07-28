@@ -3,10 +3,13 @@ const paymentService = require('@/modules/payments/application/service');
 const ticketRepository = require('@/providers/database/ticket.repository');
 const orderRepository = require('@/providers/database/order.repository');
 const asyncHandler = require('@/shared/middleware/asyncHandler');
+const moment = require('moment');
 const { v4: uuidv4 } = require('uuid');
 const { BadRequestError, NotFoundError, ForbiddenError, ConflictError } = require('@/shared/errors');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('@/modules/orders/domain/order-status');
 const logger = require('@/shared/logger');
+
+const PROCESSING_STALE_AGE_MS = 5 * 60 * 1000; // 5 minutes — fresh attempts below this age are not failed
 
 /**
  * Ensure ticket has an order row for payment_attempts.order_id (NOT NULL FK).
@@ -169,13 +172,52 @@ const handleZaloPayCallback = async (req, res) => {
             }
 
             const embedData = JSON.parse(dataObj.embed_data);
-            const ticketId = embedData.ticket_id || existingAttempt.ticketId;
+            const embedTicketIds = embedData.ticket_ids || [];
+            const embedTicketId = embedData.ticket_id || existingAttempt.ticketId;
 
-            console.log(
-                `[ZaloPay Callback] Success Verified. Ticket: ${ticketId}, ZaloID: ${zpTransId}`
-            );
+            if (existingAttempt.orderId) {
+                // Aggregate path — resolve tickets from DB order items (source of truth)
+                const dbItems = await orderRepository.getOrderItemsInTransaction(tx, existingAttempt.orderId);
+                const dbTicketIds = dbItems.map(i => i.ticketId).filter(Boolean);
 
-            await ticketService.confirmTicketPayment(ticketId, zpTransId, tx);
+                if (dbTicketIds.length === 0) {
+                    console.warn(
+                        `[ZaloPay Callback] Order ${existingAttempt.orderId} has no ticket items in DB.`
+                    );
+                    return { return_code: 0, return_message: 'order has no ticket items' };
+                }
+
+                if (embedTicketIds.length > 0) {
+                    const embedSet = new Set(embedTicketIds);
+                    const embedOnly = embedTicketIds.filter(id => !dbTicketIds.includes(id));
+                    const dbOnly = dbTicketIds.filter(id => !embedSet.has(id));
+                    if (embedOnly.length > 0 || dbOnly.length > 0) {
+                        console.warn(
+                            `[ZaloPay Callback] embed_data ticket_ids mismatch with DB for order ${existingAttempt.orderId}. Using DB. embedOnly=${JSON.stringify(embedOnly)} dbOnly=${JSON.stringify(dbOnly)}`
+                        );
+                    }
+                }
+
+                console.log(
+                    `[ZaloPay Callback] Aggregate order ${existingAttempt.orderId}, ${dbTicketIds.length} tickets, ZaloID: ${zpTransId}`
+                );
+
+                await ticketService.confirmPaymentForOrderInTransaction(tx, existingAttempt.orderId, zpTransId);
+            } else if (embedTicketId) {
+                // Legacy single ticket path
+                console.log(
+                    `[ZaloPay Callback] Legacy single ticket: ${embedTicketId}, ZaloID: ${zpTransId}`
+                );
+                await ticketService.confirmTicketPayment(embedTicketId, zpTransId, tx);
+            } else {
+                console.warn(
+                    `[ZaloPay Callback] No orderId or ticketId in payment_attempt for ${appTransId}`
+                );
+                return {
+                    return_code: 0,
+                    return_message: 'no order or ticket reference',
+                };
+            }
 
             return {
                 return_code: 1,
@@ -255,6 +297,173 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
     return res.json(result);
 });
 
+const createBulkPaymentOrder = asyncHandler(async (req, res) => {
+    const { orderId, redirectUrl } = req.body;
+    const userId = req.user.uid;
+
+    if (!orderId) throw new BadRequestError('orderId is required.');
+
+    const { paId, app_trans_id, tickets, totalAmount, existingResponse, conflictRetry, existingAttemptId } = await ticketRepository.runTransaction(async (tx) => {
+        // Lock order row
+        const lockResult = await tx.query(
+            'SELECT status FROM orders WHERE id = $1 FOR UPDATE',
+            [orderId]
+        );
+        if (lockResult.rows.length === 0) throw new NotFoundError('Order not found.');
+        if (lockResult.rows[0].status !== ORDER_STATUS.PENDING_PAYMENT) {
+            if (lockResult.rows[0].status === ORDER_STATUS.PAID) {
+                throw new ConflictError('Order already paid.');
+            }
+            throw new ConflictError(`Order not payable (status: ${lockResult.rows[0].status}).`);
+        }
+
+        const orderData = await orderRepository.getOrderInTransaction(tx, orderId);
+        if (orderData.userId !== userId) throw new ForbiddenError('Forbidden.');
+
+        // Check for existing active attempt — prevent duplicate ZaloPay order
+        const existingAttempt = await orderRepository.getLatestPaymentAttemptByOrderId(orderId, tx, true);
+        if (existingAttempt) {
+            if (existingAttempt.status === PAYMENT_STATUS.PROCESSING) {
+                if (existingAttempt.responsePayload && existingAttempt.responsePayload.order_url) {
+                    return { existingResponse: existingAttempt.responsePayload };
+                }
+                // No response yet — determine freshness
+                const age = Date.now() - Number(existingAttempt.createdAt || 0);
+                if (age < PROCESSING_STALE_AGE_MS) {
+                    return { conflictRetry: true, existingAttemptId: existingAttempt.id };
+                }
+                await orderRepository.updatePaymentAttemptInTransaction(tx, existingAttempt.id, {
+                    status: PAYMENT_STATUS.FAILED,
+                    failureReason: 'Stale processing attempt exceeded timeout',
+                });
+            } else if (existingAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
+                throw new ConflictError('Order already paid.');
+            }
+        }
+
+        // Load items within transaction
+        const items = await orderRepository.getOrderItemsInTransaction(tx, orderId);
+        const ticketIds = items.map(i => i.ticketId).filter(Boolean);
+        if (ticketIds.length === 0) throw new BadRequestError('Order has no ticket items.');
+
+        // Load tickets within transaction
+        const loadTickets = await Promise.all(
+            ticketIds.map(id => ticketRepository.getTicketInTransaction(tx, id))
+        );
+        const tickets = loadTickets.filter(Boolean);
+
+        const totalAmount = Number(orderData.totalAmount);
+
+        // Generate app_trans_id for durable attempt
+        const app_time = Date.now();
+        const app_date = moment(app_time).utcOffset('+07:00').format('YYMMDD');
+        const randomSuffix = Math.floor(Math.random() * 100000);
+        const cleanOrderId = orderId.replace(/[^a-zA-Z0-9]/g, '');
+        const shortId = cleanOrderId.slice(-10);
+        const app_trans_id = `${app_date}_${shortId}_${randomSuffix}`;
+        const now = Date.now();
+        const paId = `pa_${uuidv4()}`;
+
+        // Create payment_attempt + link all tickets in one shot (within the same tx)
+        await orderRepository.createPaymentAttemptInTransaction(tx, {
+            id: paId,
+            orderId,
+            ticketId: ticketIds[0],
+            status: PAYMENT_STATUS.PROCESSING,
+            paymentMethod: 'zalopay',
+            provider: 'zalopay',
+            providerOrderId: app_trans_id,
+            amount: totalAmount,
+            currency: 'VND',
+            requestPayload: null,
+            responsePayload: null,
+            createdAt: now,
+            updatedAt: now,
+        });
+        await orderRepository.linkTicketsToOrderInTransaction(tx, ticketIds, orderId, paId);
+
+        return { paId, app_trans_id, tickets, totalAmount };
+    });
+
+    if (existingResponse) {
+        return res.status(200).json({ ...existingResponse, orderId });
+    }
+    if (conflictRetry) {
+        return res.status(409).json({
+            error: 'Payment is being processed. Please retry shortly.',
+            attemptId: existingAttemptId,
+        });
+    }
+
+    const finalRedirectUrl = redirectUrl
+        ? (redirectUrl.includes('orderId=') ? redirectUrl : redirectUrl + '&orderId=' + encodeURIComponent(orderId))
+        : null;
+
+    let zaloResponse;
+    try {
+        zaloResponse = await paymentService.createAggregateZaloPayOrder(
+            orderId, tickets, totalAmount, userId, finalRedirectUrl, app_trans_id
+        );
+    } catch (err) {
+        await ticketRepository.runTransaction(async (tx) => {
+            await orderRepository.getLatestPaymentAttemptByOrderId(orderId, tx, true);
+            await orderRepository.updatePaymentAttemptInTransaction(tx, paId, {
+                status: PAYMENT_STATUS.FAILED,
+                responsePayload: { error: err.message },
+                updatedAt: Date.now(),
+            });
+        });
+        throw err;
+    }
+
+    // Re-lock and update under transaction to serialize with concurrent requests
+    await ticketRepository.runTransaction(async (tx) => {
+        await orderRepository.getLatestPaymentAttemptByOrderId(orderId, tx, true);
+        await orderRepository.updatePaymentAttemptInTransaction(tx, paId, {
+            responsePayload: zaloResponse,
+            updatedAt: Date.now(),
+        });
+    });
+
+    res.status(200).json({ ...zaloResponse, orderId });
+});
+
+const checkOrderPaymentStatus = asyncHandler(async (req, res) => {
+    const { orderId } = req.body;
+
+    const order = await orderRepository.getOrderById(orderId);
+    if (!order) throw new NotFoundError('Order not found.');
+
+    if (order.status === ORDER_STATUS.PAID) {
+        return res.json({ status: 'paid', orderId, totalAmount: order.totalAmount });
+    }
+
+    const tickets = await orderRepository.getTicketsByOrderId(orderId);
+    if (tickets.length === 0) throw new NotFoundError('No tickets found for this order.');
+
+    const allPaid = tickets.every(t => t.status === 'paid' || t.status === 'checkedIn');
+    if (allPaid) {
+        await orderRepository.updateOrderStatusInTransaction(null, orderId, ORDER_STATUS.PAID, Date.now());
+        return res.json({ status: 'paid', orderId, totalAmount: order.totalAmount });
+    }
+
+    // Query ZaloPay if we have a provider ID
+    const latestAttempt = await orderRepository.getLatestPaymentAttemptByOrderId(orderId, null, true);
+    if (latestAttempt && latestAttempt.providerOrderId) {
+        const queryResult = await paymentService.queryZaloPayOrder(latestAttempt.providerOrderId);
+        if (queryResult.return_code === 1) {
+            await ticketService.confirmPaymentForOrder(orderId, [], queryResult.zp_trans_id || 're-query');
+            return res.json({ status: 'paid', orderId, totalAmount: order.totalAmount });
+        }
+    }
+
+    const anyPending = tickets.some(t => t.status === 'pending');
+    const anyFailed = tickets.some(t => t.status === 'cancelled');
+    if (anyFailed) return res.json({ status: 'failed', orderId });
+    if (anyPending) return res.json({ status: 'pending', orderId });
+    return res.json({ status: 'unknown', orderId });
+});
+
 const handleZaloPayRedirect = asyncHandler(async (req, res) => {
     const { targetUrl } = req.query;
     if (!targetUrl) {
@@ -277,7 +486,9 @@ const handleZaloPayRedirect = asyncHandler(async (req, res) => {
 
 module.exports = {
     createPaymentOrder,
+    createBulkPaymentOrder,
     handleZaloPayCallback,
     manualCheckPaymentStatus,
+    checkOrderPaymentStatus,
     handleZaloPayRedirect,
 };

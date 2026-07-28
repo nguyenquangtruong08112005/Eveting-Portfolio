@@ -47,4 +47,28 @@ router.post(
     paymentController.manualCheckPaymentStatus
 );
 
+router.post(
+    '/create-order-bulk',
+    verifyAuthToken,
+    requireVerifiedEmail,
+    bookingLimiter,
+    auditLog('payment:create-order-bulk', 'order', 'orderId'),
+    body('orderId').notEmpty().withMessage('orderId is required'),
+    validateRequest,
+    idempotency(),
+    paymentController.createBulkPaymentOrder
+);
+
+router.post(
+    '/check-order-status',
+    verifyAuthToken,
+    bookingLimiter,
+    auditLog('payment:check-order-status', 'order', 'orderId'),
+    body('orderId').notEmpty().withMessage('orderId is required'),
+    validateRequest,
+    requireOwnership('Order', 'orderId'),
+    idempotency(),
+    paymentController.checkOrderPaymentStatus
+);
+
 module.exports = router;

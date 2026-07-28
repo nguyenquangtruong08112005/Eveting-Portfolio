@@ -199,6 +199,136 @@ const bookTicket = async (userId, eventId, ticketType, quantity = 1, promoCode =
     });
 };
 
+const bookOrderAtomic = async (userId, eventId, items, promoCode = null) => {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new BadRequestError('items must be a non-empty array.');
+    }
+
+    return ticketRepository.runTransaction(async (transaction) => {
+        const eventData = await eventRepository.getEventInTransaction(transaction, eventId);
+        if (!eventData) throw new NotFoundError('Event not found.');
+
+        let subtotalAmount = 0;
+        const ticketEntries = [];
+
+        for (const item of items) {
+            const qty = parseInt(item.quantity);
+            if (isNaN(qty) || qty < 1) throw new BadRequestError(`Invalid quantity for ${item.ticketType}`);
+
+            const ticketTypeData = eventData.ticketTypes[item.ticketType];
+            if (!ticketTypeData) throw new NotFoundError(`Ticket type '${item.ticketType}' does not exist.`);
+            if (ticketTypeData.available < qty) {
+                throw new ConflictError(`Not enough ${item.ticketType} tickets. Only ${ticketTypeData.available} left.`);
+            }
+
+            const unitPrice = Number(ticketTypeData.price);
+            const entrySubtotal = unitPrice * qty;
+            subtotalAmount += entrySubtotal;
+
+            ticketEntries.push({ item, unitPrice, entrySubtotal, ticketTypeData, qty });
+        }
+
+        const membership = await membershipRepository.getUserMembershipInTransaction(transaction, userId);
+        const discountPercentage = membership ? membership.discountPercentage : 0;
+        const membershipDiscountAmount = subtotalAmount * discountPercentage;
+        const membershipDiscountedPrice = subtotalAmount - membershipDiscountAmount;
+        let totalAmount = membershipDiscountedPrice;
+        let appliedPromotion = null;
+
+        if (promoCode) {
+            const totalQty = ticketEntries.reduce((s, e) => s + e.qty, 0);
+            const result = await applyPromotion(promotionRepository, transaction, promoCode, eventId, totalQty, membershipDiscountedPrice);
+            appliedPromotion = result.appliedPromotion;
+            totalAmount = result.totalPrice;
+        }
+
+        if (appliedPromotion) {
+            await promotionRepository.incrementPromotionUsedCountInTransaction(transaction, appliedPromotion._id || appliedPromotion.id);
+        }
+
+        const organizerId = eventData.organizerId || null;
+
+        // One order
+        const orderId = `ord_${uuidv4()}`;
+        await orderRepository.createOrderInTransaction(transaction, {
+            id: orderId,
+            userId,
+            eventId,
+            organizerId,
+            status: ORDER_STATUS.PENDING_PAYMENT,
+            subtotalAmount,
+            discountAmount: subtotalAmount - totalAmount,
+            feeAmount: 0,
+            totalAmount,
+            currency: 'VND',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            rawData: { membershipDiscountAmount, membershipDiscountRate: discountPercentage },
+        });
+
+        // Tickets and order items
+        const tickets = [];
+        for (const { item, unitPrice, entrySubtotal, ticketTypeData, qty } of ticketEntries) {
+            const ticketId = `tkt_${uuidv4()}`;
+            const orderItemId = `oi_${uuidv4()}`;
+            const qrCodeJwt = generateTicketQR(ticketId, userId, eventId, qty);
+
+            const proportionalWeight = subtotalAmount > 0 ? entrySubtotal / subtotalAmount : 1 / ticketEntries.length;
+            const ticketPrice = Math.round(totalAmount * proportionalWeight);
+            const originalPrice = entrySubtotal;
+
+            const newTicketData = {
+                id: ticketId,
+                eventId,
+                userId,
+                organizerId,
+                type: item.ticketType,
+                price: ticketPrice,
+                originalPrice,
+                quantity: qty,
+                unitPrice,
+                appliedPromoCode: promoCode,
+                seat: null,
+                qrCode: qrCodeJwt,
+                status: 'pending',
+                purchaseDate: Date.now(),
+                membershipDiscountAmount: Math.round(membershipDiscountAmount * proportionalWeight),
+                membershipDiscountRate: discountPercentage,
+            };
+
+            await ticketRepository.createTicketInTransaction(transaction, ticketId, newTicketData);
+
+            await orderRepository.createOrderItemInTransaction(transaction, {
+                id: orderItemId,
+                ticketTypeId: ticketTypeData.id || null,
+                ticketType: item.ticketType,
+                eventId,
+                eventName: eventData.name || null,
+                ticketId,
+                quantity: qty,
+                unitPrice,
+                subtotal: originalPrice,
+                totalAmount: ticketPrice,
+                status: 'pending',
+                createdAt: Date.now(),
+            }, orderId);
+
+            await orderRepository.linkTicketToOrderInTransaction(transaction, ticketId, orderId, orderItemId, null);
+
+            await eventRepository.updateEventInTransaction(transaction, eventId, {
+                [`ticketTypes.${item.ticketType}.available`]: ticketTypeData.available - qty,
+            });
+
+            tickets.push(newTicketData);
+        }
+
+        await cacheNamespace.invalidateSeatAvailability(eventId);
+
+        logger.info(`[bookOrderAtomic] Order ${orderId}: ${tickets.length} ticket groups, total ${totalAmount} VND`);
+        return { orderId, tickets };
+    });
+};
+
 const cancelPendingTicket = async (ticketId) => {
     return ticketRepository.runTransaction(async (transaction) => {
         const ticketData = await ticketRepository.getTicketInTransaction(transaction, ticketId);
@@ -754,6 +884,177 @@ const bookHeldSeats = async (userId, eventId, seatIds, promoCode = null) => {
     });
 };
 
+const confirmPaymentForOrderInTransaction = async (tx, orderId, zpTransId = null) => {
+    const lockResult = await tx.query(
+        'SELECT status FROM orders WHERE id = $1 FOR UPDATE',
+        [orderId]
+    );
+    if (lockResult.rows.length === 0) throw new NotFoundError('Order not found.');
+    if (lockResult.rows[0].status === ORDER_STATUS.PAID) {
+        logger.info(`[confirmPaymentForOrder] Order ${orderId} already paid. Skipping.`);
+        return { orderId, confirmedCount: 0, alreadyPaid: true };
+    }
+
+    const orderData = await orderRepository.getOrderInTransaction(tx, orderId);
+    const items = await orderRepository.getOrderItemsInTransaction(tx, orderId);
+    const ticketIds = items.map(i => i.ticketId).filter(Boolean);
+
+    const paymentAttempt = await orderRepository.getLatestPaymentAttemptByOrderId(orderId, tx, true);
+    if (paymentAttempt && paymentAttempt.status === PAYMENT_STATUS.SUCCEEDED) {
+        logger.info(`[confirmPaymentForOrder] Payment attempt ${paymentAttempt.id} already succeeded.`);
+        return { orderId, confirmedCount: 0, alreadyPaid: true };
+    }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayTimestamp = now.getTime().toString();
+
+    const confirmedTickets = [];
+    for (const ticketId of ticketIds) {
+        const ticketData = await ticketRepository.getTicketInTransaction(tx, ticketId);
+        if (!ticketData) continue;
+
+        if (ticketData.status === 'paid' || ticketData.status === 'checkedIn') {
+            confirmedTickets.push(ticketData);
+            continue;
+        }
+        if (ticketData.status !== 'pending') {
+            logger.warn(`[confirmPaymentForOrder] Cannot confirm ticket ${ticketId} status: ${ticketData.status}`);
+            continue;
+        }
+
+        await ticketRepository.updateTicketInTransaction(tx, ticketId, {
+            status: 'paid',
+            updatedAt: Date.now(),
+            paymentTime: Date.now(),
+        });
+
+        await analyticsRepository.updateAnalyticsForConfirmPaymentInTransaction(tx, ticketData.eventId, {
+            price: ticketData.price,
+            ticketType: ticketData.type,
+            quantity: 1,
+            dailyTimestamp: todayTimestamp,
+        });
+
+        try {
+            await tx.query('SAVEPOINT membership_loyalty');
+            try {
+                const pointsEarned = Math.floor(Number(ticketData.price || 0) / 10000);
+                if (pointsEarned > 0) {
+                    await membershipRepository.logLoyaltyPointsEntryInTransaction(tx, {
+                        id: `ledger_${uuidv4()}`,
+                        userId: ticketData.userId,
+                        points: pointsEarned,
+                        transactionType: 'ticket_purchase',
+                        referenceId: ticketData.id,
+                        createdAt: Date.now(),
+                    });
+                    const userMembership = await membershipRepository.getUserMembershipInTransaction(tx, ticketData.userId);
+                    const newLifetimePoints = (userMembership ? userMembership.lifetimePoints : 0) + pointsEarned;
+                    const tiers = await membershipRepository.getMembershipTiersInTransaction(tx);
+                    let qualifiedTier = tiers && tiers.length > 0 ? tiers[0] : null;
+                    if (tiers) {
+                        for (const tier of tiers) {
+                            if (newLifetimePoints >= tier.minPointsRequired) qualifiedTier = tier;
+                        }
+                    }
+                    const currentTierId = userMembership ? userMembership.tierId : 'tier_standard';
+                    const newTierId = qualifiedTier && qualifiedTier.id !== currentTierId ? qualifiedTier.id : null;
+                    await membershipRepository.updateUserMembershipPointsAndTierInTransaction(
+                        tx, ticketData.userId, pointsEarned, pointsEarned, newTierId
+                    );
+                    if (newTierId) logger.info(`[Membership] User ${ticketData.userId} upgraded from ${currentTierId} to ${newTierId}`);
+                }
+                await tx.query('RELEASE SAVEPOINT membership_loyalty');
+            } catch (innerErr) {
+                try {
+                    await tx.query('ROLLBACK TO SAVEPOINT membership_loyalty');
+                    await tx.query('RELEASE SAVEPOINT membership_loyalty');
+                } catch (_) { /* ignore rollback failure */ }
+                throw innerErr;
+            }
+        } catch (err) {
+            logger.error(`[Membership] Failed loyalty for ticket ${ticketId}: ${err.message}`);
+        }
+
+        try {
+            await tx.query('SAVEPOINT notif_outbox');
+            try {
+                const userProfileResult = await tx.query(
+                    `SELECT a.email, p.name FROM auth_users a LEFT JOIN user_profiles p ON p.id = a.id WHERE a.id = $1`,
+                    [ticketData.userId]
+                );
+                const email = userProfileResult.rows[0]?.email || 'customer@example.com';
+                const name = userProfileResult.rows[0]?.name || 'Customer';
+                await eventPublisher.publish('notification', {
+                    channel: 'email',
+                    target: email,
+                    title: 'Ticket Booking Successful',
+                    body: `Hello ${name}, your ticket payment for event ${ticketData.eventId} was confirmed. Your ticket ID is ${ticketId}.`,
+                }, tx);
+                await eventPublisher.publish('notification', {
+                    channel: 'socket',
+                    target: `user_${ticketData.userId}`,
+                    event: 'ticket_paid',
+                    title: 'Ticket Confirmed',
+                    body: 'Your ticket payment was confirmed!',
+                    data: { ticketId, eventId: ticketData.eventId },
+                }, tx);
+                await tx.query('RELEASE SAVEPOINT notif_outbox');
+            } catch (innerErr) {
+                try {
+                    await tx.query('ROLLBACK TO SAVEPOINT notif_outbox');
+                    await tx.query('RELEASE SAVEPOINT notif_outbox');
+                } catch (_) { /* ignore rollback failure */ }
+                throw innerErr;
+            }
+        } catch (err) {
+            logger.error(`[NotificationAgg] notification failed for ${ticketId}: ${err.message}`);
+        }
+
+        confirmedTickets.push({ ...ticketData, status: 'paid' });
+        logger.info(`[confirmPaymentForOrder] Ticket ${ticketId} confirmed (order ${orderId}).`);
+    }
+
+    if (paymentAttempt && paymentAttempt.status !== PAYMENT_STATUS.SUCCEEDED) {
+        await orderRepository.updatePaymentAttemptInTransaction(tx, paymentAttempt.id, {
+            status: PAYMENT_STATUS.SUCCEEDED,
+            completedAt: Date.now(),
+            providerTransactionId: zpTransId || paymentAttempt.providerTransactionId,
+        });
+    }
+
+    if (orderData && orderData.status !== ORDER_STATUS.PAID) {
+        await orderRepository.updateOrderStatusInTransaction(tx, orderId, ORDER_STATUS.PAID, Date.now());
+        if (orderData.organizerId) {
+            const settings = await orderRepository.getOrganizerSettingsInTransaction(tx, orderData.organizerId);
+            const platformFeeRate = settings ? settings.platformFeeRate : 0.05;
+            const grossAmount = Number(orderData.totalAmount || 0);
+            const platformFee = Number((grossAmount * platformFeeRate).toFixed(2));
+            const netAmount = Number((grossAmount - platformFee).toFixed(2));
+            await orderRepository.createLedgerEntryInTransaction(tx, {
+                id: `led_${uuidv4()}`,
+                orderId: orderData.id,
+                organizerId: orderData.organizerId,
+                grossAmount,
+                platformFee,
+                netAmount,
+                createdAt: Date.now(),
+            });
+        }
+    }
+
+    await cacheNamespace.invalidateSeatAvailability(orderData.eventId);
+    logger.info(`[confirmPaymentForOrder] Order ${orderId}: ${confirmedTickets.length}/${ticketIds.length} tickets.`);
+    return { orderId, confirmedCount: confirmedTickets.length, tickets: confirmedTickets };
+};
+
+const confirmPaymentForOrder = async (orderId, ticketIds, zpTransId = null) => {
+    return ticketRepository.runTransaction(async (tx) => {
+        return confirmPaymentForOrderInTransaction(tx, orderId, zpTransId);
+    });
+};
+
 const getSeatsWithStatuses = async (eventId) => {
     return await seatRepository.getSeatsWithStatuses(eventId);
 };
@@ -761,8 +1062,11 @@ const getSeatsWithStatuses = async (eventId) => {
 module.exports = {
     getTicketsByUserId,
     bookTicket,
+    bookOrderAtomic,
     cancelPendingTicket,
     confirmTicketPayment,
+    confirmPaymentForOrder,
+    confirmPaymentForOrderInTransaction,
     failTicketPayment,
     getTicketDetailsById,
     holdSeat,

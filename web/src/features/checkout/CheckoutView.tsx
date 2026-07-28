@@ -132,7 +132,7 @@ function CheckoutPageContent() {
     setErrorMsg('');
 
     try {
-      let bookingResult: { tickets?: { id: string }[] } | null = null;
+      let bookingResult: { tickets?: { id: string }[]; orderId?: string } | null = null;
       const activePromo = voucherSuccess ? voucherCode.toUpperCase().trim() : undefined;
 
       if (selectedSeats.length > 0) {
@@ -142,24 +142,35 @@ function CheckoutPageContent() {
           ticketType: row.name,
           quantity: row.qty,
         }));
-        bookingResult = await TicketService.bookTickets(eventId, items, activePromo);
+        bookingResult = await TicketService.bookOrderAtomic(eventId, items, activePromo);
       }
 
-      const ticket = bookingResult?.tickets?.[0];
-      if (!ticket || !ticket.id) {
+      const allTickets = bookingResult?.tickets?.filter(t => t?.id) ?? [];
+      if (allTickets.length === 0) {
         throw new Error(t('no_ticket'));
       }
-      const ticketId = ticket.id;
 
       if (paymentMethod === 'zalopay') {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-        const redirectUrl = `${baseUrl}/checkout/success?eventId=${encodeURIComponent(eventId)}&ticketId=${encodeURIComponent(ticketId)}`;
-        const payment = await TicketService.createPaymentOrder(ticketId, redirectUrl);
-        if (!payment.order_url) {
-          throw new Error(t('no_payment_url'));
+
+        if (bookingResult?.orderId) {
+          // Use the existing order from atomic booking or seat-held flow
+          const orderId = bookingResult.orderId;
+          const ticketIds = allTickets.map(t => t.id).join(',');
+          const redirectBase = `${baseUrl}/checkout/success?eventId=${encodeURIComponent(eventId)}&orderId=${encodeURIComponent(orderId)}&ticketIds=${encodeURIComponent(ticketIds)}`;
+          const payment = await TicketService.createBulkPaymentOrder(orderId, redirectBase);
+          if (!payment.order_url) throw new Error(t('no_payment_url'));
+          navigateToSafeExternalUrl(payment.order_url);
+        } else if (allTickets.length === 1) {
+          // Single legacy ticket without orderId — use legacy flow
+          const ticketId = allTickets[0].id;
+          const redirectUrl = `${baseUrl}/checkout/success?eventId=${encodeURIComponent(eventId)}&ticketId=${encodeURIComponent(ticketId)}`;
+          const payment = await TicketService.createPaymentOrder(ticketId, redirectUrl);
+          if (!payment.order_url) throw new Error(t('no_payment_url'));
+          navigateToSafeExternalUrl(payment.order_url);
+        } else {
+          throw new Error('No order reference for payment');
         }
-        // Open-redirect guard: only navigate to allowlisted payment hosts
-        navigateToSafeExternalUrl(payment.order_url);
       } else {
         throw new Error(t('payment_not_configured'));
       }

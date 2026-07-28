@@ -27,6 +27,21 @@ router.post('/book',
     ticketController.bookTicket
 );
 
+router.post('/book-order',
+    verifyAuthToken,
+    requireVerifiedEmail,
+    bookingLimiter,
+    auditLog('ticket:book-order', 'event', 'eventId'),
+    body('eventId').notEmpty().withMessage('eventId is required'),
+    body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
+    body('items.*.ticketType').notEmpty().withMessage('each item.ticketType is required'),
+    body('items.*.quantity').isInt({ min: 1 }).withMessage('each item.quantity must be a positive integer'),
+    body('promoCode').optional({ values: 'null' }).isString().withMessage('promoCode must be a string'),
+    validateRequest,
+    idempotency(),
+    ticketController.bookOrderAtomic
+);
+
 router.get('/:ticketId',
     verifyAuthToken,
     param('ticketId').notEmpty().withMessage('ticketId is required'),

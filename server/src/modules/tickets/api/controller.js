@@ -59,9 +59,18 @@ const getSeatsWithStatuses = asyncHandler(async (req, res) => {
     res.status(200).json(result);
 });
 
+const bookOrderAtomic = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { eventId, items, promoCode } = req.body;
+
+    const result = await ticketService.bookOrderAtomic(userId, eventId, items, promoCode);
+    res.status(201).json(result);
+});
+
 module.exports = {
     getCurrentUserTickets,
     bookTicket,
+    bookOrderAtomic,
     getTicketDetails,
     holdSeat,
     releaseSeat,

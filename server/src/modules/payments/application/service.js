@@ -117,8 +117,82 @@ const verifyZaloPayCallback = (body) => {
     }
 };
 
+const createAggregateZaloPayOrder = async (orderId, tickets, totalAmount, userId, redirectUrl, app_trans_id = null) => {
+    const ticketIds = tickets.map(t => t.id);
+    const embed_data = {
+        ticket_ids: ticketIds,
+        ticket_id: ticketIds[0],
+    };
+
+    if (redirectUrl) {
+        embed_data.redirecturl = redirectUrl;
+    }
+
+    const items = tickets.map(t => ({
+        itemid: t.eventId || 'unknown_event',
+        itemname: 'Vé sự kiện',
+        itemprice: t.price,
+        itemquantity: 1,
+    }));
+
+    const app_time = Date.now();
+
+    if (!app_trans_id) {
+        const app_date = moment(app_time).utcOffset('+07:00').format('YYMMDD');
+        const randomSuffix = Math.floor(Math.random() * 100000);
+        const cleanOrderId = orderId.replace(/[^a-zA-Z0-9]/g, '');
+        const shortId = cleanOrderId.slice(-10);
+        app_trans_id = `${app_date}_${shortId}_${randomSuffix}`;
+    }
+
+    const amount = Math.floor(totalAmount);
+
+    const order = {
+        app_id: config.app_id,
+        app_trans_id: app_trans_id,
+        app_user: userId,
+        app_time: app_time,
+        amount: amount,
+        item: JSON.stringify(items),
+        embed_data: JSON.stringify(embed_data),
+        description: `Thanh toan don ${shortId}`,
+        bank_code: '',
+    };
+
+    const data = [config.app_id, order.app_trans_id, order.app_user, order.amount, order.app_time, order.embed_data, order.item].join('|');
+    const hmac = crypto.createHmac('sha256', config.key1);
+    order.mac = hmac.update(data).digest('hex');
+
+    let result;
+    try {
+        console.log(`[ZaloPay] Creating aggregate order: ${app_trans_id} (${ticketIds.length} tickets)`);
+        const { data: responseData } = await axios.post(config.endpoint, new URLSearchParams(order), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
+        result = responseData;
+    } catch (error) {
+        console.error('[ZaloPay] API Error:', error.message);
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
+            throw new ServiceUnavailableError(`ZaloPay service unreachable: ${error.message}`);
+        }
+        throw new BadGatewayError(`ZaloPay API failure: ${error.message}`);
+    }
+
+    if (result.return_code !== 1) {
+        console.error('[ZaloPay] Create Failed:', result);
+        throw new BadGatewayError(`${result.return_message} (SubCode: ${result.sub_return_code})`);
+    }
+
+    return {
+        ...result,
+        app_trans_id: app_trans_id,
+        order_url: result.order_url,
+    };
+};
+
 module.exports = {
     createZaloPayOrder,
+    createAggregateZaloPayOrder,
     verifyZaloPayCallback,
     queryZaloPayOrder
 };

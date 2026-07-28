@@ -410,11 +410,71 @@ const createPaymentAttemptAndLinkTicketAtomic = async (attempt, ticketId) => {
     });
 };
 
+const linkTicketsToOrderInTransaction = async (tx, ticketIds, orderId, paymentAttemptId = null) => {
+    const client = getClient(tx);
+    const sets = ['order_id = $1'];
+    const params = [orderId];
+    let idx = 2;
+    if (paymentAttemptId !== null) {
+        sets.push(`payment_attempt_id = $${idx}`);
+        params.push(paymentAttemptId);
+        idx++;
+    }
+    params.push(ticketIds);
+    await client.query(
+        `UPDATE tickets SET ${sets.join(', ')} WHERE id = ANY($${idx})`,
+        params
+    );
+};
+
+const getLatestPaymentAttemptByOrderId = async (orderId, transaction = null, lock = false) => {
+    const client = getClient(transaction);
+    const sql = lock
+        ? `SELECT * FROM payment_attempts WHERE order_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT 1 FOR UPDATE`
+        : `SELECT * FROM payment_attempts WHERE order_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT 1`;
+    const result = await client.query(sql, [orderId]);
+    if (result.rows.length === 0) return null;
+    return mapPaymentAttemptRow(result.rows[0]);
+};
+
+const getTicketsByOrderId = async (orderId) => {
+    const result = await query(
+        'SELECT id, user_id, event_id, organizer_id, status, type, price, original_price, quantity, unit_price FROM tickets WHERE order_id = $1 AND deleted_at IS NULL ORDER BY created_at',
+        [orderId]
+    );
+    return result.rows;
+};
+
+async function getOrderItemsInTransaction(tx, orderId) {
+    const client = getClient(tx);
+    const result = await client.query(
+        'SELECT * FROM order_items WHERE order_id = $1 ORDER BY created_at',
+        [orderId]
+    );
+    return result.rows.map(r => ({
+        id: r.id,
+        orderId: r.order_id,
+        ticketTypeId: r.ticket_type_id,
+        ticketType: r.ticket_type,
+        eventId: r.event_id,
+        eventName: r.event_name,
+        ticketId: r.ticket_id,
+        seatId: r.seat_id,
+        quantity: r.quantity,
+        unitPrice: r.unit_price != null ? Number(r.unit_price) : 0,
+        subtotal: r.subtotal != null ? Number(r.subtotal) : 0,
+        totalAmount: r.total_amount != null ? Number(r.total_amount) : 0,
+        status: r.status,
+        createdAt: fromDb(r.created_at),
+    }));
+}
+
 module.exports = {
     createOrder,
     createOrderInTransaction,
     createOrderItemInTransaction,
     getOrderById,
+    getOrderItemsInTransaction,
     updateOrderStatus,
     createPaymentAttempt,
     createPaymentAttemptInTransaction,
@@ -425,6 +485,9 @@ module.exports = {
     getTicketOrderLink,
     getTicketOrderLinkInTransaction,
     createPaymentAttemptAndLinkTicketAtomic,
+    linkTicketsToOrderInTransaction,
+    getLatestPaymentAttemptByOrderId,
+    getTicketsByOrderId,
     getPaymentAttemptByProviderOrderId,
     getLatestPaymentAttemptByTicketId,
     updateOrderStatusInTransaction,
@@ -432,6 +495,7 @@ module.exports = {
     getOrganizerSettingsInTransaction,
     createOrganizerSettings,
     getOrderInTransaction,
+    getOrderItemsInTransaction,
     getLedgerEntriesByOrganizer,
     getOrganizerBalance,
     getOrganizerBalanceInTransaction,

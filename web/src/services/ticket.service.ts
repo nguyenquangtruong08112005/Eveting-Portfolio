@@ -84,6 +84,18 @@ export class TicketService {
     return { tickets };
   }
 
+  static async bookOrderAtomic(
+    eventId: string,
+    items: { ticketType: string; quantity: number }[],
+    promoCode?: string,
+  ): Promise<{ orderId: string; tickets: { id: string }[] }> {
+    return request<{ orderId: string; tickets: { id: string }[] }>(
+      "POST",
+      "/api/web/tickets/book-order",
+      { body: { eventId, items, promoCode }, headers: ik() },
+    );
+  }
+
   static async createPaymentOrder(
     ticketId: string,
     redirectUrl?: string,
@@ -92,6 +104,27 @@ export class TicketService {
       "POST",
       "/api/web/payments/create-order",
       { body: { ticketId, redirectUrl }, headers: ik() },
+    );
+  }
+
+  static async createBulkPaymentOrder(
+    orderId: string,
+    redirectUrl?: string,
+  ): Promise<{ order_url: string; app_trans_id: string; orderId: string }> {
+    return request<{ order_url: string; app_trans_id: string; orderId: string }>(
+      "POST",
+      "/api/web/payments/create-order-bulk",
+      { body: { orderId, redirectUrl }, headers: ik() },
+    );
+  }
+
+  static async checkOrderPaymentStatus(
+    orderId: string,
+  ): Promise<{ status: string; orderId: string; totalAmount?: number }> {
+    return request<{ status: string; orderId: string; totalAmount?: number }>(
+      "POST",
+      "/api/web/payments/check-order-status",
+      { body: { orderId }, headers: ik() },
     );
   }
 
