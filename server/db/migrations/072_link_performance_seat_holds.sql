@@ -87,4 +87,3 @@ CREATE INDEX IF NOT EXISTS idx_tickets_performance_id
 
 CREATE INDEX IF NOT EXISTS idx_tickets_performance_seat_id
     ON tickets (performance_seat_id);
-

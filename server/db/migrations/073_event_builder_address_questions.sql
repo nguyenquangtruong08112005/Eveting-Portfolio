@@ -91,4 +91,3 @@ CREATE TABLE IF NOT EXISTS order_attendees (
 
 CREATE INDEX IF NOT EXISTS idx_order_attendees_event
     ON order_attendees (event_id, order_id);
-
