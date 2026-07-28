@@ -53,8 +53,14 @@ async function ensureOrderForTicket(ticket, userId) {
 }
 
 const createPaymentOrder = asyncHandler(async (req, res) => {
-    const { ticketId, redirectUrl } = req.body;
+    const { ticketId, orderId, redirectUrl } = req.body;
     const userId = req.user.uid;
+
+    // Reuse the established aggregate-payment implementation for order checkout.
+    // Legacy ticketId callers retain their exact response path below.
+    if (orderId) {
+        return createBulkPaymentOrder(req, res);
+    }
 
     const ticket = await ticketRepository.getTicketById(ticketId);
     if (!ticket) throw new NotFoundError('Ticket not found.');
@@ -111,6 +117,23 @@ const createPaymentOrder = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(zaloResponse);
+});
+
+const cancelPayment = asyncHandler(async (req, res) => {
+    const { ticketId, orderId } = req.body;
+    const userId = req.user.uid;
+    if (orderId) {
+        const order = await orderRepository.getOrderById(orderId);
+        if (!order) throw new NotFoundError('Order not found.');
+        if (order.userId !== userId) throw new ForbiddenError('Forbidden.');
+        const cancelled = await ticketService.failOrderPayment(orderId, 'Cancelled by buyer');
+        return res.status(200).json({ orderId, status: cancelled.status });
+    }
+    const ticket = await ticketRepository.getTicketById(ticketId);
+    if (!ticket) throw new NotFoundError('Ticket not found.');
+    if (ticket.userId !== userId) throw new ForbiddenError('Forbidden.');
+    await ticketService.cancelPendingTicket(ticketId);
+    return res.status(200).json({ ticketId, status: 'cancelled' });
 });
 
 const handleZaloPayCallback = async (req, res) => {
@@ -280,14 +303,22 @@ const manualCheckPaymentStatus = asyncHandler(async (req, res) => {
         }
 
         if (queryResult.return_code === 1) {
-            await ticketService.confirmTicketPayment(
-                ticketId,
-                queryResult.zp_trans_id || 're-query',
-                tx
-            );
+            if (latestAttempt.orderId) {
+                await ticketService.confirmPaymentForOrderInTransaction(
+                    tx,
+                    latestAttempt.orderId,
+                    queryResult.zp_trans_id || 're-query'
+                );
+            } else {
+                await ticketService.confirmTicketPayment(ticketId, queryResult.zp_trans_id || 're-query', tx);
+            }
             return { status: 'paid', raw: queryResult };
         } else if (queryResult.return_code === 2) {
-            await ticketService.failTicketPayment(ticketId, 'ZaloPay reported failure', tx);
+            if (latestAttempt.orderId) {
+                await ticketService.failOrderPayment(latestAttempt.orderId, 'ZaloPay reported failure', tx);
+            } else {
+                await ticketService.failTicketPayment(ticketId, 'ZaloPay reported failure', tx);
+            }
             return { status: 'failed', raw: queryResult };
         }
 
@@ -486,6 +517,7 @@ const handleZaloPayRedirect = asyncHandler(async (req, res) => {
 
 module.exports = {
     createPaymentOrder,
+    cancelPayment,
     createBulkPaymentOrder,
     handleZaloPayCallback,
     manualCheckPaymentStatus,

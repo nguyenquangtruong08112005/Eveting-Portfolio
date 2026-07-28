@@ -22,7 +22,8 @@ const { Pool } = require('pg');
 
 const TEST_PORT = process.env.TEST_PORT || '35434';
 const BASE_URL = `http://localhost:${TEST_PORT}`;
-const ORG_UID = process.env.SMOKE_ORG_UID || 'plat_org_hanoi';
+const USE_DEFAULT_ORGANIZER_FIXTURE = !process.env.SMOKE_ORG_UID;
+const ORG_UID = process.env.SMOKE_ORG_UID || `mobile_contract_org_${process.pid}`;
 const KNOWN_EVENT_ID = process.env.KNOWN_EVENT_ID || 'evt_vdf_hcm_2025';
 
 // ---------------------------------------------------------------------------
@@ -89,6 +90,7 @@ async function cleanupSmokeUsers(likePattern = 'mobile_contract_%@test.com') {
   const queries = [
     { table: 'sessions', text: `DELETE FROM sessions WHERE user_id IN (SELECT id FROM auth_users WHERE email LIKE $1)` },
     { table: 'auth_tokens', text: `DELETE FROM auth_tokens WHERE email LIKE $1` },
+    { table: 'organizer_profiles', text: `DELETE FROM organizer_profiles WHERE user_id IN (SELECT id FROM auth_users WHERE email LIKE $1)` },
     { table: 'user_profiles', text: `DELETE FROM user_profiles WHERE id IN (SELECT id FROM auth_users WHERE email LIKE $1)` },
     { table: 'auth_users', text: `DELETE FROM auth_users WHERE email LIKE $1` },
   ];
@@ -98,6 +100,35 @@ async function cleanupSmokeUsers(likePattern = 'mobile_contract_%@test.com') {
     } catch (err) {
       console.error(`  [db-cleanup] ${table} skipped: ${redactString(err.message)}`);
     }
+  }
+}
+
+async function ensureDefaultOrganizerFixture() {
+  if (!USE_DEFAULT_ORGANIZER_FIXTURE) return;
+  const pool = getCleanupPool();
+  const email = `mobile_contract_organizer_${process.pid}@test.com`;
+  await pool.query(
+    `INSERT INTO auth_users (id, email, password_hash, roles, is_active, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, true, NOW(), NOW())
+     ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, roles = EXCLUDED.roles, is_active = true, updated_at = NOW()`,
+    [ORG_UID, email, 'smoke-not-a-real-hash', ['organizer']]
+  );
+  await pool.query(
+    `INSERT INTO user_profiles (id, name, created_at, updated_at)
+     VALUES ($1, $2, NOW(), NOW())
+     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()`,
+    [ORG_UID, 'Mobile Contract Organizer']
+  );
+  const update = await pool.query(
+    `UPDATE organizer_profiles SET company_name = $2, status = 'approved' WHERE user_id = $1`,
+    [ORG_UID, 'Mobile Contract Organizer']
+  );
+  if (update.rowCount === 0) {
+    await pool.query(
+      `INSERT INTO organizer_profiles (id, user_id, company_name, status, created_at)
+       VALUES ($1, $1, $2, 'approved', NOW())`,
+      [ORG_UID, 'Mobile Contract Organizer']
+    );
   }
 }
 
@@ -244,6 +275,8 @@ async function run() {
   // -----------------------------------------------------------------------
   console.log('--- Setup: Spawning application server ---');
   try {
+  await cleanupSmokeUsers();
+  await ensureDefaultOrganizerFixture();
   serverProcess = spawn('node', ['src/server.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 
   let serverStarted = false;
@@ -276,9 +309,6 @@ async function run() {
   // -----------------------------------------------------------------------
   // Step 1: Register a synthetic user for auth-dependent checks
   // -----------------------------------------------------------------------
-  // Pre-registration cleanup — remove leftover smoke users from prior runs
-  await cleanupSmokeUsers();
-
   console.log('--- Step 1: Register synthetic user ---');
   const email = `mobile_contract_${Date.now()}_${Math.random().toString(36).substring(7)}@test.com`;
   const password = 'ContractTestPass123!';
@@ -455,6 +485,16 @@ async function run() {
     assert(d && d.valid === false, `Expected valid:false, got ${JSON.stringify(d)}`);
     const errMsg = d.error || (d.data && d.data.error) || '';
     assert(errMsg.includes('INVALID_TICKET'), `Expected INVALID_TICKET in error, got: ${errMsg}`);
+  });
+
+  await check('POST /organizer/check-in-qr (malformed QR + org JWT) preserves INVALID_TICKET DTO', async () => {
+    const r = await httpRequest('POST', '/organizer/check-in-qr', {
+      headers: authHeaders(organizerToken),
+      body: { qrToken: 'not-a-valid-jwt' },
+    });
+    assert(r.status === 400, `Expected 400, got ${r.status}`);
+    assert(r.data && r.data.valid === false, `Expected valid:false, got ${JSON.stringify(r.data)}`);
+    assert(r.data.error === 'INVALID_TICKET', `Expected INVALID_TICKET, got: ${r.data.error}`);
   });
 
   // -----------------------------------------------------------------------

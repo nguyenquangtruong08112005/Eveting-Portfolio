@@ -24,6 +24,27 @@ const createOrderInTransaction = async (tx, order) => {
     return order.id;
 };
 
+const updateOrderTotalsInTransaction = async (tx, orderId, totals) => {
+    const client = getClient(tx);
+    await client.query(
+        `UPDATE orders
+         SET subtotal_amount = $1,
+             discount_amount = $2,
+             fee_amount = $3,
+             total_amount = $4,
+             updated_at = $5
+         WHERE id = $6`,
+        [
+            totals.subtotalAmount,
+            totals.discountAmount,
+            totals.feeAmount || 0,
+            totals.totalAmount,
+            toDb(totals.updatedAt) || nowDb(),
+            orderId,
+        ]
+    );
+};
+
 async function insertOrder(client, order) {
     await client.query(
         `INSERT INTO orders (
@@ -472,6 +493,7 @@ async function getOrderItemsInTransaction(tx, orderId) {
 module.exports = {
     createOrder,
     createOrderInTransaction,
+    updateOrderTotalsInTransaction,
     createOrderItemInTransaction,
     getOrderById,
     getOrderItemsInTransaction,

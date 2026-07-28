@@ -15,12 +15,31 @@ router.post(
     verifyAuthToken,
     requireVerifiedEmail,
     bookingLimiter,
-    auditLog('payment:create-order', 'ticket', 'ticketId'),
-    body('ticketId').notEmpty().withMessage('ticketId is required'),
+    auditLog('payment:create-order', 'order', 'orderId'),
+    body().custom((value) => {
+        if (!value.ticketId && !value.orderId) throw new Error('ticketId or orderId is required');
+        if (value.ticketId && value.orderId) throw new Error('provide ticketId or orderId, not both');
+        return true;
+    }),
     validateRequest,
-    requireOwnership('Ticket', 'ticketId'),
     idempotency(),
     paymentController.createPaymentOrder
+);
+
+router.post(
+    '/cancel',
+    verifyAuthToken,
+    requireVerifiedEmail,
+    bookingLimiter,
+    auditLog('payment:cancel', 'order', 'orderId'),
+    body().custom((value) => {
+        if (!value.ticketId && !value.orderId) throw new Error('ticketId or orderId is required');
+        if (value.ticketId && value.orderId) throw new Error('provide ticketId or orderId, not both');
+        return true;
+    }),
+    validateRequest,
+    idempotency(),
+    paymentController.cancelPayment
 );
 
 router.get(
