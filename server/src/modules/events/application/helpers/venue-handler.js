@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const geofire = require('geofire-common');
 const venueRepository = require('@/providers/database/venue.repository');
 const { BadRequestError, NotFoundError } = require('@/shared/errors');
@@ -49,7 +49,7 @@ const resolveVenueAndLocationForCreate = async (eventData) => {
             (location.lng || location.longitude)
         ) {
             // Legacy full geo + addressDetails → create venue row
-            const newVenueId = `venue_${uuidv4()}`;
+            const newVenueId = `venue_${randomUUID()}`;
             const lat = location.lat || location.latitude;
             const lng = location.lng || location.longitude;
 

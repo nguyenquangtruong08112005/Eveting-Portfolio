@@ -8,6 +8,7 @@ const {
 } = require('@/modules/events/domain/event-lifecycle');
 const ticketTypesHelper = require('./ticket-types.helper');
 const socialHelper = require('./social.helper');
+const eventBuilderHelper = require('./event-builder.helper');
 const { toDb, fromDb, nowDb } = require('./time.helper');
 
 // Maps update fields to PostgreSQL columns (ticketTypes / featuredProfileIds are relational)
@@ -42,6 +43,15 @@ const FIELD_MAP = {
     lastUpdatedAt: 'last_updated_at',
     rawData: 'raw_data',
     lifecycleStatus: 'lifecycle_status',
+    isPrivate: 'is_private',
+    messageForAttendee: 'message_for_attendee',
+    provinceCode: 'province_code',
+    provinceName: 'province_name',
+    districtCode: 'district_code',
+    districtName: 'district_name',
+    wardCode: 'ward_code',
+    wardName: 'ward_name',
+    streetAddress: 'street_address',
 };
 
 function rowToFirebaseDoc(row, extras = {}) {
@@ -78,6 +88,8 @@ function rowToFirebaseDoc(row, extras = {}) {
             viewCount: row.view_count != null ? Number(row.view_count) : 0,
             requiredAge: row.required_age != null ? Number(row.required_age) : 0,
             sponsors: row.sponsors || [],
+            isPrivate: row.is_private === true,
+            messageForAttendee: row.message_for_attendee || '',
             createdAt: fromDb(row.created_at),
             lastUpdatedAt: fromDb(row.last_updated_at),
         };
@@ -107,11 +119,47 @@ function rowToFirebaseDoc(row, extras = {}) {
     if (row.event_type != null) data.eventType = row.event_type;
     if (row.online_url !== undefined) data.onlineUrl = row.online_url;
     if (row.min_price != null) data.minPrice = Number(row.min_price);
+    data.isPrivate = row.is_private === true;
+    data.messageForAttendee = row.message_for_attendee || '';
+
+    const hasStructuredAddress = [
+        row.province_code,
+        row.province_name,
+        row.district_code,
+        row.district_name,
+        row.ward_code,
+        row.ward_name,
+        row.street_address,
+    ].some((value) => value != null && value !== '');
+    if (hasStructuredAddress) {
+        const addressDetails = {
+            street: row.street_address || '',
+            ward: row.ward_name || '',
+            district: row.district_name || '',
+            city: row.province_name || data.city || '',
+            provinceCode: row.province_code || null,
+            districtCode: row.district_code || null,
+            wardCode: row.ward_code || null,
+        };
+        data.addressDetails = addressDetails;
+        data.vietnamAddress = {
+            provinceCode: row.province_code || null,
+            provinceName: row.province_name || null,
+            districtCode: row.district_code || null,
+            districtName: row.district_name || null,
+            wardCode: row.ward_code || null,
+            wardName: row.ward_name || null,
+            streetAddress: row.street_address || null,
+        };
+    }
 
     data.ticketTypes = extras.ticketTypes != null ? extras.ticketTypes : (data.ticketTypes || {});
     data.featuredProfileIds = extras.featuredProfileIds != null
         ? extras.featuredProfileIds
         : (data.featuredProfileIds || []);
+    data.customQuestions = extras.customQuestions != null
+        ? extras.customQuestions
+        : (data.customQuestions || []);
     // Prefer relational min price when ticket types present
     if (extras.ticketTypes && Object.keys(extras.ticketTypes).length > 0) {
         data.minPrice = ticketTypesHelper.minPriceFromMap(extras.ticketTypes);
@@ -123,15 +171,28 @@ function rowToFirebaseDoc(row, extras = {}) {
 async function hydrateEventRows(rows, client = { query }) {
     if (!rows || rows.length === 0) return [];
     const ids = rows.map((r) => r.id);
-    const [typesByEvent, featuredByEvent] = await Promise.all([
-        ticketTypesHelper.loadTicketTypesForEvents(client, ids),
-        socialHelper.loadFeaturedProfileIdsForEvents(client, ids),
-    ]);
+    // A pg transaction client must not receive concurrent queries. Pool-backed
+    // reads remain parallel, while transactional hydration runs sequentially.
+    let typesByEvent;
+    let featuredByEvent;
+    let questionsByEvent;
+    if (typeof client.release === 'function') {
+        typesByEvent = await ticketTypesHelper.loadTicketTypesForEvents(client, ids);
+        featuredByEvent = await socialHelper.loadFeaturedProfileIdsForEvents(client, ids);
+        questionsByEvent = await eventBuilderHelper.loadCustomQuestionsForEvents(client, ids);
+    } else {
+        [typesByEvent, featuredByEvent, questionsByEvent] = await Promise.all([
+            ticketTypesHelper.loadTicketTypesForEvents(client, ids),
+            socialHelper.loadFeaturedProfileIdsForEvents(client, ids),
+            eventBuilderHelper.loadCustomQuestionsForEvents(client, ids),
+        ]);
+    }
     return rows.map((row) => ({
         id: row.id,
         ...rowToFirebaseDoc(row, {
             ticketTypes: typesByEvent[row.id] || {},
             featuredProfileIds: featuredByEvent[row.id] || [],
+            customQuestions: questionsByEvent[row.id] || [],
         }),
     }));
 }
@@ -443,11 +504,13 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             geohash, venue_id, venue_name, city, min_price,
             video_url, is_outdoor, organizer_id, status, visibility,
             recurring_rule, hot_score, view_count, required_age, sponsors,
-            created_at, last_updated_at, raw_data, lifecycle_status
+            created_at, last_updated_at, is_private, message_for_attendee,
+            province_code, province_name, district_code, district_name,
+            ward_code, ward_name, street_address, raw_data, lifecycle_status
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
             $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-            $28, $29, $30, $31
+            $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
         ) ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
@@ -477,6 +540,15 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             sponsors = EXCLUDED.sponsors,
             created_at = EXCLUDED.created_at,
             last_updated_at = EXCLUDED.last_updated_at,
+            is_private = EXCLUDED.is_private,
+            message_for_attendee = EXCLUDED.message_for_attendee,
+            province_code = EXCLUDED.province_code,
+            province_name = EXCLUDED.province_name,
+            district_code = EXCLUDED.district_code,
+            district_name = EXCLUDED.district_name,
+            ward_code = EXCLUDED.ward_code,
+            ward_name = EXCLUDED.ward_name,
+            street_address = EXCLUDED.street_address,
             raw_data = EXCLUDED.raw_data,
             lifecycle_status = COALESCE(EXCLUDED.lifecycle_status, events.lifecycle_status)`,
         [
@@ -509,6 +581,15 @@ const createEvent = async (eventId, eventData, transaction = null) => {
             eventData.sponsors ? JSON.stringify(eventData.sponsors) : '[]',
             toDb(eventData.createdAt) || nowDb(),
             toDb(eventData.lastUpdatedAt) || nowDb(),
+            eventData.isPrivate === true,
+            eventData.messageForAttendee || '',
+            eventData.provinceCode || null,
+            eventData.provinceName || null,
+            eventData.districtCode || null,
+            eventData.districtName || null,
+            eventData.wardCode || null,
+            eventData.wardName || null,
+            eventData.streetAddress || null,
             JSON.stringify(matchingData),
             lifecycleStatus,
         ]
@@ -532,7 +613,7 @@ const getPublicEventsPage = async (page, limit) => {
 
     const countResult = await query(
         `SELECT COUNT(*)::int AS count FROM events
-         WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
+         WHERE visibility = $1 AND is_private = false AND status = $2 AND deleted_at IS NULL
            AND (end_at IS NULL OR end_at >= $3)
            AND start_at >= ($3::timestamptz - INTERVAL '6 hours')`,
         [VISIBILITY.PUBLIC, STATUS.ACTIVE, now]
@@ -541,7 +622,7 @@ const getPublicEventsPage = async (page, limit) => {
 
     const result = await query(
         `SELECT * FROM events
-         WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
+         WHERE visibility = $1 AND is_private = false AND status = $2 AND deleted_at IS NULL
            AND (end_at IS NULL OR end_at >= $3)
            AND start_at >= ($3::timestamptz - INTERVAL '6 hours')
          ORDER BY start_at ASC
@@ -590,7 +671,7 @@ const searchPublicEvents = async (searchStringOrOptions, pageArg, limitArg) => {
     const offset = (page - 1) * limit;
     const now = nowDb();
 
-    let sql = `FROM events WHERE visibility = $1 AND status = $2 AND deleted_at IS NULL
+    let sql = `FROM events WHERE visibility = $1 AND is_private = false AND status = $2 AND deleted_at IS NULL
       AND (end_at IS NULL OR end_at >= $3)
       AND start_at >= ($3::timestamptz - INTERVAL '6 hours')`;
     const params = [VISIBILITY.PUBLIC, STATUS.ACTIVE, now];
@@ -679,7 +760,7 @@ const queryActivePublicEventsByGeoBounds = async (bounds) => {
     const promises = [];
     for (const b of bounds) {
         promises.push(query(
-            `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND deleted_at IS NULL AND geohash >= $3 AND geohash <= $4 ORDER BY geohash`,
+            `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND is_private = false AND deleted_at IS NULL AND geohash >= $3 AND geohash <= $4 ORDER BY geohash`,
             [STATUS.ACTIVE, VISIBILITY.PUBLIC, b[0], b[1]]
         ));
     }
@@ -705,7 +786,7 @@ const getEventLifecycleOwnership = async (eventId) => {
 };
 
 const getRecommendedEventsRelational = async (interests = [], excludeEventIds = [], limit = 10) => {
-    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND deleted_at IS NULL AND start_at >= $3`;
+    let sql = `SELECT * FROM events WHERE status = $1 AND visibility = $2 AND is_private = false AND deleted_at IS NULL AND start_at >= $3`;
     const params = [STATUS.ACTIVE, VISIBILITY.PUBLIC, nowDb()];
     let idx = 4;
 
@@ -746,6 +827,42 @@ const getPopularDestinations = async (limit = 10) => {
     }));
 };
 
+const listVietnamLocations = async (filters) => {
+    return eventBuilderHelper.listVietnamLocations(filters);
+};
+
+const hasTicketSalesStarted = async (eventId, transaction = null) => {
+    return eventBuilderHelper.hasTicketSalesStarted(transaction, eventId);
+};
+
+const getCustomQuestions = async (eventId, transaction = null) => {
+    return eventBuilderHelper.loadCustomQuestions(transaction, eventId);
+};
+
+const replaceCustomQuestionsInTransaction = async (transaction, eventId, questions) => {
+    return eventBuilderHelper.replaceCustomQuestions(transaction, eventId, questions);
+};
+
+const getBuyerOrderInTransaction = async (transaction, eventId, orderId, userId) => {
+    return eventBuilderHelper.getBuyerOrder(transaction, eventId, orderId, userId);
+};
+
+const replaceOrderAttendeesInTransaction = async (
+    transaction,
+    eventId,
+    orderId,
+    attendees,
+    questionSnapshot
+) => {
+    return eventBuilderHelper.replaceOrderAttendees(
+        transaction,
+        eventId,
+        orderId,
+        attendees,
+        questionSnapshot
+    );
+};
+
 module.exports = {
     getEventById,
     getEventDataById,
@@ -764,4 +881,10 @@ module.exports = {
     getEventLifecycleOwnership,
     getRecommendedEventsRelational,
     getPopularDestinations,
+    listVietnamLocations,
+    hasTicketSalesStarted,
+    getCustomQuestions,
+    replaceCustomQuestionsInTransaction,
+    getBuyerOrderInTransaction,
+    replaceOrderAttendeesInTransaction,
 };

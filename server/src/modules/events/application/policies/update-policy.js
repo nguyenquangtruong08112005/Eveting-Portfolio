@@ -1,3 +1,5 @@
+const logger = require('@/shared/logger');
+
 const hasImportantChanges = (oldData, newData) => {
     const criticalFields = [
         'name',
@@ -5,12 +7,16 @@ const hasImportantChanges = (oldData, newData) => {
         'venueName',
         'eventType',
         'onlineUrl',
-        'isOutdoor'
+        'isOutdoor',
+        'provinceName',
+        'districtName',
+        'wardName',
+        'streetAddress'
     ];
 
     for (const field of criticalFields) {
         if (JSON.stringify(oldData[field]) !== JSON.stringify(newData[field])) {
-            console.log(`[EventUpdate] Detected change in field: ${field}`);
+            logger.info('Important event field changed', { field });
             return true;
         }
     }

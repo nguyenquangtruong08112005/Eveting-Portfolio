@@ -1,18 +1,26 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const { calculateMinPrice } = require('@/utils/tickets/calculateMinPrice.tickets');
 const esClient = require('@/shared/config/elasticsearch.config');
 const { fcmService } = require('@/modules/notifications');
-const { BadRequestError, NotFoundError, ForbiddenError, ServiceUnavailableError } = require('@/shared/errors');
+const {
+    BadRequestError,
+    NotFoundError,
+    ForbiddenError,
+    ConflictError,
+    ServiceUnavailableError,
+} = require('@/shared/errors');
 const { transaction: dbTransaction } = require('@/providers/database/postgres.client');
 const eventPublisher = require('@/shared/events/event-publisher');
 const outboxProcessor = require('@/shared/events/outbox-processor');
 const cacheNamespace = require('@/shared/cache/namespace-helpers');
+const logger = require('@/shared/logger');
 
 const eventRepository = require('@/providers/database/event.repository');
 const venueRepository = require('@/providers/database/venue.repository');
 const ticketRepository = require('@/providers/database/ticket.repository');
 const userRepository = require('@/providers/database/user.repository');
 const featuredProfileRepository = require('@/providers/database/featuredProfile.repository');
+const featuredProfileService = require('@/modules/featuredProfile/application/service');
 
 // Extracted helpers, policies, and query builders
 const { mapPublicTicketTypes, mapPublicVenue, buildElasticData } = require('./helpers/event-mappers');
@@ -23,9 +31,30 @@ const { buildRecommendationQuery } = require('./query-builders/recommendation-qu
 const { findNearbyEvents } = require('./helpers/nearby-events.helper');
 const { resolveVenueAndLocationForCreate, resolveVenueAndLocationForUpdate } = require('./helpers/venue-handler');
 const { getEventWeather } = require('./helpers/weather.helper');
+const {
+    normalizeCustomQuestions,
+    customQuestionsEqual,
+    extractAddressFields,
+    normalizeAnswers,
+    sanitizeRichDescription,
+} = require('./helpers/event-builder');
 const { STATUS, VISIBILITY, LIFECYCLE, isPublicDetailVisible, isTransitionAllowed } = require('@/modules/events/domain/event-lifecycle');
 
 const ELASTIC_INDEX = 'events';
+
+const uniqueProfileIds = (ids) => [...new Set(Array.isArray(ids) ? ids : [])];
+
+const assertFeaturedProfilesExist = async (ids) => {
+    const uniqueIds = uniqueProfileIds(ids);
+    if (uniqueIds.length === 0) return uniqueIds;
+    const profiles = await featuredProfileRepository.getFeaturedProfilesByIds(uniqueIds);
+    const foundIds = new Set(profiles.map((profile) => profile.id));
+    const missing = uniqueIds.filter((id) => !foundIds.has(id));
+    if (missing.length > 0) {
+        throw new BadRequestError(`Featured profile not found: ${missing.join(', ')}`);
+    }
+    return uniqueIds;
+};
 
 const getAllEvents = async (page = 1, limit = 10) => {
     const { entries, totalItems } = await eventRepository.getPublicEventsPage(page, limit);
@@ -46,7 +75,7 @@ const getEventById = async (eventId, requestingUser = null) => {
         if (cachedEvent) {
             let isOwnerOrAdmin = false;
             if (requestingUser) {
-                const isAdmin = requestingUser.roles?.includes('organizer') || requestingUser.roles?.includes('admin');
+                const isAdmin = requestingUser.roles?.includes('admin');
                 const isOwner = cachedEvent.organizerId === requestingUser.uid;
                 isOwnerOrAdmin = isAdmin || isOwner;
             }
@@ -76,7 +105,7 @@ const getEventById = async (eventId, requestingUser = null) => {
 
     let isOwnerOrAdmin = false;
     if (requestingUser) {
-        const isAdmin = requestingUser.roles?.includes('organizer') || requestingUser.roles?.includes('admin');
+        const isAdmin = requestingUser.roles?.includes('admin');
         const isOwner = eventData.organizerId === requestingUser.uid;
         isOwnerOrAdmin = isAdmin || isOwner;
     }
@@ -95,7 +124,12 @@ const getEventById = async (eventId, requestingUser = null) => {
         visibility: eventData.visibility, requiredAge: eventData.requiredAge, sponsors: eventData.sponsors,
         minPrice: eventData.minPrice, featuredProfiles: featuredProfilesData,
         ticketTypes: mapPublicTicketTypes(eventData.ticketTypes), venue: mapPublicVenue(venueData),
-        organizerId: eventData.organizerId
+        organizerId: eventData.organizerId,
+        isPrivate: eventData.isPrivate === true,
+        messageForAttendee: eventData.messageForAttendee || '',
+        addressDetails: eventData.addressDetails || null,
+        vietnamAddress: eventData.vietnamAddress || null,
+        customQuestions: eventData.customQuestions || [],
     };
 
     // Cache the public event view
@@ -111,7 +145,7 @@ const getEventById = async (eventId, requestingUser = null) => {
 };
 
 const createEvent = async (eventData, organizerId) => {
-    const eventId = `evt_${uuidv4()}`;
+    const eventId = `evt_${randomUUID()}`;
 
     if (!eventData.date || typeof eventData.date !== 'number') {
         throw new BadRequestError('Invalid or missing event date (must be a timestamp).');
@@ -132,14 +166,23 @@ const createEvent = async (eventData, organizerId) => {
 
     const minPrice = calculateMinPrice(eventData.ticketTypes || {});
     const now = new Date().getTime();
+    const addressFields = extractAddressFields(eventData) || {};
+    const customQuestions = normalizeCustomQuestions(eventData.customQuestions || []);
+    const existingProfileIds = await assertFeaturedProfilesExist(eventData.featuredProfileIds || []);
+    const profilesToCreate = Array.isArray(eventData.featuredProfilesToCreate)
+        ? eventData.featuredProfilesToCreate
+        : [];
+    const isPrivate = eventData.isPrivate !== undefined
+        ? eventData.isPrivate === true
+        : eventData.visibility === VISIBILITY.PRIVATE;
 
     const newEventData = {
         id: eventId,
         name: eventData.name,
-        description: eventData.description || '',
+        description: sanitizeRichDescription(eventData.description),
         imageUrl: eventData.imageUrl || null,
         bannerUrl: eventData.bannerUrl || null,
-        featuredProfileIds: eventData.featuredProfileIds || [],
+        featuredProfileIds: existingProfileIds,
         category: eventData.category || [],
         tags: eventData.tags || [],
         date: eventData.date,
@@ -158,6 +201,9 @@ const createEvent = async (eventData, organizerId) => {
         organizerId: organizerId,
         status: STATUS.PENDING,
         visibility: VISIBILITY.PRIVATE,
+        isPrivate,
+        messageForAttendee: eventData.messageForAttendee || '',
+        ...addressFields,
         recurringRule: eventData.recurringRule || null,
         hotScore: 0,
         viewCount: 0,
@@ -169,10 +215,34 @@ const createEvent = async (eventData, organizerId) => {
 
     const isDraft = eventData.saveAsDraft === true;
     const lifecycleStatus = isDraft ? LIFECYCLE.DRAFT : LIFECYCLE.SUBMITTED;
-    const eventToPersist = { ...newEventData, lifecycleStatus };
+    let fullEventData;
+    const createdProfiles = [];
 
     await dbTransaction(async (transaction) => {
+        for (const profileData of profilesToCreate) {
+            const profile = await featuredProfileService.createFeaturedProfile(profileData, {
+                creatorId: organizerId,
+                transaction,
+            });
+            createdProfiles.push(profile);
+        }
+
+        const finalProfileIds = uniqueProfileIds([
+            ...existingProfileIds,
+            ...createdProfiles.map((profile) => profile.id),
+        ]);
+        const eventToPersist = {
+            ...newEventData,
+            featuredProfileIds: finalProfileIds,
+            lifecycleStatus,
+        };
         await eventRepository.createEvent(eventId, eventToPersist, transaction);
+        await eventRepository.replaceCustomQuestionsInTransaction(
+            transaction,
+            eventId,
+            customQuestions
+        );
+        fullEventData = await eventRepository.getEventInTransaction(transaction, eventId);
 
         await eventPublisher.publish('search_index', {
             action: 'index',
@@ -181,8 +251,8 @@ const createEvent = async (eventData, organizerId) => {
 
         if (!isDraft) {
             const data = { eventId: eventId, type: "new_event" };
-            if (newEventData.featuredProfileIds) {
-                for (const artistId of newEventData.featuredProfileIds) {
+            if (finalProfileIds.length > 0) {
+                for (const artistId of finalProfileIds) {
                     await eventPublisher.publish('notification', {
                         channel: 'push',
                         topic: `artist_${artistId}`,
@@ -202,24 +272,76 @@ const createEvent = async (eventData, organizerId) => {
 
     // Expose lifecycle clearly: legacy `status` is "pending" for BOTH draft & submitted
     return {
-        ...newEventData,
+        ...fullEventData,
+        featuredProfiles: await featuredProfileRepository.getFeaturedProfilesByIds(
+            fullEventData.featuredProfileIds || []
+        ),
         lifecycleStatus,
         status: lifecycleStatus,
     };
 };
 
-const updateEvent = async (eventId, eventData) => {
+const updateEvent = async (eventId, eventData, organizerId = null) => {
     if (Array.isArray(eventData.ticketTypes)) {
         throw new BadRequestError("ticketTypes must be a Map (Object), not a List (Array).");
     }
 
     const { exists, data: oldData } = await eventRepository.getEventRawById(eventId);
-    const oldDataSafe = exists ? oldData : {};
+    if (!exists) throw new NotFoundError('Event not found.');
+    const oldDataSafe = oldData;
+
+    const customQuestionsProvided = Object.prototype.hasOwnProperty.call(
+        eventData,
+        'customQuestions'
+    );
+    const existingQuestions = oldData.customQuestions || [];
+    const requestedQuestions = customQuestionsProvided
+        ? normalizeCustomQuestions(eventData.customQuestions, existingQuestions)
+        : existingQuestions;
+    const existingProfileIds = Object.prototype.hasOwnProperty.call(
+        eventData,
+        'featuredProfileIds'
+    )
+        ? await assertFeaturedProfilesExist(eventData.featuredProfileIds)
+        : oldData.featuredProfileIds || [];
+    const profilesToCreate = Array.isArray(eventData.featuredProfilesToCreate)
+        ? eventData.featuredProfilesToCreate
+        : [];
 
     const updatePayload = {
         ...eventData,
         lastUpdatedAt: new Date().getTime(),
     };
+    if (eventData.description !== undefined) {
+        updatePayload.description = sanitizeRichDescription(eventData.description);
+    }
+    delete updatePayload.customQuestions;
+    delete updatePayload.custom_questions;
+    delete updatePayload.featuredProfilesToCreate;
+    delete updatePayload.featured_profiles_to_create;
+    delete updatePayload.vietnamAddress;
+    delete updatePayload.vietnam_address;
+    delete updatePayload.is_private;
+    delete updatePayload.message_for_attendee;
+
+    const addressFields = extractAddressFields(eventData);
+    if (addressFields) {
+        Object.assign(updatePayload, addressFields);
+        if (eventData.city === undefined && addressFields.provinceName) {
+            updatePayload.city = addressFields.provinceName;
+        }
+    }
+
+    if (eventData.isPrivate !== undefined) {
+        updatePayload.isPrivate = eventData.isPrivate === true;
+        updatePayload.visibility = oldData.status === STATUS.ACTIVE
+            ? (updatePayload.isPrivate ? VISIBILITY.PRIVATE : VISIBILITY.PUBLIC)
+            : VISIBILITY.PRIVATE;
+    } else if (eventData.visibility === VISIBILITY.PRIVATE) {
+        updatePayload.isPrivate = true;
+    } else if (eventData.visibility === VISIBILITY.PUBLIC) {
+        updatePayload.isPrivate = false;
+    }
 
     await resolveVenueAndLocationForUpdate(eventData, updatePayload);
 
@@ -231,7 +353,44 @@ const updateEvent = async (eventId, eventData) => {
 
     let fullEventData;
     await dbTransaction(async (transaction) => {
+        const salesStarted = customQuestionsProvided
+            ? await eventRepository.hasTicketSalesStarted(eventId, transaction)
+            : false;
+        if (
+            salesStarted
+            && !customQuestionsEqual(existingQuestions, requestedQuestions)
+        ) {
+            throw new ConflictError(
+                'Custom attendee questions cannot be changed after ticket sales begin.'
+            );
+        }
+
+        const createdProfiles = [];
+        for (const profileData of profilesToCreate) {
+            const profile = await featuredProfileService.createFeaturedProfile(profileData, {
+                creatorId: organizerId || oldData.organizerId,
+                transaction,
+            });
+            createdProfiles.push(profile);
+        }
+        if (
+            Object.prototype.hasOwnProperty.call(eventData, 'featuredProfileIds')
+            || createdProfiles.length > 0
+        ) {
+            updatePayload.featuredProfileIds = uniqueProfileIds([
+                ...existingProfileIds,
+                ...createdProfiles.map((profile) => profile.id),
+            ]);
+        }
+
         await eventRepository.updateEvent(eventId, updatePayload, transaction);
+        if (customQuestionsProvided && !salesStarted) {
+            await eventRepository.replaceCustomQuestionsInTransaction(
+                transaction,
+                eventId,
+                requestedQuestions
+            );
+        }
         fullEventData = await eventRepository.getEventInTransaction(transaction, eventId);
 
         await eventPublisher.publish('search_index', {
@@ -434,6 +593,73 @@ const getDestinations = async (limit = 10) => {
     return eventRepository.getPopularDestinations(limit);
 };
 
+const getVietnamLocations = async ({ level, parentCode, q, limit }) => {
+    return eventRepository.listVietnamLocations({
+        level,
+        parentCode: parentCode || null,
+        search: q || '',
+        limit: Math.min(500, Math.max(1, parseInt(limit, 10) || 100)),
+    });
+};
+
+const saveOrderAttendeeAnswers = async (
+    eventId,
+    orderId,
+    userId,
+    attendeePayload
+) => {
+    let savedAttendees;
+    await dbTransaction(async (transaction) => {
+        const order = await eventRepository.getBuyerOrderInTransaction(
+            transaction,
+            eventId,
+            orderId,
+            userId
+        );
+        if (!order) {
+            throw new NotFoundError('Order not found for this buyer and event.');
+        }
+        if (order.ticket_quantity > 0 && attendeePayload.length > order.ticket_quantity) {
+            throw new BadRequestError('Attendee count exceeds the order ticket quantity.');
+        }
+
+        const questions = await eventRepository.getCustomQuestions(eventId, transaction);
+        const normalized = normalizeAnswers(attendeePayload, questions);
+        await eventRepository.replaceOrderAttendeesInTransaction(
+            transaction,
+            eventId,
+            orderId,
+            normalized.attendees,
+            normalized.questionSnapshot
+        );
+        savedAttendees = normalized.attendees;
+    });
+
+    logger.info('Order attendee answers saved', {
+        eventId,
+        orderId,
+        userId,
+        attendeeCount: savedAttendees.length,
+    });
+    return {
+        eventId,
+        orderId,
+        attendees: savedAttendees,
+    };
+};
+
 module.exports = {
-    getAllEvents, getEventById, createEvent, updateEvent, cancelEvent, submitDraft, findNearbyEvents, searchEvents, getRecommendations, getEventWeather, getDestinations
+    getAllEvents,
+    getEventById,
+    createEvent,
+    updateEvent,
+    cancelEvent,
+    submitDraft,
+    findNearbyEvents,
+    searchEvents,
+    getRecommendations,
+    getEventWeather,
+    getDestinations,
+    getVietnamLocations,
+    saveOrderAttendeeAnswers,
 };

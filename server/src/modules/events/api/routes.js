@@ -8,6 +8,13 @@ const eventController = require('@/modules/events/api/controller');
 const { publicApiLimiter } = require('@/shared/middleware/rateLimit.middleware');
 const { validateRequest } = require('@/shared/middleware/validateRequest.middleware');
 const mediaRouter = require('@/modules/media').router;
+const {
+    normalizeEventBuilderPayload,
+    createEventValidation,
+    updateEventValidation,
+    vietnamLocationsValidation,
+    attendeeAnswersValidation,
+} = require('./validation');
 
 router.get('/search', publicApiLimiter, [
     query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
@@ -19,6 +26,13 @@ router.get('/destinations', publicApiLimiter, [
     query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('limit must be between 1 and 50'),
     validateRequest
 ], eventController.getDestinations);
+
+router.get(
+    '/vietnam-locations',
+    publicApiLimiter,
+    vietnamLocationsValidation,
+    eventController.getVietnamLocations
+);
 
 router.get('/nearby', publicApiLimiter, [
     query('lat').isFloat().withMessage('lat must be a valid number'),
@@ -50,12 +64,34 @@ router.get('/:eventId', publicApiLimiter, optionalAuthToken, [
     validateRequest
 ], eventController.getEventById);
 
-router.post('/', verifyAuthToken, requireVerifiedEmail, requireRole('organizer', 'admin'), auditLog('event:create', 'event', 'id'), eventController.createEvent);
+router.post(
+    '/',
+    verifyAuthToken,
+    requireVerifiedEmail,
+    requireRole('organizer', 'admin'),
+    normalizeEventBuilderPayload,
+    createEventValidation,
+    auditLog('event:create', 'event', 'id'),
+    eventController.createEvent
+);
 
-router.put('/:eventId', verifyAuthToken, requireRole('organizer', 'admin'), requireOwnership('Event', 'eventId'), [
-    param('eventId').notEmpty().withMessage('eventId is required'),
-    validateRequest
-], auditLog('event:update', 'event', 'eventId'), eventController.updateEvent);
+router.put(
+    '/:eventId',
+    verifyAuthToken,
+    requireRole('organizer', 'admin'),
+    requireOwnership('Event', 'eventId'),
+    normalizeEventBuilderPayload,
+    updateEventValidation,
+    auditLog('event:update', 'event', 'eventId'),
+    eventController.updateEvent
+);
+
+router.put(
+    '/:eventId/orders/:orderId/attendees',
+    verifyAuthToken,
+    attendeeAnswersValidation,
+    eventController.saveOrderAttendeeAnswers
+);
 
 router.delete('/:eventId', verifyAuthToken, requireRole('organizer', 'admin'), requireOwnership('Event', 'eventId'), [
     param('eventId').notEmpty().withMessage('eventId is required'),

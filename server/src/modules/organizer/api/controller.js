@@ -5,6 +5,7 @@ const analyticsService = require('@/modules/analytics/application/service');
 const eventRepository = require('@/providers/database/event.repository');
 const payoutRepository = require('@/providers/database/payout.repository');
 const payoutService = require('@/modules/payments/application/payout.service');
+const logger = require('@/shared/logger');
 
 const verifyEventOwnership = asyncHandler(async (req, res, next) => {
     const eventId = req.params.eventId || req.body.eventId || req.query.eventId;
@@ -27,58 +28,56 @@ const verifyEventOwnership = asyncHandler(async (req, res, next) => {
     next();
 });
 
-const checkInByQr = async (req, res) => {
+const checkInByQr = asyncHandler(async (req, res) => {
     try {
-        const { qrToken } = req.body;
-        const updatedTicket = await organizerService.checkInByQr(qrToken, req.user.uid);
+        const { qrToken, direction = 'entry' } = req.body;
+        const updatedTicket = await organizerService.checkInByQr(
+            qrToken,
+            req.user.uid,
+            direction
+        );
 
         res.status(200).json({
             valid: true,
-            message: "Check-in thành công",
+            action: updatedTicket.action,
+            message: updatedTicket.action === 'entry'
+                ? 'Check-in successful'
+                : 'Check-out successful',
             ticketInfo: {
                 ticketId: updatedTicket.id,
                 userId: updatedTicket.userId,
                 ticketType: updatedTicket.type,
-                seat: updatedTicket.seat || "N/A",
+                seat: updatedTicket.seat || 'N/A',
                 status: updatedTicket.status,
-                checkedInAt: new Date().getTime()
+                checkedInAt: updatedTicket.checkedInAt,
+                checkInCount: updatedTicket.checkInCount,
+                quantity: updatedTicket.quantity,
+                remaining: updatedTicket.remaining,
+                currentlyInside: updatedTicket.currentlyInside,
             }
         });
-
     } catch (error) {
-        console.error("Check-in Error:", error.message);
-
-        if (error.message.includes('already been checked')) {
+        if (error.code === 'BAD_REQUEST') {
+            return res.status(400).json({ valid: false, error: 'INVALID_TICKET' });
+        }
+        if (error.code === 'TICKET_ALREADY_CHECKED_IN') {
+            logger.info('Duplicate ticket check-in rejected', {
+                userId: req.user.uid,
+                details: error.details,
+            });
             return res.status(409).json({
                 valid: false,
-                error: "ALREADY_CHECKED_IN",
-                message: "Vé này đã được check-in trước đó."
+                duplicate: true,
+                error: {
+                    code: 'TICKET_ALREADY_CHECKED_IN',
+                    message: error.message,
+                    details: error.details,
+                },
             });
         }
-
-        if (error.message.includes('Ticket not found') || error.message.includes('Event not found') || error.message.includes('Invalid')) {
-            return res.status(400).json({
-                valid: false,
-                error: "INVALID_TICKET",
-                message: "Vé không hợp lệ hoặc không tồn tại."
-            });
-        }
-
-        if (error.message.includes('Forbidden')) {
-            return res.status(403).json({
-                valid: false,
-                error: "FORBIDDEN",
-                message: "Bạn không có quyền check-in vé này."
-            });
-        }
-
-        res.status(500).json({
-            valid: false,
-            error: "SERVER_ERROR",
-            message: "Lỗi hệ thống."
-        });
+        throw error;
     }
-};
+});
 
 const registerOrganizer = asyncHandler(async (req, res) => {
     await organizerService.registerOrganizer(req.user.uid, req.body);
@@ -127,7 +126,13 @@ const importAttendees = asyncHandler(async (req, res) => {
     }
 
     const { eventId } = req.params;
-    const result = await organizerService.importAttendees(eventId, req.file.buffer, req.user.uid);
+    const ownerOrganizerId =
+        req.organizerAccess?.ownerOrganizerId || req.user.uid;
+    const result = await organizerService.importAttendees(
+        eventId,
+        req.file.buffer,
+        ownerOrganizerId
+    );
 
     res.status(200).json(result);
 });
@@ -146,13 +151,34 @@ const broadcastNotification = asyncHandler(async (req, res) => {
     const { eventId } = req.params;
     const { title, message } = req.body;
 
-    const result = await organizerService.broadcastNotification(eventId, title, message, req.user.uid);
+    const ownerOrganizerId =
+        req.organizerAccess?.ownerOrganizerId || req.user.uid;
+    const result = await organizerService.broadcastNotification(
+        eventId,
+        title,
+        message,
+        ownerOrganizerId
+    );
     res.status(200).json({ success: true, sentTo: result.count });
 });
 
 const getLedger = asyncHandler(async (req, res) => {
     const entries = await organizerService.getLedger(req.user.uid);
     res.status(200).json({ entries });
+});
+
+const getSeatLayout = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const { performanceId } = req.query;
+    const layout = await organizerService.getSeatLayout(eventId, performanceId);
+    res.status(200).json(layout);
+});
+
+const saveSeatLayout = asyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const { performanceId } = req.query;
+    const layout = await organizerService.saveSeatLayout(eventId, performanceId, req.body.layout);
+    res.status(200).json(layout);
 });
 
 function nextSundayMidnightVNInUTC() {
@@ -221,6 +247,8 @@ module.exports = {
     exportAttendees,
     broadcastNotification,
     getLedger,
+    getSeatLayout,
+    saveSeatLayout,
     getPayoutSummary,
     getPayoutList,
     getBankAccountInfo,

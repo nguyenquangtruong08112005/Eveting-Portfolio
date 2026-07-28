@@ -42,7 +42,7 @@ const updateEvent = asyncHandler(async (req, res) => {
     throw new ForbiddenError('You do not have permission to modify this event.');
   }
 
-  const updatedEvent = await eventService.updateEvent(eventId, req.body);
+  const updatedEvent = await eventService.updateEvent(eventId, req.body, requestingUserId);
   res.status(200).json(updatedEvent);
 });
 
@@ -127,6 +127,21 @@ const getDestinations = asyncHandler(async (req, res) => {
   res.status(200).json({ destinations });
 });
 
+const getVietnamLocations = asyncHandler(async (req, res) => {
+  const locations = await eventService.getVietnamLocations(req.query);
+  res.status(200).json({ locations });
+});
+
+const saveOrderAttendeeAnswers = asyncHandler(async (req, res) => {
+  const result = await eventService.saveOrderAttendeeAnswers(
+    req.params.eventId,
+    req.params.orderId,
+    req.user.uid,
+    req.body.attendees
+  );
+  res.status(200).json(result);
+});
+
 module.exports = {
   getAllEvents,
   getEventById,
@@ -138,5 +153,7 @@ module.exports = {
   findNearbyEvents,
   getRecommendations,
   getEventWeather,
-  getDestinations
+  getDestinations,
+  getVietnamLocations,
+  saveOrderAttendeeAnswers
 };
