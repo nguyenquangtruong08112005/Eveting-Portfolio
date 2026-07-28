@@ -8,12 +8,13 @@ import Link from 'next/link';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { EventService, TicketService } from '@/features/checkout/api';
+import { EventService, TicketService, createCheckoutOrder, createOrderPayment, quoteCheckoutVoucher, saveCheckoutAttendees, validateCheckoutQuestions } from '@/features/checkout/api';
 import { enrichEvent } from '@/lib/constants';
 import { navigateToSafeExternalUrl } from '@/lib/safe-redirect';
 import { BillingForm } from '@/components/checkout/BillingForm';
 import { PaymentMethods } from '@/components/checkout/PaymentMethods';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
+import { CheckoutQuestions, type CheckoutAnswers } from '@/components/checkout/CheckoutQuestions';
 import type { TicketQuantities } from '@/types';
 
 function CheckoutPageContent() {
@@ -23,22 +24,31 @@ function CheckoutPageContent() {
 
   const eventId = searchParams?.get('eventId') || '';
   const seatsParam = searchParams?.get('seats') || '';
+  const seatLabelsParam = searchParams?.get('seatLabels') || '';
   const ticketsParam = searchParams?.get('tickets') || '';
   const seatPriceParam = searchParams?.get('price') || '150000';
+  const performanceId = searchParams?.get('performanceId') || eventId;
+  const holdToken = searchParams?.get('holdToken') || '';
+  const holdExpiresAt = searchParams?.get('holdExpiresAt') || '';
 
   const [event, setEvent] = useState<import('@/types').Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'zalopay' | 'card' | 'atm'>('zalopay');
   const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucherCode, setAppliedVoucherCode] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
+  const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
   const [voucherError, setVoucherError] = useState('');
   const [voucherSuccess, setVoucherSuccess] = useState('');
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [holdRemaining, setHoldRemaining] = useState<number | null>(null);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [answers, setAnswers] = useState<CheckoutAnswers>({});
+  const [invalidQuestionId, setInvalidQuestionId] = useState<string | null>(null);
 
   // Autofill billing from last login / profile cache
   useEffect(() => {
@@ -50,6 +60,9 @@ function CheckoutPageContent() {
   }, []);
 
   const selectedSeats = seatsParam ? seatsParam.split(',').filter(Boolean) : [];
+  const selectedSeatLabels = seatLabelsParam
+    ? seatLabelsParam.split(',').filter(Boolean)
+    : selectedSeats;
   const seatPrice = event?.ticketTypes?.standard?.price
     ? Number(event.ticketTypes.standard.price)
     : parseInt(seatPriceParam, 10);
@@ -80,7 +93,27 @@ function CheckoutPageContent() {
       ? selectedSeats.length * seatPrice
       : selectedTickets.reduce((sum, row) => sum + row.qty * row.price, 0);
 
-  const total = Math.max(0, subtotal - discount);
+  const total = quotedTotal ?? Math.max(0, subtotal - discount);
+  const isSeatCheckout = selectedSeats.length > 0;
+  const seatHoldExpired =
+    isSeatCheckout &&
+    (!holdToken ||
+      !holdExpiresAt ||
+      holdRemaining === null ||
+      holdRemaining === 0 ||
+      Number.isNaN(Date.parse(holdExpiresAt)));
+
+  useEffect(() => {
+    if (!isSeatCheckout || !holdExpiresAt || Number.isNaN(Date.parse(holdExpiresAt))) {
+      setHoldRemaining(null);
+      return;
+    }
+    const update = () =>
+      setHoldRemaining(Math.max(0, Math.ceil((Date.parse(holdExpiresAt) - Date.now()) / 1000)));
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [holdExpiresAt, isSeatCheckout]);
 
   useEffect(() => {
     if (!eventId) {
@@ -107,17 +140,16 @@ function CheckoutPageContent() {
     }
 
     try {
-      const result = await TicketService.validateVoucher(voucherCode, subtotal, eventId);
-      if (result.valid) {
-        setDiscount(result.discountAmount || 0);
-        setVoucherSuccess(result.message);
-      } else {
-        setVoucherError(result.message);
-        setDiscount(0);
-      }
+      const quote = await quoteCheckoutVoucher(voucherCode.trim(), eventId, subtotal, selectedSeats.length || selectedTickets.reduce((sum, item) => sum + item.qty, 0));
+      setDiscount(quote.discountAmount);
+      setQuotedTotal(quote.totalAmount);
+      setAppliedVoucherCode(voucherCode.trim().toUpperCase());
+      setVoucherSuccess(quote.message || t('voucher_applied'));
     } catch {
       setVoucherError(t('voucher_invalid'));
       setDiscount(0);
+      setQuotedTotal(null);
+      setAppliedVoucherCode(null);
     }
   };
 
@@ -127,50 +159,49 @@ function CheckoutPageContent() {
       setErrorMsg(t('fill_info'));
       return;
     }
+    if (seatHoldExpired) {
+      setErrorMsg(t('seat_hold_expired'));
+      return;
+    }
+    const questionError = validateCheckoutQuestions(event?.customQuestions || [], answers);
+    if (questionError) {
+      setInvalidQuestionId(questionError);
+      setErrorMsg(t('question_required'));
+      return;
+    }
 
     setProcessing(true);
     setErrorMsg('');
 
     try {
-      let bookingResult: { tickets?: { id: string }[]; orderId?: string } | null = null;
-      const activePromo = voucherSuccess ? voucherCode.toUpperCase().trim() : undefined;
-
-      if (selectedSeats.length > 0) {
-        bookingResult = await TicketService.bookHeldSeats(eventId, selectedSeats, activePromo);
-      } else {
-        const items = selectedTickets.map((row) => ({
-          ticketType: row.name,
-          quantity: row.qty,
-        }));
-        bookingResult = await TicketService.bookOrderAtomic(eventId, items, activePromo);
-      }
-
-      const allTickets = bookingResult?.tickets?.filter(t => t?.id) ?? [];
-      if (allTickets.length === 0) {
+      const attendees = [{ name, email, answers }];
+      const activePromo = appliedVoucherCode || undefined;
+      const order = await createCheckoutOrder({
+        eventId,
+        items: selectedSeats.length > 0 ? [{ ticketType: 'standard', quantity: selectedSeats.length }] : selectedTickets.map((row) => ({ ticketType: row.name, quantity: row.qty })),
+        promoCode: activePromo,
+        attendees,
+        seatHold: selectedSeats.length > 0 ? { performanceId, holdToken, seatIds: selectedSeats } : undefined,
+      });
+      if (order.orderId) await saveCheckoutAttendees(eventId, order.orderId, attendees);
+      if (order.ticketIds.length === 0 && !order.paymentUrl) {
         throw new Error(t('no_ticket'));
       }
 
       if (paymentMethod === 'zalopay') {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-
-        if (bookingResult?.orderId) {
-          // Use the existing order from atomic booking or seat-held flow
-          const orderId = bookingResult.orderId;
-          const ticketIds = allTickets.map(t => t.id).join(',');
-          const redirectBase = `${baseUrl}/checkout/success?eventId=${encodeURIComponent(eventId)}&orderId=${encodeURIComponent(orderId)}&ticketIds=${encodeURIComponent(ticketIds)}`;
-          const payment = await TicketService.createBulkPaymentOrder(orderId, redirectBase);
-          if (!payment.order_url) throw new Error(t('no_payment_url'));
-          navigateToSafeExternalUrl(payment.order_url);
-        } else if (allTickets.length === 1) {
-          // Single legacy ticket without orderId — use legacy flow
-          const ticketId = allTickets[0].id;
-          const redirectUrl = `${baseUrl}/checkout/success?eventId=${encodeURIComponent(eventId)}&ticketId=${encodeURIComponent(ticketId)}`;
-          const payment = await TicketService.createPaymentOrder(ticketId, redirectUrl);
-          if (!payment.order_url) throw new Error(t('no_payment_url'));
-          navigateToSafeExternalUrl(payment.order_url);
-        } else {
-          throw new Error('No order reference for payment');
+        const confirmation = new URL(`${baseUrl}/checkout/success`);
+        confirmation.searchParams.set('eventId', eventId);
+        if (order.orderId) confirmation.searchParams.set('orderId', order.orderId);
+        confirmation.searchParams.set('ticketIds', order.ticketIds.join(','));
+        if (order.buyerMessage) confirmation.searchParams.set('buyerMessage', order.buyerMessage);
+        const paymentUrl = order.paymentUrl || (order.orderId
+          ? (await createOrderPayment(order.orderId, confirmation.toString())).order_url
+          : (await TicketService.createPaymentOrder(order.ticketIds[0], confirmation.toString())).order_url);
+        if (!paymentUrl) {
+          throw new Error(t('no_payment_url'));
         }
+        navigateToSafeExternalUrl(paymentUrl);
       } else {
         throw new Error(t('payment_not_configured'));
       }
@@ -243,6 +274,19 @@ function CheckoutPageContent() {
               <span>{errorMsg}</span>
             </div>
           )}
+          {isSeatCheckout && holdRemaining !== null && holdRemaining > 0 ? (
+            <div className="flex items-center justify-between rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-4 py-3 text-xs font-semibold text-[var(--text-secondary)]">
+              <span>{t('seat_hold_expires')}</span>
+              <span className="font-mono text-sm font-bold tabular-nums text-[var(--primary)]">
+                {Math.floor(holdRemaining / 60)}:{String(holdRemaining % 60).padStart(2, '0')}
+              </span>
+            </div>
+          ) : null}
+          {isSeatCheckout && holdRemaining === 0 ? (
+            <div className="rounded-md border border-[var(--error)]/30 bg-[var(--error)]/10 px-4 py-3 text-xs font-semibold text-[var(--error)]">
+              {t('seat_hold_expired')}
+            </div>
+          ) : null}
 
           <BillingForm
             name={name}
@@ -252,6 +296,15 @@ function CheckoutPageContent() {
             phone={phone}
             setPhone={setPhone}
           />
+          <CheckoutQuestions
+            questions={event.customQuestions || []}
+            answers={answers}
+            invalidQuestionId={invalidQuestionId}
+            onChange={(questionId, answer) => {
+              setAnswers((current) => ({ ...current, [questionId]: answer }));
+              setInvalidQuestionId((current) => current === questionId ? null : current);
+            }}
+          />
 
           <PaymentMethods paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
         </section>
@@ -259,17 +312,26 @@ function CheckoutPageContent() {
         <section className="lg:col-span-5">
           <OrderSummary
             event={event}
-            selectedSeats={selectedSeats}
+            selectedSeats={selectedSeatLabels}
             selectedTickets={selectedTickets}
             subtotal={subtotal}
             discount={discount}
             total={total}
             voucherCode={voucherCode}
-            setVoucherCode={setVoucherCode}
+            setVoucherCode={(nextCode) => {
+              setVoucherCode(nextCode);
+              if (nextCode.trim().toUpperCase() !== appliedVoucherCode) {
+                setAppliedVoucherCode(null);
+                setVoucherSuccess('');
+                setDiscount(0);
+                setQuotedTotal(null);
+              }
+            }}
             voucherError={voucherError}
             voucherSuccess={voucherSuccess}
             onApplyVoucher={handleApplyVoucher}
             processing={processing}
+            paymentDisabled={seatHoldExpired}
             seatPrice={seatPrice}
           />
         </section>

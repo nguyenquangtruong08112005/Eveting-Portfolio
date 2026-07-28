@@ -20,6 +20,7 @@ interface OrderSummaryProps {
   voucherSuccess: string;
   onApplyVoucher: () => void;
   processing: boolean;
+  paymentDisabled?: boolean;
   seatPrice: number;
 }
 
@@ -36,6 +37,7 @@ export function OrderSummary({
   voucherSuccess,
   onApplyVoucher,
   processing,
+  paymentDisabled = false,
   seatPrice,
 }: OrderSummaryProps) {
   const t = useTranslations('checkout');
@@ -180,7 +182,7 @@ export function OrderSummary({
 
       <Button
         type="submit"
-        disabled={processing || subtotal === 0}
+        disabled={processing || paymentDisabled || subtotal === 0}
         className="w-full py-6 rounded-xl btn-primary-gradient text-sm tracking-wider font-bold uppercase flex items-center justify-center gap-2 cursor-pointer border-none btn-tactile text-[var(--on-primary)] disabled:opacity-50"
       >
         {processing ? t('processing') : t('pay_now')}

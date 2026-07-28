@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --experimental-strip-types src/lib/safe-redirect.test.ts && node --experimental-strip-types src/features/auth/social-auth.test.ts"
+    "test:unit": "node --experimental-strip-types src/lib/safe-redirect.test.ts && node --experimental-strip-types src/features/auth/social-auth.test.ts && node --experimental-strip-types src/features/checkout/commerce.test.ts && node --experimental-strip-types src/services/seat.service.test.ts && node --experimental-strip-types src/components/seating/seat-layout.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

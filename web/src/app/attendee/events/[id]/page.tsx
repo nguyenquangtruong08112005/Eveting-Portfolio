@@ -11,12 +11,11 @@ import {
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { TicketTypePicker, TicketType } from '@/components/booking/TicketTypePicker';
-import { SeatGrid } from '@/components/seating/SeatGrid';
-import { TicketService } from '@/services/ticket.service';
-import { Seat, BackendSeat } from '@/types';
+import { SeatSelectionPanel } from '@/components/seating/SeatSelectionPanel';
+import type { Seat, SeatHold } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { EventService } from '@/services/event.service';
-import { enrichEvent, formatPrice, HOLD_TIMER_SECONDS } from '@/lib/constants';
+import { enrichEvent, formatPrice } from '@/lib/constants';
 import { EventHeader } from '@/components/events/EventHeader';
 import { EventInfoContent } from '@/components/events/EventInfoContent';
 import { ReviewsSection } from '@/components/events/ReviewsSection';
@@ -42,9 +41,8 @@ export default function EventDetailPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Seat booking states
-  const [seats, setSeats] = useState<Seat[]>([]);
-  const [holdTimer, setHoldTimer] = useState<number | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
+  const [seatHold, setSeatHold] = useState<SeatHold | null>(null);
   // Default fallback price per seat (used when ticketTypes not available)
   const seatPrice = 150000;
 
@@ -55,49 +53,6 @@ export default function EventDetailPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Initialize Seats for Seating Event
-  useEffect(() => {
-    if (event && isSeatingEvent) {
-      TicketService.getEventSeats(eventId)
-        .then((data) => {
-          if (data && data.length > 0) {
-            const mappedSeats: Seat[] = data.map((s: BackendSeat) => ({
-              id: s.id,
-              rowName: s.rowName,
-              number: s.seatNumber,
-              status: (s.status === 'held' ? 'held_by_others' : (s.status === 'sold' ? 'blocked' : s.status)) as Seat['status'],
-              sectionName: s.sectionName || 'Standard Section'
-            }));
-            setSeats(mappedSeats);
-            } else {
-              setSeats([]);
-              setErrorMessage(t('seat_load_error'));
-            }
-          })
-          .catch(() => {
-            setSeats([]);
-            setErrorMessage(t('seat_connect_error'));
-          });
-    }
-  }, [event, isSeatingEvent, eventId]);
-
-  // Seat hold countdown
-  useEffect(() => {
-    if (holdTimer === null) return;
-    if (holdTimer === 0) {
-      setSeats((prev) =>
-        prev.map((s) => (s.status === 'held_by_you' ? { ...s, status: 'available' } : s))
-      );
-      setHoldTimer(null);
-      setErrorMessage(t('hold_expired'));
-      return;
-    }
-    const interval = setInterval(() => {
-      setHoldTimer((prev) => (prev !== null ? prev - 1 : null));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [holdTimer]);
 
   // Load event
   useEffect(() => {
@@ -133,50 +88,26 @@ export default function EventDetailPage() {
     setQuantities((prev) => ({ ...prev, [key]: qty }));
   };
 
-  const handleSeatClick = async (clickedSeat: Seat) => {
-    setErrorMessage(null);
-    if (clickedSeat.status === 'available') {
-      try {
-        await TicketService.holdSeat(eventId, clickedSeat.id);
-        setSeats((prevSeats) =>
-          prevSeats.map((s) => (s.id === clickedSeat.id ? { ...s, status: 'held_by_you' as const } : s))
-        );
-        if (holdTimer === null) {
-          setHoldTimer(HOLD_TIMER_SECONDS);
-        }
-      } catch (error: any) {
-        setErrorMessage(error?.response?.data?.message || error?.message || t('hold_seat_error'));
-      }
-    } else if (clickedSeat.status === 'held_by_you') {
-      try {
-        await TicketService.releaseSeat(eventId, clickedSeat.id);
-        setSeats((prevSeats) => {
-          const nextSeats = prevSeats.map((s) => (s.id === clickedSeat.id ? { ...s, status: 'available' as const } : s));
-          const remainingSelected = nextSeats.some(ps => ps.status === 'held_by_you');
-          if (!remainingSelected) {
-            setHoldTimer(null);
-          }
-          return nextSeats;
-        });
-      } catch (error: any) {
-        setErrorMessage(error?.response?.data?.message || error?.message || t('release_seat_error'));
-      }
-    }
-  };
-
-  const selectedSeats = seats.filter((s) => s.status === 'held_by_you');
   const totalSeatPrice = selectedSeats.length * seatPrice;
 
   const handleCheckout = () => {
     if (isSeatingEvent) {
-      if (selectedSeats.length === 0) {
+      if (selectedSeats.length === 0 || !seatHold) {
         setErrorMessage(t('select_seat_error'));
         return;
       }
       router.push(
         `/checkout?eventId=${eventId}&seats=${encodeURIComponent(
           selectedSeats.map((s) => s.id).join(',')
-        )}&price=${seatPrice}`
+        )}&seatLabels=${encodeURIComponent(
+          selectedSeats.map((s) => s.label).join(',')
+        )}&price=${seatPrice}&performanceId=${encodeURIComponent(
+          seatHold.performanceId
+        )}&holdToken=${encodeURIComponent(
+          seatHold.holdToken
+        )}&holdExpiresAt=${encodeURIComponent(
+          seatHold.expiresAt
+        )}`
       );
     } else {
       const totalItems = Object.values(quantities).reduce((s, q) => s + q, 0);
@@ -249,6 +180,14 @@ export default function EventDetailPage() {
       <main className="max-w-7xl mx-auto px-6 py-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Event info (7/12) */}
         <div className="lg:col-span-7 space-y-5 min-w-0 max-w-full">
+          {event.messageForAttendee ? (
+            <section className="rounded-md border border-[var(--primary)]/25 bg-[var(--primary)]/8 px-4 py-3 text-sm text-[var(--text-secondary)]">
+              <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-[var(--text-primary)]">
+                {t('buyer_message')}
+              </h2>
+              <p className="whitespace-pre-wrap">{event.messageForAttendee}</p>
+            </section>
+          ) : null}
           <EventInfoContent event={event} mounted={mounted} />
           <OrganizerCard organizerId={event.organizerId} />
         </div>
@@ -267,10 +206,14 @@ export default function EventDetailPage() {
             {/* Ticket type picker or SeatGrid */}
             {isSeatingEvent ? (
               <div className="space-y-4">
-                <SeatGrid
-                  seats={seats}
-                  onSeatClick={handleSeatClick}
-                  holdTimer={holdTimer}
+                <SeatSelectionPanel
+                  eventId={eventId}
+                  disabled={!isAuthenticated}
+                  onHoldChange={(nextSeats, nextHold) => {
+                    setSelectedSeats(nextSeats);
+                    setSeatHold(nextHold);
+                    setErrorMessage(null);
+                  }}
                 />
                 
                 {/* Booking details panel */}
@@ -281,7 +224,7 @@ export default function EventDetailPage() {
                       <div className="flex justify-between text-xs text-[var(--text-secondary)]">
                         <span>{t('selected_seats', { count: selectedSeats.length })}</span>
                         <span className="font-bold text-[var(--primary)]">
-                          {selectedSeats.map(s => `${s.rowName}${s.number}`).join(', ')}
+                          {selectedSeats.map((seat) => seat.label).join(', ')}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-[var(--text-secondary)]">
