@@ -1,8 +1,8 @@
-# Eventing — local test accounts
+# Eventing -- local test accounts
 
-> **Local / demo only.** Do not use these passwords in production.  
-> Seed source: `server` → `npm run db:seed:platform` and/or `npm run db:seed:demo-users`  
-> Last updated: 2026-07-21
+> **Local / demo only.** Do not use these passwords in production.
+> Seed source: `server` > `npm run db:seed:demo-users`
+> Last updated: 2026-07-28
 
 ## Password (all accounts below)
 
@@ -10,31 +10,15 @@
 123456
 ```
 
-## Primary accounts (use these first)
+## Guaranteed primary accounts
 
 | Role | Email | Password | After login (web) |
-|------|--------|----------|-------------------|
+|------|-------|----------|-------------------|
 | **Admin** | `admin@eventing.com` | `123456` | `/admin/moderation` |
-| **Organizer (Hanoi)** | `hanoi.events@eventing.com` | `123456` | `/organizer/dashboard` |
 | **Organizer** | `organizer@eventing.com` | `123456` | `/organizer/dashboard` |
 | **Attendee** | `alice@email.com` | `123456` | `/` (home) |
 
-## Extra attendees (platform seed)
-
-| Role | Email | Password |
-|------|--------|----------|
-| Attendee | `nguyen.an@email.com` | `123456` |
-| Attendee | `tran.linh@email.com` | `123456` |
-| Attendee | `le.hung@email.com` | `123456` |
-
-## Optional local smoke accounts (if seeded)
-
-| Role | Email | Password |
-|------|--------|----------|
-| Organizer | `test.organizer@eventing.local` | `123456` (if seeded with demo password) |
-| Attendee | `test.attendee@eventing.local` | `123456` (if seeded with demo password) |
-
-> Smoke/synthetic emails (`*@smoke.test`, `synthetic_*`) are created by automated tests — ignore for manual QA.
+> `hanoi.events@eventing.com` is **not** a seeded account -- use `organizer@eventing.com`.
 
 ## Local URLs
 
@@ -48,11 +32,24 @@
 ## Re-seed accounts
 
 ```bat
-cd server
-npm.cmd run db:migrate
-npm.cmd run db:seed:platform
-REM or auth-only:
+cd /d D:\01_university\year3\semester-5\mobile\final\server
 npm.cmd run db:seed:demo-users
+```
+
+## Verify accounts (read-only)
+
+```bat
+docker exec mobile-eventing-postgres psql -U eventing -d eventing_dev -c "SELECT email, is_active, email_verified, roles FROM auth_users WHERE email IN ('alice@email.com','organizer@eventing.com','admin@eventing.com') ORDER BY email;"
+```
+
+Expected output (password hash omitted):
+```text
+         email          | is_active | email_verified |    roles
+------------------------+-----------+----------------+-------------
+ admin@eventing.com     | t         | t              | {admin}
+ alice@email.com        | t         | t              | {user}
+ organizer@eventing.com | t         | t              | {organizer}
+(3 rows)
 ```
 
 ## Quick API login check
