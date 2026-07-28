@@ -1,19 +1,41 @@
-const asyncHandler = require('@/shared/middleware/asyncHandler');
-const { BadRequestError } = require('@/shared/errors');
 const voucherService = require('@/modules/vouchers/application/service');
+const asyncHandler = require('@/shared/middleware/asyncHandler');
+
+const requestUserId = (req) => req.user && (req.user.uid || req.user.id);
 
 const validateVoucher = asyncHandler(async (req, res) => {
-    const { code, orderTotal, eventId } = req.body;
-
-    if (!code) {
-        throw new BadRequestError('Voucher code is required.');
-    }
-    if (orderTotal === undefined || orderTotal === null) {
-        throw new BadRequestError('Order total is required.');
-    }
-
-    const result = await voucherService.validateVoucher(code, Number(orderTotal), eventId);
-    res.status(200).json(result);
+  const { code, orderTotal, eventId, ticketQuantity } = req.body;
+  const result = await voucherService.validateVoucher(code, orderTotal, eventId, {
+    ticketQuantity,
+    userId: requestUserId(req),
+  });
+  res.status(200).json(result);
 });
 
-module.exports = { validateVoucher };
+const quoteVoucher = asyncHandler(async (req, res) => {
+  const {
+    code,
+    promoCode,
+    voucherCode,
+    codes,
+    eventId,
+    subtotalVnd,
+    ticketQuantity,
+  } = req.body;
+  const result = await voucherService.quoteVoucher({
+    code,
+    promoCode,
+    voucherCode,
+    codes,
+    eventId,
+    subtotalVnd,
+    ticketQuantity,
+    userId: requestUserId(req),
+  });
+  res.status(200).json(result);
+});
+
+module.exports = {
+  quoteVoucher,
+  validateVoucher,
+};

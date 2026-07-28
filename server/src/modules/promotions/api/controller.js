@@ -1,88 +1,74 @@
 const promoService = require('@/modules/promotions/application/service');
+const asyncHandler = require('@/shared/middleware/asyncHandler');
+const logger = require('@/shared/logger');
 
-const getAllPromotions = async (req, res) => {
-    try {
-        const promotions = await promoService.getAllPromotions();
-        res.status(200).json(promotions);
-    } catch (error) {
-        console.error("Error getAllPromotions: ", error);
-        res.status(500).send({ error: 'Internal Server Error' });
+const requestUserId = (req) => req.user && (req.user.uid || req.user.id);
+
+const getAllPromotions = asyncHandler(async (req, res) => {
+  const promotions = await promoService.getAllPromotions();
+  res.status(200).json(promotions);
+});
+
+const applyPromotion = asyncHandler(async (req, res) => {
+  const { code, eventId, quantity, subtotalVnd } = req.body;
+  const result = await promoService.validatePromotionCode(
+    code,
+    eventId,
+    quantity || 1,
+    {
+      subtotalVnd,
+      userId: requestUserId(req),
     }
-};
+  );
 
-const applyPromotion = async (req, res) => {
-    try {
-        const { code, eventId, quantity } = req.body;
-        if (!code) {
-            return res.status(400).send({ error: 'Promotion code is required.' });
-        }
+  if (!result.valid) {
+    const status = result.code === 'PROMOTION_NOT_FOUND' ? 404 : 409;
+    return res.status(status).json({ error: result.message, code: result.code });
+  }
+  return res.status(200).json(result);
+});
 
-        const result = await promoService.validatePromotionCode(code, eventId, quantity || 1);
+const getOrganizerPromotions = asyncHandler(async (req, res) => {
+  const promotions = await promoService.getPromotionsByOrganizer(requestUserId(req));
+  res.status(200).json(promotions);
+});
 
-        if (!result.valid) {
-            return res.status(404).send({ error: result.message });
-        }
+const createPromotion = asyncHandler(async (req, res) => {
+  const promotion = await promoService.createPromotion(requestUserId(req), req.body);
+  logger.info('Promotion created', {
+    promotionId: promotion.id,
+    organizerId: promotion.organizerId,
+  });
+  res.status(201).json(promotion);
+});
 
-        res.status(200).json(result);
-    } catch (error) {
-        console.error("Error applyPromotion: ", error);
-        res.status(500).send({ error: 'Internal Server Error' });
-    }
-};
+const updatePromotion = asyncHandler(async (req, res) => {
+  const promotion = await promoService.updatePromotion(
+    req.params.id,
+    requestUserId(req),
+    req.body
+  );
+  logger.info('Promotion updated', {
+    promotionId: promotion.id,
+    organizerId: requestUserId(req),
+  });
+  res.status(200).json(promotion);
+});
 
-const getOrganizerPromotions = async (req, res) => {
-    try {
-        const organizerId = req.user.uid;
-        const promotions = await promoService.getPromotionsByOrganizer(organizerId);
-        res.status(200).json(promotions);
-    } catch (error) {
-        res.status(500).send({ error: error.message });
-    }
-};
-
-const createPromotion = async (req, res) => {
-    try {
-        const organizerId = req.user.uid;
-        const newPromo = await promoService.createPromotion(organizerId, req.body);
-        res.status(201).json(newPromo);
-    } catch (error) {
-        if (error.message.includes("already exists")) {
-            return res.status(409).send({ error: error.message });
-        }
-        res.status(500).send({ error: error.message });
-    }
-};
-
-const updatePromotion = async (req, res) => {
-    try {
-        const organizerId = req.user.uid;
-        const { id } = req.params;
-        const updatedPromo = await promoService.updatePromotion(id, organizerId, req.body);
-        res.status(200).json(updatedPromo);
-    } catch (error) {
-        if (error.message === "Forbidden.") return res.status(403).send({ error: error.message });
-        if (error.message === "Promotion not found.") return res.status(404).send({ error: error.message });
-        res.status(500).send({ error: error.message });
-    }
-};
-
-const deletePromotion = async (req, res) => {
-    try {
-        const organizerId = req.user.uid;
-        const { id } = req.params;
-        await promoService.deletePromotion(id, organizerId);
-        res.status(204).send();
-    } catch (error) {
-        if (error.message === "Forbidden.") return res.status(403).send({ error: error.message });
-        res.status(500).send({ error: error.message });
-    }
-};
+const deletePromotion = asyncHandler(async (req, res) => {
+  await promoService.deletePromotion(req.params.id, requestUserId(req));
+  logger.info('Promotion deleted', {
+    promotionId: req.params.id,
+    organizerId: requestUserId(req),
+  });
+  res.status(204).send();
+});
 
 module.exports = {
-    getAllPromotions,
-    applyPromotion,
-    getOrganizerPromotions,
-    createPromotion,
-    updatePromotion,
-    deletePromotion
+  applyPromotion,
+  createPromotion,
+  deletePromotion,
+  getAllPromotions,
+  getOrganizerPromotions,
+  updatePromotion,
 };
