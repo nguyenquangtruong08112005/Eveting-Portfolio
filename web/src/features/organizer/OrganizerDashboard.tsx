@@ -8,7 +8,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { AppShell } from '@/components/layout/AppShell';
+import { OrganizerShell } from '@/components/organizer/OrganizerShell';
 import { StatsGrid } from '@/components/organizer/StatsGrid';
 import { EventManageTable } from '@/components/organizer/EventManageTable';
 import { LedgerEntries } from '@/components/organizer/LedgerEntries';
@@ -16,7 +16,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { OrganizerService } from '@/features/organizer/api';
 import { EventService } from '@/features/events/api';
-import { ORG_NAV } from '@/features/organizer/nav';
+import { useOrganizerWorkspace } from '@/features/organizer/OrganizerWorkspace';
 import { Badge } from '@/components/ui/badge';
 import type { OrganizerStats, OrganizerEvent, LedgerEntry } from '@/types';
 import { useTranslations } from 'next-intl';
@@ -24,8 +24,8 @@ import { toast } from 'sonner';
 
 export function OrganizerDashboardView() {
   const t = useTranslations('organizer');
-  const tCommon = useTranslations('common');
   const { isAuthenticated } = useAuth();
+  const { can } = useOrganizerWorkspace();
   const [stats, setStats] = useState<OrganizerStats>({
     totalSales: 0,
     grossRevenue: 0,
@@ -119,13 +119,15 @@ export function OrganizerDashboardView() {
         description={t('dashboard_subtitle')}
         icon={<LayoutDashboard className="size-5" />}
         actions={
-          <Link
-            href="/organizer/events/new"
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl btn-primary-gradient font-bold text-xs btn-tactile text-[var(--on-primary)] border-none shrink-0"
-          >
-            <Plus className="size-4" />
-            {t('create_event')}
-          </Link>
+          can('EDIT_EVENT') ? (
+            <Link
+              href="/organizer/events/new"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl btn-primary-gradient font-bold text-xs btn-tactile text-[var(--on-primary)] border-none shrink-0"
+            >
+              <Plus className="size-4" />
+              {t('create_event')}
+            </Link>
+          ) : undefined
         }
       />
 
@@ -168,6 +170,7 @@ export function OrganizerDashboardView() {
                 onSubmitDraft={handleSubmitDraft}
                 onCancel={handleCancelEvent}
                 actionLoadingId={actionLoadingId}
+                canEdit={can('EDIT_EVENT')}
               />
             </section>
 
@@ -181,8 +184,8 @@ export function OrganizerDashboardView() {
   );
 
   return (
-    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+    <OrganizerShell>
       {body}
-    </AppShell>
+    </OrganizerShell>
   );
 }

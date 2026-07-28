@@ -10,15 +10,25 @@ import {
   AlertTriangle,
   History,
   Smartphone,
+  Volume2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { AppShell } from '@/components/layout/AppShell';
+import { OrganizerShell } from '@/components/organizer/OrganizerShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { AttendeeTable } from '@/components/organizer/AttendeeTable';
 import { QrCameraScanner } from '@/components/organizer/QrCameraScanner';
-import { ORG_NAV } from '@/features/organizer/nav';
 import { OrganizerService } from '@/features/organizer/api';
+import { useOrganizerWorkspace } from '@/features/organizer/OrganizerWorkspace';
 import { useIsHandheld } from '@/hooks/useIsHandheld';
 import { cn } from '@/lib/utils';
 import type { OrganizerAttendeeRow, OrganizerEvent } from '@/types';
@@ -33,13 +43,14 @@ interface ScanResult {
 
 export function CheckInView() {
   const t = useTranslations('organizer');
-  const tCommon = useTranslations('common');
   const searchParams = useSearchParams();
   const prefillEvent = searchParams?.get('eventId') || '';
+  const { can } = useOrganizerWorkspace();
 
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<ScanResult[]>([]);
+  const [duplicateResult, setDuplicateResult] = useState<ScanResult | null>(null);
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [eventId, setEventId] = useState(prefillEvent);
   const [attendees, setAttendees] = useState<OrganizerAttendeeRow[]>([]);
@@ -77,7 +88,38 @@ export function CheckInView() {
     loadAttendees(eventId);
   }, [eventId, loadAttendees]);
 
+  const playDuplicateSound = () => {
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const gain = context.createGain();
+      gain.gain.setValueAtTime(0.18, context.currentTime);
+      gain.connect(context.destination);
+      [0, 0.22].forEach((offset) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(320, context.currentTime + offset);
+        oscillator.connect(gain);
+        oscillator.start(context.currentTime + offset);
+        oscillator.stop(context.currentTime + offset + 0.16);
+      });
+      window.setTimeout(() => void context.close(), 700);
+    } catch {
+      // Browsers may block audio outside a direct scanner interaction.
+    }
+  };
+
+  const announceDuplicate = (entry: ScanResult) => {
+    setDuplicateResult(entry);
+    playDuplicateSound();
+  };
+
   const runCheckIn = async (raw: string) => {
+    if (!can('SCAN_TICKETS')) return;
     const qrToken = raw.trim();
     if (!qrToken) return;
     setScanning(true);
@@ -93,6 +135,7 @@ export function CheckInView() {
       };
       setResult(entry);
       setHistory((prev) => [entry, ...prev].slice(0, 20));
+      if (entry.code === 'ALREADY_CHECKED_IN') announceDuplicate(entry);
       if (res.valid && eventId) {
         loadAttendees(eventId);
       }
@@ -100,19 +143,26 @@ export function CheckInView() {
       const anyErr = err as {
         message?: string;
         error?: string;
+        body?: { error?: string; message?: string; ticketInfo?: { ticketId?: string } };
         response?: { data?: { error?: string; message?: string; valid?: boolean } };
       };
-      const code = anyErr?.response?.data?.error || anyErr?.error || undefined;
+      const code =
+        anyErr?.body?.error || anyErr?.response?.data?.error || anyErr?.error || undefined;
       const message =
-        anyErr?.response?.data?.message || anyErr?.message || t('checkin_failed');
+        anyErr?.body?.message ||
+        anyErr?.response?.data?.message ||
+        anyErr?.message ||
+        t('checkin_failed');
       const entry: ScanResult = {
         ok: false,
         code,
         message,
+        ticketId: anyErr?.body?.ticketInfo?.ticketId,
         at: Date.now(),
       };
       setResult(entry);
       setHistory((prev) => [entry, ...prev].slice(0, 20));
+      if (entry.code === 'ALREADY_CHECKED_IN') announceDuplicate(entry);
     } finally {
       setScanning(false);
     }
@@ -123,7 +173,7 @@ export function CheckInView() {
   };
 
   return (
-    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+    <OrganizerShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full space-y-6">
         <PageHeader
           title={t('check_in_title')}
@@ -133,7 +183,11 @@ export function CheckInView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <section className="lg:col-span-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-6 space-y-4">
-            {isHandheld === null ? (
+            {!can('SCAN_TICKETS') ? (
+              <div role="alert" className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-4 text-sm text-[var(--warning)]">
+                SCAN_TICKETS permission is required to use the scanner.
+              </div>
+            ) : isHandheld === null ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="size-6 text-[var(--primary)] animate-spin" />
               </div>
@@ -259,7 +313,11 @@ export function CheckInView() {
             <h3 className="text-sm font-bold text-[var(--text-primary)]">
               {t('attendees_title')}
             </h3>
-            {loadingAttendees ? (
+            {!can('VIEW_CHECKIN_REPORTS') ? (
+              <p className="rounded-lg border border-[var(--surface-border)] bg-[var(--background)] p-4 text-xs text-[var(--text-muted)]">
+                VIEW_CHECKIN_REPORTS permission is required.
+              </p>
+            ) : loadingAttendees ? (
               <div className="flex justify-center py-10">
                 <Loader2 className="size-6 text-[var(--primary)] animate-spin" />
               </div>
@@ -272,7 +330,49 @@ export function CheckInView() {
             )}
           </section>
         </div>
+
+        <Dialog
+          open={duplicateResult !== null}
+          onOpenChange={(open) => !open && setDuplicateResult(null)}
+        >
+          <DialogContent className="border-2 border-[var(--warning)] bg-[var(--surface)] sm:max-w-lg">
+            <DialogHeader>
+              <div className="mb-2 flex size-14 items-center justify-center rounded-lg bg-[var(--warning)]/15">
+                <AlertTriangle className="size-8 text-[var(--warning)]" aria-hidden="true" />
+              </div>
+              <DialogTitle className="text-xl text-[var(--warning)]">
+                {t('checkin_already')}
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-relaxed text-[var(--text-secondary)]">
+                {duplicateResult?.message}
+              </DialogDescription>
+            </DialogHeader>
+            {duplicateResult?.ticketId && (
+              <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 p-4">
+                <p className="text-[10px] font-bold uppercase text-[var(--text-muted)]">
+                  Ticket ID
+                </p>
+                <p className="mt-1 break-all font-mono text-sm font-bold text-[var(--text-primary)]">
+                  {duplicateResult.ticketId}
+                </p>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--warning)]">
+              <Volume2 className="size-4" aria-hidden="true" />
+              Duplicate scan warning
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                className="w-full bg-[var(--warning)] font-bold text-black hover:bg-[var(--warning)]/90 sm:w-auto"
+                onClick={() => setDuplicateResult(null)}
+              >
+                Acknowledge
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-    </AppShell>
+    </OrganizerShell>
   );
 }

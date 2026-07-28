@@ -14,6 +14,7 @@ interface EventManageTableProps {
   onSubmitDraft: (id: string) => void;
   onCancel: (id: string) => void;
   actionLoadingId: string | null;
+  canEdit?: boolean;
 }
 
 const statusStyles: Record<string, string> = {
@@ -47,6 +48,7 @@ export function EventManageTable({
   onSubmitDraft,
   onCancel,
   actionLoadingId,
+  canEdit = true,
 }: EventManageTableProps) {
   const t = useTranslations('organizer_table');
 
@@ -140,7 +142,7 @@ export function EventManageTable({
                       <Eye className="size-3" />
                       {t('view')}
                     </Link>
-                    {(status === 'draft' || status === 'rejected') && (
+                    {canEdit && (status === 'draft' || status === 'rejected') && (
                       <Link
                         href={`/organizer/events/${event.id}/edit`}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--surface-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -149,7 +151,7 @@ export function EventManageTable({
                         {t('edit')}
                       </Link>
                     )}
-                    {status === 'draft' && (
+                    {canEdit && status === 'draft' && (
                       <Button
                         size="xs"
                         variant="outline"
@@ -166,7 +168,7 @@ export function EventManageTable({
                       </Button>
                     )}
 
-                    {(status === 'active' ||
+                    {canEdit && (status === 'active' ||
                       status === 'approved' ||
                       status === 'published') && (
                       <Button

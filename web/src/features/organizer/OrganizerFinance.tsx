@@ -15,17 +15,29 @@ import {
   Plus,
   ArrowUpFromLine,
   SendHorizonal,
+  AlertTriangle,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
-import { AppShell } from '@/components/layout/AppShell';
+import { OrganizerShell } from '@/components/organizer/OrganizerShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
-import { OrganizerService } from '@/features/organizer/api';
-import { ORG_NAV } from '@/features/organizer/nav';
+import {
+  OrganizerBusinessService,
+  OrganizerService,
+} from '@/features/organizer/api';
+import { useOrganizerWorkspace } from '@/features/organizer/OrganizerWorkspace';
 import { formatMoney, formatDate } from '@/lib/constants';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import type { PayoutSummary, Payout, BankAccountInfo, BankAccountUpdateBody } from '@/types';
+import type {
+  BankAccountInfo,
+  BankAccountUpdateBody,
+  OrganizerPaymentProfile,
+  Payout,
+  PayoutSummary,
+} from '@/types';
 
 const PAYOUTS_PER_PAGE = 10;
 
@@ -61,8 +73,8 @@ type ErrorSection = 'summary' | 'payouts' | 'bankAccount';
 
 export function OrganizerFinanceView() {
   const t = useTranslations('organizer');
-  const tCommon = useTranslations('common');
   const { isAuthenticated } = useAuth();
+  const { activeTeamId, can } = useOrganizerWorkspace();
 
   const [summary, setSummary] = useState<PayoutSummary>(safeSummary(null));
   const [payouts, setPayouts] = useState<Payout[]>([]);
@@ -76,6 +88,13 @@ export function OrganizerFinanceView() {
     bankName: '',
   });
   const [savingBank, setSavingBank] = useState(false);
+  const [paymentProfile, setPaymentProfile] = useState<OrganizerPaymentProfile>({
+    businessType: 'individual',
+    redInvoiceEnabled: false,
+    verificationStatus: 'UNSUBMITTED',
+  });
+  const [paymentProfileError, setPaymentProfileError] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [loadErrors, setLoadErrors] = useState<Partial<Record<ErrorSection, string>>>({});
@@ -84,10 +103,11 @@ export function OrganizerFinanceView() {
     setLoading(true);
     setLoadErrors({});
     try {
-      const [summaryRes, payoutsRes, bankRes] = await Promise.allSettled([
+      const [summaryRes, payoutsRes, bankRes, profileRes] = await Promise.allSettled([
         OrganizerService.getPayoutSummary(),
         OrganizerService.getPayouts(targetPage, PAYOUTS_PER_PAGE),
         OrganizerService.getBankAccount(),
+        OrganizerBusinessService.getPaymentProfile(activeTeamId),
       ]);
 
       const newErrors: Partial<Record<ErrorSection, string>> = {};
@@ -114,13 +134,24 @@ export function OrganizerFinanceView() {
         newErrors.bankAccount = msg;
       }
 
+      if (profileRes.status === 'fulfilled' && profileRes.value) {
+        setPaymentProfile(profileRes.value);
+        setPaymentProfileError('');
+      } else if (profileRes.status === 'rejected') {
+        setPaymentProfileError(
+          profileRes.reason instanceof Error
+            ? profileRes.reason.message
+            : String(profileRes.reason)
+        );
+      }
+
       setLoadErrors(newErrors);
     } catch (error) {
       console.error('Error loading finance data:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTeamId]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -155,6 +186,38 @@ export function OrganizerFinanceView() {
       toast.error(msg);
     } finally {
       setSavingBank(false);
+    }
+  };
+
+  const handleSavePaymentProfile = async () => {
+    if (!can('VIEW_REVENUE')) {
+      toast.error('VIEW_REVENUE permission required');
+      return;
+    }
+    if (
+      !paymentProfile.fullName?.trim() ||
+      !paymentProfile.businessType ||
+      !paymentProfile.address?.trim()
+    ) {
+      toast.error('Legal name, business type, and registered address are required');
+      return;
+    }
+    setSavingProfile(true);
+    setPaymentProfileError('');
+    try {
+      const saved = await OrganizerBusinessService.updatePaymentProfile(
+        paymentProfile,
+        activeTeamId
+      );
+      setPaymentProfile(saved);
+      toast.success('Payment and tax profile submitted for verification');
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : 'Unable to save payment profile';
+      setPaymentProfileError(message);
+      toast.error(message);
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -445,12 +508,182 @@ export function OrganizerFinanceView() {
           </section>
         </div>
       </div>
+
+      <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] p-5 sm:p-6">
+        <div className="mb-5 flex flex-col gap-3 border-b border-[var(--surface-border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+              <FileText className="size-4 text-[var(--primary)]" />
+              Bank, tax, and red invoice profile
+            </h2>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Legal details are used for payout verification and buyer invoice requests.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 self-start rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-2.5 py-1.5 text-[10px] font-bold text-[var(--text-secondary)]">
+            <ShieldCheck className="size-3.5 text-[var(--primary)]" />
+            {paymentProfile.verificationStatus || 'UNSUBMITTED'}
+          </span>
+        </div>
+
+        {paymentProfile.verificationStatus === 'VERIFIED' && (
+          <div role="alert" className="mb-5 flex items-start gap-3 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-4 text-xs text-[var(--warning)]">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            Changing verified bank, tax, or legal details will trigger re-KYC review and may
+            pause scheduled payouts until verification completes.
+          </div>
+        )}
+
+        {paymentProfileError && (
+          <div role="alert" className="mb-5 rounded-lg border border-[var(--error)]/30 bg-[var(--error)]/10 p-4">
+            <p className="text-xs font-semibold text-[var(--error)]">{paymentProfileError}</p>
+            {paymentProfileError.includes('endpoint unavailable') && (
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                Expected: GET/PUT /api/organizer/payment-profile
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase text-[var(--text-muted)]">
+              Account holder / legal name
+            </label>
+            <input
+              value={paymentProfile.fullName || ''}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  fullName: event.target.value,
+                }))
+              }
+              className="h-10 w-full rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm text-[var(--text-primary)]"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase text-[var(--text-muted)]">
+              Bank name
+            </label>
+            <input
+              value={paymentProfile.bankName || ''}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  bankName: event.target.value,
+                }))
+              }
+              list="vietnam-banks"
+              className="h-10 w-full rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm text-[var(--text-primary)]"
+            />
+            <datalist id="vietnam-banks">
+              <option value="Vietcombank" />
+              <option value="Techcombank" />
+              <option value="BIDV" />
+              <option value="MBBank" />
+              <option value="VietinBank" />
+              <option value="VPBank" />
+            </datalist>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase text-[var(--text-muted)]">
+              Bank branch
+            </label>
+            <input
+              value={paymentProfile.bankBranch || ''}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  bankBranch: event.target.value,
+                }))
+              }
+              className="h-10 w-full rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm text-[var(--text-primary)]"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase text-[var(--text-muted)]">
+              Business type
+            </label>
+            <select
+              value={paymentProfile.businessType || 'individual'}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  businessType: event.target.value as OrganizerPaymentProfile['businessType'],
+                }))
+              }
+              className="h-10 w-full rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm text-[var(--text-primary)]"
+            >
+              <option value="individual">Individual</option>
+              <option value="company">Company</option>
+              <option value="household">Household business</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase text-[var(--text-muted)]">
+              Tax identification number
+            </label>
+            <input
+              value={paymentProfile.taxNumber || ''}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  taxNumber: event.target.value,
+                }))
+              }
+              className="h-10 w-full rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-3 text-sm text-[var(--text-primary)]"
+            />
+          </div>
+          <label className="flex items-center gap-3 self-end rounded-lg border border-[var(--surface-border)] bg-[var(--background)] px-3 py-2.5 text-xs font-semibold text-[var(--text-secondary)]">
+            <input
+              type="checkbox"
+              checked={!!paymentProfile.redInvoiceEnabled}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  redInvoiceEnabled: event.target.checked,
+                }))
+              }
+            />
+            Accept red invoice requests
+          </label>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <label className="mb-1.5 block text-[10px] font-bold uppercase text-[var(--text-muted)]">
+              Registered business address
+            </label>
+            <textarea
+              rows={3}
+              value={paymentProfile.address || ''}
+              onChange={(event) =>
+                setPaymentProfile((current) => ({
+                  ...current,
+                  address: event.target.value,
+                }))
+              }
+              className="w-full resize-y rounded-lg border border-[var(--surface-border)] bg-[var(--background)] p-3 text-sm text-[var(--text-primary)]"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => void handleSavePaymentProfile()}
+            disabled={savingProfile || !can('VIEW_REVENUE')}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-xs font-bold text-[var(--on-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            title={!can('VIEW_REVENUE') ? 'VIEW_REVENUE permission required' : undefined}
+          >
+            {savingProfile && <Loader2 className="size-3.5 animate-spin" />}
+            Submit for verification
+          </button>
+        </div>
+      </section>
     </div>
   );
 
   return (
-    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+    <OrganizerShell>
       {body}
-    </AppShell>
+    </OrganizerShell>
   );
 }

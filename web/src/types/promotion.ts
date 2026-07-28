@@ -16,6 +16,11 @@ export interface Promotion {
   usageLimit?: number;
   usedCount?: number;
   isPublic?: boolean;
+  maxTicketQuantity?: number;
+  maxOrdersPerBuyer?: number;
+  performanceId?: string | null;
+  promoImageUrl?: string;
+  stackable?: false;
   organizerId?: string;
   createdAt?: number;
 }
@@ -32,6 +37,11 @@ export interface PromotionCreateBody {
   validUntil?: number;
   usageLimit?: number;
   isPublic?: boolean;
+  maxTicketQuantity?: number;
+  maxOrdersPerBuyer?: number;
+  performanceId?: string | null;
+  promoImageUrl?: string;
+  stackable?: false;
 }
 
 /** Full update — matches server updatePromotion allowed fields */
@@ -47,4 +57,9 @@ export interface PromotionUpdateBody {
   validUntil?: number;
   usageLimit?: number;
   isPublic?: boolean;
+  maxTicketQuantity?: number;
+  maxOrdersPerBuyer?: number;
+  performanceId?: string | null;
+  promoImageUrl?: string;
+  stackable?: false;
 }

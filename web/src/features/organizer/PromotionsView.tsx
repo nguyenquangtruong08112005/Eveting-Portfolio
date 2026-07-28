@@ -7,10 +7,12 @@ import {
   TicketPercent,
   Trash2,
   Pencil,
+  CalendarClock,
+  Layers2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { AppShell } from '@/components/layout/AppShell';
+import { OrganizerShell } from '@/components/organizer/OrganizerShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Badge } from '@/components/ui/badge';
@@ -24,14 +26,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { ORG_NAV } from '@/features/organizer/nav';
 import { PromotionService, OrganizerService } from '@/features/organizer/api';
+import { useOrganizerWorkspace } from '@/features/organizer/OrganizerWorkspace';
 import { formatPrice } from '@/lib/constants';
 import type { Promotion, OrganizerEvent } from '@/types';
 
+function toLocalInput(value?: number): string {
+  if (!value) return '';
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
 export function PromotionsView() {
   const t = useTranslations('organizer');
-  const tCommon = useTranslations('common');
+  const { can } = useOrganizerWorkspace();
   const [list, setList] = useState<Promotion[]>([]);
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +56,12 @@ export function PromotionsView() {
   const [usageLimit, setUsageLimit] = useState(100);
   const [isPublic, setIsPublic] = useState(false);
   const [description, setDescription] = useState('');
+  const [validFrom, setValidFrom] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+  const [minQty, setMinQty] = useState(1);
+  const [maxQty, setMaxQty] = useState(0);
+  const [maxOrdersPerBuyer, setMaxOrdersPerBuyer] = useState(1);
+  const [promoImageUrl, setPromoImageUrl] = useState('');
 
   // Edit form (full CRUD fields)
   const [editCode, setEditCode] = useState('');
@@ -57,6 +72,11 @@ export function PromotionsView() {
   const [editPublic, setEditPublic] = useState(false);
   const [editDesc, setEditDesc] = useState('');
   const [editMinQty, setEditMinQty] = useState(1);
+  const [editMaxQty, setEditMaxQty] = useState(0);
+  const [editMaxOrdersPerBuyer, setEditMaxOrdersPerBuyer] = useState(1);
+  const [editValidFrom, setEditValidFrom] = useState('');
+  const [editValidUntil, setEditValidUntil] = useState('');
+  const [editPromoImageUrl, setEditPromoImageUrl] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,9 +105,16 @@ export function PromotionsView() {
     setUsageLimit(100);
     setIsPublic(false);
     setDescription('');
+    setValidFrom('');
+    setValidUntil('');
+    setMinQty(1);
+    setMaxQty(0);
+    setMaxOrdersPerBuyer(1);
+    setPromoImageUrl('');
   };
 
   const handleCreate = async () => {
+    if (!can('MANAGE_VOUCHERS')) return;
     if (!code.trim() || !discountValue) {
       toast.error(t('promo_validation'));
       return;
@@ -103,6 +130,13 @@ export function PromotionsView() {
         isPublic,
         description: description.trim() || undefined,
         name: code.trim().toUpperCase(),
+        validFrom: validFrom ? new Date(validFrom).getTime() : undefined,
+        validUntil: validUntil ? new Date(validUntil).getTime() : undefined,
+        minTicketQuantity: Math.max(1, Number(minQty) || 1),
+        maxTicketQuantity: Number(maxQty) || undefined,
+        maxOrdersPerBuyer: Math.max(1, Number(maxOrdersPerBuyer) || 1),
+        promoImageUrl: promoImageUrl.trim() || undefined,
+        stackable: false,
       });
       toast.success(t('promo_created'));
       setCreateOpen(false);
@@ -125,9 +159,15 @@ export function PromotionsView() {
     setEditPublic(!!p.isPublic);
     setEditDesc(p.description || '');
     setEditMinQty(p.minTicketQuantity ?? 1);
+    setEditMaxQty(p.maxTicketQuantity ?? 0);
+    setEditMaxOrdersPerBuyer(p.maxOrdersPerBuyer ?? 1);
+    setEditValidFrom(toLocalInput(p.validFrom));
+    setEditValidUntil(toLocalInput(p.validUntil));
+    setEditPromoImageUrl(p.promoImageUrl || '');
   };
 
   const handleUpdate = async () => {
+    if (!can('MANAGE_VOUCHERS')) return;
     if (!editPromo) return;
     if (!editCode.trim() || !editDiscountValue) {
       toast.error(t('promo_validation'));
@@ -145,6 +185,12 @@ export function PromotionsView() {
         description: editDesc,
         minTicketQuantity: Number(editMinQty) || 1,
         name: editCode.trim().toUpperCase(),
+        maxTicketQuantity: Number(editMaxQty) || undefined,
+        maxOrdersPerBuyer: Math.max(1, Number(editMaxOrdersPerBuyer) || 1),
+        validFrom: editValidFrom ? new Date(editValidFrom).getTime() : undefined,
+        validUntil: editValidUntil ? new Date(editValidUntil).getTime() : undefined,
+        promoImageUrl: editPromoImageUrl.trim() || undefined,
+        stackable: false,
       });
       toast.success(t('promo_updated'));
       setEditPromo(null);
@@ -157,6 +203,7 @@ export function PromotionsView() {
   };
 
   const handleDelete = async (p: Promotion) => {
+    if (!can('MANAGE_VOUCHERS')) return;
     if (!confirm(t('promo_delete_confirm', { code: p.code }))) return;
     try {
       await PromotionService.remove(p.id);
@@ -173,7 +220,7 @@ export function PromotionsView() {
   };
 
   return (
-    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+    <OrganizerShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full">
         <PageHeader
           title={t('promotions_title')}
@@ -182,6 +229,8 @@ export function PromotionsView() {
           actions={
             <Button
               onClick={() => setCreateOpen(true)}
+              disabled={!can('MANAGE_VOUCHERS')}
+              title={!can('MANAGE_VOUCHERS') ? 'MANAGE_VOUCHERS permission required' : undefined}
               className="btn-primary-gradient text-[var(--on-primary)] border-none rounded-xl text-xs font-bold"
             >
               <Plus className="size-4" />
@@ -189,6 +238,19 @@ export function PromotionsView() {
             </Button>
           }
         />
+
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-[var(--primary)]/25 bg-[var(--primary)]/10 p-4">
+          <Layers2 className="mt-0.5 size-4 shrink-0 text-[var(--primary)]" />
+          <div>
+            <p className="text-xs font-bold text-[var(--text-primary)]">
+              Promotions are non-stackable
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              Checkout may apply one public voucher or one private code per order, never
+              both. The best eligible discount must be selected by the server.
+            </p>
+          </div>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -258,6 +320,7 @@ export function PromotionsView() {
                             variant="outline"
                             className="rounded-lg"
                             onClick={() => openEdit(p)}
+                            disabled={!can('MANAGE_VOUCHERS')}
                           >
                             <Pencil className="size-3" />
                           </Button>
@@ -266,6 +329,7 @@ export function PromotionsView() {
                             variant="destructive"
                             className="rounded-lg"
                             onClick={() => handleDelete(p)}
+                            disabled={!can('MANAGE_VOUCHERS')}
                           >
                             <Trash2 className="size-3" />
                           </Button>
@@ -332,6 +396,24 @@ export function PromotionsView() {
                   ))}
                 </select>
               </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Starts at</Label>
+                  <Input
+                    type="datetime-local"
+                    value={validFrom}
+                    onChange={(event) => setValidFrom(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Ends at</Label>
+                  <Input
+                    type="datetime-local"
+                    value={validUntil}
+                    onChange={(event) => setValidUntil(event.target.value)}
+                  />
+                </div>
+              </div>
               <div>
                 <Label className="text-xs mb-1.5 block">{t('promo_usage_limit')}</Label>
                 <Input
@@ -339,6 +421,45 @@ export function PromotionsView() {
                   value={usageLimit}
                   onChange={(e) => setUsageLimit(Number(e.target.value))}
                   className="rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Min tickets</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={minQty}
+                    onChange={(event) => setMinQty(Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Max tickets</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={maxQty}
+                    onChange={(event) => setMaxQty(Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Orders / buyer</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={maxOrdersPerBuyer}
+                    onChange={(event) =>
+                      setMaxOrdersPerBuyer(Number(event.target.value))
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">Promotion image URL</Label>
+                <Input
+                  type="url"
+                  value={promoImageUrl}
+                  onChange={(event) => setPromoImageUrl(event.target.value)}
                 />
               </div>
               <div>
@@ -357,6 +478,11 @@ export function PromotionsView() {
                 />
                 {t('promo_is_public')}
               </label>
+              <p className="flex items-start gap-2 rounded-lg bg-[var(--background)] p-3 text-[11px] text-[var(--text-muted)]">
+                <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
+                Public promotions may appear automatically at checkout. Private promotions
+                require buyers to enter the code.
+              </p>
             </div>
             <DialogFooter className="gap-2">
               <Button
@@ -432,6 +558,24 @@ export function PromotionsView() {
                   ))}
                 </select>
               </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Starts at</Label>
+                  <Input
+                    type="datetime-local"
+                    value={editValidFrom}
+                    onChange={(event) => setEditValidFrom(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Ends at</Label>
+                  <Input
+                    type="datetime-local"
+                    value={editValidUntil}
+                    onChange={(event) => setEditValidUntil(event.target.value)}
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs mb-1.5 block">{t('promo_usage_limit')}</Label>
@@ -451,6 +595,36 @@ export function PromotionsView() {
                     className="rounded-xl"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Max tickets</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={editMaxQty}
+                    onChange={(event) => setEditMaxQty(Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Orders / buyer</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editMaxOrdersPerBuyer}
+                    onChange={(event) =>
+                      setEditMaxOrdersPerBuyer(Number(event.target.value))
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">Promotion image URL</Label>
+                <Input
+                  type="url"
+                  value={editPromoImageUrl}
+                  onChange={(event) => setEditPromoImageUrl(event.target.value)}
+                />
               </div>
               <div>
                 <Label className="text-xs mb-1.5 block">{t('promo_description')}</Label>
@@ -489,6 +663,6 @@ export function PromotionsView() {
           </DialogContent>
         </Dialog>
       </div>
-    </AppShell>
+    </OrganizerShell>
   );
 }

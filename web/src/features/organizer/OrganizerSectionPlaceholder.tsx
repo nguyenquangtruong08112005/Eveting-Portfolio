@@ -2,10 +2,9 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { AppShell } from '@/components/layout/AppShell';
+import { OrganizerShell } from '@/components/organizer/OrganizerShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { ORG_NAV } from '@/features/organizer/nav';
 
 interface OrganizerSectionPlaceholderProps {
   titleKey: string;
@@ -22,10 +21,9 @@ export function OrganizerSectionPlaceholder({
   icon: Icon,
 }: OrganizerSectionPlaceholderProps) {
   const t = useTranslations('organizer');
-  const tCommon = useTranslations('common');
 
   return (
-    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+    <OrganizerShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full">
         <PageHeader
           title={t(titleKey)}
@@ -39,6 +37,6 @@ export function OrganizerSectionPlaceholder({
           className="mt-4"
         />
       </div>
-    </AppShell>
+    </OrganizerShell>
   );
 }

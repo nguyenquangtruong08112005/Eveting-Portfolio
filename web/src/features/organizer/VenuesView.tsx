@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, MapPin, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { AppShell } from '@/components/layout/AppShell';
+import { OrganizerShell } from '@/components/organizer/OrganizerShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { LocationMapPicker, type MapLocation } from '@/components/organizer/LocationMapPicker';
-import { ORG_NAV } from '@/features/organizer/nav';
 import { VenueService } from '@/features/organizer/api';
 import type { Venue } from '@/types';
 
 export function VenuesView() {
   const t = useTranslations('organizer');
-  const tCommon = useTranslations('common');
   const [list, setList] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -144,7 +142,7 @@ export function VenuesView() {
   };
 
   return (
-    <AppShell variant="organizer" items={ORG_NAV} heading={tCommon('org_badge')}>
+    <OrganizerShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-10 w-full">
         <PageHeader
           title={t('venues_title')}
@@ -328,6 +326,6 @@ export function VenuesView() {
           </DialogContent>
         </Dialog>
       </div>
-    </AppShell>
+    </OrganizerShell>
   );
 }
