@@ -112,6 +112,7 @@ async function run() {
     const allowHeaders = allowedCorsRes.headers['access-control-allow-headers'] || '';
     assert('Access-Control-Allow-Headers includes X-CSRF-Token', allowHeaders.toLowerCase().includes('x-csrf-token'));
     assert('Access-Control-Allow-Headers includes X-App-Integrity-Token', allowHeaders.toLowerCase().includes('x-app-integrity-token'));
+    assert('Access-Control-Allow-Headers includes X-Idempotency-Key', allowHeaders.toLowerCase().includes('x-idempotency-key'));
   } catch (err) {
     assert(`Allowed origin OPTIONS request failed: ${err.message}`, false);
   }

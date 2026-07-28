@@ -83,8 +83,12 @@ function requireOwnership(resourceType, idParam = 'id', options = {}) {
         return sendLegacyError(res, new NotFoundError(), `${resourceType} not found.`);
       }
 
-      // Direct owner check
-      const ownerId = resource.organizerId || resource.organizer_id || resource.userId || resource.user_id;
+      // Direct owner check — domain-aware: Ticket/Order are owned by buyer (userId),
+      // Event/Venue are owned by organizer (organizerId).
+      const isTicketOrOrder = normalizedType === 'ticket' || normalizedType === 'order';
+      const ownerId = isTicketOrOrder
+        ? (resource.userId || resource.user_id)
+        : (resource.organizerId || resource.organizer_id);
       let hasOwnership = ownerId && (String(ownerId) === String(userId));
 
       // For Ticket or Order: if user is organizer of the event associated with ticket/order

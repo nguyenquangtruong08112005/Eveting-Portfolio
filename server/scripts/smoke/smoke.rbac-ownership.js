@@ -160,8 +160,8 @@ async function run() {
     const origGetOrder = orderRepository.getOrderById;
 
     venueRepository.getVenueById = async (id) => ({ id, organizerId: 'org-owner-1' });
-    ticketRepository.getTicketById = async (id) => ({ id, userId: 'user-owner-1', eventId: 'evt-1' });
-    orderRepository.getOrderById = async (id) => ({ id, userId: 'user-owner-1' });
+    ticketRepository.getTicketById = async (id) => ({ id, userId: 'user-owner-1', organizerId: 'event-org', eventId: 'evt-1' });
+    orderRepository.getOrderById = async (id) => ({ id, userId: 'user-owner-1', organizerId: 'event-org' });
 
     try {
       const mwVenue = requireOwnership('Venue', 'venueId');
@@ -227,6 +227,52 @@ async function run() {
     assert(caughtError instanceof AppError, 'Thrown error is instance of AppError');
     assert(caughtError.statusCode === 400, 'Error status code is 400');
     assert(caughtError.message.includes('eventId is required'), 'Error message contains validation message');
+  })();
+
+  // --- Test 7: Ticket with BOTH userId AND organizerId — buyer passes, wrong user 403, event organizer fallback ---
+  console.log('\n--- Test 7: Ticket dual-owner regression (buyer userId vs organizerId) ---');
+  await (async function() {
+    const origGetTicket = ticketRepository.getTicketById;
+    const origGetEvent = eventRepository.getEventById;
+
+    ticketRepository.getTicketById = async (id) => {
+      if (id === 'tkt-dual') {
+        return { id: 'tkt-dual', userId: 'buyer-42', organizerId: 'org-99', eventId: 'evt-dual' };
+      }
+      return null;
+    };
+
+    eventRepository.getEventById = async (id) => {
+      if (id === 'evt-dual') {
+        return { id: 'evt-dual', organizerId: 'org-99' };
+      }
+      return null;
+    };
+
+    try {
+      const mwTicket = requireOwnership('Ticket', 'ticketId');
+
+      // 7a: Purchaser (userId) must pass — this is the regression fix
+      const reqBuyer = makeReq({ uid: 'buyer-42', roles: ['attendee'] }, { ticketId: 'tkt-dual' });
+      let buyerPassed = false;
+      await mwTicket(reqBuyer, makeRes(), () => { buyerPassed = true; });
+      assert(buyerPassed === true, 'requireOwnership Ticket with both organizerId+userId passes for purchaser userId');
+
+      // 7b: Wrong user must still get 403
+      const reqIntruder = makeReq({ uid: 'intruder-99', roles: ['attendee'] }, { ticketId: 'tkt-dual' });
+      const resIntruder = makeRes();
+      await mwTicket(reqIntruder, resIntruder, () => {});
+      assert(resIntruder._state.statusCode === 403, 'requireOwnership Ticket with both fields returns 403 for wrong user');
+
+      // 7c: Event organizer fallback must still work
+      const reqOrgFallback = makeReq({ uid: 'org-99', roles: ['organizer'] }, { ticketId: 'tkt-dual' });
+      let orgFallbackPassed = false;
+      await mwTicket(reqOrgFallback, makeRes(), () => { orgFallbackPassed = true; });
+      assert(orgFallbackPassed === true, 'requireOwnership Ticket allows event organizer fallback');
+    } finally {
+      ticketRepository.getTicketById = origGetTicket;
+      eventRepository.getEventById = origGetEvent;
+    }
   })();
 
   console.log('');
