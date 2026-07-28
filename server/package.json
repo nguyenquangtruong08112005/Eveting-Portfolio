@@ -77,7 +77,11 @@
     "db:smoke:cache-namespace": "node scripts/smoke/smoke.cache-namespace.js",
     "dlq:list": "node scripts/maintenance/retry-dlq.js list",
     "dlq:retry-all": "node scripts/maintenance/retry-dlq.js retry-all",
-    "dlq:retry": "node scripts/maintenance/retry-dlq.js retry"
+    "dlq:retry": "node scripts/maintenance/retry-dlq.js retry",
+    "job:seat-release": "node src/jobs/seat-release-worker.js",
+    "job:seat-release:once": "node src/jobs/seat-release-worker.js --once",
+    "db:smoke:phase06-seats": "node scripts/smoke/smoke.phase06-seats.js",
+    "test:concurrency:seats": "node scripts/smoke/smoke.phase06-seat-concurrency.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.800.0",

@@ -4,7 +4,9 @@ var cookieParser = require('cookie-parser');
 var usersRouter = require('@/modules/users').router;
 var eventsRouter = require('@/modules/events').router;
 var ticketsRouter = require('@/modules/tickets').router;
+var orderCheckoutRouter = require('@/modules/tickets/api/order-routes');
 var featuredProfileRouter = require('@/modules/featuredProfile').router;
+var featuredProfileController = require('@/modules/featuredProfile/api/controller');
 var reviewsRouter = require('@/modules/reviews').router;
 var promotionsRouter = require('@/modules/promotions').router;
 var notificationsRouter = require('@/modules/notifications').router;
@@ -79,6 +81,7 @@ app.use('/users', usersRouter);
 app.use('/events', eventsRouter);
 app.use('/tickets', ticketsRouter);
 app.use('/profiles', featuredProfileRouter);
+app.get('/artists/:slug', featuredProfileController.getProfileBySlug);
 app.use('/reviews', reviewsRouter);
 app.use('/promotions', promotionsRouter);
 app.use('/notifications', notificationsRouter);
@@ -96,10 +99,18 @@ app.use('/api/web/auth', authRouter);
 app.use('/api/mobile/auth', authRouter);
 app.use('/api/web/events', eventsRouter);
 app.use('/api/web/tickets', ticketsRouter);
+app.use('/api/web/orders', orderCheckoutRouter);
 app.use('/api/web/payments', paymentsRouter);
 app.use('/api/web/memberships', membershipsRouter);
 app.use('/api/web/vouchers', vouchersRouter);
 app.use('/api/web/profiles', featuredProfileRouter);
+app.get('/api/web/artists/:slug', featuredProfileController.getProfileBySlug);
+app.post(
+  '/admin/artists/:userId/grant',
+  require('./shared/middleware/auth.middleware').verifyAuthToken,
+  require('./shared/middleware/authz.middleware').requireRole('admin'),
+  featuredProfileController.grantFeaturedArtist
+);
 app.use('/api/web/users', usersRouter);
 app.use('/api/web/notifications', notificationsRouter);
 app.use('/api/web/promotions', promotionsRouter);
