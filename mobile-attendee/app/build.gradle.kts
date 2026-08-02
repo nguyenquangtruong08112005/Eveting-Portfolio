@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.google.services) // Apply the Google services plugin
     id("org.jetbrains.kotlin.kapt")
     alias(libs.plugins.dagger.hilt)
+    id("jacoco")
 }
 
 hilt {
@@ -32,6 +33,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -150,4 +154,122 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion") // Hỗ trợ Coroutines/Flow
     kapt("androidx.room:room-compiler:$roomVersion") // Annotation Processor
+}
+
+// ---------------------------------------------------------------------------
+// JaCoCo – unit-test code coverage (HTML + XML reports, 80% minimum gate)
+// ---------------------------------------------------------------------------
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.withType<Test> {
+    configure<JacocoTaskExtension> {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
+}
+
+val fileFilter = listOf(
+    // Android generated
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*",
+    // Hilt / Dagger generated
+    "**/dagger/hilt/**",
+    "**/hilt_aggregated_deps/**",
+    "**/*_HiltModules*.*",
+    "**/*_HiltComponents*.*",
+    "**/*Hilt_*.*",
+    "**/*_Factory*.*",
+    "**/*_MembersInjector*.*",
+    "**/*_GeneratedInjector*.*",
+    "**/*_ComponentTreeDeps*.*",
+    "*.Hilt_*",
+    // Room generated
+    "**/*_Impl*.*",
+    // Compose compiler generated
+    "**/*ComposableSingletons*.*",
+    // Data-binding / view-binding
+    "**/databinding/*",
+    "**/DataBinderMapperImpl*",
+    "**/DataBindingInfo*",
+    "**/*BindingImpl*",
+    "**/*Binding*.*",
+    // kapt stubs & metadata
+    "**/kapt/**"
+)
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    val debugTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        exclude(fileFilter)
+    } + fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
+        exclude(fileFilter)
+    }
+
+    val mainSrc = files("src/main/java", "src/main/kotlin")
+
+    sourceDirectories.setFrom(mainSrc)
+    classDirectories.setFrom(debugTree)
+    executionData.setFrom(fileTree(layout.buildDirectory) {
+        include(
+            "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            "jacoco/testDebugUnitTest.exec"
+        )
+    })
+}
+
+tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn("testDebugUnitTest")
+
+    val debugTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        exclude(fileFilter)
+    } + fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
+        exclude(fileFilter)
+    }
+
+    val mainSrc = files("src/main/java", "src/main/kotlin")
+
+    sourceDirectories.setFrom(mainSrc)
+    classDirectories.setFrom(debugTree)
+    executionData.setFrom(fileTree(layout.buildDirectory) {
+        include(
+            "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            "jacoco/testDebugUnitTest.exec"
+        )
+    })
+
+    violationRules {
+        rule {
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "METHOD"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
 }
