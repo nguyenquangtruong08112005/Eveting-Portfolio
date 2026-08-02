@@ -41,7 +41,10 @@ jobs:
       - name: Check JavaScript syntax
         working-directory: server
         run: node scripts/ci/check-js-syntax.js
-      - name: Report-only npm audit
+      - name: Run server unit tests (blocking)
+        working-directory: server
+        run: npm run test:unit
+      - name: Report-only npm audit (non-blocking)
         working-directory: server
         continue-on-error: true
         run: npm run security:audit
@@ -64,6 +67,9 @@ jobs:
       - name: Lint web
         working-directory: web
         run: npm run lint
+      - name: Run web unit tests (blocking)
+        working-directory: web
+        run: npm run test:unit
       - name: Build web
         working-directory: web
         env:
@@ -73,9 +79,8 @@ jobs:
         run: docker build -t eventing-web:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:3000 ./web
 
   mobile-attendee:
-    name: Attendee Android compile
+    name: Attendee Android unit tests
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -86,7 +91,7 @@ jobs:
       - name: Provide example Google services config
         working-directory: mobile-attendee
         run: cp app/google-services.example.json app/google-services.json
-      - name: Compile attendee debug Kotlin
+      - name: Run attendee debug unit tests (blocking; includes compilation)
         working-directory: mobile-attendee
         env:
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
@@ -96,12 +101,11 @@ jobs:
             exit 1
           fi
           chmod +x ./gradlew
-          ./gradlew :app:compileDebugKotlin --no-daemon
+          ./gradlew :app:testDebugUnitTest --no-daemon
 
   mobile-organizer:
-    name: Organizer Android compile
+    name: Organizer Android unit tests
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -112,7 +116,7 @@ jobs:
       - name: Provide example Google services config
         working-directory: mobile-organizer
         run: cp app/google-services.example.json app/google-services.json
-      - name: Compile organizer debug Kotlin
+      - name: Run organizer debug unit tests (blocking; includes compilation)
         working-directory: mobile-organizer
         env:
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
@@ -122,10 +126,10 @@ jobs:
             exit 1
           fi
           chmod +x ./gradlew
-          ./gradlew :app:compileDebugKotlin --no-daemon
+          ./gradlew :app:testDebugUnitTest --no-daemon
 
   security-report:
-    name: Report-only Trivy scan
+    name: Report-only Trivy scan (non-blocking)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:

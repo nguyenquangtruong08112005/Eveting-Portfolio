@@ -1,0 +1,171 @@
+# Automatic staging deployment of the exact successful Eventing CI commit.
+name: Deploy main after CI
+
+on:
+  workflow_run:
+    workflows: ["Eventing CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-main-staging
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    # workflow_run receives secrets, so deploy only a successful same-repository push to main.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Check out the tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push tested images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -z "$REGISTRY" ]; then
+            echo "Error: ECR registry from login action is empty."
+            exit 1
+          fi
+          docker build -t "$REGISTRY/eventing-api:$IMAGE_TAG" -t "$REGISTRY/eventing-api:main" ./server
+          docker push "$REGISTRY/eventing-api:$IMAGE_TAG"
+          docker push "$REGISTRY/eventing-api:main"
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL || 'https://eventing-api.moteo.fun' }}" \
+            -t "$REGISTRY/eventing-web:$IMAGE_TAG" \
+            -t "$REGISTRY/eventing-web:main" \
+            ./web
+          docker push "$REGISTRY/eventing-web:$IMAGE_TAG"
+          docker push "$REGISTRY/eventing-web:main"
+
+      - name: Get ECR login password
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+        run: |
+          ECR_PASSWORD="$(aws ecr get-login-password --region "$AWS_REGION")"
+          echo "::add-mask::$ECR_PASSWORD"
+          echo "ECR_PASSWORD=$ECR_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Install Session Manager Plugin
+        run: |
+          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o session-manager-plugin.deb
+          sudo dpkg -i session-manager-plugin.deb
+          rm -f session-manager-plugin.deb
+
+      - name: Run Ansible via SSM
+        working-directory: server/infra/ansible
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+          WEB_DOMAIN: ${{ secrets.WEB_DOMAIN || 'eventing.moteo.fun' }}
+          API_DOMAIN: ${{ secrets.API_DOMAIN || 'eventing-api.moteo.fun' }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS || 'https://eventing.moteo.fun' }}
+          PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://eventing-api.moteo.fun' }}
+          APP_PUBLIC_URL: ${{ secrets.APP_PUBLIC_URL }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          JWT_TICKET_SECRET: ${{ secrets.JWT_TICKET_SECRET }}
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          AUTH_MOCK_EMAIL: ${{ secrets.AUTH_MOCK_EMAIL }}
+          ZALOPAY_APP_ID: ${{ secrets.ZALOPAY_APP_ID }}
+          ZALOPAY_KEY1: ${{ secrets.ZALOPAY_KEY1 }}
+          ZALOPAY_KEY2: ${{ secrets.ZALOPAY_KEY2 }}
+          ZALOPAY_ENDPOINT: ${{ secrets.ZALOPAY_ENDPOINT }}
+          STORAGE_PROVIDER: ${{ secrets.STORAGE_PROVIDER }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_PUBLIC_URL_BASE: ${{ secrets.S3_PUBLIC_URL_BASE }}
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+          LOG_LEVEL: info
+          LOG_CONSOLE: "true"
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          REGISTRY="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+          export ECR_REGISTRY="$REGISTRY"
+
+          INSTANCE_ID="$(aws ec2 describe-instances \
+            --filters "Name=tag:Project,Values=eventing" "Name=tag:Environment,Values=staging" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text)"
+          case "$INSTANCE_ID" in
+            ""|None|*" "*)
+              echo "Error: Expected exactly one running EC2 instance tagged Project=eventing, Environment=staging."
+              exit 1
+              ;;
+          esac
+          SSM_BUCKET="eventing-staging-ssm-transfer-$ACCOUNT_ID"
+
+          echo "Waiting for EC2 instance $INSTANCE_ID to reach SSM Online status..."
+          SSM_ONLINE=false
+          for attempt in $(seq 1 18); do
+            STATUS="$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text 2>/dev/null || true)"
+            if [ "$STATUS" = "Online" ]; then
+              SSM_ONLINE=true
+              break
+            fi
+            echo "Attempt $attempt/18: SSM ping status is '$STATUS'. Waiting 10s..."
+            sleep 10
+          done
+          if [ "$SSM_ONLINE" != "true" ]; then
+            echo "Error: EC2 instance $INSTANCE_ID did not reach SSM Online status within 180 seconds."
+            exit 1
+          fi
+
+          cat > inventory.ini << EOFINVENTORY
+          [app_servers]
+          $INSTANCE_ID ansible_connection=amazon.aws.aws_ssm ansible_user=ubuntu
+
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
+          ansible_remote_tmp=/tmp/.ansible-eventing/tmp
+          ansible_aws_ssm_bucket_name=$SSM_BUCKET
+          ansible_aws_ssm_bucket_sse_mode=AES256
+          ansible_aws_ssm_region=$AWS_REGION
+          web_domain=$WEB_DOMAIN
+          api_domain=$API_DOMAIN
+          environment=staging
+          project_root=/opt/server-eventing
+          EOFINVENTORY
+
+          pip install boto3 botocore ansible
+          ansible-galaxy collection install amazon.aws
+          ansible-playbook -i inventory.ini playbook.yml --tags common,app --extra-vars "image_tag=$IMAGE_TAG environment=staging aws_region=$AWS_REGION"
