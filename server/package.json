@@ -81,7 +81,10 @@
     "job:seat-release": "node src/jobs/seat-release-worker.js",
     "job:seat-release:once": "node src/jobs/seat-release-worker.js --once",
     "db:smoke:phase06-seats": "node scripts/smoke/smoke.phase06-seats.js",
-    "test:concurrency:seats": "node scripts/smoke/smoke.phase06-seat-concurrency.js"
+    "test:concurrency:seats": "node scripts/smoke/smoke.phase06-seat-concurrency.js",
+    "test:unit": "jest",
+    "test:coverage": "jest --coverage",
+    "test:coverage:check": "jest --coverage"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.800.0",
@@ -110,6 +113,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "jest": "^30.4.2",
     "nodemon": "^3.1.10"
   }
 }
