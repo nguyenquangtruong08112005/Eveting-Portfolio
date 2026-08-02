@@ -24,3 +24,12 @@ local.properties
 google-services.json
 !google-services.example.json
 !**/google-services.example.json
+
+# Local test output and one-off audit artifacts
+EVENTING_CV_EVIDENCE_REPORT.md
+server/test_files_list.txt
+server/test_output*.txt
+server/test_report.json
+web/appshell-debug.txt
+web/cov*.log
+web/vitest-*.txt
