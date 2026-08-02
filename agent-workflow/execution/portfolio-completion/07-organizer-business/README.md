@@ -1,7 +1,9 @@
 # Phase 07: Organizer Business Suite (from PO-idea.md)
 
 ## Overview
-Phase 07 implements the full business suite for event organizers specified in `PO-idea.md`: Multi-step Event Builder with Vietnam address dictionary, custom attendee registration questions, ticket sales rules, private/public event visibility, custom email messages for buyers, organizer banking/tax profile verification, comprehensive sales/analytics/check-in dashboards, Team RBAC permissions, voucher/promotions engine, and the Featured Star Artist Studio.
+Phase 07 implements the business suite for event organizers specified in `PO-idea.md`: Multi-step Event Builder with Vietnam address dictionary, custom attendee registration questions, ticket sales rules, private/public event visibility, custom email messages for buyers, organizer banking/tax profile verification, analytics/check-in dashboards, Team RBAC permissions, and the voucher/promotions engine.
+
+Featured Profiles are not organizer-owned assets. A Featured Profile represents a person, collective, or public identity; its Studio is held by that profile's company or authorized representative account. An organizer is only an event host and may request to link/tag an existing Featured Profile on an event. Ownership, editing rights, Studio access, verification, and public exposure move to the Phase 08 governance plan.
 
 ## Deliverables
 - Event Builder APIs & Web UI supporting Vietnam administrative location dictionary.
@@ -11,7 +13,7 @@ Phase 07 implements the full business suite for event organizers specified in `P
 - Business intelligence dashboard (Revenue charts, Ticket sales tables, Conversion rates, Access sources, Check-in ratios, Batch email broadcast).
 - Organizer Team RBAC (Admin, Manager, Check-in Staff) with 12 granular permissions.
 - Promotion/Voucher program engine (Public modal vs Private code, usage limits, ticket scope).
-- Featured Artist / Famous Profile Studio.
+- Organizer request flow to link/tag a Featured Profile on an event; profile ownership and Studio governance are Phase 08 responsibilities.
 
 ## Tasks
 1. [`01-event-builder-address-questions.md`](01-event-builder-address-questions.md) — Event Builder, Address Dictionary & Attendee Qs
@@ -19,7 +21,8 @@ Phase 07 implements the full business suite for event organizers specified in `P
 3. [`03-organizer-payment-bank-tax.md`](03-organizer-payment-bank-tax.md) — Organizer Payment Profile, Bank Details & Tax Verification
 4. [`04-organizer-dashboard-analytics-checkin.md`](04-organizer-dashboard-analytics-checkin.md) — Dashboard Analytics, Order Management & Check-in Suite
 5. [`05-team-rbac-roles-permissions.md`](05-team-rbac-roles-permissions.md) — Team Management & Granular RBAC Permissions
-6. [`06-featured-artist-star-studio.md`](06-featured-artist-star-studio.md) — Featured Artist & Famous Profile Star Studio
+6. [`06-featured-artist-star-studio.md`](06-featured-artist-star-studio.md) — Legacy featured-profile implementation; ownership model superseded by Phase 08 Task `08-T5`
+7. [`07-manual-qa-regression-remediation.md`](07-manual-qa-regression-remediation.md) — Phase 07.1 blocking regressions found in manual QA
 
 ## Verification Evidence (2026-07-28)
 

@@ -1,6 +1,6 @@
 # CURRENT — Active execution pointer
 
-> **Updated:** 2026-07-27
+> **Updated:** 2026-07-29
 
 ## Active program
 
@@ -11,7 +11,7 @@
 | Hub | [portfolio-completion/](portfolio-completion/) |
 | Plan | [portfolio-completion/README.md](portfolio-completion/README.md) |
 | Phase 00 Status | **COMPLETED** ([00-baseline/BASELINE_STATE.md](portfolio-completion/00-baseline/BASELINE_STATE.md), [00-baseline/ENVIRONMENT_VARIABLE_FREEZE.md](portfolio-completion/00-baseline/ENVIRONMENT_VARIABLE_FREEZE.md), [00-baseline/API_CONTRACT_INVENTORY.md](portfolio-completion/00-baseline/API_CONTRACT_INVENTORY.md)) |
-| Immediate next | Phase 05 Task `05-T2`: ZaloPay Gateway Integration, Refund & Payout Safeguards |
+| Immediate next | Phase 07.1 manual-QA remediation and product-acceptance decisions, then Phase 08 Admin Governance |
 | External Blockers | See [portfolio-completion/OPEN_QUESTIONS.md](portfolio-completion/OPEN_QUESTIONS.md) (Q01: Google OAuth Client IDs, Q02: Facebook App credentials, Q03: Play Integrity Service Account) |
 
 ## Workspace Repositories & Components

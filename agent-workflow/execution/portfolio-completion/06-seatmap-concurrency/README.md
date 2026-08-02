@@ -1,7 +1,9 @@
 # Phase 06: Seat-Map Engine & High-Concurrency Locking
 
 ## Overview
-Phase 06 delivers the complete interactive seat-map system, featuring an organizer visual seat map editor, multi-performance support, section/row/seat layout definitions, temporary seat holds with TTL expiration, PostgreSQL database-level unique constraints & transaction locking (ultimate source of truth), Redis acceleration, race-condition concurrency tests, and an automated payment expiry hold release worker.
+Phase 06 delivers the technical seat-map engine: multi-performance support, section/row/seat layout definitions, temporary seat holds with TTL expiration, PostgreSQL database-level unique constraints and transaction locking, Redis acceleration, race-condition tests, and an automated payment expiry hold release worker.
+
+Product acceptance is deliberately separate from technical completion. The current generic grid is not acceptable as a default customer-facing map for every event. Task 04 records the required product decision before the feature is exposed again.
 
 ## Deliverables
 - Visual seat map layout schema engine (JSON grid layout parser).
@@ -14,6 +16,7 @@ Phase 06 delivers the complete interactive seat-map system, featuring an organiz
 1. [`01-seatmap-schema-editor.md`](01-seatmap-schema-editor.md) — Organizer Visual Seat Map Editor & Schema Engine
 2. [`02-seat-hold-ttl-transactions.md`](02-seat-hold-ttl-transactions.md) — Seat Hold TTL & Database Transactional Locking
 3. [`03-concurrency-race-tests.md`](03-concurrency-race-tests.md) — Concurrency Race-Condition Testing & Auto-Release Worker
+4. [`04-seatmap-product-acceptance.md`](04-seatmap-product-acceptance.md) — Product Gate: organizer-authored layout or feature concealment
 
 ## Verification Evidence (2026-07-28)
 
