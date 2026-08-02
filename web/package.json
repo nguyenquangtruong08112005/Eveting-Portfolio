@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --experimental-strip-types src/lib/safe-redirect.test.ts && node --experimental-strip-types src/features/auth/social-auth.test.ts && node --experimental-strip-types src/features/checkout/commerce.test.ts && node --experimental-strip-types src/services/seat.service.test.ts && node --experimental-strip-types src/components/seating/seat-layout.test.ts"
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -39,6 +40,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.0",
+    "@vitest/coverage-v8": "^4.0.0"
   }
 }
